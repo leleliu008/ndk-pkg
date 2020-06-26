@@ -1,0 +1,755 @@
+#!/bin/sh
+
+#------------------------------------------------------------------------------
+# Reference:   https://developer.android.google.cn/ndk/guides/other_build_systems
+# requirement: Android NDK version must be r19 or newer.
+#------------------------------------------------------------------------------
+
+VERSION=0.1.0
+
+NDK_PKG_HOME="$HOME/.ndk-pkg"
+DIR_FORMULA="$NDK_PKG_HOME/formula"
+DIR_DOWNLOAD="$NDK_PKG_HOME/downloads"
+DIR_PKG="$NDK_PKG_HOME/pkg"
+DIR_LOG="$NDK_PKG_HOME/log"
+
+TARGET_ABIS='armeabi-v7a arm64-v8a x86 x86_64'
+
+FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula.git'
+
+#------------------------------------------------------------------------------
+
+Color_Red='\033[0;31m'          # Red
+Color_Green='\033[0;32m'        # Green
+Color_Yellow='\033[0;33m'       # Yellow
+Color_Blue='\033[0;34m'         # Blue
+Color_Purple='\033[0;35m'       # Purple
+Color_Off='\033[0m'             # Reset
+
+msg() {
+    printf "%b" "$1"
+}
+
+info() {
+    msg "${Color_Purple}[❉] $@${Color_Off}"
+}
+
+success() {
+    msg "${Color_Green}[✔] $@${Color_Off}"
+}
+
+warn() {
+    msg "${Color_Yellow}[⌘] $@${Color_Off}"
+}
+
+error() {
+    msg "${Color_Red}[✘] $@${Color_Off}"
+}
+
+error_exit() {
+    msg "${Color_Red}[✘] $@${Color_Off}"
+    exit 1
+}
+
+print_list() {
+    for item in $@
+    do
+        msg "$item\n"
+    done
+}
+
+nproc() {
+    if command -v nproc > /dev/null ; then
+        command nproc
+    elif command -v sysctl > /dev/null ; then
+        sysctl -n machdep.cpu.thread_count
+    elif test -f /proc/cpuinfo ; then
+        grep -c processor /proc/cpuinfo
+    else
+        printf "%b" 4
+    fi
+}
+
+sed_in_place() {
+    command -v gsed > /dev/null && gsed -i "$1" "$2" && return 0
+    command -v sed  > /dev/null && (sed -i "$1" "$2" 2> /dev/null || sed -i "" "$1" "$2") && return 0
+    error_exit "please install sed utility.\n"
+}
+
+get_ndk_version_via_awk() {
+    awk -F= '/Pkg.Revision/{print(substr($2, 2))}' "$ANDROID_NDK_HOME/source.properties"
+}
+
+get_ndk_version_via_cut() {
+    grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | cut -d " " -f3
+}
+
+get_ndk_version_via_sed() {
+    grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | sed 's/Pkg\.Revision = \(.*\).*/\1/'
+}
+
+get_ndk_version_via_ruby() {
+    ruby <<EOF
+File.open(ENV['ANDROID_NDK_HOME'] + '/source.properties', 'r') {|f|
+  f.each_line {|lineText|
+    if (lineText =~ /Pkg.Revision =.*/)
+        puts lineText.gsub('Pkg.Revision = ', '')
+    end
+  }
+  f.close
+}
+EOF
+}
+
+get_ndk_version_via_perl() {
+    perl << EOF
+open(DATA, "<$ANDROID_NDK_HOME/source.properties") or die "$ANDROID_NDK_HOME/source.properties文件无法打开, $!";
+while(<DATA>) {
+    if ("\$_" =~ m/Pkg.Revision/) {
+        print substr("\$_", 15);
+    }
+}
+EOF
+}
+
+get_ndk_version_via_python() {
+    "$PYTHON" << EOF
+import re;
+file = open("$ANDROID_NDK_HOME/source.properties");
+lines = file.readlines();
+for line in lines:
+    if -1 != line.find("Pkg.Revision"):
+        print(re.findall("[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,7}", line)[0]);
+EOF
+}
+
+get_ndk_version_via_nodejs() {
+    node << EOF
+const fs = require('fs');
+
+const buffer = fs.readFileSync("$ANDROID_NDK_HOME/source.properties");
+if (buffer instanceof Error) {
+    console.log(buffer);
+    process.exit(1);
+}
+
+const text = buffer.toString();
+const lines = text.split('\n');
+lines.forEach((line, index, lines) => {
+    const matched = line.match(/\d+\.\d+\.\d+/);
+    if (matched) {
+        console.log(matched[0]);
+    }
+});
+EOF
+}
+
+get_ndk_version() {
+    command -v cut  > /dev/null && get_ndk_version_via_cut    && return 0 
+    command -v awk  > /dev/null && get_ndk_version_via_awk    && return 0
+    command -v ruby > /dev/null && get_ndk_version_via_ruby   && return 0 
+    command -v perl > /dev/null && get_ndk_version_via_perl   && return 0    
+    command -v node > /dev/null && get_ndk_version_via_nodejs && return 0
+    
+    SED=$(command -v sed)
+    [ -z "$SED" ] && SED=$(command -v gsed)
+    [ -z "$SED" ] || get_ndk_version_via_sed && return 0
+     
+    PYTHON=$(command -v python3)
+    [ -z "$PYTHON" ] && PYTHON=$(command -v python)
+    [ -z "$PYTHON" ] || get_ndk_version_via_python && return 0
+}
+
+get_ndk_version_major() {
+    command -v cut > /dev/null && printf "$ANDROID_NDK_VERSION" | cut -d. -f1          && return 0
+    command -v awk > /dev/null && printf "$ANDROID_NDK_VERSION" | awk -F. '{print $1}' && return 0
+    command -v sed > /dev/null && printf "$ANDROID_NDK_VERSION" | sed 's/\..*//g'      && return 0
+    msg '0'
+}
+
+check_ANDROID_NDK_HOME() {
+    [ -z "$ANDROID_NDK_HOME" ] && error_exit "please set ANDROID_NDK_HOME environment variable, then try again!"
+    [ -d "$ANDROID_NDK_HOME" ] || error_exit "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
+}
+
+check_ANDROID_NDK_VERSION() {
+    ANDROID_NDK_VERSION="$(get_ndk_version)"
+    [ "$(get_ndk_version_major)" -lt 19 ] && error_exit "your ndk version is $ANDROID_NDK_VERSION, please update to r19 or newer."
+}
+
+list_target_abis() {
+    print_list "$TARGET_ABIS"
+}
+
+list_target_apis() {
+    print_list 21 22 23 34 25 26 27 28 29
+}
+
+#选择某个目标ABI，比如armeabi-v7a，可以通过ndk-pkg list target-abis命令列出支持的目标的名称
+select_target_abi_if_needed() {
+    [ -z "$TARGET_ABI" ] && {
+        info "below is supported TARGET_ABIS:\n"
+        list_target_abis
+        info "please input your select TARGET_ABI:"
+        read -r TARGET_ABI
+        select_target_abi_if_needed
+    }
+}
+
+#选择某个目标API，比如21、22、23、34、25、26、27、28、29，可以通过ndk-pkg list target-apis命令列出支持的API level
+select_target_api_if_needed() {
+    [ -z "$TARGET_API" ] && {
+        info "below is supported target-apis:\n"
+        list_target_apis
+        info "please input your selected target-api:"
+        read -r TARGET_API
+        select_target_api_if_needed
+    }
+}
+
+is_exist_and_executable() {
+    [ -f "$1" ] || error_exit "$1 is not exsit.\n"
+    [ -x "$1" ] || error_exit "$1 is not executable.\n"
+}
+
+make_env() {
+    [ -z "$TARGET_API" ] && {
+        TARGET_API=21
+        info "TARGET_API is not set. use default value 21.\n"
+    }
+    
+    [ -z "$TARGET_ABI" ] && {
+        TARGET_ABI='armeabi-v7a'
+        info "TARGET_ABI is not set. use default value armeabi-v7a.\n"
+    }
+    
+    CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+    TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$(uname -s)-$(uname -m)"
+    SYSROOT="$TOOLCHAIN_DIR/sysroot"
+    export PATH="$TOOLCHAIN_DIR/bin:$PATH"
+
+    case "$TARGET_ABI" in
+        armeabi-v7a) 
+            export TOOLCHAIN_NAME='arm-linux-androideabi'
+            export TARGET_HOST='armv7a-linux-androideabi'
+            export TARGET_ARCH='arm'
+            ;;
+        arm64-v8a)
+            export TOOLCHAIN_NAME='aarch64-linux-android'
+            export TARGET_HOST='aarch64-linux-android'
+            export TARGET_ARCH='arm64'
+            ;;
+        x86)
+            export TOOLCHAIN_NAME='i686-linux-android'
+            export TARGET_HOST='i686-linux-android'
+            export TARGET_ARCH='x86'
+            ;;
+        x86_64)
+            export TOOLCHAIN_NAME='x86_64-linux-android'
+            export TARGET_HOST='x86_64-linux-android'
+            export TARGET_ARCH='x86_64'
+            ;;
+        *)  export TOOLCHAIN_NAME='unkown'
+            export TARGET_HOST='unkown'
+            export TARGET_ARCH='unkown'
+    esac
+
+    
+    FILE_PATH_LIBZ_SO="$TOOLCHAIN_DIR/sysroot/usr/lib/$TOOLCHAIN_NAME/$TARGET_API/libz.so"
+    
+    DIR_PREFIX="$DIR_PKG/$1"
+    DIR_INSTALL="$DIR_PREFIX/$TARGET_ABI"
+    [ -z "$DIR_SRC" ] || DIR_BUILD="$DIR_SRC/$TIMESTAMP/$TARGET_ABI"
+
+    info "-------------------------------------------------------\n"
+    info "        PKG_NAME = $1\n"
+    info "    DEPENDENCIES = $(pkg_dependencies_direct "$1")\n"
+    info "ANDROID_NDK_HOME = $ANDROID_NDK_HOME\n"
+    info "ANDROID_NDK_VER  = $ANDROID_NDK_VERSION\n"
+    info "CMAKE_TOOLCHAIN_FILE = $CMAKE_TOOLCHAIN_FILE\n"
+    info "FILE_PATH_LIBZ_SO = $FILE_PATH_LIBZ_SO\n"
+    info "   TOOLCHAIN_DIR = $TOOLCHAIN_DIR\n"
+    info "   TOOLCHAIN_NAME= $TOOLCHAIN_NAME\n"
+    info "         SYSROOT = $SYSROOT\n"
+    info "     TARGET_HOST = $TARGET_HOST\n"
+    info "     TARGET_ARCH = $TARGET_ARCH\n"
+    info "     TARGET_ABI  = $TARGET_ABI\n"
+    info "     TARGET_API  = $TARGET_API\n"
+    info "     DIR_LOG     = $DIR_LOG\n"
+    info "     DIR_PREFIX  = $DIR_PREFIX\n"
+    info "     DIR_INSTALL = $DIR_INSTALL\n"
+    info "     DIR_SRC     = $DIR_SRC\n"
+    info "     DIR_BUILD   = $DIR_BUILD\n"
+
+    TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$TARGET_HOST$TARGET_API-"
+
+    CC="${TOOLCHAIN_PREFIX}clang"
+    is_exist_and_executable "$CC" && export CC="$CC"
+    info "    CC = $CC\n"
+
+    CXX="${TOOLCHAIN_PREFIX}clang++"
+    is_exist_and_executable "$CXX" && export CXX="$CXX"
+    info "   CXX = $CXX\n"
+    
+    if [ "$TARGET_HOST" = 'armv7a-linux-androideabi' ] ; then
+        TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/arm-linux-androideabi-"
+    else
+        TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$TARGET_HOST-"
+    fi
+
+    info "TOOLCHAIN_PREFIX = $TOOLCHAIN_PREFIX\n"
+    
+    AR="${TOOLCHAIN_PREFIX}ar"
+    is_exist_and_executable "$AR" && export AR="$AR"
+    info "    AR = $AR\n"
+
+    AS="${TOOLCHAIN_PREFIX}as"
+    is_exist_and_executable "$AS" && export AS="$AS"
+    info "    AS = $AS\n"
+
+    LD="${TOOLCHAIN_PREFIX}ld"
+    is_exist_and_executable "$LD" && export LD="$LD"
+    info "    LD = $LD\n"
+
+    NM="${TOOLCHAIN_PREFIX}nm"
+    is_exist_and_executable "$NM" && export NM="$NM"
+    info "    NM = $NM\n"
+     
+    RANLIB="${TOOLCHAIN_PREFIX}ranlib"
+    is_exist_and_executable "$RANLIB" && export RANLIB="$RANLIB"
+    info "RANLIB = $RANLIB\n"
+     
+    STRIP="${TOOLCHAIN_PREFIX}strip"
+    is_exist_and_executable "$STRIP" && export STRIP="$STRIP"
+    info " STRIP = $STRIP\n"
+
+    CPPFLAGS=''
+    LDFLAGS=''
+
+    for item in $(printf "$DEPENDENCIES")
+    do
+        item=$(printf "$item" | tr '-' '_')
+        ITEM_DIR_INSTALL="$DIR_PKG/$item/$TARGET_ABI"
+        ITEM_DIR_INCLUDE="$ITEM_DIR_INSTALL/include"
+        ITEM_DIR_LIB="$ITEM_DIR_INSTALL/lib"
+
+        eval "${item}_DIR_INSTALL='$ITEM_DIR_INSTALL'"
+        eval "${item}_DIR_INCLUDE='$ITEM_DIR_INCLUDE'"
+        eval "${item}_DIR_LIB='$ITEM_DIR_LIB'"
+        CPPFLAGS="-I$ITEM_DIR_INCLUDE $CPPFLAGS"
+        LDFLAGS="-L$ITEM_DIR_LIB     $LDFLAGS"
+    done
+
+    export CFLAGS='-Os -v -fpic -Qunused-arguments'
+    export CPPFLAGS="$CPPFLAGS -Qunused-arguments"
+    export LDFLAGS="$LDFLAGS"
+     
+    info "CFLAGS  =$CFLAGS\n"
+    info "CPPFLAGS=$CPPFLAGS\n"
+    info "LDFLAGS =$LDFLAGS\n"
+     
+    info "-------------------------------------------------------\n"
+}
+
+get_pkg_version() {
+    if [ -z "$version" ] ; then
+        msg "$(basename "$src_ball_url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+    else
+        msg "$version"
+    fi
+}
+
+pkg_dependencies_direct() {
+    grep '^dependencies=".*"' "$DIR_FORMULA/$1.sh" | sed 's/dependencies="\(.*\)"/\1/'
+}
+
+pkg_dependencies_all() {
+    for dependencyPkgName in $(pkg_dependencies_direct "$1")
+    do
+        is_pkg_exist "$dependencyPkgName" || pkg_is_not_exist_error_exit "$dependencyPkgName"
+        DEPENDENCIES="$dependencyPkgName $DEPENDENCIES"
+        pkg_dependencies_all "$dependencyPkgName"
+    done
+}
+
+parse_params() {
+    while test -n "$1"
+    do
+        case "$1" in
+            --target-api=[1-9][0-9])
+                TARGET_API=$(msg "$1" | cut -d= -f2);;
+            --target-abi=*)
+                TARGET_ABI=$(msg "$1" | cut -d= -f2);;
+            [0-9a-zA-Z]*)
+                PKGS="$PKGS $1";;
+            *)  error_exit "$1 is not valid param.\n"
+        esac
+        shift
+    done
+}
+
+check_params() {
+    [ -z "$PKGS" ] && error_exit "please provide a pkg name.\n"
+    PKG_NAME="$(printf "$PKGS" | awk '{print $1}')"
+}
+
+is_pkg_installed() {
+    [ -d "$DIR_PKG/$1" ] &&
+    [ -f "$DIR_PKG/$1/installed" ]
+}
+
+pkg_is_not_installed_error_exit() {
+    error_exit "$1 is not installed.\n"
+}
+
+is_pkg_exist() {
+    [ -f "$DIR_FORMULA/$1.sh" ]
+}
+
+pkg_is_not_exist_error_exit() {
+    error_exit "$1 is not exsit.\n"
+}
+
+check_file_if_right() {
+    case "$2" in
+        zip) unzip -t  "$1";;
+        xz|gz|bz2) tar -tqf "$1";;
+        *) false;;
+    esac
+}
+
+check_pkg_sha256() {
+    if command -v openssl > /dev/null ; then
+        test "$(openssl sha256 "$1" | awk '{print $2}')" = "$src_ball_sha256" || check_pkg_sha256_not_match_error_exit
+    elif command -v sha256sum > /dev/null ; then
+        test "$(sha256sum "$1" | awk '{print $1}')" = "$src_ball_sha256" || check_pkg_sha256_not_match_error_exit
+    else
+        error_exit "please install openssl or GNU CoreUtils.\n"
+    fi
+}
+
+check_pkg_sha256_not_match_error_exit() {
+    error_exit "sha256sum not match.\n"
+}
+
+pkg_fetch_internal() {
+    cd "$DIR_DOWNLOAD" && {
+        if command -v curl > /dev/null; then
+            info "Downloding $src_ball_url\n" &&
+            curl -LO "$src_ball_url" &&
+            success "Downloaded $SRC_FILE_PATH\n"
+        elif command -v wget > /dev/null; then
+            info "Downloding $src_ball_url\n" &&
+            wget "$src_ball_url" &&
+            success "Downloaded $SRC_FILE_PATH\n"
+        else
+            error_exit "please install curl or wget.\n"
+        fi
+    }
+}
+
+pkg_fetch_if_needed() {
+    source "$DIR_FORMULA/$1.sh" &&
+    SRC_FILE_NAME=$(basename "$src_ball_url") && 
+    SRC_FILE_NAME_EXT=$(printf "$SRC_FILE_NAME" | awk -F. '{print $NF}') && 
+    SRC_FILE_PATH="$DIR_DOWNLOAD/$SRC_FILE_NAME" && {
+        if [ -f "$SRC_FILE_PATH" ] ; then
+            check_file_if_right "$SRC_FILE_PATH" "$SRC_FILE_NAME_EXT" || {
+                rm "$SRC_FILE_PATH" &&
+                pkg_fetch_internal
+            }
+        else
+            pkg_fetch_internal
+        fi
+    }
+}
+
+pkg_uncompress() {
+    case "$2" in
+        zip) unzip "$1";;
+        xz|gz|bz2) tar xf "$1" --strip-components 1;;
+        *) false;;
+    esac
+}
+
+pkg_install_all() {
+    for toBeInstalledPkgName in $(printf "$PKGS")
+    do
+        pkg_dependencies_all "$toBeInstalledPkgName"
+    done
+
+    for toBeInstalledPkgName in $(printf "$DEPENDENCIES $PKGS")
+    do
+        is_pkg_installed "$toBeInstalledPkgName" &&
+        success "$toBeInstalledPkgName is already installed.\n" &&
+        continue
+        pkg_install_one "$toBeInstalledPkgName"
+    done
+}
+
+pkg_install_one() {
+    unset -f build_first
+    unset "build_$TIMESTAMP"
+    unset dependencies
+    unset version
+
+    pkg_fetch_if_needed "$1"
+    
+    check_pkg_sha256 "$SRC_FILE_PATH"
+
+    DIR_SRC=$(mktemp -d) &&
+    cd "$DIR_SRC" &&
+    info "uncompressing $SRC_FILE_PATH\n" &&
+    pkg_uncompress "$SRC_FILE_PATH" "$SRC_FILE_NAME_EXT" &&
+    success "uncompressed in $DIR_SRC\n" &&
+    pkg_install_all_target_abis "$1" &&
+    pkg_install_success "$1" &&
+    rm -rf "$DIR_SRC"
+}
+
+pkg_install_all_target_abis() {
+    for TARGET_ABI in $(printf "$TARGET_ABIS")
+    do
+        make_env "$1" && {
+            eval test -z "$"build_$TIMESTAMP && {
+                eval "build_$TIMESTAMP='true'"
+                build_first 2> /dev/null
+            } || true
+        } && build || error_exit "build failed!\n"
+    done
+}
+
+pkg_install_success() {
+    [ -d "$DIR_PREFIX" ] || error_exit "$1 build failed. installed nothing.\n"
+    
+    msg "installed_time=$TIMESTAMP\ninstalled_pkg_version=$(get_pkg_version)\ninstalled_ndk_version=$ANDROID_NDK_VERSION\ninstalled_target_api=$TARGET_API" > "$DIR_PREFIX/installed"
+    success "$1 build success. in $DIR_PREFIX directory.\n"
+    command -v tree > /dev/null && tree -L 3 "$DIR_PREFIX"
+}
+
+pkg_uninstall_all() {
+    for pkgName in $(printf "$PKGS")
+    do
+        pkg_uninstall_one "$pkgName"
+    done
+}
+
+pkg_uninstall_one() {
+    is_pkg_installed "$1" || pkg_is_not_installed_error_exit "$1"
+    info "uninstalling $1...\n" &&
+    rm -rf "$DIR_PKG/$1" &&
+    success "$1 uninstalled.\n"
+}
+
+list_formulas() {
+    [ -d "$DIR_FORMULA" ] || pkg_update || error_exit "update formula repository failed.\n"
+    cd "$DIR_FORMULA" || error_exit "$DIR_FORMULA is not exsit.\n"
+    for item in *.sh
+    do 
+        printf "$item" | sed 's/.sh//g'
+    done
+}
+
+list_installed() {
+    [ -d "$DIR_PKG" ] || error_exit "no any package installed.\n"
+    cd "$DIR_PKG" || error_exit "no any package installed.\n"
+    for item in *
+    do
+        [ -d "$item" ] && msg "$item\n"
+    done
+}
+
+pkg_info() {
+    if [ -z "$PKGS" ] ; then
+        [ -d "$DIR_FORMULA" ] || pkg_update || error_exit "update formula repository failed.\n"
+        cd "$DIR_FORMULA" || error_exit "$DIR_FORMULA is not exsit.\n"
+        for item in *.sh
+        do 
+            pkg_info_one $(printf "$item" | sed 's/.sh//g')
+            msg "-----------------------------------------------------------\n"; 
+        done
+    else
+        for item in $(printf "$PKGS")
+        do 
+            pkg_info_one "$item"
+            msg "-----------------------------------------------------------\n"; 
+        done
+    fi
+}
+
+pkg_info_one() {
+    is_pkg_exist "$1" || pkg_is_not_exist_error_exit "$1"
+    
+    unset version
+    unset dependencies
+    
+    source "$DIR_FORMULA/$1.sh"
+     
+    if is_pkg_installed "$1" ; then
+        msg "name     : $1 ${Color_Green}✔${Color_Off}\n"
+    else
+        msg "name     : $1 ${Color_Red}✘${Color_Off}\n"
+    fi
+        
+    msg "version  : $(get_pkg_version)\n"
+    msg "summary  : $summary\n"
+    msg "homepage : $homepage\n"
+    
+    [ -z "$dependencies" ] || {
+        msg "dependencies :"
+        for dependencyPkgName in $(printf "$dependencies")
+        do
+            if is_pkg_installed "$dependencyPkgName" ; then
+                msg "  $dependencyPkgName ${Color_Green}✔${Color_Off}"
+            else
+                msg "  $dependencyPkgName ${Color_Red}✘${Color_Off}"
+            fi
+        done
+        msg "\n"
+    }
+}
+
+pkg_cat() {
+    is_pkg_exist "$1" || pkg_is_not_exist_error_exit "$1"
+    cat "$DIR_FORMULA/$1.sh"
+}
+
+pkg_edit() {
+    is_pkg_exist "$1" || pkg_is_not_exist_error_exit "$1"
+    [ -z "$EDITOR" ] || EDITOR='vi'
+    command -v "$EDITOR" > /dev/null || EDITOR='vim'
+    command -v "$EDITOR" > /dev/null || EDITOR='nano'
+    command -v "$EDITOR" > /dev/null || EDITOR='open'
+    command -v "$EDITOR" > /dev/null || error_exit "please config EDITOR environment\n"
+    "$EDITOR" "$DIR_FORMULA/$1.sh"
+}
+
+pkg_update() {
+    [ -d "$NDK_PKG_HOME" ] || mkdir -p "$NDK_PKG_HOME"
+    cd "$NDK_PKG_HOME" && 
+    git pull "$FORMULA_REPO_URL" formula &&
+    success "Done.\n"
+}
+
+pkg_cleanup() {
+    success "Done.\n"
+}
+
+pkg_search() {
+    [ -z "$*" ] && error_exit "please provide a keyword.\n"
+    [ -d "$DIR_FORMULA" ] || pkg_update || error_exit "update formula repository failed.\n"
+    cd "$DIR_FORMULA" && {
+        for item in *.sh
+        do
+            basename "$item" ".sh" | grep "$*"
+        done
+    }
+}
+
+help() {
+    cat << EOF
+Usage: ndk-pkg [COMMAND [ARGUMENT...]]
+COMMAND:
+    help | --help       show help information.
+    version | --version print version of ndk-pkg and NDK.
+    list-target-abis    list support target abis.
+    list-target-apis    list support target api levels.
+    list-formulas       list formulas in formulas repository.
+    list-installed      list installed packages.
+    search KEYWORD  search packages.
+    cat  PKG_NAME   print the formula of PKG_NAME.
+    edit PKG_NAME   edit the formula of PKG_NAME.
+    env  PKG_NAME --target-api=21 --target-abi=armeabi-v7a  
+    install   PKG_NAME... --target-api=21  install pkgs.
+    uninstall PKG_NAME... uninstall packages.
+    info      PKG_NAME... print the information of PKG_NAMEs.
+    cleanup     cleanup the unused cache.
+    update      update the formula repository.
+EOF
+    if [ -z "$1" ] ; then
+        exit
+    else
+        exit "$1"
+    fi
+}
+
+main() {
+    TIMESTAMP=$(date +%Y%m%d%H%M%S)
+    
+    case "$1" in
+        --help|help|-h) 
+            help
+            ;;
+        --version|version|-V)
+            msg "ndk-pkg $VERSION\n"
+            check_ANDROID_NDK_HOME
+            msg "NDK     $(get_ndk_version)\n"
+            ;;
+        list-target-abis)
+            shift
+            list_target_abis
+            ;;
+        list-target-apis)
+            shift
+            list_target_apis
+            ;;
+        list-formulas)
+            shift
+            list_formulas
+            ;;
+        list-installed)
+            shift
+            list_installed
+            ;;
+        search)
+            shift
+            pkg_search "$*"
+            ;;
+        env) 
+            shift
+            check_ANDROID_NDK_HOME
+            check_ANDROID_NDK_VERSION
+            parse_params "$@"
+            check_params
+            make_env "$PKG_NAME"
+            ;;
+        install)
+            shift
+            check_ANDROID_NDK_HOME
+            check_ANDROID_NDK_VERSION
+            parse_params "$@"
+            check_params
+            pkg_install_all
+            ;;
+        uninstall)
+            shift
+            parse_params "$@"
+            check_params
+            pkg_uninstall_all
+            ;;
+        info)
+            shift
+            parse_params "$@"
+            pkg_info
+            ;;
+        cat)
+            shift
+            parse_params "$@"
+            check_params
+            pkg_cat "$PKG_NAME"
+            ;;
+        edit)
+            shift
+            parse_params "$@"
+            check_params
+            pkg_edit "$PKG_NAME"
+            ;;
+        update)
+            pkg_update;;
+        cleanup)
+            pkg_cleanup;;
+        *) help 1
+    esac
+}
+
+main "$@"

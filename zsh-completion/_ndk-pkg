@@ -1,0 +1,79 @@
+#compdef ndk-pkg
+
+_commands=(
+    '-h:show help information.'
+    '--help:show help information.'
+    'help:show help information.'
+    '-V:print version of ndk-pkg and NDK.'
+    '--version:print version of ndk-pkg and NDK.'
+    'version:print version of ndk-pkg and NDK.'
+    'list-target-abis:list support target abis.'
+    'list-target-apis:list support target api levels.'
+    'list-formulas:list formulas in local formulas repository.'
+    'list-installed:list installed packages.'
+    'search:search packages.'
+    'info:print the information of PKG_NAME.'
+    'cat:print the formula of PKG_NAME.'
+    'edit:edit the formula of PKG_NAME.'
+    'env:print the environment of PKG_NAME.'
+    'install:install pkgs.'
+    'uninstall:uninstall pkgs.'
+    'cleanup:cleanup the unused cache.'
+    'update:update the formula repository.'
+)
+
+function _ndk_pkg_commands() {
+    _describe 'command' _commands
+}
+
+function _ndk_pkg_packages() {
+    local -a _formulas
+    _formulas=($(ndk-pkg list-formulas))
+    _describe 'packages' _formulas
+}
+
+function _ndk_pkg_installed_packages() {
+    local -a _installed_packages
+    _installed_packages=($(ndk-pkg list-installed))
+    _describe 'installed-packages' _installed_packages
+}
+
+function _ndk_pkg() {
+    local context state state_descr line
+    typeset -A opt_args
+
+    _arguments \
+        '1: :_ndk_pkg_commands' \
+        '*:: :->option'
+
+    case $state in
+        option)
+            case $words[1] in
+                info)
+                    _arguments '*:package-name:_ndk_pkg_packages'
+                    ;;
+                cat|edit)
+                    _arguments ':package-name:_ndk_pkg_packages'
+                    ;;
+                env)
+                    _arguments \
+                        ':package-name:_ndk_pkg_packages' \
+                        '--target-api=-[set target api]:target-api:($(ndk-pkg list-target-apis))' \
+                        '--target-abi=-[set target abi]:target-abi:($(ndk-pkg list-target-abis))'
+                    ;;
+                install)
+                    _arguments \
+                        ':package-name:_ndk_pkg_packages' \
+                        '--target-api=-[set target api]:target-api:($(ndk-pkg list-target-apis))'
+                    ;;
+                uninstall)
+                    _ndk_pkg_installed_packages
+                    ;;
+                *);;
+            esac
+            ;;
+        *);;
+    esac
+}
+
+_ndk_pkg "$@"
