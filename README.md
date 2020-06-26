@@ -1,7 +1,7 @@
-#ndk-pkg
+# ndk-pkg
 a package manager for [Android NDK](http://blog.fpliu.com/it/software/GoogleAndroidNDK)
 
-##Installation
+## Installation
 * on macOS, using [HomeBrew](http://blog.fpliu.com/it/os/macOS/software/HomeBrew)
 ```
 brew install ndk-pkg
@@ -11,10 +11,10 @@ brew install ndk-pkg
 brew install ndk-pkg
 ```
 
-##zsh-completion for ndk-pkg
+## zsh-completion for ndk-pkg
 I have provide a zsh-completion script for ndk-pkg. when you've typed `ndk-pkg` then type `TAB` key, it will auto complete the rest for you.
 
-##ndk-pkg command usage
+## ndk-pkg command usage
 * print the help infomation of ndk-pkg command
 ```
 ndk-pkg -h
