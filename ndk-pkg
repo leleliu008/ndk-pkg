@@ -215,12 +215,12 @@ is_exist_and_executable() {
 make_env() {
     [ -z "$TARGET_API" ] && {
         TARGET_API=21
-        info "TARGET_API is not set. use default value 21.\n"
+        warn "TARGET_API is not set. use default value 21.\n"
     }
     
     [ -z "$TARGET_ABI" ] && {
         TARGET_ABI='armeabi-v7a'
-        info "TARGET_ABI is not set. use default value armeabi-v7a.\n"
+        warn "TARGET_ABI is not set. use default value armeabi-v7a.\n"
     }
     
     CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
@@ -257,8 +257,8 @@ make_env() {
     
     FILE_PATH_LIBZ_SO="$TOOLCHAIN_DIR/sysroot/usr/lib/$TOOLCHAIN_NAME/$TARGET_API/libz.so"
     
-    DIR_PREFIX="$DIR_PKG/$1"
-    DIR_INSTALL="$DIR_PREFIX/$TARGET_ABI"
+    DIR_INSTALL_PACKAGE="$DIR_PKG/$1"
+    DIR_INSTALL_PREFIX="$DIR_INSTALL_PACKAGE/$TARGET_ABI"
     [ -z "$DIR_SRC" ] || DIR_BUILD="$DIR_SRC/$TIMESTAMP/$TARGET_ABI"
 
     info "-------------------------------------------------------\n"
@@ -276,8 +276,8 @@ make_env() {
     info "     TARGET_ABI  = $TARGET_ABI\n"
     info "     TARGET_API  = $TARGET_API\n"
     info "     DIR_LOG     = $DIR_LOG\n"
-    info "     DIR_PREFIX  = $DIR_PREFIX\n"
-    info "     DIR_INSTALL = $DIR_INSTALL\n"
+    info "DIR_INSTALL_PACKAGE= $DIR_INSTALL_PACKAGE\n"
+    info "DIR_INSTALL_PREFIX = $DIR_INSTALL_PREFIX\n"
     info "     DIR_SRC     = $DIR_SRC\n"
     info "     DIR_BUILD   = $DIR_BUILD\n"
 
@@ -329,11 +329,11 @@ make_env() {
     for item in $(printf "$DEPENDENCIES")
     do
         item=$(printf "$item" | tr '-' '_')
-        ITEM_DIR_INSTALL="$DIR_PKG/$item/$TARGET_ABI"
-        ITEM_DIR_INCLUDE="$ITEM_DIR_INSTALL/include"
-        ITEM_DIR_LIB="$ITEM_DIR_INSTALL/lib"
+        ITEM_DIR_INSTALL_PREFIX="$DIR_PKG/$item/$TARGET_ABI"
+        ITEM_DIR_INCLUDE="$ITEM_DIR_INSTALL_PREFIX/include"
+        ITEM_DIR_LIB="$ITEM_DIR_INSTALL_PREFIX/lib"
 
-        eval "${item}_DIR_INSTALL='$ITEM_DIR_INSTALL'"
+        eval "${item}_DIR_INSTALL='$ITEM_DIR_INSTALL_PREFIX'"
         eval "${item}_DIR_INCLUDE='$ITEM_DIR_INCLUDE'"
         eval "${item}_DIR_LIB='$ITEM_DIR_LIB'"
         CPPFLAGS="-I$ITEM_DIR_INCLUDE $CPPFLAGS"
@@ -353,7 +353,7 @@ make_env() {
 
 get_pkg_version() {
     if [ -z "$version" ] ; then
-        msg "$(basename "$src_ball_url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+        msg "$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
     else
         msg "$version"
     fi
@@ -420,9 +420,9 @@ check_file_if_right() {
 
 check_pkg_sha256() {
     if command -v openssl > /dev/null ; then
-        test "$(openssl sha256 "$1" | awk '{print $2}')" = "$src_ball_sha256" || check_pkg_sha256_not_match_error_exit
+        test "$(openssl sha256 "$1" | awk '{print $2}')" = "$sha256" || check_pkg_sha256_not_match_error_exit
     elif command -v sha256sum > /dev/null ; then
-        test "$(sha256sum "$1" | awk '{print $1}')" = "$src_ball_sha256" || check_pkg_sha256_not_match_error_exit
+        test "$(sha256sum "$1" | awk '{print $1}')" = "$sha256" || check_pkg_sha256_not_match_error_exit
     else
         error_exit "please install openssl or GNU CoreUtils.\n"
     fi
@@ -435,12 +435,12 @@ check_pkg_sha256_not_match_error_exit() {
 pkg_fetch_internal() {
     cd "$DIR_DOWNLOAD" && {
         if command -v curl > /dev/null; then
-            info "Downloding $src_ball_url\n" &&
-            curl -LO "$src_ball_url" &&
+            info "Downloding $url\n" &&
+            curl -LO "$url" &&
             success "Downloaded $SRC_FILE_PATH\n"
         elif command -v wget > /dev/null; then
-            info "Downloding $src_ball_url\n" &&
-            wget "$src_ball_url" &&
+            info "Downloding $url\n" &&
+            wget "$url" &&
             success "Downloaded $SRC_FILE_PATH\n"
         else
             error_exit "please install curl or wget.\n"
@@ -450,7 +450,7 @@ pkg_fetch_internal() {
 
 pkg_fetch_if_needed() {
     source "$DIR_FORMULA/$1.sh" &&
-    SRC_FILE_NAME=$(basename "$src_ball_url") && 
+    SRC_FILE_NAME=$(basename "$url") && 
     SRC_FILE_NAME_EXT=$(printf "$SRC_FILE_NAME" | awk -F. '{print $NF}') && 
     SRC_FILE_PATH="$DIR_DOWNLOAD/$SRC_FILE_NAME" && {
         if [ -f "$SRC_FILE_PATH" ] ; then
@@ -520,11 +520,11 @@ pkg_install_all_target_abis() {
 }
 
 pkg_install_success() {
-    [ -d "$DIR_PREFIX" ] || error_exit "$1 build failed. installed nothing.\n"
+    [ -d "$DIR_INSTALL_PACKAGE" ] || error_exit "$1 build failed. installed nothing.\n"
     
-    msg "installed_time=$TIMESTAMP\ninstalled_pkg_version=$(get_pkg_version)\ninstalled_ndk_version=$ANDROID_NDK_VERSION\ninstalled_target_api=$TARGET_API" > "$DIR_PREFIX/installed"
-    success "$1 build success. in $DIR_PREFIX directory.\n"
-    command -v tree > /dev/null && tree -L 3 "$DIR_PREFIX"
+    msg "installed_time=$TIMESTAMP\ninstalled_pkg_version=$(get_pkg_version)\ninstalled_ndk_version=$ANDROID_NDK_VERSION\ninstalled_target_api=$TARGET_API" > "$DIR_INSTALL_PACKAGE/installed"
+    success "$1 build success. in $DIR_INSTALL_PACKAGE directory.\n"
+    command -v tree > /dev/null && tree -L 3 "$DIR_INSTALL_PACKAGE"
 }
 
 pkg_uninstall_all() {

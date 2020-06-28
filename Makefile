@@ -8,7 +8,10 @@ dist: ndk-pkg zsh-completion/_ndk-pkg
     command -v sha256sum > /dev/null && \
     ha256sum $(filename)
 
+publish: homebrew/ndk-pkg.rb
+	cp $< /usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/Formula/ndk-pkg.rb
+
 clean:
 	rm $(filename)
 
-.PHONY:clean
+.PHONY: clean
