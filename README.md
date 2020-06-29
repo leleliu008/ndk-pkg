@@ -62,24 +62,29 @@ ndk-pkg cat curl
 ndk-pkg edit curl
 ```
 
-* list the support target abis
+* list the supported target abis
 ```
-ndk-pkg list-target-abis
-```
-
-* list the support target api-levels
-```
-ndk-pkg list-target-apis
+ndk-pkg list target-abis
 ```
 
-* list the formulas in local formula repository
+* list the supported target api-levels
 ```
-ndk-pkg list-formulas
+ndk-pkg list target-apis
+```
+
+* list the available packages
+```
+ndk-pkg list available
 ```
 
 * list the installed packages
 ```
-ndk-pkg list-installed
+ndk-pkg list installed
+```
+
+* list contents of a installed package directory in a tree-like format.
+```
+ndk-pkg tree curl
 ```
 
 * print the environment variable settings
@@ -90,7 +95,7 @@ ndk-pkg env curl --target-api=21 --target-abi=x86
 ndk-pkg env curl --target-api=21 --target-abi=x86_64
 ```
 
-* update the formula repository
+* update the [formula repository](https://github.com/leleliu008/ndk-pkg-formula)
 ```
 ndk-pkg update
 ```

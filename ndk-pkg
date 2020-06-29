@@ -168,6 +168,7 @@ get_ndk_version_major() {
 }
 
 check_ANDROID_NDK_HOME() {
+    [ -z "$ANDROID_ROOT" ] || export ANDROID_NDK_HOME="$ANDROID_ROOT"
     [ -z "$ANDROID_NDK_HOME" ] && error_exit "please set ANDROID_NDK_HOME environment variable, then try again!"
     [ -d "$ANDROID_NDK_HOME" ] || error_exit "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
 }
@@ -188,7 +189,7 @@ list_target_apis() {
 #选择某个目标ABI，比如armeabi-v7a，可以通过ndk-pkg list target-abis命令列出支持的目标的名称
 select_target_abi_if_needed() {
     [ -z "$TARGET_ABI" ] && {
-        info "below is supported TARGET_ABIS:\n"
+        info "below is the supported TARGET_ABIS:\n"
         list_target_abis
         info "please input your select TARGET_ABI:"
         read -r TARGET_ABI
@@ -199,7 +200,7 @@ select_target_abi_if_needed() {
 #选择某个目标API，比如21、22、23、34、25、26、27、28、29，可以通过ndk-pkg list target-apis命令列出支持的API level
 select_target_api_if_needed() {
     [ -z "$TARGET_API" ] && {
-        info "below is supported target-apis:\n"
+        info "below is the supported target-apis:\n"
         list_target_apis
         info "please input your selected target-api:"
         read -r TARGET_API
@@ -263,7 +264,7 @@ make_env() {
 
     info "-------------------------------------------------------\n"
     info "        PKG_NAME = $1\n"
-    info "    DEPENDENCIES = $(pkg_dependencies_direct "$1")\n"
+    info "    DEPENDENCIES = $(get_direct_dependencies_of_a_package "$1")\n"
     info "ANDROID_NDK_HOME = $ANDROID_NDK_HOME\n"
     info "ANDROID_NDK_VER  = $ANDROID_NDK_VERSION\n"
     info "CMAKE_TOOLCHAIN_FILE = $CMAKE_TOOLCHAIN_FILE\n"
@@ -351,24 +352,16 @@ make_env() {
     info "-------------------------------------------------------\n"
 }
 
-get_pkg_version() {
-    if [ -z "$version" ] ; then
-        msg "$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
-    else
-        msg "$version"
-    fi
-}
-
-pkg_dependencies_direct() {
+get_direct_dependencies_of_a_package() {
     grep '^dependencies=".*"' "$DIR_FORMULA/$1.sh" | sed 's/dependencies="\(.*\)"/\1/'
 }
 
-pkg_dependencies_all() {
-    for dependencyPkgName in $(pkg_dependencies_direct "$1")
+get_dependencies_of_a_package() {
+    for dependencyPkgName in $(get_direct_dependencies_of_a_package "$1")
     do
-        is_pkg_exist "$dependencyPkgName" || pkg_is_not_exist_error_exit "$dependencyPkgName"
+        is_package_exist "$dependencyPkgName" || package_is_not_exist_error_exit "$dependencyPkgName"
         DEPENDENCIES="$dependencyPkgName $DEPENDENCIES"
-        pkg_dependencies_all "$dependencyPkgName"
+        get_dependencies_of_a_package "$dependencyPkgName"
     done
 }
 
@@ -382,18 +375,22 @@ parse_params() {
                 TARGET_ABI=$(msg "$1" | cut -d= -f2);;
             [0-9a-zA-Z]*)
                 PKGS="$PKGS $1";;
-            *)  error_exit "$1 is not valid param.\n"
+            *)  error_exit "$1 is a invalid param.\n"
         esac
         shift
     done
 }
 
 check_params() {
-    [ -z "$PKGS" ] && error_exit "please provide a pkg name.\n"
+    [ -z "$PKGS" ] && missing_package_name_error_exit
     PKG_NAME="$(printf "$PKGS" | awk '{print $1}')"
 }
 
-is_pkg_installed() {
+missing_package_name_error_exit() {
+    error_exit "please provide a package name.\n"
+}
+
+is_package_installed() {
     [ -d "$DIR_PKG/$1" ] &&
     [ -f "$DIR_PKG/$1/installed" ]
 }
@@ -402,69 +399,62 @@ pkg_is_not_installed_error_exit() {
     error_exit "$1 is not installed.\n"
 }
 
-is_pkg_exist() {
+is_package_exist() {
     [ -f "$DIR_FORMULA/$1.sh" ]
 }
 
-pkg_is_not_exist_error_exit() {
+package_is_not_exist_error_exit() {
     error_exit "$1 is not exsit.\n"
 }
 
-check_file_if_right() {
-    case "$2" in
-        zip) unzip -t  "$1";;
-        xz|gz|bz2) tar -tqf "$1";;
-        *) false;;
-    esac
-}
-
-check_pkg_sha256() {
+is_sha256_match() {
     if command -v openssl > /dev/null ; then
-        test "$(openssl sha256 "$1" | awk '{print $2}')" = "$sha256" || check_pkg_sha256_not_match_error_exit
+        [ "$(openssl sha256 "$1" | awk '{print $2}')" = "$sha256" ]
     elif command -v sha256sum > /dev/null ; then
-        test "$(sha256sum "$1" | awk '{print $1}')" = "$sha256" || check_pkg_sha256_not_match_error_exit
+        [ "$(sha256sum "$1" | awk '{print $1}')" = "$sha256" ]
     else
         error_exit "please install openssl or GNU CoreUtils.\n"
     fi
 }
 
-check_pkg_sha256_not_match_error_exit() {
+sha256_not_match_error_exit() {
     error_exit "sha256sum not match.\n"
 }
 
-pkg_fetch_internal() {
-    cd "$DIR_DOWNLOAD" && {
-        if command -v curl > /dev/null; then
-            info "Downloding $url\n" &&
-            curl -LO "$url" &&
-            success "Downloaded $SRC_FILE_PATH\n"
-        elif command -v wget > /dev/null; then
-            info "Downloding $url\n" &&
-            wget "$url" &&
-            success "Downloaded $SRC_FILE_PATH\n"
-        else
-            error_exit "please install curl or wget.\n"
-        fi
-    }
+fetch_internal() {
+    [ -d "$DIR_DOWNLOAD" ] || mkdir -p "$DIR_DOWNLOAD"
+    cd "$DIR_DOWNLOAD" || error_exit "error.\n"
+    
+    if command -v curl > /dev/null ; then
+        info "Downloding $url\n" &&
+        curl -LO "$url" &&
+        success "Downloaded $SRC_FILE_PATH\n"
+    elif command -v wget > /dev/null ; then
+        info "Downloding $url\n" &&
+        wget "$url" &&
+        success "Downloaded $SRC_FILE_PATH\n"
+    else
+        error_exit "please install curl or wget.\n"
+    fi
 }
 
-pkg_fetch_if_needed() {
-    source "$DIR_FORMULA/$1.sh" &&
+fetch_if_needed() {
     SRC_FILE_NAME=$(basename "$url") && 
     SRC_FILE_NAME_EXT=$(printf "$SRC_FILE_NAME" | awk -F. '{print $NF}') && 
-    SRC_FILE_PATH="$DIR_DOWNLOAD/$SRC_FILE_NAME" && {
-        if [ -f "$SRC_FILE_PATH" ] ; then
-            check_file_if_right "$SRC_FILE_PATH" "$SRC_FILE_NAME_EXT" || {
-                rm "$SRC_FILE_PATH" &&
-                pkg_fetch_internal
-            }
+    SRC_FILE_PATH="$DIR_DOWNLOAD/$SRC_FILE_NAME"
+        
+    if [ -f "$SRC_FILE_PATH" ] ; then
+        if is_sha256_match "$SRC_FILE_PATH" ; then
+            info "$SRC_FILE_PATH is already downloaded.\n"
         else
-            pkg_fetch_internal
+            rm "$SRC_FILE_PATH" && fetch_internal
         fi
-    }
+    else
+        fetch_internal
+    fi
 }
 
-pkg_uncompress() {
+uncompress() {
     case "$2" in
         zip) unzip "$1";;
         xz|gz|bz2) tar xf "$1" --strip-components 1;;
@@ -472,42 +462,40 @@ pkg_uncompress() {
     esac
 }
 
-pkg_install_all() {
+install_packages() {
     for toBeInstalledPkgName in $(printf "$PKGS")
     do
-        pkg_dependencies_all "$toBeInstalledPkgName"
+        get_dependencies_of_a_package "$toBeInstalledPkgName"
     done
 
     for toBeInstalledPkgName in $(printf "$DEPENDENCIES $PKGS")
     do
-        is_pkg_installed "$toBeInstalledPkgName" &&
+        is_package_installed "$toBeInstalledPkgName" &&
         success "$toBeInstalledPkgName is already installed.\n" &&
         continue
-        pkg_install_one "$toBeInstalledPkgName"
+        install_a_package "$toBeInstalledPkgName"
     done
 }
 
-pkg_install_one() {
-    unset -f build_first
-    unset "build_$TIMESTAMP"
-    unset dependencies
-    unset version
+install_a_package() {
+    load_formula_of_a_package "$1"
 
-    pkg_fetch_if_needed "$1"
+    fetch_if_needed "$1"
     
-    check_pkg_sha256 "$SRC_FILE_PATH"
+    is_sha256_match "$SRC_FILE_PATH" || sha256_not_match_error_exit
 
     DIR_SRC=$(mktemp -d) &&
     cd "$DIR_SRC" &&
     info "uncompressing $SRC_FILE_PATH\n" &&
-    pkg_uncompress "$SRC_FILE_PATH" "$SRC_FILE_NAME_EXT" &&
+    uncompress "$SRC_FILE_PATH" "$SRC_FILE_NAME_EXT" &&
     success "uncompressed in $DIR_SRC\n" &&
-    pkg_install_all_target_abis "$1" &&
-    pkg_install_success "$1" &&
+    install_a_package_for_all_target_abis "$1" &&
+    install_a_package_success "$1" &&
     rm -rf "$DIR_SRC"
 }
 
-pkg_install_all_target_abis() {
+install_a_package_for_all_target_abis() {
+    unset "build_$TIMESTAMP"
     for TARGET_ABI in $(printf "$TARGET_ABIS")
     do
         make_env "$1" && {
@@ -519,30 +507,40 @@ pkg_install_all_target_abis() {
     done
 }
 
-pkg_install_success() {
+install_a_package_success() {
     [ -d "$DIR_INSTALL_PACKAGE" ] || error_exit "$1 build failed. installed nothing.\n"
     
-    msg "installed_time=$TIMESTAMP\ninstalled_pkg_version=$(get_pkg_version)\ninstalled_ndk_version=$ANDROID_NDK_VERSION\ninstalled_target_api=$TARGET_API" > "$DIR_INSTALL_PACKAGE/installed"
+    msg "installed_time=$TIMESTAMP\ninstalled_pkg_version=$version\ninstalled_ndk_version=$ANDROID_NDK_VERSION\ninstalled_target_api=$TARGET_API" > "$DIR_INSTALL_PACKAGE/installed"
     success "$1 build success. in $DIR_INSTALL_PACKAGE directory.\n"
     command -v tree > /dev/null && tree -L 3 "$DIR_INSTALL_PACKAGE"
 }
 
-pkg_uninstall_all() {
-    for pkgName in $(printf "$PKGS")
+tree_a_installed_package() {
+    DIR_INSTALL_PACKAGE="$DIR_PKG/$1"
+    [ -d "$DIR_INSTALL_PACKAGE" ] || pkg_is_not_installed_error_exit "$1"
+    shift
+    command -v tree > /dev/null || error_exit "please install tree utility.\n"
+    tree $@ "$DIR_INSTALL_PACKAGE"
+}
+
+uninstall_packages() {
+    [ $# -eq 0 ] && error_exit "please provide at least one package.\n"
+
+    for packageName in $@
     do
-        pkg_uninstall_one "$pkgName"
+        uninstall_a_package "$packageName"
     done
 }
 
-pkg_uninstall_one() {
-    is_pkg_installed "$1" || pkg_is_not_installed_error_exit "$1"
+uninstall_a_package() {
+    [ -d "$DIR_PKG/$1" ] || pkg_is_not_installed_error_exit "$1"
     info "uninstalling $1...\n" &&
     rm -rf "$DIR_PKG/$1" &&
     success "$1 uninstalled.\n"
 }
 
-list_formulas() {
-    [ -d "$DIR_FORMULA" ] || pkg_update || error_exit "update formula repository failed.\n"
+list_available_packages() {
+    [ -d "$DIR_FORMULA" ] || update_formula_repository
     cd "$DIR_FORMULA" || error_exit "$DIR_FORMULA is not exsit.\n"
     for item in *.sh
     do 
@@ -550,48 +548,47 @@ list_formulas() {
     done
 }
 
-list_installed() {
+list_installed_packages() {
     [ -d "$DIR_PKG" ] || error_exit "no any package installed.\n"
-    cd "$DIR_PKG" || error_exit "no any package installed.\n"
-    for item in *
+    cd "$DIR_PKG"     || error_exit "no any package installed.\n"
+    for packageName in *
     do
-        [ -d "$item" ] && msg "$item\n"
+        is_package_installed "$packageName" && msg "$packageName\n"
     done
 }
 
-pkg_info() {
-    if [ -z "$PKGS" ] ; then
-        [ -d "$DIR_FORMULA" ] || pkg_update || error_exit "update formula repository failed.\n"
+info_packages() {
+    if [ $# -eq 0 ] ; then
+        [ -d "$DIR_FORMULA" ] || update_formula_repository
         cd "$DIR_FORMULA" || error_exit "$DIR_FORMULA is not exsit.\n"
+        unset INFO
         for item in *.sh
         do 
-            pkg_info_one $(printf "$item" | sed 's/.sh//g')
-            msg "-----------------------------------------------------------\n"; 
+            [ -z "$INFO" ] || msg "-----------------------------------------------------------\n"; 
+            info_a_package $(printf "$item" | sed 's/.sh//g')
+            INFO=true
         done
     else
-        for item in $(printf "$PKGS")
+        unset INFO
+        for packageName in $@
         do 
-            pkg_info_one "$item"
-            msg "-----------------------------------------------------------\n"; 
+            [ -z "$INFO" ] || msg "-----------------------------------------------------------\n"; 
+            info_a_package "$packageName"
+            INFO=true
         done
     fi
 }
 
-pkg_info_one() {
-    is_pkg_exist "$1" || pkg_is_not_exist_error_exit "$1"
-    
-    unset version
-    unset dependencies
-    
-    source "$DIR_FORMULA/$1.sh"
+info_a_package() {
+    load_formula_of_a_package "$1"
      
-    if is_pkg_installed "$1" ; then
+    if is_package_installed "$1" ; then
         msg "name     : $1 ${Color_Green}✔${Color_Off}\n"
     else
         msg "name     : $1 ${Color_Red}✘${Color_Off}\n"
     fi
         
-    msg "version  : $(get_pkg_version)\n"
+    msg "version  : $version\n"
     msg "summary  : $summary\n"
     msg "homepage : $homepage\n"
     
@@ -599,7 +596,7 @@ pkg_info_one() {
         msg "dependencies :"
         for dependencyPkgName in $(printf "$dependencies")
         do
-            if is_pkg_installed "$dependencyPkgName" ; then
+            if is_package_installed "$dependencyPkgName" ; then
                 msg "  $dependencyPkgName ${Color_Green}✔${Color_Off}"
             else
                 msg "  $dependencyPkgName ${Color_Red}✘${Color_Off}"
@@ -609,13 +606,41 @@ pkg_info_one() {
     }
 }
 
-pkg_cat() {
-    is_pkg_exist "$1" || pkg_is_not_exist_error_exit "$1"
+load_formula_of_a_package() {
+    is_package_exist "$1" || package_is_not_exist_error_exit "$1"
+
+    unset -f build_first
+    unset -f build
+    unset url
+    unset sha256
+    unset version
+    unset summary
+    unset homepage
+    unset dependencies
+    
+    FORMULA_FILE_PATH="$DIR_FORMULA/$1.sh"
+     
+    source "$FORMULA_FILE_PATH" || error_exit "$FORMULA_FILE_PATH is broken.\n"
+    
+    [ -z "$summary" ]  && error_exit "summary variable must be provided in $FORMULA_FILE_PATH\n"
+    [ -z "$homepage" ] && error_exit "homepage variable must be provided in $FORMULA_FILE_PATH\n"
+    [ -z "$sha256" ]   && error_exit "sha256 variable must be provided in $FORMULA_FILE_PATH\n"
+    [ -z "$url" ]      && error_exit "url variable must be provided in $FORMULA_FILE_PATH\n"
+    [ -z "$version" ]  && version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+    [ -z "$version" ]  && error_exit "version can't be parsed in $FORMULA_FILE_PATH\n"
+}
+
+cat_formula_of_a_package() {
+    [ $# -eq 0 ] && missing_package_name_error_exit
+    [ $# -gt 1 ] && warn "cat command accept only one parameter.\n"
+    is_package_exist "$1" || package_is_not_exist_error_exit "$1"
     cat "$DIR_FORMULA/$1.sh"
 }
 
-pkg_edit() {
-    is_pkg_exist "$1" || pkg_is_not_exist_error_exit "$1"
+edit_formula_of_a_package() {
+    [ $# -eq 0 ] && missing_package_name_error_exit
+    [ $# -gt 1 ] && warn "edit command accept only one parameter.\n"
+    is_package_exist "$1" || package_is_not_exist_error_exit "$1"
     [ -z "$EDITOR" ] || EDITOR='vi'
     command -v "$EDITOR" > /dev/null || EDITOR='vim'
     command -v "$EDITOR" > /dev/null || EDITOR='nano'
@@ -624,20 +649,35 @@ pkg_edit() {
     "$EDITOR" "$DIR_FORMULA/$1.sh"
 }
 
-pkg_update() {
-    [ -d "$NDK_PKG_HOME" ] || mkdir -p "$NDK_PKG_HOME"
-    cd "$NDK_PKG_HOME" && 
-    git pull "$FORMULA_REPO_URL" formula &&
+update_formula_repository() {
+    info "Updating formula repository.\n"
+
+    if [ -d "$DIR_FORMULA" ] ; then
+        if  git -C "$DIR_FORMULA" rev-parse 2> /dev/null ; then
+            git -C "$DIR_FORMULA" pull
+        else
+            rm -rf "$DIR_FORMULA" &&
+            git -C "$NDK_PKG_HOME" clone "$FORMULA_REPO_URL" formula
+        fi
+    else
+        mkdir -p "$NDK_PKG_HOME" &&
+        git -C "$NDK_PKG_HOME" clone "$FORMULA_REPO_URL" formula
+    fi
+    
+    if [ $? -eq 0 ] ; then
+        success "update formula repository success.\n"
+    else
+        error_exit "update formula repository failed.\n"
+    fi
+}
+
+cleanup() {
     success "Done.\n"
 }
 
-pkg_cleanup() {
-    success "Done.\n"
-}
-
-pkg_search() {
-    [ -z "$*" ] && error_exit "please provide a keyword.\n"
-    [ -d "$DIR_FORMULA" ] || pkg_update || error_exit "update formula repository failed.\n"
+search_packages() {
+    [ $# -eq 0 ] && error_exit "please provide a keyword.\n"
+    [ -d "$DIR_FORMULA" ] || update_formula_repository
     cd "$DIR_FORMULA" && {
         for item in *.sh
         do
@@ -650,21 +690,22 @@ help() {
     cat << EOF
 Usage: ndk-pkg [COMMAND [ARGUMENT...]]
 COMMAND:
-    help | --help       show help information.
-    version | --version print version of ndk-pkg and NDK.
-    list-target-abis    list support target abis.
-    list-target-apis    list support target api levels.
-    list-formulas       list formulas in formulas repository.
-    list-installed      list installed packages.
-    search KEYWORD  search packages.
-    cat  PKG_NAME   print the formula of PKG_NAME.
-    edit PKG_NAME   edit the formula of PKG_NAME.
+    help | --help | -h     --show help information.
+    version | --version -V --print version of ndk-pkg and NDK.
+    list target-abis       --list the supported target abis.
+    list target-apis       --list the supported target api levels.
+    list available         --list the available packages.
+    list installed         --list the installed packages.
+    tree PKG_NAME          --list contents of a installed package directory in a tree-like format.
+    search KEYWORD         --search packages.
+    cat  PKG_NAME          --print the formula of PKG_NAME.
+    edit PKG_NAME          --edit the formula of PKG_NAME.
     env  PKG_NAME --target-api=21 --target-abi=armeabi-v7a  
-    install   PKG_NAME... --target-api=21  install pkgs.
-    uninstall PKG_NAME... uninstall packages.
-    info      PKG_NAME... print the information of PKG_NAMEs.
-    cleanup     cleanup the unused cache.
-    update      update the formula repository.
+    install   PKG_NAME... --target-api=21  --install pkgs.
+    uninstall PKG_NAME... --uninstall packages.
+    info      PKG_NAME... --print the information of PKG_NAMEs.
+    cleanup     --cleanup the unused cache.
+    update      --update the formula repository.
 EOF
     if [ -z "$1" ] ; then
         exit
@@ -685,25 +726,35 @@ main() {
             check_ANDROID_NDK_HOME
             msg "NDK     $(get_ndk_version)\n"
             ;;
-        list-target-abis)
+        list)
             shift
-            list_target_abis
+            case "$1" in
+                target-abis)
+                    shift
+                    list_target_abis
+                    ;;
+                target-apis)
+                    shift
+                    list_target_apis
+                    ;;
+                available)
+                    shift
+                    list_available_packages
+                    ;;
+                installed)
+                    shift
+                    list_installed_packages
+                    ;;
+                *) help 1
+            esac
             ;;
-        list-target-apis)
+        tree)
             shift
-            list_target_apis
-            ;;
-        list-formulas)
-            shift
-            list_formulas
-            ;;
-        list-installed)
-            shift
-            list_installed
+            tree_a_installed_package "$@"
             ;;
         search)
             shift
-            pkg_search "$*"
+            search_packages "$*"
             ;;
         env) 
             shift
@@ -719,35 +770,28 @@ main() {
             check_ANDROID_NDK_VERSION
             parse_params "$@"
             check_params
-            pkg_install_all
+            install_packages
             ;;
         uninstall)
             shift
-            parse_params "$@"
-            check_params
-            pkg_uninstall_all
+            uninstall_packages "$@"
             ;;
         info)
             shift
-            parse_params "$@"
-            pkg_info
+            info_packages "$@"
             ;;
         cat)
             shift
-            parse_params "$@"
-            check_params
-            pkg_cat "$PKG_NAME"
+            cat_formula_of_a_package "$@"
             ;;
         edit)
             shift
-            parse_params "$@"
-            check_params
-            pkg_edit "$PKG_NAME"
+            edit_formula_of_a_package "$@"
             ;;
         update)
-            pkg_update;;
+            update_formula_repository;;
         cleanup)
-            pkg_cleanup;;
+            cleanup;;
         *) help 1
     esac
 }

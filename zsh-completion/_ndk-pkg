@@ -1,40 +1,49 @@
 #compdef ndk-pkg
 
 _commands=(
-    '-h:show help information.'
-    '--help:show help information.'
-    'help:show help information.'
-    '-V:print version of ndk-pkg and NDK.'
-    '--version:print version of ndk-pkg and NDK.'
-    'version:print version of ndk-pkg and NDK.'
-    'list-target-abis:list support target abis.'
-    'list-target-apis:list support target api levels.'
-    'list-formulas:list formulas in local formulas repository.'
-    'list-installed:list installed packages.'
-    'search:search packages.'
-    'info:print the information of PKG_NAME.'
-    'cat:print the formula of PKG_NAME.'
-    'edit:edit the formula of PKG_NAME.'
-    'env:print the environment of PKG_NAME.'
-    'install:install pkgs.'
-    'uninstall:uninstall pkgs.'
+    '-h:print the help infomation of ndk-pkg command.'
+    '--help:print the help infomation of ndk-pkg command.'
+    'help:print the help infomation of ndk-pkg command.'
+    '-V:print the version of ndk-pkg and NDK.'
+    '--version:print the version of ndk-pkg and NDK.'
+    'version:print the version of ndk-pkg and NDK.'
+    'search:search packages can be installed.'
+    'list:list the target-abis, target-apis, available and installed packages.'
+    'tree:list contents of a installed package directory in a tree-like format.'
+    'info:print the basic infomation of packages.'
+    'cat:view the formula source code of a package.'
+    'edit:edit the formula source code of a package.'
+    'env:print the environment variable settings.'
+    'install:install packages.'
+    'uninstall:uninstall packages.'
     'cleanup:cleanup the unused cache.'
     'update:update the formula repository.'
 )
+
+_list=(
+    'target-abis:list support target abis.'
+    'target-apis:list support target api levels.'
+    'available:list the available packages.'
+    'installed:list the installed packages.'
+)
+
+function _ndk_pkg_list() {
+    _describe 'list' _list
+}
 
 function _ndk_pkg_commands() {
     _describe 'command' _commands
 }
 
-function _ndk_pkg_packages() {
-    local -a _formulas
-    _formulas=($(ndk-pkg list-formulas))
-    _describe 'packages' _formulas
+function _ndk_pkg_available_packages() {
+    local -a _available_packages
+    _available_packages=($(ndk-pkg list available))
+    _describe 'available-packages' _available_packages
 }
 
 function _ndk_pkg_installed_packages() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg list-installed))
+    _installed_packages=($(ndk-pkg list installed))
     _describe 'installed-packages' _installed_packages
 }
 
@@ -49,22 +58,28 @@ function _ndk_pkg() {
     case $state in
         option)
             case $words[1] in
+                list)
+                    _arguments ':list:_ndk_pkg_list'
+                    ;;
+                tree)
+                    _arguments ':package-name:_ndk_pkg_available_packages'
+                    ;;
                 info)
-                    _arguments '*:package-name:_ndk_pkg_packages'
+                    _arguments '*:package-name:_ndk_pkg_available_packages'
                     ;;
                 cat|edit)
-                    _arguments ':package-name:_ndk_pkg_packages'
+                    _arguments ':package-name:_ndk_pkg_available_packages'
                     ;;
                 env)
                     _arguments \
-                        ':package-name:_ndk_pkg_packages' \
-                        '--target-api=-[set target api]:target-api:($(ndk-pkg list-target-apis))' \
-                        '--target-abi=-[set target abi]:target-abi:($(ndk-pkg list-target-abis))'
+                        ':package-name:_ndk_pkg_available_packages' \
+                        '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))' \
+                        '--target-abi=-[set target abi]:target-abi:($(ndk-pkg list target-abis))'
                     ;;
                 install)
                     _arguments \
-                        ':package-name:_ndk_pkg_packages' \
-                        '--target-api=-[set target api]:target-api:($(ndk-pkg list-target-apis))'
+                        ':package-name:_ndk_pkg_available_packages' \
+                        '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))'
                     ;;
                 uninstall)
                     _ndk_pkg_installed_packages

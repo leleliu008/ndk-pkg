@@ -3,7 +3,7 @@ class NdkPkg < Formula
   homepage "https://github.com/leleliu008/ndk-pkg"
   url      "https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-0.1.0.tar.gz"
   version  "0.1.0"
-  sha256   "0d9b61141b989f196d0b222353b620e4a9de42b84d5d87dacd271d274fc6394b"
+  sha256   "e041c4e3fd2bb4e3d8c6a61f3ef81581c7444bd919a1a3ac5c6279e13b44e9ce"
   head     "https://github.com/leleliu008/ndk-pkg.git"
   depends_on "curl"
 
@@ -13,6 +13,6 @@ class NdkPkg < Formula
   end
 
   test do
-    system "#{bin}/ndk-pkg" '--help'
+    system "#{bin}/ndk-pkg", '--help'
   end
 end
