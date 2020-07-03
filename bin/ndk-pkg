@@ -10,8 +10,9 @@ VERSION=0.1.0
 NDK_PKG_HOME="$HOME/.ndk-pkg"
 DIR_FORMULA="$NDK_PKG_HOME/formula"
 DIR_DOWNLOAD="$NDK_PKG_HOME/downloads"
+DIR_BOTTLE="$NDK_PKG_HOME/bottles"
+DIR_BACKUP="$NDK_PKG_HOME/backup"
 DIR_PKG="$NDK_PKG_HOME/pkg"
-DIR_LOG="$NDK_PKG_HOME/log"
 
 TARGET_ABIS='armeabi-v7a arm64-v8a x86 x86_64'
 
@@ -74,6 +75,11 @@ sed_in_place() {
     command -v gsed > /dev/null && gsed -i "$1" "$2" && return 0
     command -v sed  > /dev/null && (sed -i "$1" "$2" 2> /dev/null || sed -i "" "$1" "$2") && return 0
     error_exit "please install sed utility.\n"
+}
+
+convert_unix_timestamp_to_format_string() {
+   date -jf "%s" "$1" "$2" 2> /dev/null ||
+   date -d      "@$1" "$2"
 }
 
 get_ndk_version_via_awk() {
@@ -169,13 +175,13 @@ get_ndk_version_major() {
 
 check_ANDROID_NDK_HOME() {
     [ -z "$ANDROID_ROOT" ] || export ANDROID_NDK_HOME="$ANDROID_ROOT"
-    [ -z "$ANDROID_NDK_HOME" ] && error_exit "please set ANDROID_NDK_HOME environment variable, then try again!"
-    [ -d "$ANDROID_NDK_HOME" ] || error_exit "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
+    [ -z "$ANDROID_NDK_HOME" ] && error_exit "please set ANDROID_NDK_HOME environment variable, then try again!\n"
+    [ -d "$ANDROID_NDK_HOME" ] || error_exit "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!\n"
 }
 
 check_ANDROID_NDK_VERSION() {
     ANDROID_NDK_VERSION="$(get_ndk_version)"
-    [ "$(get_ndk_version_major)" -lt 19 ] && error_exit "your ndk version is $ANDROID_NDK_VERSION, please update to r19 or newer."
+    [ "$(get_ndk_version_major)" -lt 19 ] && error_exit "your ndk version is $ANDROID_NDK_VERSION, please update to r19 or newer.\n"
 }
 
 list_target_abis() {
@@ -214,6 +220,8 @@ is_exist_and_executable() {
 }
 
 make_env() {
+    is_package_available "$1" || package_is_not_available_error_exit "$1"
+
     [ -z "$TARGET_API" ] && {
         TARGET_API=21
         warn "TARGET_API is not set. use default value 21.\n"
@@ -225,7 +233,7 @@ make_env() {
     }
     
     CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
-    TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$(uname -s)-$(uname -m)"
+    TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$OS_NAME-$(uname -m)"
     SYSROOT="$TOOLCHAIN_DIR/sysroot"
     export PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
@@ -276,7 +284,6 @@ make_env() {
     info "     TARGET_ARCH = $TARGET_ARCH\n"
     info "     TARGET_ABI  = $TARGET_ABI\n"
     info "     TARGET_API  = $TARGET_API\n"
-    info "     DIR_LOG     = $DIR_LOG\n"
     info "DIR_INSTALL_PACKAGE= $DIR_INSTALL_PACKAGE\n"
     info "DIR_INSTALL_PREFIX = $DIR_INSTALL_PREFIX\n"
     info "     DIR_SRC     = $DIR_SRC\n"
@@ -334,14 +341,17 @@ make_env() {
         ITEM_DIR_INCLUDE="$ITEM_DIR_INSTALL_PREFIX/include"
         ITEM_DIR_LIB="$ITEM_DIR_INSTALL_PREFIX/lib"
 
-        eval "${item}_DIR_INSTALL='$ITEM_DIR_INSTALL_PREFIX'"
+        eval "${item}_DIR_INSTALL_PREFIX='$ITEM_DIR_INSTALL_PREFIX'"
         eval "${item}_DIR_INCLUDE='$ITEM_DIR_INCLUDE'"
         eval "${item}_DIR_LIB='$ITEM_DIR_LIB'"
         CPPFLAGS="-I$ITEM_DIR_INCLUDE $CPPFLAGS"
         LDFLAGS="-L$ITEM_DIR_LIB     $LDFLAGS"
     done
 
-    export CFLAGS='-Os -v -fpic -Qunused-arguments'
+    export CFLAGS='-Os -fpic -Qunused-arguments'
+    
+    [ "$VERBOSE" = 'true' ] && export CFLAGS="$CFLAGS -v"
+
     export CPPFLAGS="$CPPFLAGS -Qunused-arguments"
     export LDFLAGS="$LDFLAGS"
      
@@ -359,7 +369,7 @@ get_direct_dependencies_of_a_package() {
 get_dependencies_of_a_package() {
     for dependencyPkgName in $(get_direct_dependencies_of_a_package "$1")
     do
-        is_package_exist "$dependencyPkgName" || package_is_not_exist_error_exit "$dependencyPkgName"
+        is_package_available "$dependencyPkgName" || package_is_not_available_error_exit "$dependencyPkgName"
         DEPENDENCIES="$dependencyPkgName $DEPENDENCIES"
         get_dependencies_of_a_package "$dependencyPkgName"
     done
@@ -370,41 +380,66 @@ parse_params() {
     do
         case "$1" in
             --target-api=[1-9][0-9])
-                TARGET_API=$(msg "$1" | cut -d= -f2);;
+                TARGET_API=$(msg "$1" | cut -d= -f2)
+                ;;
             --target-abi=*)
-                TARGET_ABI=$(msg "$1" | cut -d= -f2);;
+                TARGET_ABI=$(msg "$1" | cut -d= -f2)
+                ;;
+            --verbose|-v)
+                VERBOSE=true
+                ;;
             [0-9a-zA-Z]*)
-                PKGS="$PKGS $1";;
+                if [ -z "$PKGS" ] ; then
+                    PKGS="$1"
+                else
+                    PKGS="$PKGS $1"
+                fi
+                ;;
             *)  error_exit "$1 is a invalid param.\n"
         esac
         shift
     done
 }
 
-check_params() {
-    [ -z "$PKGS" ] && missing_package_name_error_exit
-    PKG_NAME="$(printf "$PKGS" | awk '{print $1}')"
-}
-
-missing_package_name_error_exit() {
-    error_exit "please provide a package name.\n"
+is_package_available() {
+    [ -z "$1" ] && package_is_not_provided_error_exit
+    [ -f "$DIR_FORMULA/$1.sh" ]
 }
 
 is_package_installed() {
+    [ -z "$1" ] && package_is_not_provided_error_exit
     [ -d "$DIR_PKG/$1" ] &&
     [ -f "$DIR_PKG/$1/installed" ]
 }
 
-pkg_is_not_installed_error_exit() {
+is_package_outdated() {
+    [ -z "$1" ] && package_is_not_provided_error_exit
+    [ -z "$2" ] || warn "outdated? command accept only one parameter.\n"
+    
+    is_package_available "$1" || package_is_not_available_error_exit "$1"
+    is_package_installed "$1" || package_is_not_installed_error_exit "$1"
+
+    load_formula_of_a_package "$1"
+    load_installed_info_of_a_package "$1"
+
+    [ "$version" = "$installed_pkg_version" ] && return 1
+    [ "$version" = $(msg "$version\n$installed_pkg_version" | sort --version-sort --reverse | head -n 1) ]
+}
+
+package_is_not_installed_error_exit() {
     error_exit "$1 is not installed.\n"
 }
 
-is_package_exist() {
-    [ -f "$DIR_FORMULA/$1.sh" ]
+package_is_not_available_error_exit() {
+    error_exit "$1 is not available.\n"
 }
 
-package_is_not_exist_error_exit() {
-    error_exit "$1 is not exsit.\n"
+package_is_not_provided_error_exit() {
+    error_exit "please provide a package name.\n"
+}
+
+packages_is_not_provided_error_exit() {
+    error_exit "please provide at least one package name.\n"
 }
 
 is_sha256_match() {
@@ -454,6 +489,11 @@ fetch_if_needed() {
     fi
 }
 
+fetch_a_package() {
+    load_formula_of_a_package "$1"
+    fetch_if_needed
+}
+
 uncompress() {
     case "$2" in
         zip) unzip "$1";;
@@ -463,12 +503,14 @@ uncompress() {
 }
 
 install_packages() {
-    for toBeInstalledPkgName in $(printf "$PKGS")
+    [ -z "$1" ] && packages_is_not_provided_error_exit
+    
+    for toBeInstalledPkgName in $@
     do
         get_dependencies_of_a_package "$toBeInstalledPkgName"
     done
 
-    for toBeInstalledPkgName in $(printf "$DEPENDENCIES $PKGS")
+    for toBeInstalledPkgName in $(printf "$DEPENDENCIES $@")
     do
         is_package_installed "$toBeInstalledPkgName" &&
         success "$toBeInstalledPkgName is already installed.\n" &&
@@ -478,9 +520,7 @@ install_packages() {
 }
 
 install_a_package() {
-    load_formula_of_a_package "$1"
-
-    fetch_if_needed "$1"
+    fetch_a_package "$1"
     
     is_sha256_match "$SRC_FILE_PATH" || sha256_not_match_error_exit
 
@@ -517,15 +557,15 @@ install_a_package_success() {
 
 tree_a_installed_package() {
     DIR_INSTALL_PACKAGE="$DIR_PKG/$1"
-    [ -d "$DIR_INSTALL_PACKAGE" ] || pkg_is_not_installed_error_exit "$1"
+    [ -d "$DIR_INSTALL_PACKAGE" ] || package_is_not_installed_error_exit "$1"
     shift
     command -v tree > /dev/null || error_exit "please install tree utility.\n"
     tree $@ "$DIR_INSTALL_PACKAGE"
 }
 
 uninstall_packages() {
-    [ $# -eq 0 ] && error_exit "please provide at least one package.\n"
-
+    [ -z "$1" ] && packages_is_not_provided_error_exit
+    
     for packageName in $@
     do
         uninstall_a_package "$packageName"
@@ -533,7 +573,7 @@ uninstall_packages() {
 }
 
 uninstall_a_package() {
-    [ -d "$DIR_PKG/$1" ] || pkg_is_not_installed_error_exit "$1"
+    [ -d "$DIR_PKG/$1" ] || package_is_not_installed_error_exit "$1"
     info "uninstalling $1...\n" &&
     rm -rf "$DIR_PKG/$1" &&
     success "$1 uninstalled.\n"
@@ -544,7 +584,7 @@ list_available_packages() {
     cd "$DIR_FORMULA" || error_exit "$DIR_FORMULA is not exsit.\n"
     for item in *.sh
     do 
-        printf "$item" | sed 's/.sh//g'
+        printf "$item\n" | sed 's/.sh//g'
     done
 }
 
@@ -557,8 +597,19 @@ list_installed_packages() {
     done
 }
 
+list_outdated_packages() {
+    [ -d "$DIR_PKG" ] || error_exit "no any package installed.\n"
+    cd "$DIR_PKG"     || error_exit "no any package installed.\n"
+    for packageName in *
+    do
+        is_package_available "$packageName" || continue
+        is_package_installed "$packageName" || continue
+        is_package_outdated  "$packageName" && msg "$packageName\n"
+    done
+}
+
 info_packages() {
-    if [ $# -eq 0 ] ; then
+    if [ -z "$1" ] ; then
         [ -d "$DIR_FORMULA" ] || update_formula_repository
         cd "$DIR_FORMULA" || error_exit "$DIR_FORMULA is not exsit.\n"
         unset INFO
@@ -582,32 +633,45 @@ info_packages() {
 info_a_package() {
     load_formula_of_a_package "$1"
      
-    if is_package_installed "$1" ; then
-        msg "name     : $1 ${Color_Green}✔${Color_Off}\n"
-    else
-        msg "name     : $1 ${Color_Red}✘${Color_Off}\n"
-    fi
-        
-    msg "version  : $version\n"
-    msg "summary  : $summary\n"
-    msg "homepage : $homepage\n"
+    msg "name      : $1\n"
+    msg "summary   : $summary\n"
+    msg "homepage  : $homepage\n"
+    msg "available : $version\n"
     
     [ -z "$dependencies" ] || {
-        msg "dependencies :"
+        msg "depend_on :"
+        unset DEPENDENCIES
         for dependencyPkgName in $(printf "$dependencies")
         do
-            if is_package_installed "$dependencyPkgName" ; then
-                msg "  $dependencyPkgName ${Color_Green}✔${Color_Off}"
+            if [ -z "$DEPENDENCIES" ] ; then
+                DEPENDENCIES=true
+                msg " "
             else
-                msg "  $dependencyPkgName ${Color_Red}✘${Color_Off}"
+                msg "            "
+            fi
+
+            if is_package_installed "$dependencyPkgName" ; then
+                msg "$dependencyPkgName ${Color_Green}✔${Color_Off}\n"
+            else
+                msg "$dependencyPkgName ${Color_Red}✘${Color_Off}\n"
             fi
         done
-        msg "\n"
     }
+     
+    if is_package_installed "$1" ; then
+        load_installed_info_of_a_package "$1"
+        msg "installed ${Color_Purple}==>${Color_Off} $(du -sh "$DIR_PKG/$1" | awk '{print $2, $1}')\n"
+        msg "install_time: $(convert_unix_timestamp_to_format_string $installed_time '+%Y/%m/%d %H:%M:%S')\n"
+        msg "pkg_version : $installed_pkg_version\n"
+        msg "ndk_version : $installed_ndk_version\n"
+        msg "target_api  : $installed_target_api\n"
+    else
+        msg "installed : ${Color_Red}✘${Color_Off}\n"
+    fi
 }
 
 load_formula_of_a_package() {
-    is_package_exist "$1" || package_is_not_exist_error_exit "$1"
+    is_package_available "$1" || package_is_not_available_error_exit "$1"
 
     unset -f build_first
     unset -f build
@@ -620,7 +684,7 @@ load_formula_of_a_package() {
     
     FORMULA_FILE_PATH="$DIR_FORMULA/$1.sh"
      
-    source "$FORMULA_FILE_PATH" || error_exit "$FORMULA_FILE_PATH is broken.\n"
+    . "$FORMULA_FILE_PATH" || error_exit "$FORMULA_FILE_PATH is broken.\n"
     
     [ -z "$summary" ]  && error_exit "summary variable must be provided in $FORMULA_FILE_PATH\n"
     [ -z "$homepage" ] && error_exit "homepage variable must be provided in $FORMULA_FILE_PATH\n"
@@ -630,17 +694,32 @@ load_formula_of_a_package() {
     [ -z "$version" ]  && error_exit "version can't be parsed in $FORMULA_FILE_PATH\n"
 }
 
+load_installed_info_of_a_package() {
+    unset installed_time
+    unset installed_pkg_version
+    unset installed_ndk_version
+    unset installed_target_api
+    
+    . "$DIR_PKG/$1/installed"
+
+    #msg "$1:\navailable_version=$version\ninstalled_version=$installed_pkg_version\n"
+}
+
 cat_formula_of_a_package() {
-    [ $# -eq 0 ] && missing_package_name_error_exit
-    [ $# -gt 1 ] && warn "cat command accept only one parameter.\n"
-    is_package_exist "$1" || package_is_not_exist_error_exit "$1"
+    [ -z "$1" ] && package_is_not_provided_error_exit
+    [ -z "$2" ] || warn "cat command accept only one parameter.\n"
+    
+    is_package_available "$1" || package_is_not_available_error_exit "$1"
+    
     cat "$DIR_FORMULA/$1.sh"
 }
 
 edit_formula_of_a_package() {
-    [ $# -eq 0 ] && missing_package_name_error_exit
-    [ $# -gt 1 ] && warn "edit command accept only one parameter.\n"
-    is_package_exist "$1" || package_is_not_exist_error_exit "$1"
+    [ -z "$1" ] && package_is_not_provided_error_exit
+    [ -z "$2" ] || warn "edit command accept only one parameter.\n"
+    
+    is_package_available "$1" || package_is_not_available_error_exit "$1"
+    
     [ -z "$EDITOR" ] || EDITOR='vi'
     command -v "$EDITOR" > /dev/null || EDITOR='vim'
     command -v "$EDITOR" > /dev/null || EDITOR='nano'
@@ -671,12 +750,39 @@ update_formula_repository() {
     fi
 }
 
+upgrade_packages() {
+    if [ -z "$1" ] ; then
+        toBeUpgradePkgNames=$(list_outdated_packages)
+        [ -z "$toBeUpgradePkgNames" ] && return 0
+        reinstall_packages $toBeUpgradePkgNames
+    else
+        reinstall_packages $@
+    fi
+}
+
+reinstall_packages() {
+    [ -z "$1" ] && packages_is_not_provided_error_exit
+     
+    for packageName in $@
+    do
+        is_package_available "$packageName" || package_is_not_available_error_exit
+        is_package_installed "$packageName" || package_is_not_installed_error_exit
+    done
+    
+    for packageName in $@
+    do
+        mv "$DIR_PKG/$packageName" "$DIR_BACKUP/$packageName" &&
+        install_a_package "$packageName" &&
+        rm -rf "$DIR_BACKUP/$packageName"
+    done
+}
+
 cleanup() {
     success "Done.\n"
 }
 
 search_packages() {
-    [ $# -eq 0 ] && error_exit "please provide a keyword.\n"
+    [ -z "$1" ] && error_exit "please provide a keyword.\n"
     [ -d "$DIR_FORMULA" ] || update_formula_repository
     cd "$DIR_FORMULA" && {
         for item in *.sh
@@ -686,26 +792,106 @@ search_packages() {
     }
 }
 
+open_homepage_of_a_package() {
+    if [ -z "$1" ] ; then
+        homepage="https://github.com/leleliu008/ndk-pkg"
+    else
+        load_formula_of_a_package "$1"
+    fi
+    command -v open > /dev/null && open "$homepage"
+}
+
+print_prefix_of_a_package() {
+    if [ -z "$1" ] ; then
+        msg "$NDK_PKG_HOME\n"
+    else
+        is_package_installed "$1" || package_is_not_installed_error_exit "$1"
+        msg "$DIR_PKG/$1\n"
+    fi
+}
+
+logs_a_package() {
+    [ -z "$1" ] && package_is_not_provided_error_exit
+    is_package_installed "$1" || package_is_not_installed_error_exit "$1"
+    
+    FILE_PATH_LOGS="$DIR_PKG/$1/logs"
+    
+    if [ -f "$FILE_PATH_LOGS" ] ; then
+        success "$FILE_PATH_LOGS ===>\n"
+        cat "$FILE_PATH_LOGS"
+    else
+        warn "no logs.\n"
+    fi
+}
+
+pack_a_package() {
+    [ -z "$1" ] && package_is_not_provided_error_exit
+    is_package_installed "$1" || package_is_not_installed_error_exit "$1"
+    
+    [ -d "$DIR_BOTTLE" ] || mkdir -p "$DIR_BOTTLE"
+    
+    if command -v tar > /dev/null ; then
+        if command -v gzip > /dev/null ; then
+            FILE_PATH_BOTTLE="$DIR_BOTTLE/$1-bottle.tar.gz"
+            info "packing $1...\n" &&
+            tar zvcf "$FILE_PATH_BOTTLE" -C "$DIR_PKG" "$1"
+        elif command -v xz > /dev/null ; then
+            FILE_PATH_BOTTLE="$DIR_BOTTLE/$1-bottle.tar.xz"
+            info "packing $1...\n" &&
+            tar zvcf "$FILE_PATH_BOTTLE" -C "$DIR_PKG" "$1"
+        elif command -v bzip2 > /dev/null ; then
+            FILE_PATH_BOTTLE="$DIR_BOTTLE/$1-bottle.tar.bz2"
+            info "packing $1...\n" &&
+            tar zvcf "$FILE_PATH_BOTTLE" -C "$DIR_PKG" "$1"
+        fi
+    elif command -v zip > /dev/null ; then
+        FILE_PATH_BOTTLE="$DIR_BOTTLE/$1-bottle.zip"
+        cd "$DIR_PKG" &&
+        info "packing $1...\n" &&
+        zip -r "$FILE_PATH_BOTTLE" "$1"
+    fi
+    
+    if [ $? -eq 0 ] ; then
+        success "packed success. $FILE_PATH_BOTTLE\n"
+    else
+        error_exit "pack $1 failed.\n"
+    fi
+}
+
 help() {
     cat << EOF
 Usage: ndk-pkg [COMMAND [ARGUMENT...]]
 COMMAND:
     help | --help | -h     --show help information.
     version | --version -V --print version of ndk-pkg and NDK.
+    
     list target-abis       --list the supported target abis.
     list target-apis       --list the supported target api levels.
     list available         --list the available packages.
     list installed         --list the installed packages.
-    tree PKG_NAME          --list contents of a installed package directory in a tree-like format.
+    list outdated          --list the outdated packages.
+    
     search KEYWORD         --search packages.
-    cat  PKG_NAME          --print the formula of PKG_NAME.
-    edit PKG_NAME          --edit the formula of PKG_NAME.
-    env  PKG_NAME --target-api=21 --target-abi=armeabi-v7a  
-    install   PKG_NAME... --target-api=21  --install pkgs.
-    uninstall PKG_NAME... --uninstall packages.
-    info      PKG_NAME... --print the information of PKG_NAMEs.
-    cleanup     --cleanup the unused cache.
-    update      --update the formula repository.
+    
+    cat  PKG_NAME          --show the formula source code of a package.
+    edit PKG_NAME          --edit the formula source code of a package.
+    tree PKG_NAME          --list contents of a installed package directory in a tree-like format.
+    pack PKG_NAME          --pack a installed package.
+    logs PKG_NAME          --print the logs of a installed package.
+    fetch PKG_NAME         --download formula resources of a package to the cache.
+    prefix PKG_NAME        --show the installation direcotory of a formula or the ndk-pkg home.
+    homepage PKG_NAME      --visit the homepage of a formula or the ndk-pkg project.
+    
+    env  PKG_NAME --target-api=21 --target-abi=armeabi-v7a -v
+    
+    install   PKG_NAME... [--target-api=21 -v]     --install packages.
+    reinstall PKG_NAME... [--target-api=21 -v]     --reinstall packages.
+    upgrade   PKG_NAME... [--target-api=21 -v]     --upgrade packages.
+    uninstall PKG_NAME...                          --uninstall packages.
+    info      PKG_NAME...                          --print the information of packages.
+    
+    cleanup          --cleanup the unused cache.
+    update           --update the formula repository.
 EOF
     if [ -z "$1" ] ; then
         exit
@@ -715,7 +901,8 @@ EOF
 }
 
 main() {
-    TIMESTAMP=$(date +%Y%m%d%H%M%S)
+    TIMESTAMP="$(date +%s)"
+    OS_NAME="$(uname -s | awk '{print(tolower($1))}')"
     
     case "$1" in
         --help|help|-h) 
@@ -745,6 +932,10 @@ main() {
                     shift
                     list_installed_packages
                     ;;
+                outdated)
+                    shift
+                    list_outdated_packages
+                    ;;
                 *) help 1
             esac
             ;;
@@ -761,16 +952,29 @@ main() {
             check_ANDROID_NDK_HOME
             check_ANDROID_NDK_VERSION
             parse_params "$@"
-            check_params
-            make_env "$PKG_NAME"
+            [ "$(printf "$PKGS" | awk '{print NF}')" -gt 1 ] && error_exit "env command accept only one package name.\n"
+            make_env "$PKGS"
             ;;
         install)
             shift
             check_ANDROID_NDK_HOME
             check_ANDROID_NDK_VERSION
             parse_params "$@"
-            check_params
-            install_packages
+            install_packages "$PKGS"
+            ;;
+        reinstall)
+            shift
+            check_ANDROID_NDK_HOME
+            check_ANDROID_NDK_VERSION
+            parse_params "$@"
+            reinstall_packages "$PKGS"
+            ;;
+        upgrade)
+            shift
+            check_ANDROID_NDK_HOME
+            check_ANDROID_NDK_VERSION
+            parse_params "$@"
+            upgrade_packages "$PKGS"
             ;;
         uninstall)
             shift
@@ -792,6 +996,26 @@ main() {
             update_formula_repository;;
         cleanup)
             cleanup;;
+        home)
+            shift
+            open_homepage_of_a_package "$@"
+            ;;
+        prefix)
+            shift
+            print_prefix_of_a_package "$@"
+            ;;
+        fetch)
+            shift
+            fetch_a_package "$@"
+            ;;
+        logs)
+            shift
+            logs_a_package "$@"
+            ;;
+        pack)
+            shift
+            pack_a_package "$@"
+            ;;
         *) help 1
     esac
 }
