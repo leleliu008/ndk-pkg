@@ -524,13 +524,13 @@ install_a_package() {
     
     is_sha256_match "$SRC_FILE_PATH" || sha256_not_match_error_exit
 
+    [ -d "$DIR_PKG/$1" ] && rm -rf "$DIR_PKG/$1"
+    
     DIR_SRC=$(mktemp -d) &&
     cd "$DIR_SRC" &&
     info "uncompressing $SRC_FILE_PATH\n" &&
     uncompress "$SRC_FILE_PATH" "$SRC_FILE_NAME_EXT" &&
-    success "uncompressed in $DIR_SRC\n" && {
-        [ -d "$DIR_PKG/$1" ] && rm -rf "$DIR_PKG/$1"
-    } &&
+    success "uncompressed in $DIR_SRC\n" &&
     install_a_package_for_all_target_abis "$1" &&
     install_a_package_success "$1" &&
     rm -rf "$DIR_SRC"
