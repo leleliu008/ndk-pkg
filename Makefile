@@ -9,7 +9,7 @@ dist: bin/ndk-pkg zsh-completion/_ndk-pkg
     ha256sum $(filename)
 
 copy:
-	cp $$(brew --prefix ndk-pkg)/bin/ndk-pkg .
+	cp $$(brew --prefix ndk-pkg)/bin/ndk-pkg bin/
 	cp $$(brew --prefix ndk-pkg)/share/zsh/site-functions/_ndk-pkg zsh-completion/_ndk-pkg
 
 clean:
