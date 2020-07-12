@@ -25,6 +25,7 @@ _commands=(
     'prefix:show the installation direcotory of a formula or the ndk-pkg home.'
     'pack:pack a installed package.'
     'logs:print the logs of a installed package.'
+    'is:check something. easy to write script.'
 )
 
 _list=(
@@ -73,17 +74,15 @@ function _ndk_pkg() {
         option)
             case $words[1] in
                 list)
-                    _arguments ':list:_ndk_pkg_list'
-                    ;;
+                    _arguments ':list:_ndk_pkg_list' ;;
+                tree)
+                    _arguments ':package-name:_ndk_pkg_available_packages' ;;
                 info)
-                    _arguments '*:package-name:_ndk_pkg_available_packages'
-                    ;;
+                    _arguments '*:package-name:_ndk_pkg_available_packages' ;;
                 cat|edit|fetch|homepage)
-                    _arguments ':package-name:_ndk_pkg_available_packages'
-                    ;;
-                prefix|logs|pack|tree)
-                    _arguments ':package-name:_ndk_pkg_installed_packages'
-                    ;;
+                    _arguments ':package-name:_ndk_pkg_available_packages' ;;
+                prefix|logs|pack)
+                    _arguments ':package-name:_ndk_pkg_installed_packages' ;;
                 env)
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
@@ -110,7 +109,11 @@ function _ndk_pkg() {
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]'
                     ;;
                 uninstall)
-                    _arguments '*:package-name:_ndk_pkg_installed_packages'
+                    _arguments '*:package-name:_ndk_pkg_installed_packages' ;;
+                is)
+                    _arguments \
+                        '1: :(available installed outdated)' \
+                        '2:package-name:_ndk_pkg_available_packages'
                     ;;
                 *);;
             esac

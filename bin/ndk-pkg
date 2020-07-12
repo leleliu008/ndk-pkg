@@ -876,6 +876,10 @@ COMMAND:
     list available         --list the available packages.
     list installed         --list the installed packages.
     list outdated          --list the outdated packages.
+
+    is available PKG_NAME  --is PKG_NAME available?
+    is installed PKG_NAME  --is PKG_NAME installed?
+    is outdated  PKG_NAME  --is PKG_NAME outdated?
     
     search KEYWORD         --search packages.
     
@@ -908,7 +912,7 @@ EOF
 
 main() {
     TIMESTAMP="$(date +%s)"
-    OS_NAME="$(uname -s | awk '{print(tolower($1))}')"
+    OS_NAME="$(uname -s | awk '{print(tolower($0))}')"
     
     case "$1" in
         --help|help|-h) 
@@ -1021,6 +1025,24 @@ main() {
         pack)
             shift
             pack_a_package "$@"
+            ;;
+        is)
+            shift
+            case $1 in
+                available)
+                    shift
+                    is_package_available "$@"
+                    ;;
+                installed)
+                    shift
+                    is_package_installed "$@"
+                    ;;
+                outdated)
+                    shift
+                    is_package_outdated "$@"
+                    ;;
+                *) help 1
+            esac
             ;;
         *) help 1
     esac
