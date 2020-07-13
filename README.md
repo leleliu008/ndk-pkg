@@ -7,7 +7,7 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk)
 |-|-|-|
 |`macOS`|[HomeBrew](http://blog.fpliu.com/it/os/macOS/software/HomeBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
 |`GNU/Linux`|[LinuxBrew](http://blog.fpliu.com/it/software/LinuxBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
-|`ArchLinux`|[yay](http://blog.fpliu.com/it/software/yay)|`yay -Syyu --noconfirm`<br>`yay -S &nbsp;&nbsp; --noconfirm ndk-pkg`|
+|`ArchLinux`|[yay](http://blog.fpliu.com/it/software/yay)|`yay -Syyu --noconfirm`<br>`yay -S &#160;&#160; --noconfirm ndk-pkg`|
 |`Windows/msys2`|[pacman](http://blog.fpliu.com/it/software/pacman)|`pacman -Syyu --noconfirm`<br>`pacman -U https://github.com/leleliu008/ndk-pkg/releases/download/v0.1.0/ndk-pkg-0.1.0-1.pkg.tar.gz`|
 |`Windows/WSL`|[LinuxBrew](http://blog.fpliu.com/it/software/LinuxBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
 
