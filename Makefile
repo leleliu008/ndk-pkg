@@ -13,6 +13,8 @@ copy:
 	cp $$(brew --prefix ndk-pkg)/share/zsh/site-functions/_ndk-pkg zsh-completion/_ndk-pkg
 
 clean:
-	rm $(filename)
+	rm ndk-pkg-$(version)*.tar.gz
+	rm -rf src
+	rm -rf pkg
 
 .PHONY: clean copy
