@@ -555,7 +555,10 @@ install_a_package_success() {
     
     msg "installed_time=$TIMESTAMP\ninstalled_pkg_version=$version\ninstalled_ndk_version=$ANDROID_NDK_VERSION\ninstalled_target_api=$TARGET_API" > "$DIR_INSTALL_PACKAGE/installed"
     success "$1 build success. in $DIR_INSTALL_PACKAGE directory.\n"
-    command -v tree > /dev/null && tree -L 3 "$DIR_INSTALL_PACKAGE"
+    
+    if command -v tree > /dev/null ; then
+        tree -L 3 "$DIR_INSTALL_PACKAGE"
+    fi
 }
 
 tree_a_installed_package() {
@@ -804,7 +807,12 @@ open_homepage_of_a_package() {
     else
         load_formula_of_a_package "$1"
     fi
-    command -v open > /dev/null && open "$homepage"
+    
+    if command -v open > /dev/null ; then
+	open "$homepage"
+    else
+	msg "$homepage\n"
+    fi
 }
 
 print_prefix_of_a_package() {
@@ -912,8 +920,12 @@ EOF
 
 main() {
     TIMESTAMP="$(date +%s)"
-    OS_NAME="$(uname -s | awk '{print(tolower($0))}')"
     
+    OS_NAME="$(uname -s | awk '{print(tolower($0))}')"
+    case $OS_NAME in
+        msys*|mingw*|cygwin*) OS_NAME=windows
+    esac
+
     case "$1" in
         --help|help|-h) 
             help
