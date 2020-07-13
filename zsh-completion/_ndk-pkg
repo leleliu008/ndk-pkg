@@ -46,19 +46,19 @@ function _ndk_pkg_commands() {
 
 function _ndk_pkg_available_packages() {
     local -a _available_packages
-    _available_packages=($(ndk-pkg list available))
+    _available_packages=($(ndk-pkg list available -q))
     _describe 'available-packages' _available_packages
 }
 
 function _ndk_pkg_installed_packages() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg list installed))
+    _installed_packages=($(ndk-pkg list installed -q))
     _describe 'installed-packages' _installed_packages
 }
 
 function _ndk_pkg_outdated_packages() {
     local -a _outdated_packages
-    _outdated_packages=($(ndk-pkg list outdated))
+    _outdated_packages=($(ndk-pkg list outdated -q))
     _describe 'outdated-packages' _outdated_packages
 }
 
@@ -74,7 +74,10 @@ function _ndk_pkg() {
         option)
             case $words[1] in
                 list)
-                    _arguments ':list:_ndk_pkg_list' ;;
+                    _arguments \
+                        ':list:_ndk_pkg_list' \
+                        '-q[quiet mode. do not report error log]'
+                        ;;
                 tree)
                     _arguments ':package-name:_ndk_pkg_available_packages' ;;
                 info)

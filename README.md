@@ -76,14 +76,29 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
 *   list the available packages
         
         ndk-pkg list available
+        ndk-pkg list available -q
         
 *   list the installed packages
         
         ndk-pkg list installed
+        ndk-pkg list installed -q
         
 *   list the outdated packages
         
         ndk-pkg list outdated
+        ndk-pkg list outdated -q
+        
+*   is the specified package available ?
+        
+        ndk-pkg is available curl
+        
+*   is the specified package installed ?
+        
+        ndk-pkg is installed curl
+        
+*   is the specified package outdated
+        
+        ndk-pkg is outdated curl
         
 *   list contents of a installed package directory in a tree-like format.
         

@@ -32,7 +32,7 @@ msg() {
 }
 
 info() {
-    msg "${Color_Purple}[❉] $@${Color_Off}"
+    msg "${Color_Purple}[★] $@${Color_Off}"
 }
 
 success() {
@@ -40,7 +40,7 @@ success() {
 }
 
 warn() {
-    msg "${Color_Yellow}[⌘] $@${Color_Off}"
+    msg "${Color_Yellow}🔥 $@${Color_Off}"
 }
 
 error() {
@@ -586,8 +586,30 @@ uninstall_a_package() {
 }
 
 list_available_packages() {
-    [ -d "$DIR_FORMULA" ] || update_formula_repository
-    cd "$DIR_FORMULA" || error_exit "$DIR_FORMULA is not exsit.\n"
+    if [ -n "$2" ] ; then
+        error_exit "list available command only accept -q argument.\n"
+    fi
+     
+    if [ -n "$1" -a "$1" != '-q' ] ; then
+        error_exit "list available command only accept -q argument.\n"
+    fi
+    
+    [ -d "$DIR_FORMULA" ] || {
+        if [ "$1" = '-q' ] ; then
+            exit
+        else
+            update_formula_repository
+        fi
+    }
+    
+    cd "$DIR_FORMULA" || {
+        if [ "$1" = '-q' ] ; then
+            exit
+        else
+            error_exit "$DIR_FORMULA is not exsit.\n"
+        fi
+    }
+     
     for item in *.sh
     do 
         printf "$item\n" | sed 's/.sh//g'
@@ -595,22 +617,58 @@ list_available_packages() {
 }
 
 list_installed_packages() {
-    [ -d "$DIR_PKG" ] || error_exit "no any package installed.\n"
-    cd "$DIR_PKG"     || error_exit "no any package installed.\n"
+    if [ -n "$2" ] ; then
+        error_exit "list installed command only accept -q argument.\n"
+    fi
+    
+    if [ -n "$1" -a "$1" != '-q' ] ; then
+        error_exit "list installed command only accept -q argument.\n"
+    fi
+    
+    [ -d "$DIR_PKG" ] || {
+        [ "$1" = '-q' ] || warn "no any package installed.\n"
+        exit
+    }
+    
+    cd "$DIR_PKG" || {
+        [ "$1" = '-q' ] || warn "no any package installed.\n"
+        exit
+    }
+    
     for packageName in *
     do
-        is_package_installed "$packageName" && msg "$packageName\n"
+        if is_package_installed "$packageName" ; then
+            msg "$packageName\n"
+        fi
     done
 }
 
 list_outdated_packages() {
-    [ -d "$DIR_PKG" ] || error_exit "no any package installed.\n"
-    cd "$DIR_PKG"     || error_exit "no any package installed.\n"
+    if [ -n "$2" ] ;then
+        error_exit "list outdated command only accept -q argument.\n"
+    fi
+
+    if [ -n "$1" -a "$1" != '-q' ] ; then
+        error_exit "list outdated command only accept -q argument.\n"
+    fi
+
+    [ -d "$DIR_PKG" ] || {
+        [ "$1" = '-q' ] || warn "no any package installed.\n"
+        exit
+    }
+    
+    cd "$DIR_PKG" || {
+        [ "$1" = '-q' ] || warn "no any package installed.\n"
+        exit
+    }
+    
     for packageName in *
     do
         is_package_available "$packageName" || continue
         is_package_installed "$packageName" || continue
-        is_package_outdated  "$packageName" && msg "$packageName\n"
+        if is_package_outdated "$packageName" ; then
+            msg "$packageName\n"
+        fi
     done
 }
 
@@ -948,15 +1006,15 @@ main() {
                     ;;
                 available)
                     shift
-                    list_available_packages
+                    list_available_packages "$@"
                     ;;
                 installed)
                     shift
-                    list_installed_packages
+                    list_installed_packages "$@"
                     ;;
                 outdated)
                     shift
-                    list_outdated_packages
+                    list_outdated_packages "$@"
                     ;;
                 *) help 1
             esac
