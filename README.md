@@ -2,8 +2,9 @@
 a package manager for [Android NDK](https://developer.android.google.cn/ndk)
 
 ## Install via package manager
+
 |OS|PackageManager|Installation Instructions|
-|-|-|
+|-|-|-|
 |`macOS`|[HomeBrew](http://blog.fpliu.com/it/os/macOS/software/HomeBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
 |`GNU/Linux`|[LinuxBrew](http://blog.fpliu.com/it/software/LinuxBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
 |`ArchLinux`|[yay](http://blog.fpliu.com/it/software/yay)|`yay -Syyu --noconfirm`<br>`yay -S &nbsp;&nbsp; --noconfirm ndk-pkg`|
