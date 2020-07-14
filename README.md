@@ -7,12 +7,18 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk)
 |-|-|-|
 |`macOS`|[HomeBrew](http://blog.fpliu.com/it/os/macOS/software/HomeBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
 |`GNU/Linux`|[LinuxBrew](http://blog.fpliu.com/it/software/LinuxBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
-|`ArchLinux`|[yay](http://blog.fpliu.com/it/software/yay)|`yay -Syyu --noconfirm`<br>`yay -S --noconfirm ndk-pkg`|
-|`Windows/msys2`|[pacman](http://blog.fpliu.com/it/software/pacman)|`pacman -Syyu --noconfirm`<br>`pacman -U https://github.com/leleliu008/ndk-pkg/releases/download/v0.1.0/ndk-pkg-0.1.0-1.pkg.tar.gz`|
+|`ArchLinux`<br>`ArcoLinux`<br>`Manjaro Linux`<br>`Windows/msys2`|[pacman](http://blog.fpliu.com/it/software/pacman)|`pacman -Syyu --noconfirm`<br>`pacman -U https://github.com/leleliu008/ndk-pkg/releases/download/v0.1.0/ndk-pkg-0.1.0-1.pkg.tar.gz`|
 |`Windows/WSL`|[LinuxBrew](http://blog.fpliu.com/it/software/LinuxBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
+
+## Install using shell script
+```
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh)"
+```
 
 ## zsh-completion for ndk-pkg
 I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg` then type `TAB` key, it will auto complete the rest for you.
+
+**Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
 
 ## ndk-pkg command usage
 *   print the help infomation of `ndk-pkg` command
