@@ -3,6 +3,9 @@
 VERSION='0.1.0'
 FILE_NAME="ndk-pkg-${VERSION}.tar.gz"
 URL="https://github.com/leleliu008/ndk-pkg/releases/download/v0.1.0/${FILE_NAME}"
+INSTALL_DIR=/usr/local/opt/ndk-pkg
+DEST_LINK_BIN=/usr/local/bin/ndk-pkg
+DEST_LINK_ZSH_COMPLETION=/usr/share/zsh/site-functions/_ndk-pkg
 
 Color_Red='\033[0;31m'          # Red
 Color_Green='\033[0;32m'        # Green
@@ -30,12 +33,32 @@ own() {
     ls -ld "$1" | awk '{print $3":"$4}'
 }
 
+on_exit() {
+    [ "$SUCCESS" = 'true' ] && return 0
+    [ "$IS_CREATED_BY_ME_INSTALL_DIR" = 'true' ] && rm -rf "$INSTALL_DIR"
+    [ "$IS_CREATED_BY_ME_LINK_BIN" = 'true' ] && rm "$DEST_LINK_BIN"
+    [ "$IS_CREATED_BY_ME_LINK_ZSH_COMPLETION" = 'true' ] && rm "$DEST_LINK_ZSH_COMPLETION"
+}
+
 main() {
-    INSTALL_DIR='/usr/local/opt/ndk-pkg'
+    unset SUCCESS
+    unset IS_CREATED_BY_ME_INSTALL_DIR
+    unset IS_CREATED_BY_ME_LINK_BIN
+    unset IS_CREATED_BY_ME_LINK_ZSH_COMPLETION
+
+    trap on_exit EXIT
+
+    if command -v ndk-pkg ; then
+        error_exit "ndk-pkg is already installed."
+    fi
+    
     if [ -d "$INSTALL_DIR" ] ; then
-        error_exit "ndk-pkg is already installed in /usr/local/opt/ndk-pkg"
+        error_exit "ndk-pkg is already installed. in /usr/local/opt/ndk-pkg"
     else
-        mkdir -p "$INSTALL_DIR" && cd "$INSTALL_DIR"
+        if mkdir -p "$INSTALL_DIR" ; then
+            IS_CREATED_BY_ME_INSTALL_DIR=true
+            cd "$INSTALL_DIR"
+        fi
     fi
     
     if command -v curl > /dev/null ; then
@@ -63,19 +86,23 @@ main() {
         chown -R $(own .) .
         chmod 111 bin/ndk-pkg
         chmod 400 zsh-completion/_ndk-pkg
-         
-        if [ -f "/usr/local/bin/ndk-pkg" ] ; then
-            error_exit "/usr/local/bin/ndk-pkg is already exist."
+        
+        if [ -f "$DEST_LINK_BIN" ] ; then
+            error_exit "$DEST_LINK_BIN is already exist."
         else
-            ln -sf `pwd`/bin/ndk-pkg /usr/local/bin/ndk-pkg
+            [ -d '/usr/local/bin' ] || mkdir -p /usr/local/bin
+            ln -s "$INSTALL_DIR/bin/ndk-pkg" "$DEST_LINK_BIN" &&
+            IS_CREATED_BY_ME_LINK_BIN=true
         fi
         
-        if [ -f "/usr/share/zsh/site-functions/_ndk-pkg" ] ; then
-            error_exit "/usr/share/zsh/site-functions/_ndk-pkg is already exist."
+        if [ -f "$DEST_LINK_ZSH_COMPLETION" ] ; then
+            error_exit "$DEST_LINK_ZSH_COMPLETION is already exist."
         else
-            ln -sf `pwd`/zsh-completion/_ndk-pkg /usr/share/zsh/site-functions/_ndk-pkg
+            ln -s "$INSTALL_DIR/zsh-completion/_ndk-pkg" "$DEST_LINK_ZSH_COMPLETION" &&
+            IS_CREATED_BY_ME_LINK_ZSH_COMPLETION=true
         fi
-         
+
+        SUCCESS=true 
         success "Installed success.\n"
         msg "${Color_Purple}Note${Color_Off} : I have provide a zsh-completion script for ndk-pkg. when you've typed ndk-pkg then type TAB key, it will auto complete the rest for you. to apply this feature, you may need to run the command ${Color_Purple}autoload -U compinit && compinit${Color_Off}"
     else
