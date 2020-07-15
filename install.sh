@@ -2,10 +2,10 @@
 
 VERSION='0.1.0'
 FILE_NAME="ndk-pkg-${VERSION}.tar.gz"
-URL="https://github.com/leleliu008/ndk-pkg/releases/download/v0.1.0/${FILE_NAME}"
+URL="https://github.com/leleliu008/ndk-pkg/releases/download/v${VERSION}/${FILE_NAME}"
 INSTALL_DIR=/usr/local/opt/ndk-pkg
 DEST_LINK_BIN=/usr/local/bin/ndk-pkg
-DEST_LINK_ZSH_COMPLETION=/usr/share/zsh/site-functions/_ndk-pkg
+DEST_LINK_ZSH_COMPLETION=/usr/local/share/zsh/site-functions/_ndk-pkg
 
 Color_Red='\033[0;31m'          # Red
 Color_Green='\033[0;32m'        # Green
@@ -53,7 +53,7 @@ main() {
     fi
     
     if [ -d "$INSTALL_DIR" ] ; then
-        error_exit "ndk-pkg is already installed. in /usr/local/opt/ndk-pkg"
+        error_exit "ndk-pkg is already installed. in $INSTALL_DIR"
     else
         if mkdir -p "$INSTALL_DIR" ; then
             IS_CREATED_BY_ME_INSTALL_DIR=true
@@ -84,8 +84,8 @@ main() {
         info "Uncompressed in $PWD"
         
         chown -R $(own .) .
-        chmod 111 bin/ndk-pkg
-        chmod 400 zsh-completion/_ndk-pkg
+        chmod 755 bin/ndk-pkg
+        chmod 444 zsh-completion/_ndk-pkg
         
         if [ -f "$DEST_LINK_BIN" ] ; then
             error_exit "$DEST_LINK_BIN is already exist."
@@ -98,13 +98,14 @@ main() {
         if [ -f "$DEST_LINK_ZSH_COMPLETION" ] ; then
             error_exit "$DEST_LINK_ZSH_COMPLETION is already exist."
         else
+            [ -d /usr/local/share/zsh/site-functions ] || mkdir -p /usr/local/share/zsh/site-functions
             ln -s "$INSTALL_DIR/zsh-completion/_ndk-pkg" "$DEST_LINK_ZSH_COMPLETION" &&
             IS_CREATED_BY_ME_LINK_ZSH_COMPLETION=true
         fi
 
         SUCCESS=true 
         success "Installed success.\n"
-        msg "${Color_Purple}Note${Color_Off} : I have provide a zsh-completion script for ndk-pkg. when you've typed ndk-pkg then type TAB key, it will auto complete the rest for you. to apply this feature, you may need to run the command ${Color_Purple}autoload -U compinit && compinit${Color_Off}"
+        msg "${Color_Purple}Note${Color_Off} : I have provide a zsh-completion script for ${Color_Purple}ndk-pkg${Color_Off}. when you've typed ${Color_Purple}ndk-pkg${Color_Off} then type ${Color_Purple}TAB${Color_Off} key, it will auto complete the rest for you. to apply this feature, you may need to run the command ${Color_Purple}autoload -U compinit && compinit${Color_Off}"
     else
         error_exit "tar vxf $FILE_NAME occured error."
     fi
