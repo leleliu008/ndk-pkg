@@ -31,14 +31,12 @@ msg() {
     printf "%b" "$*"
 }
 
-command -v echo > /dev/null || {
-    echo() {
-        msg "$@\n"
-    }
+echo() {
+    msg "$@\n"
 }
 
 info() {
-    msg "${Color_Purple}[★] $@\n${Color_Off}"
+    msg "${Color_Purple}$@\n${Color_Off}"
 }
 
 success() {
@@ -113,18 +111,18 @@ is_sha256sum_match() {
 }
 
 is_package_available() {
-    [ -z "$1" ] && die_from_package_is_not_provided
+    [ -z "$1" ] && die_from_package_is_not_specified
     [ -f "$DIR_FORMULA/$1.sh" ]
 }
 
 is_package_installed() {
-    [ -z "$1" ] && die_from_package_is_not_provided
+    [ -z "$1" ] && die_from_package_is_not_specified
     [ -d "$DIR_PKG/$1" ] &&
     [ -f "$DIR_PKG/$1/installed" ]
 }
 
 is_package_outdated() {
-    [ -z "$1" ] && die_from_package_is_not_provided
+    [ -z "$1" ] && die_from_package_is_not_specified
     [ -z "$2" ] || warn "outdated? command accept only one parameter."
     
     is_package_available "$1" || die_from_package_is_not_available "$1"
@@ -145,11 +143,11 @@ die_from_package_is_not_available() {
     die "$1 is not available."
 }
 
-die_from_package_is_not_provided() {
+die_from_package_is_not_specified() {
     die "please provide a package name."
 }
 
-die_from_packages_is_not_provided() {
+die_from_packages_is_not_specified() {
     die "please provide at least one package name."
 }
 
@@ -204,7 +202,7 @@ uncompress() {
 }
 
 install_packages() {
-    [ -z "$TARGET_PACKAGE_LIST" ] && die_from_packages_is_not_provided
+    [ -z "$TARGET_PACKAGE_LIST" ] && die_from_packages_is_not_specified
     
     for toBeInstalledPkgName in $TARGET_PACKAGE_LIST
     do
@@ -281,7 +279,7 @@ tree_a_installed_package() {
 }
 
 uninstall_packages() {
-    [ -z "$1" ] && die_from_packages_is_not_provided
+    [ -z "$1" ] && die_from_packages_is_not_specified
     
     for packageName in $@
     do
@@ -428,10 +426,10 @@ load_formula_of_a_package() {
      
     . "$FORMULA_FILE_PATH" || die "$FORMULA_FILE_PATH is broken."
     
-    [ -z "$summary" ]  && die "summary variable must be provided in $FORMULA_FILE_PATH"
-    [ -z "$homepage" ] && die "homepage variable must be provided in $FORMULA_FILE_PATH"
-    [ -z "$sha256" ]   && die "sha256 variable must be provided in $FORMULA_FILE_PATH"
-    [ -z "$url" ]      && die "url variable must be provided in $FORMULA_FILE_PATH"
+    [ -z "$summary" ]  && die "summary variable must be specified in $FORMULA_FILE_PATH"
+    [ -z "$homepage" ] && die "homepage variable must be specified in $FORMULA_FILE_PATH"
+    [ -z "$sha256" ]   && die "sha256 variable must be specified in $FORMULA_FILE_PATH"
+    [ -z "$url" ]      && die "url variable must be specified in $FORMULA_FILE_PATH"
     [ -z "$version" ]  && version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
     [ -z "$version" ]  && die "version can't be parsed in $FORMULA_FILE_PATH"
 }
@@ -446,7 +444,7 @@ load_installed_info_of_a_package() {
 }
 
 cat_formula_of_a_package() {
-    [ -z "$1" ] && die_from_package_is_not_provided
+    [ -z "$1" ] && die_from_package_is_not_specified
     [ -z "$2" ] || warn "cat command accept only one parameter."
     
     is_package_available "$1" || die_from_package_is_not_available "$1"
@@ -461,7 +459,7 @@ cat_formula_of_a_package() {
 }
 
 edit_formula_of_a_package() {
-    [ -z "$1" ] && die_from_package_is_not_provided
+    [ -z "$1" ] && die_from_package_is_not_specified
     [ -z "$2" ] || warn "edit command accept only one parameter."
     
     is_package_available "$1" || die_from_package_is_not_available "$1"
@@ -506,7 +504,7 @@ upgrade_packages() {
 }
 
 reinstall_packages() {
-    [ -z "$TARGET_PACKAGE_LIST" ] && die_from_packages_is_not_provided
+    [ -z "$TARGET_PACKAGE_LIST" ] && die_from_packages_is_not_specified
      
     for packageName in $TARGET_PACKAGE_LIST
     do
@@ -535,7 +533,7 @@ search_packages() {
         
     for item in $(cd "$DIR_FORMULA" || exit 1; ls -1 *.sh | sed 's/.sh//g')
     do
-        echo "$item" | grep "$*"
+        echo "$item" | grep "$*" || true
     done
 }
 
@@ -563,7 +561,7 @@ print_prefix_of_a_package() {
 }
 
 logs_a_package() {
-    [ -z "$1" ] && die_from_package_is_not_provided
+    [ -z "$1" ] && die_from_package_is_not_specified
     is_package_installed "$1" || die_from_package_is_not_installed "$1"
     
     FILE_PATH_LOGS="$DIR_PKG/$1/logs"
@@ -577,7 +575,7 @@ logs_a_package() {
 }
 
 pack_a_package() {
-    [ -z "$1" ] && die_from_package_is_not_provided
+    [ -z "$1" ] && die_from_package_is_not_specified
     is_package_installed "$1" || die_from_package_is_not_installed "$1"
     
     [ -d "$DIR_BOTTLE" ] || mkdir -p "$DIR_BOTTLE"
