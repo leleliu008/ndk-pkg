@@ -242,12 +242,16 @@ install_a_package_for_all_target_abis() {
     
     for TARGET_ABI in $(printf "$TARGET_ABIS")
     do
-        make_env "$1" && {
-            eval test -z "$"build_$TIMESTAMP_UNIX && {
+        make_env "$1" || die "build $1/$TARGET_ABI failed!"
+        
+        if command -v prepare > /dev/null ; then
+            if eval test -z "$"build_$TIMESTAMP_UNIX ; then
                 eval "build_$TIMESTAMP_UNIX='true'"
-                build_first 2> /dev/null
-            } || true
-        } && build || die "build failed!"
+                prepare || die "build $1/$TARGET_ARCH failed!"
+            fi
+        fi
+        
+        build || die "build $1/$TARGET_ARCH failed!"
     done
 }
 
@@ -411,7 +415,7 @@ info_a_package() {
 load_formula_of_a_package() {
     is_package_available "$1" || die_from_package_is_not_available "$1"
 
-    unset -f build_first
+    unset -f prepare
     unset -f build
     unset url
     unset sha256
