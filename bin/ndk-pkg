@@ -15,8 +15,6 @@ DIR_BOTTLE="$NDK_PKG_HOME/bottles"
 DIR_BACKUP="$NDK_PKG_HOME/backup"
 DIR_PKG="$NDK_PKG_HOME/pkg"
 
-TARGET_ABIS='armeabi-v7a arm64-v8a x86 x86_64'
-
 
 #------------------------------------------------------------------------------
 
@@ -238,7 +236,7 @@ install_a_package() {
 install_a_package_for_all_target_abis() {
     unset "build_$TIMESTAMP_UNIX"
     
-    for TARGET_ABI in $(printf "$TARGET_ABIS")
+    for TARGET_ABI in $(list_target_abis)
     do
         make_env "$1" || die "build $1/$TARGET_ABI failed!"
         
@@ -349,25 +347,26 @@ list_outdated_packages() {
 }
 
 info_packages() {
+    unset INFO
+    unset TARGET_PACKAGE
+    unset TARGET_PACKAGE_LIST
+
     if [ -z "$1" ] ; then
         [ -d "$DIR_FORMULA" ] || update_formula_repository
-        cd "$DIR_FORMULA" || exit 1
-        unset INFO
-        for item in *.sh
-        do 
-            [ -z "$INFO" ] || echo "-----------------------------------------------------------"; 
-            info_a_package $(echo "$item" | sed 's/.sh//g')
-            INFO=true
-        done
+        TARGET_PACKAGE_LIST=$(cd "$DIR_FORMULA" || exit 1; ls *.sh | sed 's/.sh//g')
     else
-        unset INFO
-        for packageName in $@
-        do 
-            [ -z "$INFO" ] || echo "-----------------------------------------------------------"; 
-            info_a_package "$packageName"
-            INFO=true
-        done
+        TARGET_PACKAGE_LIST=$@
     fi
+
+    for TARGET_PACKAGE in $TARGET_PACKAGE_LIST
+    do
+        if [ "$INFO" = 'true' ] ; then
+            echo "============================================================"
+        else
+            INFO=true
+        fi
+        info_a_package "$TARGET_PACKAGE"
+    done
 }
 
 info_a_package() {
@@ -720,6 +719,7 @@ check_ANDROID_NDK_HOME() {
     [ -z "$ANDROID_ROOT" ] || export ANDROID_NDK_HOME="$ANDROID_ROOT"
     [ -z "$ANDROID_NDK_HOME" ] && die "please set ANDROID_NDK_HOME environment variable, then try again!"
     [ -d "$ANDROID_NDK_HOME" ] || die "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
+    export PATH=$ANDROID_NDK_HOME:$PATH
 }
 
 check_ANDROID_NDK_VERSION() {
@@ -728,33 +728,11 @@ check_ANDROID_NDK_VERSION() {
 }
 
 list_target_abis() {
-    print_list "$TARGET_ABIS"
+    print_list armeabi-v7a arm64-v8a x86 x86_64
 }
 
 list_target_apis() {
     print_list 21 22 23 34 25 26 27 28 29
-}
-
-#选择某个目标ABI，比如armeabi-v7a，可以通过ndk-pkg list target-abis命令列出支持的目标的名称
-select_target_abi_if_needed() {
-    [ -z "$TARGET_ABI" ] && {
-        info "below is the supported TARGET_ABIS:"
-        list_target_abis
-        info "please input your select TARGET_ABI:"
-        read -r TARGET_ABI
-        select_target_abi_if_needed
-    }
-}
-
-#选择某个目标API，比如21、22、23、34、25、26、27、28、29，可以通过ndk-pkg list target-apis命令列出支持的API level
-select_target_api_if_needed() {
-    [ -z "$TARGET_API" ] && {
-        info "below is the supported target-apis:"
-        list_target_apis
-        info "please input your selected target-api:"
-        read -r TARGET_API
-        select_target_api_if_needed
-    }
 }
 
 make_env() {
@@ -1029,11 +1007,11 @@ main() {
                     ;;
                 installed)
                     shift
-                    list_installed_packages "$@"
+                    list_installed_packages
                     ;;
                 outdated)
                     shift
-                    list_outdated_packages "$@"
+                    list_outdated_packages
                     ;;
                 *) help 1
             esac
