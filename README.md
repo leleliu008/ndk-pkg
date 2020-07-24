@@ -87,12 +87,10 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
 *   list the installed packages
         
         ndk-pkg list installed
-        ndk-pkg list installed -q
         
 *   list the outdated packages
         
         ndk-pkg list outdated
-        ndk-pkg list outdated -q
         
 *   is the specified package available ?
         
@@ -102,7 +100,7 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         
         ndk-pkg is installed curl
         
-*   is the specified package outdated
+*   is the specified package outdated ?
         
         ndk-pkg is outdated curl
         
@@ -112,10 +110,10 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         
 *   print the environment variable settings
         
-        ndk-pkg env curl --target-api=21 --target-abi=armeabi-v7a
-        ndk-pkg env curl --target-api=21 --target-abi=arm64-v8a
-        ndk-pkg env curl --target-api=21 --target-abi=x86
-        ndk-pkg env curl --target-api=21 --target-abi=x86_64
+        ndk-pkg env curl --target-api=21 --target-abi=armeabi-v7a - -x
+        ndk-pkg env curl --target-api=21 --target-abi=arm64-v8a -x
+        ndk-pkg env curl --target-api=21 --target-abi=x86 -x
+        ndk-pkg env curl --target-api=21 --target-abi=x86_64 -x
 
 *   update the [formula repository](https://github.com/leleliu008/ndk-pkg-formula)
         
