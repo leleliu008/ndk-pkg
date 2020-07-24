@@ -626,7 +626,7 @@ get_ndk_version_via_cut() {
 }
 
 get_ndk_version_via_sed() {
-    grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | sed 's/Pkg\.Revision = \(.*\).*/\1/'
+    grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | "$SED" 's/Pkg\.Revision = \(.*\).*/\1/'
 }
 
 get_ndk_version_via_ruby() {
@@ -692,12 +692,13 @@ get_ndk_version() {
     command -v perl > /dev/null && get_ndk_version_via_perl   && return 0    
     command -v node > /dev/null && get_ndk_version_via_nodejs && return 0
     
-    SED=$(command -v sed)
-    [ -z "$SED" ] && SED=$(command -v gsed)
+    SED=$(command -v gsed) ||
+    SED=$(command -v  sed)
     [ -z "$SED" ] || get_ndk_version_via_sed && return 0
      
-    PYTHON=$(command -v python3)
-    [ -z "$PYTHON" ] && PYTHON=$(command -v python)
+    PYTHON=$(command -v python3) ||
+    PYTHON=$(command -v python)  ||
+    PYTHON=$(command -v python2) 
     [ -z "$PYTHON" ] || get_ndk_version_via_python && return 0
 }
 
