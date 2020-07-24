@@ -52,13 +52,13 @@ function _ndk_pkg_available_packages() {
 
 function _ndk_pkg_installed_packages() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg list installed -q))
+    _installed_packages=($(ndk-pkg list installed))
     _describe 'installed-packages' _installed_packages
 }
 
 function _ndk_pkg_outdated_packages() {
     local -a _outdated_packages
-    _outdated_packages=($(ndk-pkg list outdated -q))
+    _outdated_packages=($(ndk-pkg list outdated))
     _describe 'outdated-packages' _outdated_packages
 }
 
@@ -91,25 +91,29 @@ function _ndk_pkg() {
                         ':package-name:_ndk_pkg_available_packages' \
                         '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))' \
                         '--target-abi=-[set target abi]:target-abi:($(ndk-pkg list target-abis))' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output log]'
+                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;
                 install)
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
                         '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output log]'
+                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
                         '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output log]'
+                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;
                 upgrade)
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
                         '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output log]'
+                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;
                 uninstall)
                     _arguments '*:package-name:_ndk_pkg_installed_packages' ;;
