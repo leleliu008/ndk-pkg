@@ -78,9 +78,14 @@ nproc() {
 }
 
 sed_in_place() {
-    command -v gsed > /dev/null && gsed -i "$1" "$2" && return 0
-    command -v sed  > /dev/null && (sed -i "$1" "$2" 2> /dev/null || sed -i "" "$1" "$2") && return 0
-    die "please install sed utility."
+    if command -v gsed > /dev/null ; then
+        gsed -i "$1" "$2"
+    elif command -v sed  > /dev/null ; then
+        sed -i    "$1" "$2" 2> /dev/null || 
+        sed -i "" "$1" "$2"
+    else
+        die "please install sed utility."
+    fi
 }
 
 format_unix_timestamp() {
@@ -95,6 +100,16 @@ getvalue() {
 is_exist_and_executable() {
     [ -f "$1" ] || die "$1 is not exist."
     [ -x "$1" ] || die "$1 is not executable."
+}
+
+is_sha256sum_match() {
+    if command -v openssl > /dev/null ; then
+        [ "$(openssl sha256 "$1" | awk '{print $2}')" = "$2" ]
+    elif command -v sha256sum > /dev/null ; then
+        [ "$(sha256sum "$1" | awk '{print $1}')" = "$2" ]
+    else
+        die "please install openssl or GNU CoreUtils."
+    fi
 }
 
 is_package_available() {
@@ -138,16 +153,6 @@ die_from_packages_is_not_provided() {
     die "please provide at least one package name."
 }
 
-is_sha256sum_match() {
-    if command -v openssl > /dev/null ; then
-        [ "$(openssl sha256 "$1" | awk '{print $2}')" = "$sha256" ]
-    elif command -v sha256sum > /dev/null ; then
-        [ "$(sha256sum "$1" | awk '{print $1}')" = "$sha256" ]
-    else
-        die "please install openssl or GNU CoreUtils."
-    fi
-}
-
 die_from_sha256sum_mismatch() {
     die "sha256sum mismatch."
 }
@@ -175,7 +180,7 @@ fetch_if_needed() {
     SRC_FILE_PATH="$DIR_DOWNLOAD/$SRC_FILE_NAME"
         
     if [ -f "$SRC_FILE_PATH" ] ; then
-        if is_sha256sum_match "$SRC_FILE_PATH" ; then
+        if is_sha256sum_match "$SRC_FILE_PATH" "$sha256" ; then
             success "$SRC_FILE_PATH is already downloaded."
         else
             rm "$SRC_FILE_PATH" && fetch_internal
@@ -218,7 +223,7 @@ install_packages() {
 install_a_package() {
     fetch_a_package "$1"
     
-    is_sha256sum_match "$SRC_FILE_PATH" || die_from_sha256sum_mismatch
+    is_sha256sum_match "$SRC_FILE_PATH" "$sha256" || die_from_sha256sum_mismatch
     
     [ -d "$DIR_PKG/$1" ] && rm -rf "$DIR_PKG/$1"
     
