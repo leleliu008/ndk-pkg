@@ -172,7 +172,7 @@ fetch_internal() {
 
 fetch_if_needed() {
     SRC_FILE_NAME=$(basename "$url") && 
-    SRC_FILE_NAME_EXT=$(echo "$SRC_FILE_NAME" | awk -F. '{print $NF}') && 
+    SRC_FILE_NAME_EXT=$(printf "$SRC_FILE_NAME" | awk -F. '{print $NF}') && 
     SRC_FILE_PATH="$DIR_DOWNLOAD/$SRC_FILE_NAME"
         
     if [ -f "$SRC_FILE_PATH" ] ; then
@@ -202,17 +202,17 @@ uncompress() {
 install_packages() {
     [ -z "$TARGET_PACKAGE_LIST" ] && die_from_packages_is_not_specified
     
-    for toBeInstalledPkgName in $TARGET_PACKAGE_LIST
+    for TARGET_PACKAGE in $TARGET_PACKAGE_LIST
     do
-        get_dependencies_of_a_package "$toBeInstalledPkgName"
+        get_dependencies_of_a_package "$TARGET_PACKAGE"
     done
-
-    for toBeInstalledPkgName in $(echo "$DEPENDENCIES $TARGET_PACKAGE_LIST")
+    
+    for TARGET_PACKAGE in $DEPENDENCIES $TARGET_PACKAGE_LIST
     do
-        is_package_installed "$toBeInstalledPkgName" &&
-        success "$toBeInstalledPkgName is already installed." &&
+        is_package_installed "$TARGET_PACKAGE" &&
+        success "$TARGET_PACKAGE is already installed." &&
         continue
-        install_a_package "$toBeInstalledPkgName"
+        install_a_package "$TARGET_PACKAGE"
     done
 }
 
@@ -223,31 +223,36 @@ install_a_package() {
     
     [ -d "$DIR_PKG/$1" ] && rm -rf "$DIR_PKG/$1"
     
-    DIR_SRC=$(mktemp -d) &&
-    cd "$DIR_SRC" &&
-    info "uncompressing $SRC_FILE_PATH" &&
-    uncompress "$SRC_FILE_PATH" "$SRC_FILE_NAME_EXT" &&
-    success "uncompressed in $DIR_SRC" &&
-    install_a_package_for_all_target_abis "$1" &&
-    install_a_package_success "$1" &&
-    rm -rf "$DIR_SRC"
+    if DIR_SRC=$(mktemp -d) ; then
+        cd "$DIR_SRC" || exit 1
+    else
+        die "create DIR_SRC directory failed!"
+    fi
+     
+    info "uncompressing $SRC_FILE_PATH"
+    if uncompress "$SRC_FILE_PATH" "$SRC_FILE_NAME_EXT" ; then
+        success "uncompressed in $DIR_SRC"
+    else
+        die "uncompress $SRC_FILE_PATH failed!"
+    fi
+
+    if command -v prepare > /dev/null ; then
+        prepare || die "build $1 failed!"
+    fi
+    
+    if install_a_package_for_all_target_abis "$1" ; then
+        install_a_package_success "$1"
+        rm -rf "$DIR_SRC"
+    else
+        die "build $1 failed! you can go to $DIR_SRC to see see."
+    fi
 }
 
 install_a_package_for_all_target_abis() {
-    unset "build_$TIMESTAMP_UNIX"
-    
     for TARGET_ABI in $(list_target_abis)
     do
-        make_env "$1" || die "build $1/$TARGET_ABI failed!"
-        
-        if command -v prepare > /dev/null ; then
-            if eval test -z "$"build_$TIMESTAMP_UNIX ; then
-                eval "build_$TIMESTAMP_UNIX='true'"
-                prepare || die "build $1/$TARGET_ARCH failed!"
-            fi
-        fi
-        
-        build || die "build $1/$TARGET_ARCH failed!"
+        make_env "$1" || die "build $1/$TARGET_ABI failed!" 
+        build         || die "build $1/$TARGET_ABI failed!"
     done
 }
 
@@ -270,10 +275,16 @@ EOF
 
 tree_a_installed_package() {
     DIR_INSTALL_PACKAGE="$DIR_PKG/$1"
+    
     [ -d "$DIR_INSTALL_PACKAGE" ] || die_from_package_is_not_installed "$1"
+    
     shift
-    command -v tree > /dev/null || die "please install tree utility."
-    tree $@ --dirsfirst "$DIR_INSTALL_PACKAGE"
+    
+    if command -v tree > /dev/null ; then    
+        tree $@ --dirsfirst "$DIR_INSTALL_PACKAGE"
+    else
+        die "please install tree utility."
+    fi
 }
 
 uninstall_packages() {
@@ -320,7 +331,7 @@ list_available_packages() {
         cd "$DIR_FORMULA" || exit 1
     fi
 
-    for item in $(ls *.sh | sed 's/.sh//g')
+    for item in $(ls *.sh | sed 's/\.sh//g')
     do
         echo "$item"
     done
@@ -353,7 +364,7 @@ info_packages() {
 
     if [ -z "$1" ] ; then
         [ -d "$DIR_FORMULA" ] || update_formula_repository
-        TARGET_PACKAGE_LIST=$(cd "$DIR_FORMULA" || exit 1; ls *.sh | sed 's/.sh//g')
+        TARGET_PACKAGE_LIST=$(cd "$DIR_FORMULA" || exit 1; ls *.sh | sed 's/\.sh//g')
     else
         TARGET_PACKAGE_LIST=$@
     fi
@@ -380,7 +391,7 @@ info_a_package() {
     [ -z "$dependencies" ] || {
         msg "depend_on :"
         unset DEPENDENCIES
-        for dependencyPkgName in $(echo "$dependencies")
+        for dependencyPkgName in $dependencies
         do
             if [ -z "$DEPENDENCIES" ] ; then
                 DEPENDENCIES=true
@@ -530,7 +541,7 @@ search_packages() {
     [ -z "$1" ] && die "please specify a keyword."
     [ -d "$DIR_FORMULA" ] || update_formula_repository
         
-    for item in $(cd "$DIR_FORMULA" || exit 1; ls -1 *.sh | sed 's/.sh//g')
+    for item in $(cd "$DIR_FORMULA" || exit 1; ls -1 *.sh | sed 's/\.sh//g')
     do
         echo "$item" | grep "$*" || true
     done
@@ -850,7 +861,7 @@ make_env() {
     CPPFLAGS=''
     LDFLAGS=''
 
-    for item in $(printf "$DEPENDENCIES")
+    for item in $DEPENDENCIES
     do
         item2=$(printf "$item" | tr '-' '_')
         ITEM_DIR_INSTALL_PREFIX="$DIR_PKG/$item/$TARGET_ABI"
@@ -918,7 +929,6 @@ parse_params() {
                     else
                         TARGET_PACKAGE_LIST="$TARGET_PACKAGE_LIST $1"
                     fi
-                    TARGET_PACKAGE_LIST=$(printf "$TARGET_PACKAGE_LIST")
                 fi
                 ;;
             *)  die "$1 is a invalid param."
