@@ -153,49 +153,113 @@ die_from_sha256sum_mismatch() {
     die "sha256sum mismatch."
 }
 
-fetch_internal() {
-    [ -d "$DIR_DOWNLOAD" ] || mkdir -p "$DIR_DOWNLOAD"
-    cd "$DIR_DOWNLOAD" || exit 1
+fetch_via_curl() {
+    info "Downloading $FETCH_URL"
     
+    if curl -L -o "$FETCH_OUTPUT_FILE_PATH" "$FETCH_URL" ; then
+        success "Downloaded $FETCH_OUTPUT_FILE_PATH"
+    else
+        die "Downloaded $FETCH_URL failed."
+    fi
+}
+
+fetch_via_wget() {
+    info "Downloading $FETCH_URL"
+    
+    if wget -O "$FETCH_OUTPUT_FILE_PATH" "$FETCH_URL" ; then
+        success "Downloaded $FETCH_URL success."
+    else
+        die "Downloaded $FETCH_URL failed."
+    fi
+}
+
+fetch_via_tools() {
     if command -v curl > /dev/null ; then
-        info "Downloding $url" &&
-        curl -LO "$url" &&
-        success "Downloaded $SRC_FILE_PATH"
+        fetch_via_curl
     elif command -v wget > /dev/null ; then
-        info "Downloding $url" &&
-        wget "$url" &&
-        success "Downloaded $SRC_FILE_PATH"
+        fetch_via_wget
     else
         die "please install curl or wget."
     fi
 }
 
-fetch_if_needed() {
-    SRC_FILE_NAME=$(basename "$url") && 
-    SRC_FILE_NAME_EXT=$(printf "$SRC_FILE_NAME" | awk -F. '{print $NF}') && 
-    SRC_FILE_PATH="$DIR_DOWNLOAD/$SRC_FILE_NAME"
-        
-    if [ -f "$SRC_FILE_PATH" ] ; then
-        if is_sha256sum_match "$SRC_FILE_PATH" "$sha256" ; then
-            success "$SRC_FILE_PATH is already downloaded."
+#fetch url [--output-dir=DIR | --output-file=FILE --sha256=SHA256]
+fetch() {
+    unset FETCH_URL
+    unset FETCH_OUTPUT_DIR
+    unset FETCH_OUTPUT_FILE_PATH
+    unset FETCH_OUTPUT_FILE_SHA256
+    
+    FETCH_URL="$1"
+    if [ -z "$FETCH_URL" ] ; then
+        die "please specify a fetch url."
+    fi
+    
+    shift
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --sha256=*)
+                FETCH_OUTPUT_FILE_SHA256=$(getvalue "$1")
+                ;;
+            --output-dir=*)
+                FETCH_OUTPUT_DIR=$(getvalue "$1")
+                if [ -z "$FETCH_OUTPUT_DIR" ] ; then
+                    die "--output-dir argument's value must be not empty."
+                fi
+                ;;
+            --output-file=*)
+                FETCH_OUTPUT_FILE_PATH=$(getvalue "$1")
+                if [ -z "$FETCH_OUTPUT_FILE_PATH" ] ; then
+                    die "--output-file argument's value must be not empty."
+                fi
+                ;;
+        esac
+        shift
+    done
+    
+    if [ -z "$FETCH_OUTPUT_DIR" ] ; then
+        FETCH_OUTPUT_DIR="$PWD"
+    fi
+    
+    if [ -z "$FETCH_OUTPUT_FILE_PATH" ] ; then
+        FETCH_OUTPUT_FILE_PATH="$FETCH_OUTPUT_DIR/$(basename "$FETCH_URL")"
+    else
+        case $FETCH_OUTPUT_FILE_PATH in
+            /*) ;;
+            \~*)FETCH_OUTPUT_FILE_PATH="${HOME}$(printf "$FETCH_OUTPUT_FILE_PATH" | awk '{print(substr($0, 1))}')" ;;
+            *)  FETCH_OUTPUT_FILE_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_FILE_PATH" ;;
+        esac
+    fi
+    
+    info "FETCH_URL = $FETCH_URL"
+    info "FETCH_OUTPUT_FILE_PATH   = $FETCH_OUTPUT_FILE_PATH"
+    info "FETCH_OUTPUT_FILE_SHA256 = $FETCH_OUTPUT_FILE_SHA256"
+    
+    if [ -f "$FETCH_OUTPUT_FILE_PATH" ] ; then
+        if [ -n "$FETCH_OUTPUT_FILE_SHA256" ] && is_sha256sum_match "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256" ; then
+            success "$FETCH_OUTPUT_FILE_PATH is already downloaded."
         else
-            rm "$SRC_FILE_PATH" && fetch_internal
+            rm "$FETCH_OUTPUT_FILE_PATH" && fetch_via_tools
         fi
     else
-        fetch_internal
+        fetch_via_tools
     fi
 }
 
 fetch_a_package() {
     load_formula_of_a_package "$1"
-    fetch_if_needed
+    fetch "$url" --sha256="$sha256" --output-dir="$DIR_DOWNLOAD"
 }
 
 uncompress() {
-    case "$2" in
-        zip) unzip "$1";;
-        xz|gz|bz2) tar xf "$1" --strip-components 1;;
-        *) false;;
+    case $1 in
+        *.zip)
+            unzip "$1";;
+        *.xz|*.gz|*.bz2|*.tgz|*.txz)
+            tar xf "$1" --strip-components 1;;
+        *)  die "$1 : extension isn't recognized. the supported extensions are .zip .xz .gz .bz2 .tgz .txz";;
     esac
 }
 
@@ -219,7 +283,7 @@ install_packages() {
 install_a_package() {
     fetch_a_package "$1"
     
-    is_sha256sum_match "$SRC_FILE_PATH" "$sha256" || die_from_sha256sum_mismatch
+    is_sha256sum_match "$FETCH_OUTPUT_FILE_PATH" "$sha256" || die_from_sha256sum_mismatch
     
     [ -d "$DIR_PKG/$1" ] && rm -rf "$DIR_PKG/$1"
     
@@ -229,11 +293,11 @@ install_a_package() {
         die "create DIR_SRC directory failed!"
     fi
      
-    info "uncompressing $SRC_FILE_PATH"
-    if uncompress "$SRC_FILE_PATH" "$SRC_FILE_NAME_EXT" ; then
+    info "uncompressing $FETCH_OUTPUT_FILE_PATH"
+    if uncompress "$FETCH_OUTPUT_FILE_PATH" ; then
         success "uncompressed in $DIR_SRC"
     else
-        die "uncompress $SRC_FILE_PATH failed!"
+        die "uncompress $FETCH_OUTPUT_FILE_PATH failed!"
     fi
 
     if command -v prepare > /dev/null ; then
@@ -338,7 +402,9 @@ list_available_packages() {
 }
 
 list_installed_packages() {
-    for packageName in $(cd "$DIR_PKG" 2>/dev/null || exit 1; ls)
+    cd "$DIR_PKG" 2>/dev/null || exit 1
+
+    for packageName in *
     do
         if is_package_installed "$packageName" ; then
             echo "$packageName"
@@ -347,7 +413,9 @@ list_installed_packages() {
 }
 
 list_outdated_packages() {
-    for packageName in $(cd "$DIR_PKG" 2>/dev/null || exit 1; ls)
+    cd "$DIR_PKG" 2>/dev/null || exit 1
+
+    for packageName in *
     do
         is_package_available "$packageName" || continue
         is_package_installed "$packageName" || continue
@@ -440,7 +508,7 @@ load_formula_of_a_package() {
     [ -z "$homepage" ] && die "homepage variable must be specified in $FORMULA_FILE_PATH"
     [ -z "$sha256" ]   && die "sha256 variable must be specified in $FORMULA_FILE_PATH"
     [ -z "$url" ]      && die "url variable must be specified in $FORMULA_FILE_PATH"
-    [ -z "$version" ]  && version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+    [ -z "$version" ]  && version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
     [ -z "$version" ]  && die "version can't be parsed in $FORMULA_FILE_PATH"
 }
 
