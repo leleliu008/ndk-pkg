@@ -154,22 +154,22 @@ die_from_sha256sum_mismatch() {
 }
 
 fetch_via_curl() {
-    info "Downloading $FETCH_URL"
+    info "Fetching $FETCH_URL"
     
     if curl -L -o "$FETCH_OUTPUT_FILE_PATH" "$FETCH_URL" ; then
-        success "Downloaded $FETCH_OUTPUT_FILE_PATH"
+        success "Fetched $FETCH_OUTPUT_FILE_PATH"
     else
-        die "Downloaded $FETCH_URL failed."
+        die "Fetched $FETCH_URL failed."
     fi
 }
 
 fetch_via_wget() {
-    info "Downloading $FETCH_URL"
+    info "Fetching $FETCH_URL"
     
     if wget -O "$FETCH_OUTPUT_FILE_PATH" "$FETCH_URL" ; then
-        success "Downloaded $FETCH_URL success."
+        success "Fetched $FETCH_URL success."
     else
-        die "Downloaded $FETCH_URL failed."
+        die "Fetched $FETCH_URL failed."
     fi
 }
 
@@ -233,7 +233,7 @@ fetch() {
         esac
     fi
     
-    info "FETCH_URL = $FETCH_URL"
+    echo 
     info "FETCH_OUTPUT_FILE_PATH   = $FETCH_OUTPUT_FILE_PATH"
     info "FETCH_OUTPUT_FILE_SHA256 = $FETCH_OUTPUT_FILE_SHA256"
     
@@ -246,6 +246,26 @@ fetch() {
     else
         fetch_via_tools
     fi
+}
+
+fetch_config_url() {
+    echo "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.$1;hb=HEAD"
+}
+
+fetch_config_xx() {
+    if [ -z "$2" ] ; then
+        fetch $(fetch_config_url $1) --output-file=config.$1
+    else
+        fetch $(fetch_config_url $1) --output-file=config.$1 --output-dir=$2
+    fi
+}
+
+fetch_config_sub() {
+    fetch_config_xx sub $1
+}
+
+fetch_config_guess() {
+    fetch_config_xx guess $1
 }
 
 fetch_a_package() {
