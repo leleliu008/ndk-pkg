@@ -93,19 +93,23 @@ getvalue() {
     echo "$1" | cut -d= -f2
 }
 
-is_exist_and_executable() {
-    [ -f "$1" ] || die "$1 is not exist."
-    [ -x "$1" ] || die "$1 is not executable."
-}
-
-is_sha256sum_match() {
+sha256sum() {
     if command -v openssl > /dev/null ; then
-        [ "$(openssl sha256 "$1" | awk '{print $2}')" = "$2" ]
+        openssl sha256 "$1" | awk '{print $2}'
     elif command -v sha256sum > /dev/null ; then
-        [ "$(sha256sum "$1" | awk '{print $1}')" = "$2" ]
+        sha256sum "$1" | awk '{print $1}'
     else
         die "please install openssl or GNU CoreUtils."
     fi
+}
+
+is_sha256sum_match() {
+    [ "$(sha256sum $1)" = "$2" ]
+}
+
+is_exist_and_executable() {
+    [ -f "$1" ] || die "$1 is not exist."
+    [ -x "$1" ] || die "$1 is not executable."
 }
 
 is_package_available() {
@@ -157,7 +161,7 @@ fetch_via_curl() {
     info "Fetching $FETCH_URL"
     
     if curl -L -o "$FETCH_OUTPUT_FILE_PATH" "$FETCH_URL" ; then
-        success "Fetched $FETCH_OUTPUT_FILE_PATH"
+        success "Fetched $FETCH_URL success."
     else
         die "Fetched $FETCH_URL failed."
     fi
@@ -173,7 +177,32 @@ fetch_via_wget() {
     fi
 }
 
-fetch_via_tools() {
+fetch_via_git() {
+    info "Fetching $FETCH_URL"
+    
+    if [ -d "$FETCH_OUTPUT_DIR" ] ; then
+        mkdir -p "$FETCH_OUTPUT_DIR"
+    fi
+
+    if [ -d "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" ] ; then
+        if  git -C "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" rev-parse 2> /dev/null ; then
+            git -C "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" pull
+        else
+            rm -rf "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" &&
+            git -C "$FETCH_OUTPUT_DIR" clone "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+        fi
+    else
+        git -C "$FETCH_OUTPUT_DIR" clone "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+    fi
+    
+    if [ $? -eq 0 ] ; then
+        success "Fetched to $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME success."
+    else
+        die "Fetched to $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME failed."
+    fi
+}
+
+fetch_archive_via_tools() {
     if command -v curl > /dev/null ; then
         fetch_via_curl
     elif command -v wget > /dev/null ; then
@@ -183,10 +212,11 @@ fetch_via_tools() {
     fi
 }
 
-#fetch url [--output-dir=DIR | --output-file=FILE --sha256=SHA256]
+#fetch <URL> [--output-dir=DIR | --output-name=NAME --sha256=SHA256]
 fetch() {
     unset FETCH_URL
     unset FETCH_OUTPUT_DIR
+    unset FETCH_OUTPUT_NAME
     unset FETCH_OUTPUT_FILE_PATH
     unset FETCH_OUTPUT_FILE_SHA256
     
@@ -196,7 +226,7 @@ fetch() {
     fi
     
     shift
-
+    
     while [ -n "$1" ]
     do
         case $1 in
@@ -209,43 +239,54 @@ fetch() {
                     die "--output-dir argument's value must be not empty."
                 fi
                 ;;
-            --output-file=*)
-                FETCH_OUTPUT_FILE_PATH=$(getvalue "$1")
-                if [ -z "$FETCH_OUTPUT_FILE_PATH" ] ; then
-                    die "--output-file argument's value must be not empty."
+            --output-name=*)
+                FETCH_OUTPUT_NAME=$(getvalue "$1")
+                if [ -z "$FETCH_OUTPUT_NAME" ] ; then
+                    die "--output-name argument's value must be not empty."
                 fi
                 ;;
         esac
         shift
     done
     
-    if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-        FETCH_OUTPUT_DIR="$PWD"
-    fi
-    
-    if [ -z "$FETCH_OUTPUT_FILE_PATH" ] ; then
-        FETCH_OUTPUT_FILE_PATH="$FETCH_OUTPUT_DIR/$(basename "$FETCH_URL")"
-    else
-        case $FETCH_OUTPUT_FILE_PATH in
-            /*) ;;
-            \~*)FETCH_OUTPUT_FILE_PATH="${HOME}$(printf "$FETCH_OUTPUT_FILE_PATH" | awk '{print(substr($0, 1))}')" ;;
-            *)  FETCH_OUTPUT_FILE_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_FILE_PATH" ;;
-        esac
-    fi
-    
-    echo 
-    info "FETCH_OUTPUT_FILE_PATH   = $FETCH_OUTPUT_FILE_PATH"
-    info "FETCH_OUTPUT_FILE_SHA256 = $FETCH_OUTPUT_FILE_SHA256"
-    
-    if [ -f "$FETCH_OUTPUT_FILE_PATH" ] ; then
-        if [ -n "$FETCH_OUTPUT_FILE_SHA256" ] && is_sha256sum_match "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256" ; then
-            success "$FETCH_OUTPUT_FILE_PATH is already downloaded."
-        else
-            rm "$FETCH_OUTPUT_FILE_PATH" && fetch_via_tools
-        fi
-    else
-        fetch_via_tools
-    fi
+    [ -z "$FETCH_OUTPUT_DIR" ] && FETCH_OUTPUT_DIR="$PWD"
+     
+    case $FETCH_URL in
+        *.git)
+            if [ -z "$FETCH_OUTPUT_NAME" ] ; then
+                FETCH_OUTPUT_NAME=$(basename "$FETCH_URL" .git)
+            fi
+            fetch_via_git
+            ;;
+        *)
+            if [ -z "$FETCH_OUTPUT_NAME" ] ; then
+                FETCH_OUTPUT_NAME=$(basename "$FETCH_URL")
+            fi
+             
+            FETCH_OUTPUT_FILE_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME"
+             
+            echo 
+            info "FETCH_OUTPUT_FILE_PATH   = $FETCH_OUTPUT_FILE_PATH"
+            info "FETCH_OUTPUT_FILE_SHA256 = $FETCH_OUTPUT_FILE_SHA256"
+             
+            if [ -f "$FETCH_OUTPUT_FILE_PATH" ] ; then
+                if [ -n "$FETCH_OUTPUT_FILE_SHA256" ] ; then
+                    if is_sha256sum_match "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256" ; then
+                        success "$FETCH_OUTPUT_FILE_PATH is already downloaded."
+                        return 0
+                    fi
+                fi
+                rm -f "$FETCH_OUTPUT_FILE_PATH"
+            fi
+
+            fetch_archive_via_tools
+            
+            if [ -n "$FETCH_OUTPUT_FILE_SHA256" ] ; then
+                if ! is_sha256sum_match "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256" ; then
+                    die_from_sha256sum_mismatch
+                fi
+            fi
+    esac
 }
 
 fetch_config_url() {
@@ -254,9 +295,9 @@ fetch_config_url() {
 
 fetch_config_xx() {
     if [ -z "$2" ] ; then
-        fetch $(fetch_config_url $1) --output-file=config.$1
+        fetch $(fetch_config_url $1) --output-name=config.$1
     else
-        fetch $(fetch_config_url $1) --output-file=config.$1 --output-dir=$2
+        fetch $(fetch_config_url $1) --output-name=config.$1 --output-dir=$2
     fi
 }
 
@@ -273,12 +314,32 @@ fetch_a_package() {
     fetch "$url" --sha256="$sha256" --output-dir="$DIR_DOWNLOAD"
 }
 
+unzip() {
+    info "uncompressing $1"
+    
+    if command unzip "$1" ; then
+        success "uncompressed in $2"
+    else
+        die "uncompress $1 failed!"
+    fi
+}
+
+untar() {
+    info "uncompressing $1"
+    
+    if tar xf "$1" --strip-components 1 ; then
+        success "uncompressed in $2"
+    else
+        die "uncompress $1 failed!"
+    fi
+}
+
 uncompress() {
     case $1 in
         *.zip)
-            unzip "$1";;
+            unzip "$1" "$2";;
         *.xz|*.gz|*.bz2|*.tgz|*.txz)
-            tar xf "$1" --strip-components 1;;
+            untar "$1" "$2";;
         *)  die "$1 : extension isn't recognized. the supported extensions are .zip .xz .gz .bz2 .tgz .txz";;
     esac
 }
@@ -303,8 +364,6 @@ install_packages() {
 install_a_package() {
     fetch_a_package "$1"
     
-    is_sha256sum_match "$FETCH_OUTPUT_FILE_PATH" "$sha256" || die_from_sha256sum_mismatch
-    
     [ -d "$DIR_PKG/$1" ] && rm -rf "$DIR_PKG/$1"
     
     if DIR_SRC=$(mktemp -d) ; then
@@ -313,35 +372,33 @@ install_a_package() {
         die "create DIR_SRC directory failed!"
     fi
      
-    info "uncompressing $FETCH_OUTPUT_FILE_PATH"
-    if uncompress "$FETCH_OUTPUT_FILE_PATH" ; then
-        success "uncompressed in $DIR_SRC"
-    else
-        die "uncompress $FETCH_OUTPUT_FILE_PATH failed!"
-    fi
-
+    case $FETCH_URL in
+        *.git)  cp -r $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME/* "$DIR_SRC" ;;
+        *)      uncompress "$FETCH_OUTPUT_FILE_PATH" "$DIR_SRC"
+    esac
+    
     if command -v prepare > /dev/null ; then
-        prepare || die "build $1 failed!"
+        prepare || die "install $1 failed! you can go to $DIR_SRC to see see."
     fi
     
     if install_a_package_for_all_target_abis "$1" ; then
         install_a_package_success "$1"
         rm -rf "$DIR_SRC"
     else
-        die "build $1 failed! you can go to $DIR_SRC to see see."
+        die "install $1 failed! you can go to $DIR_SRC to see see."
     fi
 }
 
 install_a_package_for_all_target_abis() {
     for TARGET_ABI in $(list_target_abis)
     do
-        make_env "$1" || die "build $1/$TARGET_ABI failed!" 
-        build         || die "build $1/$TARGET_ABI failed!"
+        make_env "$1" || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see." 
+        build         || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
     done
 }
 
 install_a_package_success() {
-    [ -d "$DIR_INSTALL_PACKAGE" ] || die "$1 build failed. installed nothing."
+    [ -d "$DIR_INSTALL_PACKAGE" ] || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
     
     cat > "$DIR_INSTALL_PACKAGE/installed" <<EOF
 installed_time=$TIMESTAMP_UNIX
@@ -350,7 +407,7 @@ installed_ndk_version=$ANDROID_NDK_VERSION
 installed_target_api=$TARGET_API
 EOF
     
-    success "$1 build success. in $DIR_INSTALL_PACKAGE directory."
+    success "$1 installed success. in $DIR_INSTALL_PACKAGE directory."
     
     if command -v tree > /dev/null ; then
         tree -L 3 --dirsfirst "$DIR_INSTALL_PACKAGE"
@@ -575,23 +632,10 @@ edit_formula_of_a_package() {
 update_formula_repository() {
     info "Updating formula repository."
 
-    if [ -d "$DIR_FORMULA" ] ; then
-        if  git -C "$DIR_FORMULA" rev-parse 2> /dev/null ; then
-            git -C "$DIR_FORMULA" pull
-        else
-            rm -rf "$DIR_FORMULA" &&
-            git -C "$NDK_PKG_HOME" clone "$NDK_PKG_FORMULA_REPO_URL" formula
-        fi
-    else
-        mkdir -p "$NDK_PKG_HOME" &&
-        git -C "$NDK_PKG_HOME" clone "$NDK_PKG_FORMULA_REPO_URL" formula
-    fi
-    
-    if [ $? -eq 0 ] ; then
-        success "update formula repository success."
-    else
-        die "update formula repository failed."
-    fi
+    FETCH_URL="$NDK_PKG_FORMULA_REPO_URL"
+    FETCH_OUTPUT_DIR="$NDK_PKG_HOME"
+    FETCH_OUTPUT_NAME=formula
+    fetch_via_git
 }
 
 upgrade_packages() {
@@ -984,6 +1028,7 @@ parse_params() {
     unset TARGET_PACKAGE_LIST
     unset COMMAND
     unset VERBOSE
+    unset XTRACE
     
     COMMAND="$1"
     
@@ -1002,6 +1047,7 @@ parse_params() {
                 VERBOSE=true
                 ;;
             --xtrace|-x)
+                XTRACE=true
                 set -x
                 ;;
             [a-z]*)
