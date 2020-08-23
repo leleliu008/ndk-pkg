@@ -5,52 +5,43 @@
 # requirement: Android NDK version must be r19 or newer.
 #------------------------------------------------------------------------------
 
-NDK_PKG_VERSION=0.1.0
-NDK_PKG_HOME="$HOME/.ndk-pkg"
-NDK_PKG_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula.git'
+# MY represents this software's
+MY_VERSION=0.1.0
+MY_HOME_PAGE='https://github.com/leleliu008/ndk-pkg'
 
-DIR_FORMULA="$NDK_PKG_HOME/formula"
-DIR_DOWNLOAD="$NDK_PKG_HOME/downloads"
-DIR_BOTTLE="$NDK_PKG_HOME/bottles"
-DIR_BACKUP="$NDK_PKG_HOME/backup"
-DIR_PKG="$NDK_PKG_HOME/pkg"
-
-
-#------------------------------------------------------------------------------
-
-Color_Red='\033[0;31m'          # Red
-Color_Green='\033[0;32m'        # Green
-Color_Yellow='\033[0;33m'       # Yellow
-Color_Blue='\033[0;34m'         # Blue
-Color_Purple='\033[0;35m'       # Purple
-Color_Off='\033[0m'             # Reset
+COLOR_RED='\033[0;31m'          # Red
+COLOR_GREEN='\033[0;32m'        # Green
+COLOR_YELLOW='\033[0;33m'       # Yellow
+COLOR_BLUE='\033[0;34m'         # Blue
+COLOR_PURPLE='\033[0;35m'       # Purple
+COLOR_OFF='\033[0m'             # Reset
 
 msg() {
     printf "%b" "$*"
 }
 
 echo() {
-    msg "$@\n"
+    msg "$*\n"
 }
 
 info() {
-    msg "${Color_Purple}$@\n${Color_Off}"
+    msg "${COLOR_PURPLE}$*\n${COLOR_OFF}"
 }
 
 success() {
-    msg "${Color_Green}[✔] $@\n${Color_Off}"
+    msg "${COLOR_GREEN}[✔] $*\n${COLOR_OFF}"
 }
 
 warn() {
-    msg "${Color_Yellow}🔥 $@\n${Color_Off}"
+    msg "${COLOR_YELLOW}🔥 $*\n${COLOR_OFF}"
 }
 
 error() {
-    msg "${Color_Red}[✘] $@\n${Color_Off}"
+    msg "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
 }
 
 die() {
-    msg "${Color_Red}[✘] $@\n${Color_Off}"
+    msg "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
     exit 1
 }
 
@@ -105,52 +96,6 @@ sha256sum() {
 
 is_sha256sum_match() {
     [ "$(sha256sum $1)" = "$2" ]
-}
-
-is_exist_and_executable() {
-    [ -f "$1" ] || die "$1 is not exist."
-    [ -x "$1" ] || die "$1 is not executable."
-}
-
-is_package_available() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    [ -f "$DIR_FORMULA/$1.sh" ]
-}
-
-is_package_installed() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    [ -d "$DIR_PKG/$1" ] &&
-    [ -f "$DIR_PKG/$1/installed" ]
-}
-
-is_package_outdated() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    [ -z "$2" ] || warn "outdated? command accept only one parameter."
-    
-    is_package_available "$1" || die_from_package_is_not_available "$1"
-    is_package_installed "$1" || die_from_package_is_not_installed "$1"
-
-    load_formula_of_a_package "$1"
-    load_installed_info_of_a_package "$1"
-
-    [ "$version" = "$installed_pkg_version" ] && return 1
-    [ "$version" = $(printf "$version\n$installed_pkg_version" | sort --version-sort --reverse | head -n 1) ]
-}
-
-die_from_package_is_not_installed() {
-    die "$1 is not installed."
-}
-
-die_from_package_is_not_available() {
-    die "$1 is not available."
-}
-
-die_from_package_is_not_specified() {
-    die "please provide a package name."
-}
-
-die_from_packages_is_not_specified() {
-    die "please provide at least one package name."
 }
 
 die_from_sha256sum_mismatch() {
@@ -344,104 +289,30 @@ uncompress() {
     esac
 }
 
-install_packages() {
-    [ -z "$TARGET_PACKAGE_LIST" ] && die_from_packages_is_not_specified
-    
-    for TARGET_PACKAGE in $TARGET_PACKAGE_LIST
-    do
-        get_dependencies_of_a_package "$TARGET_PACKAGE"
-    done
-    
-    for TARGET_PACKAGE in $DEPENDENCIES $TARGET_PACKAGE_LIST
-    do
-        is_package_installed "$TARGET_PACKAGE" &&
-        success "$TARGET_PACKAGE is already installed." &&
-        continue
-        install_a_package "$TARGET_PACKAGE"
-    done
+is_exist_and_executable() {
+    [ -f "$1" ] || die "$1 is not exist."
+    [ -x "$1" ] || die "$1 is not executable."
 }
 
-install_a_package() {
-    fetch_a_package "$1"
-    
-    [ -d "$DIR_PKG/$1" ] && rm -rf "$DIR_PKG/$1"
-    
-    if DIR_SRC=$(mktemp -d) ; then
-        cd "$DIR_SRC" || exit 1
-    else
-        die "create DIR_SRC directory failed!"
-    fi
-     
-    case $FETCH_URL in
-        *.git)  cp -r $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME/* "$DIR_SRC" ;;
-        *)      uncompress "$FETCH_OUTPUT_FILE_PATH" "$DIR_SRC"
-    esac
-    
-    if command -v prepare > /dev/null ; then
-        prepare || die "install $1 failed! you can go to $DIR_SRC to see see."
-    fi
-    
-    if install_a_package_for_all_target_abis "$1" ; then
-        install_a_package_success "$1"
-        rm -rf "$DIR_SRC"
-    else
-        die "install $1 failed! you can go to $DIR_SRC to see see."
-    fi
+is_package_available() {
+    [ -z "$1" ] && die_from_package_is_not_specified
+    [ -f "$DIR_FORMULA/$1.sh" ]
 }
 
-install_a_package_for_all_target_abis() {
-    for TARGET_ABI in $(list_target_abis)
-    do
-        make_env "$1" || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see." 
-        build         || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
-    done
+die_from_package_is_not_specified() {
+    die "please provide a package name."
 }
 
-install_a_package_success() {
-    [ -d "$DIR_INSTALL_PACKAGE" ] || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
-    
-    cat > "$DIR_INSTALL_PACKAGE/installed" <<EOF
-installed_time=$TIMESTAMP_UNIX
-installed_pkg_version=$version
-installed_ndk_version=$ANDROID_NDK_VERSION
-installed_target_api=$TARGET_API
-EOF
-    
-    success "$1 installed success. in $DIR_INSTALL_PACKAGE directory."
-    
-    if command -v tree > /dev/null ; then
-        tree -L 3 --dirsfirst "$DIR_INSTALL_PACKAGE"
-    fi
+die_from_packages_is_not_specified() {
+    die "please provide at least one package name."
 }
 
-tree_a_installed_package() {
-    DIR_INSTALL_PACKAGE="$DIR_PKG/$1"
-    
-    [ -d "$DIR_INSTALL_PACKAGE" ] || die_from_package_is_not_installed "$1"
-    
-    shift
-    
-    if command -v tree > /dev/null ; then    
-        tree $@ --dirsfirst "$DIR_INSTALL_PACKAGE"
-    else
-        die "please install tree utility."
-    fi
+die_from_package_is_not_available() {
+    die "$1 is not available."
 }
 
-uninstall_packages() {
-    [ -z "$1" ] && die_from_packages_is_not_specified
-    
-    for packageName in $@
-    do
-        uninstall_a_package "$packageName"
-    done
-}
-
-uninstall_a_package() {
-    [ -d "$DIR_PKG/$1" ] || die_from_package_is_not_installed "$1"
-    info "uninstalling $1..." &&
-    rm -rf "$DIR_PKG/$1" &&
-    success "$1 uninstalled."
+die_from_package_is_not_installed() {
+    die "$1 is not installed."
 }
 
 list_available_packages() {
@@ -502,100 +373,34 @@ list_outdated_packages() {
     done
 }
 
-info_packages() {
-    unset INFO
-    unset TARGET_PACKAGE
-    unset TARGET_PACKAGE_LIST
-
-    if [ -z "$1" ] ; then
-        [ -d "$DIR_FORMULA" ] || update_formula_repository
-        TARGET_PACKAGE_LIST=$(cd "$DIR_FORMULA" || exit 1; ls *.sh | sed 's/\.sh//g')
+tree_a_installed_package() {
+    DIR_INSTALL_PACKAGE="$DIR_PKG/$1"
+    
+    [ -d "$DIR_INSTALL_PACKAGE" ] || die_from_package_is_not_installed "$1"
+    
+    shift
+    
+    if command -v tree > /dev/null ; then    
+        tree $@ --dirsfirst "$DIR_INSTALL_PACKAGE"
     else
-        TARGET_PACKAGE_LIST=$@
+        die "please install tree utility."
     fi
+}
 
-    for TARGET_PACKAGE in $TARGET_PACKAGE_LIST
+uninstall_packages() {
+    [ -z "$1" ] && die_from_packages_is_not_specified
+    
+    for packageName in $@
     do
-        if [ "$INFO" = 'true' ] ; then
-            echo "============================================================"
-        else
-            INFO=true
-        fi
-        info_a_package "$TARGET_PACKAGE"
+        uninstall_a_package "$packageName"
     done
 }
 
-info_a_package() {
-    load_formula_of_a_package "$1"
-     
-    echo "name      : $1"
-    echo "summary   : $summary"
-    echo "homepage  : $homepage"
-    echo "available : $version"
-    
-    [ -z "$dependencies" ] || {
-        msg "depend_on :"
-        unset DEPENDENCIES
-        for dependencyPkgName in $dependencies
-        do
-            if [ -z "$DEPENDENCIES" ] ; then
-                DEPENDENCIES=true
-                msg " "
-            else
-                msg "            "
-            fi
-
-            if is_package_installed "$dependencyPkgName" ; then
-                echo "$dependencyPkgName ${Color_Green}✔${Color_Off}"
-            else
-                echo "$dependencyPkgName ${Color_Red}✘${Color_Off}"
-            fi
-        done
-    }
-     
-    if is_package_installed "$1" ; then
-        load_installed_info_of_a_package "$1"
-        echo "installed ${Color_Purple}==>${Color_Off} $(du -sh "$DIR_PKG/$1" | awk '{print $2, $1}')"
-        echo "install_time: $(format_unix_timestamp $installed_time '+%Y/%m/%d %H:%M:%S')"
-        echo "pkg_version : $installed_pkg_version"
-        echo "ndk_version : $installed_ndk_version"
-        echo "target_api  : $installed_target_api"
-    else
-        echo "installed : ${Color_Red}✘${Color_Off}"
-    fi
-}
-
-load_formula_of_a_package() {
-    is_package_available "$1" || die_from_package_is_not_available "$1"
-
-    unset -f prepare
-    unset -f build
-    unset url
-    unset sha256
-    unset version
-    unset summary
-    unset homepage
-    unset dependencies
-    
-    FORMULA_FILE_PATH="$DIR_FORMULA/$1.sh"
-     
-    . "$FORMULA_FILE_PATH" || die "$FORMULA_FILE_PATH is broken."
-    
-    [ -z "$summary" ]  && die "summary variable must be specified in $FORMULA_FILE_PATH"
-    [ -z "$homepage" ] && die "homepage variable must be specified in $FORMULA_FILE_PATH"
-    [ -z "$sha256" ]   && die "sha256 variable must be specified in $FORMULA_FILE_PATH"
-    [ -z "$url" ]      && die "url variable must be specified in $FORMULA_FILE_PATH"
-    [ -z "$version" ]  && version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
-    [ -z "$version" ]  && die "version can't be parsed in $FORMULA_FILE_PATH"
-}
-
-load_installed_info_of_a_package() {
-    unset installed_time
-    unset installed_pkg_version
-    unset installed_ndk_version
-    unset installed_target_api
-    
-    . "$DIR_PKG/$1/installed"
+uninstall_a_package() {
+    [ -d "$DIR_PKG/$1" ] || die_from_package_is_not_installed "$1"
+    info "uninstalling $1..." &&
+    rm -rf "$DIR_PKG/$1" &&
+    success "$1 uninstalled."
 }
 
 cat_formula_of_a_package() {
@@ -609,7 +414,7 @@ cat_formula_of_a_package() {
     else
         cat "$DIR_FORMULA/$1.sh"
         echo
-        warn "if you want to have a better experience, I strongly recommend you install ${Color_Red}bat${Color_Off} on your os. For more details, see ${Color_Red}https://github.com/sharkdp/bat${Color_Off}"
+        warn "if you want to have a better experience, I strongly recommend you install ${COLOR_RED}bat${COLOR_OFF} on your os. For more details, see ${COLOR_RED}https://github.com/sharkdp/bat${COLOR_OFF}"
     fi    
 }
 
@@ -632,8 +437,8 @@ edit_formula_of_a_package() {
 update_formula_repository() {
     info "Updating formula repository."
 
-    FETCH_URL="$NDK_PKG_FORMULA_REPO_URL"
-    FETCH_OUTPUT_DIR="$NDK_PKG_HOME"
+    FETCH_URL="$MY_FORMULA_REPO_URL"
+    FETCH_OUTPUT_DIR="$MY_HOME_DIR"
     FETCH_OUTPUT_NAME=formula
     fetch_via_git
 }
@@ -672,8 +477,10 @@ cleanup() {
 search_packages() {
     [ -z "$1" ] && die "please specify a keyword."
     [ -d "$DIR_FORMULA" ] || update_formula_repository
-        
-    for item in $(cd "$DIR_FORMULA" || exit 1; ls -1 *.sh | sed 's/\.sh//g')
+    
+    cd "$DIR_FORMULA" || exit 1
+
+    for item in $(ls -1 *.sh | sed 's/\.sh//g')
     do
         echo "$item" | grep "$*" || true
     done
@@ -681,7 +488,7 @@ search_packages() {
 
 open_homepage_of_a_package() {
     if [ -z "$1" ] ; then
-        homepage="https://github.com/leleliu008/ndk-pkg"
+        homepage="$MY_HOME_PAGE"
     else
         load_formula_of_a_package "$1"
     fi
@@ -695,7 +502,7 @@ open_homepage_of_a_package() {
 
 print_prefix_of_a_package() {
     if [ -z "$1" ] ; then
-        echo "$NDK_PKG_HOME"
+        echo "$MY_HOME_DIR"
     else
         is_package_installed "$1" || die_from_package_is_not_installed "$1"
         echo "$DIR_PKG/$1"
@@ -758,13 +565,200 @@ get_dependencies_of_a_package() {
     for dependencyPkgName in $(get_direct_dependencies_of_a_package "$1")
     do
         is_package_available "$dependencyPkgName" || die_from_package_is_not_available "$dependencyPkgName"
-        DEPENDENCIES="$dependencyPkgName $DEPENDENCIES"
+        DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST"
         get_dependencies_of_a_package "$dependencyPkgName"
     done
 }
 
+install_packages() {
+    [ -z "$TARGET_PACKAGE_LIST" ] && die_from_packages_is_not_specified
+    
+    for TARGET_PACKAGE in $TARGET_PACKAGE_LIST
+    do
+        get_dependencies_of_a_package "$TARGET_PACKAGE"
+    done
+    
+    for TARGET_PACKAGE in $DEPENDENCY_PACKAGE_LIST $TARGET_PACKAGE_LIST
+    do
+        if is_package_installed "$TARGET_PACKAGE" ; then
+            success "$TARGET_PACKAGE is already installed."
+        else
+            install_a_package "$TARGET_PACKAGE"
+        fi
+    done
+}
+
+install_a_package() {
+    fetch_a_package "$1"
+    
+    [ -d "$DIR_PKG/$1" ] && rm -rf "$DIR_PKG/$1"
+    
+    if DIR_SRC=$(mktemp -d) ; then
+        cd "$DIR_SRC" || exit 1
+    else
+        die "create DIR_SRC directory failed."
+    fi
+     
+    case $FETCH_URL in
+        *.git)  cp -r $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME/* "$DIR_SRC" ;;
+        *)      uncompress "$FETCH_OUTPUT_FILE_PATH" "$DIR_SRC"
+    esac
+    
+    if command -v prepare > /dev/null ; then
+        prepare || die "install $1 failed! you can go to $DIR_SRC to see see."
+    fi
+    
+    if install_a_package_for_all_target_abis "$1" ; then
+        install_a_package_success "$1"
+        rm -rf "$DIR_SRC"
+    else
+        die "install $1 failed! you can go to $DIR_SRC to see see."
+    fi
+}
+
+install_a_package_for_all_target_abis() {
+    for TARGET_ABI in $(list_target_abis)
+    do
+        make_env "$1" || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see." 
+        build         || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
+    done
+}
+
+install_a_package_success() {
+    [ -d "$DIR_INSTALL_PACKAGE" ] || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
+    
+    cat > "$DIR_INSTALL_PACKAGE/installed" <<EOF
+installed_time=$TIMESTAMP_UNIX
+installed_pkg_version=$version
+installed_ndk_version=$ANDROID_NDK_VERSION
+installed_target_api=$TARGET_API
+EOF
+    
+    success "$1 installed success. in $DIR_INSTALL_PACKAGE directory."
+    
+    if command -v tree > /dev/null ; then
+        tree -L 3 --dirsfirst "$DIR_INSTALL_PACKAGE"
+    fi
+}
+
+info_packages() {
+    unset INFO
+    unset TARGET_PACKAGE
+    unset TARGET_PACKAGE_LIST
+
+    if [ -z "$1" ] ; then
+        [ -d "$DIR_FORMULA" ] || update_formula_repository
+        cd "$DIR_FORMULA" || exit 1
+        TARGET_PACKAGE_LIST=$(ls *.sh | sed 's/\.sh//g')
+    else
+        TARGET_PACKAGE_LIST=$@
+    fi
+
+    for TARGET_PACKAGE in $TARGET_PACKAGE_LIST
+    do
+        if [ "$INFO" = 'true' ] ; then
+            echo "============================================================"
+        else
+            INFO=true
+        fi
+        info_a_package "$TARGET_PACKAGE"
+    done
+}
+
+info_a_package() {
+    load_formula_of_a_package "$1"
+    
+    echo "name      : $1"
+    echo "summary   : $summary"
+    echo "homepage  : $homepage"
+    echo "available : $version"
+    
+    [ -z "$dependencies" ] || {
+        msg "depend_on :"
+        unset DEPENDENCIES
+        for dependencyPkgName in $dependencies
+        do
+            if [ -z "$DEPENDENCIES" ] ; then
+                DEPENDENCIES=true
+                msg " "
+            else
+                msg "            "
+            fi
+
+            if is_package_installed "$dependencyPkgName" ; then
+                echo "$dependencyPkgName ${COLOR_GREEN}✔${COLOR_OFF}"
+            else
+                echo "$dependencyPkgName ${COLOR_RED}✘${COLOR_OFF}"
+            fi
+        done
+    }
+     
+    if is_package_installed "$1" ; then
+        load_installed_info_of_a_package "$1"
+        echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$DIR_PKG/$1" | awk '{print $2, $1}')"
+        echo "install_time: $(format_unix_timestamp $installed_time '+%Y/%m/%d %H:%M:%S')"
+        echo "pkg_version : $installed_pkg_version"
+        echo "ndk_version : $installed_ndk_version"
+        echo "target_api  : $installed_target_api"
+    else
+        echo "installed : ${COLOR_RED}✘${COLOR_OFF}"
+    fi
+}
+
+load_formula_of_a_package() {
+    is_package_available "$1" || die_from_package_is_not_available "$1"
+
+    unset -f prepare
+    unset -f build
+    unset url
+    unset sha256
+    unset version
+    unset summary
+    unset homepage
+    unset dependencies
+    
+    FORMULA_FILE_PATH="$DIR_FORMULA/$1.sh"
+     
+    . "$FORMULA_FILE_PATH" || die "$FORMULA_FILE_PATH is broken."
+    
+    [ -z "$summary" ]  && die "summary variable must be specified in $FORMULA_FILE_PATH"
+    [ -z "$homepage" ] && die "homepage variable must be specified in $FORMULA_FILE_PATH"
+    [ -z "$sha256" ]   && die "sha256 variable must be specified in $FORMULA_FILE_PATH"
+    [ -z "$url" ]      && die "url variable must be specified in $FORMULA_FILE_PATH"
+    [ -z "$version" ]  && version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+    [ -z "$version" ]  && die "version can't be parsed in $FORMULA_FILE_PATH"
+}
+
+load_installed_info_of_a_package() {
+    unset installed_time
+    unset installed_pkg_version
+    unset installed_ndk_version
+    unset installed_target_api
+    
+    . "$DIR_PKG/$1/installed"
+}
 
 ########################################################################
+
+is_package_installed() {
+    [ -z "$1" ] && die_from_package_is_not_specified
+    [ -d "$DIR_PKG/$1" ] &&
+    [ -f "$DIR_PKG/$1/installed" ]
+}
+
+is_package_outdated() {
+    [ -z "$1" ] && die_from_package_is_not_specified
+    [ -z "$2" ] || warn "outdated? command accept only one parameter."
+    
+    is_package_available "$1" || die_from_package_is_not_available "$1"
+    is_package_installed "$1" || die_from_package_is_not_installed "$1"
+
+    load_formula_of_a_package "$1"
+    load_installed_info_of_a_package "$1"
+
+    [ "$version" = "$installed_pkg_version" ] && return 1
+    [ "$version" = $(printf "$version\n$installed_pkg_version" | sort --version-sort --reverse | head -n 1) ]
+}
 
 get_ndk_version_via_awk() {
     awk -F= '/Pkg.Revision/{print(substr($2, 2))}' "$ANDROID_NDK_HOME/source.properties"
@@ -993,7 +987,7 @@ make_env() {
     CPPFLAGS=''
     LDFLAGS=''
 
-    for item in $DEPENDENCIES
+    for item in $DEPENDENCY_PACKAGE_LIST
     do
         item2=$(printf "$item" | tr '-' '_')
         ITEM_DIR_INSTALL_PREFIX="$DIR_PKG/$item/$TARGET_ABI"
@@ -1118,6 +1112,24 @@ EOF
 }
 
 main() {
+    if [ -z "$NDK_PKG_FORMULA_REPO_URL" ] ; then
+        MY_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula.git'
+    else
+        MY_FORMULA_REPO_URL="$NDK_PKG_FORMULA_REPO_URL"
+    fi
+
+    if [ -z "$NDK_PKG_HOME_DIR" ] ; then
+        MY_HOME_DIR="$HOME/.ndk-pkg"
+    else
+        MY_HOME_DIR="$NDK_PKG_HOME_DIR"
+    fi
+
+    DIR_FORMULA="$MY_HOME_DIR/formula"
+    DIR_DOWNLOAD="$MY_HOME_DIR/downloads"
+    DIR_BOTTLE="$MY_HOME_DIR/bottles"
+    DIR_BACKUP="$MY_HOME_DIR/backup"
+    DIR_PKG="$MY_HOME_DIR/pkg"
+
     TIMESTAMP_UNIX="$(date +%s)"
     
     OS_NAME="$(uname -s | awk '{print(tolower($0))}')"
@@ -1130,7 +1142,7 @@ main() {
             help
             ;;
         --version|version|-V)
-            echo "ndk-pkg $NDK_PKG_VERSION"
+            echo "ndk-pkg $MY_VERSION"
             check_ANDROID_NDK_HOME
             echo "NDK     $(get_ndk_version)"
             ;;

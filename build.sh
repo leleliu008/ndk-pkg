@@ -50,7 +50,7 @@ build() {
     SHA256SUM=$(sha256sum $filename) || exit 1
     
     sed_in_place "s|sha256sums=(.*)|sha256sums=(\'$SHA256SUM\')|" PKGBUILD
-    sed_in_place "s|pkgver=.*|pkgver=$version|" PKGBUILD
+    sed_in_place "s|pkgver=.*|pkgver=\'$version\'|" PKGBUILD
     
     sed_in_place "s|VERSION=\'0.1.0\'|VERSION=\'$version\'|" install.sh
     
