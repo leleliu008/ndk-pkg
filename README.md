@@ -1,5 +1,5 @@
 # ndk-pkg
-a package manager for [Android NDK](https://developer.android.google.cn/ndk)
+a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build C/C++ project.
 
 ## Install via package manager
 
