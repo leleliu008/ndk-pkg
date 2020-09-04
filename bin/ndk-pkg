@@ -989,10 +989,12 @@ make_env() {
 
     CPPFLAGS=''
     LDFLAGS=''
+    PKG_CONFIG_PATH=''
 
     for item in $DEPENDENCY_PACKAGE_LIST
     do
         item2=$(printf "$item" | tr '-' '_')
+        
         ITEM_DIR_INSTALL_PREFIX="$DIR_PKG/$item/$TARGET_ABI"
         ITEM_DIR_INCLUDE="$ITEM_DIR_INSTALL_PREFIX/include"
         ITEM_DIR_LIB="$ITEM_DIR_INSTALL_PREFIX/lib"
@@ -1000,13 +1002,19 @@ make_env() {
         eval "${item2}_DIR_INSTALL_PREFIX='$ITEM_DIR_INSTALL_PREFIX'"
         eval "${item2}_DIR_INCLUDE='$ITEM_DIR_INCLUDE'"
         eval "${item2}_DIR_LIB='$ITEM_DIR_LIB'"
+
         CPPFLAGS="-I$ITEM_DIR_INCLUDE $CPPFLAGS"
         LDFLAGS="-L$ITEM_DIR_LIB     $LDFLAGS"
+        PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ITEM_DIR_LIB/pkgconfig"
     done
 
     export CFLAGS='-Os -fpic -Qunused-arguments'
+    export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     
-    [ "$VERBOSE" = 'true' ] && export CFLAGS="$CFLAGS -v"
+    [ "$VERBOSE" = 'true' ] && {
+        export CFLAGS="$CFLAGS -v"
+        export PKG_CONFIG_DEBUG_SPEW=set
+    }
 
     export CPPFLAGS="$CPPFLAGS -Qunused-arguments"
     export LDFLAGS="$LDFLAGS"
@@ -1014,6 +1022,8 @@ make_env() {
     info "CFLAGS  =$CFLAGS"
     info "CPPFLAGS=$CPPFLAGS"
     info "LDFLAGS =$LDFLAGS"
+
+    info "PKG_CONFIG_PATH = $PKG_CONFIG_PATH"
      
     info "-------------------------------------------------------"
 }
