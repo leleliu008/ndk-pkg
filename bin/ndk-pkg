@@ -987,8 +987,9 @@ make_env() {
     is_exist_and_executable "$STRIP" && export STRIP="$STRIP"
     info " STRIP = $STRIP"
 
-    CPPFLAGS=''
-    LDFLAGS=''
+    CFLAGS="  --sysroot $SYSROOT -Qunused-arguments -Os -fpic"
+    CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments"
+    LDFLAGS=" --sysroot $SYSROOT"
     PKG_CONFIG_PATH=''
 
     for item in $DEPENDENCY_PACKAGE_LIST
@@ -1007,16 +1008,14 @@ make_env() {
         LDFLAGS="-L$ITEM_DIR_LIB     $LDFLAGS"
         PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ITEM_DIR_LIB/pkgconfig"
     done
-
-    export CFLAGS='-Os -fpic -Qunused-arguments'
-    export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     
     [ "$VERBOSE" = 'true' ] && {
         export CFLAGS="$CFLAGS -v"
         export PKG_CONFIG_DEBUG_SPEW=set
     }
 
-    export CPPFLAGS="$CPPFLAGS -Qunused-arguments"
+    export CFLAGS="$CFLAGS"
+    export CPPFLAGS="$CPPFLAGS"
     export LDFLAGS="$LDFLAGS"
      
     info "CFLAGS  =$CFLAGS"
@@ -1024,6 +1023,8 @@ make_env() {
     info "LDFLAGS =$LDFLAGS"
 
     info "PKG_CONFIG_PATH = $PKG_CONFIG_PATH"
+    
+    export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
      
     info "-------------------------------------------------------"
 }
