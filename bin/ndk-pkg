@@ -2,7 +2,8 @@
 
 #------------------------------------------------------------------------------
 # Reference:   https://developer.android.google.cn/ndk/guides/other_build_systems
-# requirement: Android NDK version must be r19 or newer.
+#              https://clang.llvm.org/docs/CrossCompilation.html
+# Requirement: Android NDK version must be r19 or newer.
 #------------------------------------------------------------------------------
 
 # MY represents this software's
@@ -670,32 +671,47 @@ info_packages() {
 
 info_a_package() {
     load_formula_of_a_package "$1"
-    
-    echo "name      : $1"
+
+    echo "name      : $(mark_is_package_installed_or_not $1)"
+
+    case $url in
+        *.git);;
+        *)  echo "version   : $version"
+    esac
+
     echo "summary   : $summary"
     echo "homepage  : $homepage"
-    echo "available : $version"
-    
+
     [ -z "$dependencies" ] || {
-        msg "depend_on :"
         unset DEPENDENCIES
+
         for dependencyPkgName in $dependencies
         do
             if [ -z "$DEPENDENCIES" ] ; then
-                DEPENDENCIES=true
-                msg " "
+                DEPENDENCIES="depend_on : $(mark_is_package_installed_or_not $dependencyPkgName)"
             else
-                msg "            "
-            fi
-
-            if is_package_installed "$dependencyPkgName" ; then
-                echo "$dependencyPkgName ${COLOR_GREEN}✔${COLOR_OFF}"
-            else
-                echo "$dependencyPkgName ${COLOR_RED}✘${COLOR_OFF}"
+                DEPENDENCIES="$DEPENDENCIES | $(mark_is_package_installed_or_not $dependencyPkgName)"
             fi
         done
+
+        echo "$DEPENDENCIES"
     }
-     
+
+    echo "src_url   : $url"
+
+    case $url in
+        *.git)
+            FETCH_OUTPUT_FILE_PATH="$DIR_DOWNLOAD/$(basename $url .git)"
+            if [ -d "$FETCH_OUTPUT_FILE_PATH" ] ; then
+                echo "src_cache ${COLOR_PURPLE}==>${COLOR_OFF} $FETCH_OUTPUT_FILE_PATH"
+            fi
+            ;;
+        *)  FETCH_OUTPUT_FILE_PATH="$DIR_DOWNLOAD/$(basename $url)"
+            if [ -f "$FETCH_OUTPUT_FILE_PATH" ] ; then
+                echo "src_cache ${COLOR_PURPLE}==>${COLOR_OFF} $FETCH_OUTPUT_FILE_PATH"
+            fi
+    esac
+
     if is_package_installed "$1" ; then
         load_installed_info_of_a_package "$1"
         echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$DIR_PKG/$1" | awk '{print $2, $1}')"
@@ -705,6 +721,14 @@ info_a_package() {
         echo "target_api  : $installed_target_api"
     else
         echo "installed : ${COLOR_RED}✘${COLOR_OFF}"
+    fi
+}
+
+mark_is_package_installed_or_not() {
+    if is_package_installed "$1" ; then
+        echo "${COLOR_GREEN}$1${COLOR_OFF}"
+    else
+        echo "${COLOR_RED}$1${COLOR_OFF}"
     fi
 }
 
@@ -726,10 +750,14 @@ load_formula_of_a_package() {
     
     [ -z "$summary" ]  && die "summary variable must be specified in $FORMULA_FILE_PATH"
     [ -z "$homepage" ] && die "homepage variable must be specified in $FORMULA_FILE_PATH"
-    [ -z "$sha256" ]   && die "sha256 variable must be specified in $FORMULA_FILE_PATH"
     [ -z "$url" ]      && die "url variable must be specified in $FORMULA_FILE_PATH"
-    [ -z "$version" ]  && version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
-    [ -z "$version" ]  && die "version can't be parsed in $FORMULA_FILE_PATH"
+    
+    case $url in
+        *.git);;
+        *)  [ -z "$sha256" ]   && die "sha256 variable must be specified in $FORMULA_FILE_PATH"
+            [ -z "$version" ]  && version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+            [ -z "$version" ]  && die "version can't be parsed in $FORMULA_FILE_PATH"
+    esac
 }
 
 load_installed_info_of_a_package() {
@@ -888,7 +916,6 @@ make_env() {
         warn "--target-abi=VALUE argument is not specified. so, use the default value [armeabi-v7a]."
     }
     
-    CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
     TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$OS_NAME-$(uname -m)"
     SYSROOT="$TOOLCHAIN_DIR/sysroot"
     export PATH="$TOOLCHAIN_DIR/bin:$PATH"
@@ -898,25 +925,35 @@ make_env() {
             export TOOLCHAIN_NAME='arm-linux-androideabi'
             export TARGET_HOST='armv7a-linux-androideabi'
             export TARGET_ARCH='arm'
+            export TARGET_CPU_FAMILY='arm'
+            export TARGET_CPU_NAME='armv7a'
             ;;
         arm64-v8a)
             export TOOLCHAIN_NAME='aarch64-linux-android'
             export TARGET_HOST='aarch64-linux-android'
             export TARGET_ARCH='arm64'
+            export TARGET_CPU_FAMILY='aarch64'
+            export TARGET_CPU_NAME='armv8a'
             ;;
         x86)
             export TOOLCHAIN_NAME='i686-linux-android'
             export TARGET_HOST='i686-linux-android'
             export TARGET_ARCH='x86'
+            export TARGET_CPU_FAMILY='x86'
+            export TARGET_CPU_NAME='i686'
             ;;
         x86_64)
             export TOOLCHAIN_NAME='x86_64-linux-android'
             export TARGET_HOST='x86_64-linux-android'
             export TARGET_ARCH='x86_64'
+            export TARGET_CPU_FAMILY='x86_64'
+            export TARGET_CPU_NAME='x86_64'
             ;;
         *)  export TOOLCHAIN_NAME='unkown'
             export TARGET_HOST='unkown'
             export TARGET_ARCH='unkown'
+            export TARGET_CPU_FAMILY='unkown'
+            export TARGET_CPU_NAME='unkown'
     esac
 
     
@@ -924,14 +961,21 @@ make_env() {
     
     DIR_INSTALL_PACKAGE="$DIR_PKG/$1"
     DIR_INSTALL_PREFIX="$DIR_INSTALL_PACKAGE/$TARGET_ABI"
-    [ -z "$DIR_SRC" ] || DIR_BUILD="$DIR_SRC/$TIMESTAMP_UNIX/$TARGET_ABI"
+    
+    if [ -n "$DIR_SRC" ] ; then
+        if [ -d "$DIR_SRC" ] ; then
+            DIR_BUILD="$DIR_SRC/$TIMESTAMP_UNIX/$TARGET_ABI"
+            mkdir -p "$DIR_BUILD" || exit 1
+        else
+            exit 1
+        fi
+    fi
 
     info "-------------------------------------------------------"
     info "        PKG_NAME = $1"
     info "    DEPENDENCIES = $(get_direct_dependencies_of_a_package "$1")"
     info "ANDROID_NDK_HOME = $ANDROID_NDK_HOME"
     info "ANDROID_NDK_VER  = $ANDROID_NDK_VERSION"
-    info "CMAKE_TOOLCHAIN_FILE = $CMAKE_TOOLCHAIN_FILE"
     info "FILE_PATH_LIBZ_SO = $FILE_PATH_LIBZ_SO"
     info "   TOOLCHAIN_DIR = $TOOLCHAIN_DIR"
     info "   TOOLCHAIN_NAME= $TOOLCHAIN_NAME"
@@ -954,6 +998,9 @@ make_env() {
     CXX="${TOOLCHAIN_PREFIX}clang++"
     is_exist_and_executable "$CXX" && export CXX="$CXX"
     info "   CXX = $CXX"
+
+    export CPP="$CC -E"
+    info "   CPP = $CPP"
     
     if [ "$TARGET_HOST" = 'armv7a-linux-androideabi' ] ; then
         TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/arm-linux-androideabi-"
@@ -1005,7 +1052,7 @@ make_env() {
         eval "${item2}_DIR_LIB='$ITEM_DIR_LIB'"
 
         CPPFLAGS="-I$ITEM_DIR_INCLUDE $CPPFLAGS"
-        LDFLAGS="-L$ITEM_DIR_LIB     $LDFLAGS"
+        LDFLAGS="-L$ITEM_DIR_LIB $LDFLAGS"
         PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ITEM_DIR_LIB/pkgconfig"
     done
     
@@ -1017,16 +1064,79 @@ make_env() {
     export CFLAGS="$CFLAGS"
     export CPPFLAGS="$CPPFLAGS"
     export LDFLAGS="$LDFLAGS"
-     
+    export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+
     info "CFLAGS  =$CFLAGS"
     info "CPPFLAGS=$CPPFLAGS"
     info "LDFLAGS =$LDFLAGS"
-
     info "PKG_CONFIG_PATH = $PKG_CONFIG_PATH"
     
-    export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-     
     info "-------------------------------------------------------"
+}
+
+# https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
+# https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
+# https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
+# https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
+# https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
+cmake() {
+    unset -f meson
+
+    command cmake \
+    -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+    -DCMAKE_PREFIX_PATH="$DIR_PKG" \
+    -DCMAKE_FIND_ROOT_PATH="$DIR_PKG" \
+    -DCMAKE_INSTALL_PREFIX="$DIR_INSTALL_PREFIX" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS -Dftello=ftell -Dfseeko=fseek'" \
+    -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS -Dftello=ftell -Dfseeko=fseek'" \
+    -DBUILD_SHARED_LIBS=ON \
+    -DBUILD_TESTING=OFF \
+    -DANDROID_TOOLCHAIN=clang \
+    -DANDROID_ABI="$TARGET_ABI" \
+    -DANDROID_PLATFORM="$TARGET_API" \
+    -G "Unix Makefiles" \
+    -Wno-dev \
+    -S "$DIR_SRC" \
+    -B "$DIR_BUILD" $@ &&
+    make --directory="$DIR_BUILD" install
+}
+
+meson() {
+    unset -f cmake
+
+    CMAKE_EXECUTABLE=$(command -v cmake)
+    
+    PKG_CONFIG_EXECUTABLE=$(command -v pkg-config) ||
+    PKG_CONFIG_EXECUTABLE=$(command -v pkgconf)
+
+    cat >> "$DIR_BUILD/android-cross-file" <<EOF
+[host_machine]
+system = 'android'
+endian = 'little'
+cpu_family = '$TARGET_CPU_FAMILY'
+cpu = '$TARGET_CPU_NAME'
+
+[binaries]
+c = '$CC'
+cpp = '$CXX'
+ar = '$AR'
+strip = '$STRIP'
+cmake = '$CMAKE_EXECUTABLE'
+pkgconfig = '$PKG_CONFIG_EXECUTABLE'
+EOF
+    command meson setup \
+        --prefix="$DIR_INSTALL_PREFIX" \
+        --buildtype=minsize \
+        --backend=ninja \
+        --strip \
+        --cross-file="$DIR_BUILD/android-cross-file" \
+        $@ \
+        "$DIR_BUILD" &&
+    ninja -C "$DIR_BUILD" install
 }
 
 parse_params() {
