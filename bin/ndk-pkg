@@ -368,9 +368,8 @@ list_outdated_packages() {
     do
         is_package_available "$packageName" || continue
         is_package_installed "$packageName" || continue
-        if is_package_outdated "$packageName" ; then
-            echo "$packageName"
-        fi
+        is_package_outdated  "$packageName" || continue
+        echo "$packageName"
     done
 }
 
@@ -516,14 +515,23 @@ print_prefix_of_a_package() {
 logs_a_package() {
     [ -z "$1" ] && die_from_package_is_not_specified
     is_package_installed "$1" || die_from_package_is_not_installed "$1"
+
+    [ -z "$2" ] && die "abi is not specified."
     
-    FILE_PATH_LOGS="$DIR_PKG/$1/logs"
-    
-    if [ -f "$FILE_PATH_LOGS" ] ; then
-        success "$FILE_PATH_LOGS ===>"
-        cat "$FILE_PATH_LOGS"
+    DIR_LOGS="$DIR_PKG/$1/$2/log"
+
+    [ -d "$DIR_LOGS" ] || die "no logs."
+
+    if [ -f "$DIR_LOGS/config.log" ] ; then
+        if command -v bat > /dev/null ; then
+            bat -l bash "$DIR_LOGS/config.log"
+        else
+            success "$DIR_LOGS/config.log ===>"
+            less "$DIR_LOGS/config.log"
+            warn "if you want to have a better experience, I strongly recommend you install ${COLOR_RED}bat${COLOR_OFF} on your os. For more details, see ${COLOR_RED}https://github.com/sharkdp/bat${COLOR_OFF}"
+        fi
     else
-        warn "no logs."
+        die "no logs."
     fi
 }
 
@@ -616,28 +624,36 @@ install_a_package() {
         install_a_package_success "$1"
         rm -rf "$DIR_SRC"
     else
-        die "install $1 failed! you can go to $DIR_SRC to see see."
+        die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
     fi
 }
 
 install_a_package_for_all_target_abis() {
     for TARGET_ABI in $(list_target_abis)
     do
-        make_env "$1" || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see." 
-        build         || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
+        make_env "$1" && 
+        build &&
+        collect_installation_logs &&
+        continue
+        return 1
     done
+}
+
+collect_installation_logs() {
+    if [ ! -d "$DIR_INSTALL_PREFIX/log" ] ; then
+        mkdir "$DIR_INSTALL_PREFIX/log" || return 1
+    fi
+
+    if [ -f "$DIR_BUILD"/config.log ] ; then
+        cp  "$DIR_BUILD"/config.log "$DIR_INSTALL_PREFIX/log/" || return 1
+    fi
 }
 
 install_a_package_success() {
     [ -d "$DIR_INSTALL_PACKAGE" ] || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
     
-    cat > "$DIR_INSTALL_PACKAGE/installed" <<EOF
-installed_time=$TIMESTAMP_UNIX
-installed_pkg_version=$version
-installed_ndk_version=$ANDROID_NDK_VERSION
-installed_target_api=$TARGET_API
-EOF
-    
+    write_installed_info
+     
     success "$1 installed success. in $DIR_INSTALL_PACKAGE directory."
     
     if command -v tree > /dev/null ; then
@@ -713,12 +729,8 @@ info_a_package() {
     esac
 
     if is_package_installed "$1" ; then
-        load_installed_info_of_a_package "$1"
-        echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$DIR_PKG/$1" | awk '{print $2, $1}')"
-        echo "install_time: $(format_unix_timestamp $installed_time '+%Y/%m/%d %H:%M:%S')"
-        echo "pkg_version : $installed_pkg_version"
-        echo "ndk_version : $installed_ndk_version"
-        echo "target_api  : $installed_target_api"
+        load_installed_info_of_a_package "$1" &&
+        show_installed_info_of_a_package "$1"
     fi
 }
 
@@ -758,6 +770,15 @@ load_formula_of_a_package() {
     esac
 }
 
+write_installed_info() {
+    cat > "$DIR_INSTALL_PACKAGE/installed" <<EOF
+installed_time=$TIMESTAMP_UNIX
+installed_pkg_version=$version
+installed_ndk_version=$ANDROID_NDK_VERSION
+installed_target_api=$TARGET_API
+EOF
+}
+
 load_installed_info_of_a_package() {
     unset installed_time
     unset installed_pkg_version
@@ -765,6 +786,14 @@ load_installed_info_of_a_package() {
     unset installed_target_api
     
     . "$DIR_PKG/$1/installed"
+}
+
+show_installed_info_of_a_package() {
+    echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$DIR_PKG/$1" | awk '{print $2, $1}')"
+    echo "install_time: $(format_unix_timestamp $installed_time '+%Y/%m/%d %H:%M:%S')"
+    echo "pkg_version : $installed_pkg_version"
+    echo "ndk_version : $installed_ndk_version"
+    echo "target_api  : $installed_target_api"
 }
 
 ########################################################################
@@ -898,7 +927,7 @@ list_target_abis() {
 }
 
 list_target_apis() {
-    print_list 21 22 23 34 25 26 27 28 29
+    print_list 21 22 23 24 25 26 27 28 29
 }
 
 make_env() {
@@ -910,38 +939,38 @@ make_env() {
 
     case "$TARGET_ABI" in
         armeabi-v7a) 
-            export TOOLCHAIN_NAME='arm-linux-androideabi'
-            export TARGET_HOST='armv7a-linux-androideabi'
-            export TARGET_ARCH='arm'
-            export TARGET_CPU_FAMILY='arm'
-            export TARGET_CPU_NAME='armv7a'
+            TOOLCHAIN_NAME='arm-linux-androideabi'
+            TARGET_HOST='armv7a-linux-androideabi'
+            TARGET_ARCH='arm'
+            TARGET_CPU_FAMILY='arm'
+            TARGET_CPU_NAME='armv7a'
             ;;
         arm64-v8a)
-            export TOOLCHAIN_NAME='aarch64-linux-android'
-            export TARGET_HOST='aarch64-linux-android'
-            export TARGET_ARCH='arm64'
-            export TARGET_CPU_FAMILY='aarch64'
-            export TARGET_CPU_NAME='armv8a'
+            TOOLCHAIN_NAME='aarch64-linux-android'
+            TARGET_HOST='aarch64-linux-android'
+            TARGET_ARCH='arm64'
+            TARGET_CPU_FAMILY='aarch64'
+            TARGET_CPU_NAME='armv8a'
             ;;
         x86)
-            export TOOLCHAIN_NAME='i686-linux-android'
-            export TARGET_HOST='i686-linux-android'
-            export TARGET_ARCH='x86'
-            export TARGET_CPU_FAMILY='x86'
-            export TARGET_CPU_NAME='i686'
+            TOOLCHAIN_NAME='i686-linux-android'
+            TARGET_HOST='i686-linux-android'
+            TARGET_ARCH='x86'
+            TARGET_CPU_FAMILY='x86'
+            TARGET_CPU_NAME='i686'
             ;;
         x86_64)
-            export TOOLCHAIN_NAME='x86_64-linux-android'
-            export TARGET_HOST='x86_64-linux-android'
-            export TARGET_ARCH='x86_64'
-            export TARGET_CPU_FAMILY='x86_64'
-            export TARGET_CPU_NAME='x86_64'
+            TOOLCHAIN_NAME='x86_64-linux-android'
+            TARGET_HOST='x86_64-linux-android'
+            TARGET_ARCH='x86_64'
+            TARGET_CPU_FAMILY='x86_64'
+            TARGET_CPU_NAME='x86_64'
             ;;
-        *)  export TOOLCHAIN_NAME='unkown'
-            export TARGET_HOST='unkown'
-            export TARGET_ARCH='unkown'
-            export TARGET_CPU_FAMILY='unkown'
-            export TARGET_CPU_NAME='unkown'
+        *)  TOOLCHAIN_NAME='unkown'
+            TARGET_HOST='unkown'
+            TARGET_ARCH='unkown'
+            TARGET_CPU_FAMILY='unkown'
+            TARGET_CPU_NAME='unkown'
     esac
 
     
@@ -1022,10 +1051,17 @@ make_env() {
     is_exist_and_executable "$STRIP" && export STRIP="$STRIP"
     info " STRIP = $STRIP"
 
-    CFLAGS="  --sysroot $SYSROOT -Qunused-arguments -Os -fpic"
+      CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments"
-    LDFLAGS=" --sysroot $SYSROOT"
+     LDFLAGS="--sysroot $SYSROOT"
     PKG_CONFIG_PATH=''
+
+    # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
+    # int fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
+    # off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
+    if [ $TARGET_API -lt 24 ] ; then
+        CPPFLAGS="$CPPFLAGS -Dftello=ftell -Dfseeko=fseek"
+    fi
 
     for item in $DEPENDENCY_PACKAGE_LIST
     do
@@ -1050,12 +1086,14 @@ make_env() {
     }
 
     export CFLAGS="$CFLAGS"
+    export CXXFLAGS="$CFLAGS"
     export CPPFLAGS="$CPPFLAGS"
     export LDFLAGS="$LDFLAGS"
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     export PKG_CONFIG_LIBDIR="$DIR_PKG"
 
     info "CFLAGS  =$CFLAGS"
+    info "CXXFLAGS=$CXXFLAGS"
     info "CPPFLAGS=$CPPFLAGS"
     info "LDFLAGS =$LDFLAGS"
     info "PKG_CONFIG_PATH   = $PKG_CONFIG_PATH"
@@ -1064,7 +1102,33 @@ make_env() {
     info "-------------------------------------------------------"
 }
 
-# https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
+configure() {
+    (cd "$DIR_BUILD" || return 1; \
+    "$DIR_SRC"/configure \
+        --host="$TARGET_HOST" \
+        --prefix="$DIR_INSTALL_PREFIX" \
+        --disable-option-checking \
+        --disable-rpath \
+        --disable-debug \
+        --disable-nls\
+        --enable-largefile \
+        --enable-static \
+        --enable-shared \
+        CC="$CC" \
+        CFLAGS="$CFLAGS" \
+        CXX="$CXX" \
+        CXXFLAGS="$CXXFLAGS" \
+        CPP="$CPP" \
+        CPPFLAGS="$CPPFLAGS" \
+        LDFLAGS="$LDFLAGS" \
+        AR="$AR" \
+        RANLIB="$RANLIB" \
+        $@ &&
+    make clean &&
+    make &&
+    make install)
+}
+
 # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
 # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
 # https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
@@ -1076,14 +1140,16 @@ cmake() {
     unset -f meson
 
     command cmake \
+    -DCMAKE_VERBOSE_MAKEFILE=ON \
+    -DCMAKE_COLOR_MAKEFILE=ON \
     -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
     -DCMAKE_PREFIX_PATH="$DIR_PKG" \
     -DCMAKE_FIND_ROOT_PATH="$DIR_PKG" \
     -DCMAKE_INSTALL_PREFIX="$DIR_INSTALL_PREFIX" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS -Dftello=ftell -Dfseeko=fseek'" \
-    -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS -Dftello=ftell -Dfseeko=fseek'" \
-    -DBUILD_SHARED_LIBS=ON \
+    -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
+    -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
+    -DBUILD_SHARED_LIBS=OFF \
     -DBUILD_TESTING=OFF \
     -DANDROID_TOOLCHAIN=clang \
     -DANDROID_ABI="$TARGET_ABI" \
@@ -1092,6 +1158,7 @@ cmake() {
     -Wno-dev \
     -S "$DIR_SRC" \
     -B "$DIR_BUILD" $@ &&
+    make --directory="$DIR_BUILD" &&
     make --directory="$DIR_BUILD" install
 }
 

@@ -84,8 +84,13 @@ function _ndk_pkg() {
                     _arguments '*:package-name:_ndk_pkg_available_packages' ;;
                 cat|edit|fetch|homepage)
                     _arguments ':package-name:_ndk_pkg_available_packages' ;;
-                prefix|logs|pack)
+                prefix|pack)
                     _arguments ':package-name:_ndk_pkg_installed_packages' ;;
+                logs)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:abi:($(ndk-pkg list target-abis))'
+                    ;;
                 env)
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
