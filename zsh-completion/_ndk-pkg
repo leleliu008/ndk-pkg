@@ -8,12 +8,11 @@ _commands=(
     '--version:print the version of ndk-pkg and NDK.'
     'version:print the version of ndk-pkg and NDK.'
     'search:search packages can be installed.'
-    'list:list the target-abis, target-apis, available, installed and outdated packages.'
+    'list:list the supported-abis, supported-sdk-api-levels, available, installed and outdated packages.'
     'tree:list contents of a installed package directory in a tree-like format.'
     'info:print the basic infomation of packages.'
-    'cat:view the formula source code of a package.'
+    'view:view the formula source code of a package.'
     'edit:edit the formula source code of a package.'
-    'env:print the environment variable settings.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
@@ -29,8 +28,8 @@ _commands=(
 )
 
 _list=(
-    'target-abis:list support target abis.'
-    'target-apis:list support target api levels.'
+    'supported-abis:list the supported abis.'
+    'supported-sdk-api-levels:list the supported android-sdk api-levels.'
     'available:list the available packages.'
     'installed:list the installed packages.'
     'outdated:list the installed packages which can be upgraded.'
@@ -77,46 +76,38 @@ function _ndk_pkg() {
                     _arguments \
                         ':list:_ndk_pkg_list' \
                         '-q[quiet mode. do not report error log]'
-                        ;;
-                tree)
-                    _arguments ':package-name:_ndk_pkg_available_packages' ;;
+                    ;;
                 info)
                     _arguments '*:package-name:_ndk_pkg_available_packages' ;;
-                cat|edit|fetch|homepage)
+                view|edit|fetch|homepage)
                     _arguments ':package-name:_ndk_pkg_available_packages' ;;
-                prefix|pack)
+                prefix|pack|tree)
                     _arguments ':package-name:_ndk_pkg_installed_packages' ;;
                 logs)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:abi:($(ndk-pkg list target-abis))'
-                    ;;
-                env)
-                    _arguments \
-                        ':package-name:_ndk_pkg_available_packages' \
-                        '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))' \
-                        '--target-abi=-[set target abi]:target-abi:($(ndk-pkg list target-abis))' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                        '2:abi:($(ndk-pkg list supported-abis))'
                     ;;
                 install)
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
-                        '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg list supported-sdk-api-levels))' \
+                        '--dry-run[dry-run]' \
+                        '--keep-working-dir[do not delete working-dir even if installed success]' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
-                        '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg list supported-sdk-api-levels))' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;
                 upgrade)
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
-                        '--target-api=-[set target api]:target-api:($(ndk-pkg list target-apis))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg list supported-sdk-api-levels))' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;

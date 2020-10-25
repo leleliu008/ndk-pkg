@@ -1,14 +1,10 @@
 #!/bin/sh
 
 #------------------------------------------------------------------------------
-# Reference:   https://developer.android.google.cn/ndk/guides/other_build_systems
-#              https://clang.llvm.org/docs/CrossCompilation.html
-# Requirement: Android NDK version must be r19 or newer.
+# https://developer.android.google.cn/ndk/guides/other_build_systems
+# https://clang.llvm.org/docs/CrossCompilation.html
+# 
 #------------------------------------------------------------------------------
-
-# MY represents this software's
-MY_VERSION=0.1.0
-MY_HOME_PAGE='https://github.com/leleliu008/ndk-pkg'
 
 COLOR_RED='\033[0;31m'          # Red
 COLOR_GREEN='\033[0;32m'        # Green
@@ -85,22 +81,8 @@ getvalue() {
     echo "$1" | cut -d= -f2
 }
 
-sha256sum() {
-    if command -v openssl > /dev/null ; then
-        openssl sha256 "$1" | awk '{print $2}'
-    elif command -v sha256sum > /dev/null ; then
-        sha256sum "$1" | awk '{print $1}'
-    else
-        die "please install openssl or GNU CoreUtils."
-    fi
-}
-
-is_sha256sum_match() {
-    [ "$(sha256sum $1)" = "$2" ]
-}
-
-die_from_sha256sum_mismatch() {
-    die "sha256sum mismatch."
+prompt_user_to_install_bat() {
+    warn "if you want to have a better experience, I strongly recommend you install ${COLOR_RED}bat${COLOR_OFF} on your os. For more details, see ${COLOR_RED}https://github.com/sharkdp/bat${COLOR_OFF}"
 }
 
 fetch_via_curl() {
@@ -125,10 +107,6 @@ fetch_via_wget() {
 
 fetch_via_git() {
     info "Fetching $FETCH_URL"
-    
-    if [ -d "$FETCH_OUTPUT_DIR" ] ; then
-        mkdir -p "$FETCH_OUTPUT_DIR"
-    fi
 
     if [ -d "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" ] ; then
         if  git -C "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" rev-parse 2> /dev/null ; then
@@ -183,6 +161,10 @@ fetch() {
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
                     die "--output-dir argument's value must be not empty."
+                else
+                    if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
+                        mkdir -p "$FETCH_OUTPUT_DIR"
+                    fi
                 fi
                 ;;
             --output-name=*)
@@ -228,36 +210,31 @@ fetch() {
             fetch_archive_via_tools
             
             if [ -n "$FETCH_OUTPUT_FILE_SHA256" ] ; then
-                if ! is_sha256sum_match "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256" ; then
-                    die_from_sha256sum_mismatch
-                fi
+                die_if_sha256sum_mismatch "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256"
             fi
     esac
 }
 
-fetch_config_url() {
-    echo "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.$1;hb=HEAD"
-}
+sha256sum() {
+    die_if_file_is_not_exist "$1"
 
-fetch_config_xx() {
-    if [ -z "$2" ] ; then
-        fetch $(fetch_config_url $1) --output-name=config.$1
+    if command -v openssl > /dev/null ; then
+        openssl sha256 "$1" | awk '{print $2}'
+    elif command sha256sum --version > /dev/null 2>&1 ; then
+        sha256sum "$1" | awk '{print $1}'
     else
-        fetch $(fetch_config_url $1) --output-name=config.$1 --output-dir=$2
+        die "please install openssl or GNU CoreUtils."
     fi
 }
 
-fetch_config_sub() {
-    fetch_config_xx sub $1
+is_sha256sum_match() {
+    die_if_file_is_not_exist "$1"
+    [ -z "$2" ] && die "please specify sha256sum."
+    [ "$(sha256sum $1)" = "$2" ]
 }
 
-fetch_config_guess() {
-    fetch_config_xx guess $1
-}
-
-fetch_a_package() {
-    load_formula_of_a_package "$1"
-    fetch "$url" --sha256="$sha256" --output-dir="$DIR_DOWNLOAD"
+die_if_sha256sum_mismatch() {
+    is_sha256sum_match "$1" "$2" || die "sha256sum mismatch."
 }
 
 unzip() {
@@ -283,37 +260,117 @@ untar() {
 uncompress() {
     case $1 in
         *.zip)
-            unzip "$1" "$2";;
-        *.xz|*.gz|*.bz2|*.tgz|*.txz)
-            untar "$1" "$2";;
-        *)  die "$1 : extension isn't recognized. the supported extensions are .zip .xz .gz .bz2 .tgz .txz";;
+            unzip "$1" "$2" ;;
+        *.tar.xz|*.tar.gz|*.tar.bz2|*.tar.tgz|*.tar.txz)
+            untar "$1" "$2" ;;
+        *)  die "$1 : extension isn't recognized. the supported extensions are .zip .xz .gz .bz2 .tgz .txz"
     esac
 }
 
-is_exist_and_executable() {
+fetch_config_url() {
+    echo "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.$1;hb=HEAD"
+}
+
+fetch_config_xx() {
+    if [ -z "$2" ] ; then
+        fetch $(fetch_config_url $1) --output-name=config.$1
+    else
+        fetch $(fetch_config_url $1) --output-name=config.$1 --output-dir=$2
+    fi
+}
+
+fetch_config_sub() {
+    fetch_config_xx sub $1
+}
+
+fetch_config_guess() {
+    fetch_config_xx guess $1
+}
+
+fetch_a_package() {
+    die_if_load_formula_of_a_package_failed "$1"
+    fetch "$url" --output-dir="$MY_CACHED_DIR" --output-name="$1-$version.$URL_CONTENT_TYPE" --sha256="$sha256"
+}
+
+die_if_file_is_not_exist() {
+    [ -z "$1" ] && die "please specify a file path."
     [ -f "$1" ] || die "$1 is not exist."
+}
+
+die_if_file_is_not_executable() {
+    die_if_file_is_not_exist
     [ -x "$1" ] || die "$1 is not executable."
 }
 
-is_package_available() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    [ -f "$DIR_FORMULA/$1.sh" ]
+die_if_abi_____is_not_specified() {
+    [ -z "$1" ] && die "please specify a abi."
 }
 
-die_from_package_is_not_specified() {
-    die "please provide a package name."
+die_if_abi_____is_not_supported() {
+    die_if_abi_____is_not_specified "$1"
+    
+    for ABI in $(list_supported_abis)
+    do
+        [ "$ABI" = "$1" ] && return 0
+    done
+
+    die "$1 abi is not supported."
 }
 
-die_from_packages_is_not_specified() {
-    die "please provide at least one package name."
+die_if_package_is_not_specified() {
+    [ -z "$1" ] && die "please specify a package name."
 }
 
-die_from_package_is_not_available() {
-    die "$1 is not available."
+die_if_package_list_is_not_specified() {
+    [ -z "$1" ] && die "please specify at least one package name."
+}
+
+die_if_package_is_not_available() {
+    is_package_available "$1" || die "$1 is not available."
 }
 
 die_from_package_is_not_installed() {
     die "$1 is not installed."
+}
+
+die_if_package_is_not_installed() {
+    is_package_installed "$1" || die_from_package_is_not_installed "$1"
+}
+
+is_package_available() {
+    die_if_package_is_not_specified "$1"
+    [ -f "$MY_FORMULA_DIR/$1.sh" ]
+}
+
+is_package_installed() {
+    die_if_package_is_not_specified "$1"
+    
+    [ -d "$MY_INSTALL_DIR/$1" ]              || return 1
+    [ -f "$MY_INSTALL_DIR/$1/manifest.txt" ] || return 1
+
+    for ABI in $(cat "$MY_INSTALL_DIR/$1/manifest.txt")
+    do
+        [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                       || return 1
+        [ -d "$MY_INSTALL_DIR/$1/$ABI/log" ]                   || return 1
+        [ -f "$MY_INSTALL_DIR/$1/$ABI/log/installed.log.txt" ] || return 1
+    done
+}
+
+is_package_outdated() {
+    die_if_load_formula_of_a_package_failed "$1"
+
+    [ -d "$MY_INSTALL_DIR/$1" ]              || die_from_package_is_not_installed "$1"
+    [ -f "$MY_INSTALL_DIR/$1/manifest.txt" ] || die_from_package_is_not_installed "$1"
+
+    for ABI in $(cat "$MY_INSTALL_DIR/$1/manifest.txt")
+    do
+        [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                       || die_from_package_is_not_installed "$1"
+        [ -d "$MY_INSTALL_DIR/$1/$ABI/log" ]                   || die_from_package_is_not_installed "$1"
+        [ -f "$MY_INSTALL_DIR/$1/$ABI/log/installed.log.txt" ] || die_from_package_is_not_installed "$1"
+        die_if_load_installed_log_failed "$1" "$ABI"
+        [ "$version" = "$installed_pkg_version" ] && return 1
+        [ "$version" = $(printf "$version\n$installed_pkg_version" | sort --version-sort --reverse | head -n 1) ]
+    done
 }
 
 list_available_packages() {
@@ -324,13 +381,13 @@ list_available_packages() {
         1)  if [ "$1" = '-q' ] ; then
                 SILENT=true
             else
-                die "list available command only accept -q argument."
+                die "list available action only accept -q argument."
             fi
             ;;
-        *)  die "list available command only accept -q argument."
+        *)  die "list available action only accept -q argument."
     esac
 
-    [ -d "$DIR_FORMULA" ] || {
+    [ -d "$MY_FORMULA_DIR" ] || {
         if [ "$SILENT" = 'true' ] ; then
             update_formula_repository >/dev/null 2>&1
         else
@@ -339,9 +396,9 @@ list_available_packages() {
     }
     
     if [ "$SILENT" = 'true' ] ; then
-        cd "$DIR_FORMULA" 2>/dev/null || exit 1
+        cd "$MY_FORMULA_DIR" 2>/dev/null || exit 1
     else
-        cd "$DIR_FORMULA" || exit 1
+        cd "$MY_FORMULA_DIR" || exit 1
     fi
 
     for item in $(ls *.sh | sed 's/\.sh//g')
@@ -351,7 +408,7 @@ list_available_packages() {
 }
 
 list_installed_packages() {
-    cd "$DIR_PKG" 2>/dev/null || exit 1
+    cd "$MY_INSTALL_DIR" 2>/dev/null || exit 1
 
     for packageName in *
     do
@@ -362,7 +419,7 @@ list_installed_packages() {
 }
 
 list_outdated_packages() {
-    cd "$DIR_PKG" 2>/dev/null || exit 1
+    cd "$MY_INSTALL_DIR" 2>/dev/null || exit 1
 
     for packageName in *
     do
@@ -374,99 +431,94 @@ list_outdated_packages() {
 }
 
 tree_a_installed_package() {
-    DIR_INSTALL_PACKAGE="$DIR_PKG/$1"
-    
-    [ -d "$DIR_INSTALL_PACKAGE" ] || die_from_package_is_not_installed "$1"
-    
+    die_if_package_is_not_installed "$1"
+
+    PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
+
     shift
-    
-    if command -v tree > /dev/null ; then    
-        tree $@ --dirsfirst "$DIR_INSTALL_PACKAGE"
+
+    if command -v tree > /dev/null ; then
+        tree $@ --dirsfirst "$PKG_INSTALL_DIR"
     else
-        die "please install tree utility."
+        warn "please install tree utility."
     fi
 }
 
-uninstall_packages() {
-    [ -z "$1" ] && die_from_packages_is_not_specified
+uninstall_package_list() {
+    die_if_package_list_is_not_specified "$1"
     
     for packageName in $@
     do
-        uninstall_a_package "$packageName"
+        uninstall_a_package "$packageName" || return 1
     done
 }
 
 uninstall_a_package() {
-    [ -d "$DIR_PKG/$1" ] || die_from_package_is_not_installed "$1"
+    die_if_package_is_not_installed "$1"
+
     info "uninstalling $1..." &&
-    rm -rf "$DIR_PKG/$1" &&
+    rm -rf "$MY_INSTALL_DIR/$1" &&
     success "$1 uninstalled."
 }
 
 cat_formula_of_a_package() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    [ -z "$2" ] || warn "cat command accept only one parameter."
-    
-    is_package_available "$1" || die_from_package_is_not_available "$1"
+    die_if_package_is_not_available "$1"
+
+    [ -z "$2" ] || warn "cat action accept only one argument."
     
     if command -v bat > /dev/null ; then
-        bat "$DIR_FORMULA/$1.sh"
+        bat "$MY_FORMULA_DIR/$1.sh"
     else
-        cat "$DIR_FORMULA/$1.sh"
+        cat "$MY_FORMULA_DIR/$1.sh"
         echo
-        warn "if you want to have a better experience, I strongly recommend you install ${COLOR_RED}bat${COLOR_OFF} on your os. For more details, see ${COLOR_RED}https://github.com/sharkdp/bat${COLOR_OFF}"
+        prompt_user_to_install_bat
     fi    
 }
 
 edit_formula_of_a_package() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    [ -z "$2" ] || warn "edit command accept only one parameter."
-    
-    is_package_available "$1" || die_from_package_is_not_available "$1"
-   
+    die_if_package_is_not_available "$1"
+
+    [ -z "$2" ] || warn "edit action accept only one argument."
+
     [ -z "$EDITOR" ] &&
     EDITOR=$(command -v vi) ||
     EDITOR=$(command -v vim) ||
     EDITOR=$(command -v nvim) ||
     EDITOR=$(command -v open) ||
-    die "please config EDITOR environment." 
+    die "please set EDITOR environment variable."
 
-    "$EDITOR" "$DIR_FORMULA/$1.sh"
+    "$EDITOR" "$MY_FORMULA_DIR/$1.sh"
 }
 
 update_formula_repository() {
     info "Updating formula repository."
-
-    FETCH_URL="$MY_FORMULA_REPO_URL"
-    FETCH_OUTPUT_DIR="$MY_HOME_DIR"
-    FETCH_OUTPUT_NAME=formula
-    fetch_via_git
+    fetch "$MY_FORMULA_REPO_URL" --output-dir="$MY_HOME_DIR" --output-name=formula
 }
 
 upgrade_packages() {
-    [ -z "$TARGET_PACKAGE_LIST" ] && TARGET_PACKAGE_LIST=$(list_outdated_packages)
-    [ -z "$TARGET_PACKAGE_LIST" ] && return 0
+    [ -z "$TO_BE_INSTALLED_PACKAGE_LIST" ] && TO_BE_INSTALLED_PACKAGE_LIST=$(list_outdated_packages)
+    [ -z "$TO_BE_INSTALLED_PACKAGE_LIST" ] && return 0
 
-    reinstall_packages
+    reinstall_package_list
 }
 
-reinstall_packages() {
-    [ -z "$TARGET_PACKAGE_LIST" ] && die_from_packages_is_not_specified
-     
-    for packageName in $TARGET_PACKAGE_LIST
+reinstall_package_list() {
+    die_if_package_list_is_not_specified "$TO_BE_INSTALLED_PACKAGE_LIST"
+
+    for packageName in $TO_BE_INSTALLED_PACKAGE_LIST
     do
-        is_package_available "$packageName" || die_from_package_is_not_available "$packageName"
-        is_package_installed "$packageName" || die_from_package_is_not_installed "$packageName"
+        die_if_package_is_not_available "$packageName"
+        die_if_package_is_not_installed "$packageName"
     done
     
-    for packageName in $TARGET_PACKAGE_LIST
+    for packageName in $TO_BE_INSTALLED_PACKAGE_LIST
     do
         {
-            [ -d "$DIR_BACKUP" ] || mkdir -p "$DIR_BACKUP"
+            [ -d "$MY_BACKUP_DIR" ] || mkdir -p "$MY_BACKUP_DIR"
         } &&
-        mv "$DIR_PKG/$packageName" "$DIR_BACKUP/$packageName" &&
+        mv "$MY_INSTALL_DIR/$packageName" "$MY_BACKUP_DIR/$packageName" &&
         install_a_package "$packageName" &&
-        rm -rf "$DIR_BACKUP/$packageName"
+        rm -rf "$MY_BACKUP_DIR/$packageName"
     done
 }
 
@@ -476,9 +528,9 @@ cleanup() {
 
 search_packages() {
     [ -z "$1" ] && die "please specify a keyword."
-    [ -d "$DIR_FORMULA" ] || update_formula_repository
+    [ -d "$MY_FORMULA_DIR" ] || update_formula_repository
     
-    cd "$DIR_FORMULA" || exit 1
+    cd "$MY_FORMULA_DIR" || exit 1
 
     for item in $(ls -1 *.sh | sed 's/\.sh//g')
     do
@@ -490,7 +542,7 @@ open_homepage_of_a_package() {
     if [ -z "$1" ] ; then
         homepage="$MY_HOME_PAGE"
     else
-        load_formula_of_a_package "$1"
+        die_if_load_formula_of_a_package_failed "$1"
     fi
     
     if command -v open > /dev/null ; then
@@ -504,189 +556,282 @@ print_prefix_of_a_package() {
     if [ -z "$1" ] ; then
         echo "$MY_HOME_DIR"
     else
-        if is_package_installed "$1" ; then
-            echo "$DIR_PKG/$1"
-        else
-            die_from_package_is_not_installed "$1"
-        fi
+        die_if_package_is_not_installed "$1"
+        echo "$MY_INSTALL_DIR/$1"
     fi
 }
 
 logs_a_package() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    is_package_installed "$1" || die_from_package_is_not_installed "$1"
+    die_if_package_is_not_installed "$1"
+    die_if_abi_____is_not_supported "$2"
 
-    [ -z "$2" ] && die "abi is not specified."
-    
-    DIR_LOGS="$DIR_PKG/$1/$2/log"
-
-    [ -d "$DIR_LOGS" ] || die "no logs."
-
-    if [ -f "$DIR_LOGS/config.log" ] ; then
-        if command -v bat > /dev/null ; then
-            bat -l bash "$DIR_LOGS/config.log"
-        else
-            success "$DIR_LOGS/config.log ===>"
-            less "$DIR_LOGS/config.log"
-            warn "if you want to have a better experience, I strongly recommend you install ${COLOR_RED}bat${COLOR_OFF} on your os. For more details, see ${COLOR_RED}https://github.com/sharkdp/bat${COLOR_OFF}"
-        fi
+    if command -v bat > /dev/null ; then
+        VIEWER=bat
     else
-        die "no logs."
+        VIEWER=less
+    fi
+
+    for item in $(ls "$MY_INSTALL_DIR/$1/$2/log"/*.log.txt)
+    do
+        case $item in
+            *.sh.log.txt|*/installed.log.txt)
+                bat -l bash "$item";;
+            *)
+                if [ "$VIEWER" = 'bat' ] ; then
+                    bat "$item"
+                else
+                    "$VIEWER" "$item"
+                fi
+        esac
+    done
+
+    if [ "$VIEWER" != 'bat' ] ; then
+        prompt_user_to_install_bat
+    fi
+}
+
+pack_a_package_via_zip() {
+    die_if_package_is_not_installed "$1"
+    
+    install -d "$MY_BOTTLE_DIR" || return 1
+
+    cd "$MY_INSTALL_DIR" || return 1
+
+    FILE_PATH_BOTTLE="$MY_BOTTLE_DIR/$1-bottle.zip"
+
+    info "packing $1 ..."
+
+    if zip -r "$FILE_PATH_BOTTLE" "$1" ; then
+        success "packed $1 success. $FILE_PATH_BOTTLE"
+    else
+        die "packed $1 failed."
+    fi
+}
+
+pack_a_package_via_tar_gzip() {
+    die_if_package_is_not_installed "$1"
+    
+    install -d "$MY_BOTTLE_DIR" || return 1
+
+    FILE_PATH_BOTTLE="$MY_BOTTLE_DIR/$1-bottle.tar.gz"
+
+    info "packing $1 ..."
+    
+    if tar zvcf "$FILE_PATH_BOTTLE" -C "$MY_INSTALL_DIR" "$1" ; then
+        success "packed $1 success. $FILE_PATH_BOTTLE"
+    else
+        die "packed $1 failed."
+    fi
+}
+
+pack_a_package_via_tar_xz() {
+    die_if_package_is_not_installed "$1"
+    
+    install -d "$MY_BOTTLE_DIR" || return 1
+
+    FILE_PATH_BOTTLE="$MY_BOTTLE_DIR/$1-bottle.tar.xz"
+
+    info "packing $1 ..."
+
+    if tar Jvcf "$FILE_PATH_BOTTLE" -C "$MY_INSTALL_DIR" "$1" ; then
+        success "packed $1 success. $FILE_PATH_BOTTLE"
+    else
+        die "packed $1 failed."
+    fi
+}
+
+pack_a_package_via_tar_bzip2() {
+    die_if_package_is_not_installed "$1"
+    
+    install -d "$MY_BOTTLE_DIR" || return 1
+
+    FILE_PATH_BOTTLE="$MY_BOTTLE_DIR/$1-bottle.tar.bz2"
+
+    info "packing $1 ..."
+
+    if tar jvcf "$FILE_PATH_BOTTLE" -C "$MY_INSTALL_DIR" "$1" ; then
+        success "packed $1 success. $FILE_PATH_BOTTLE"
+    else
+        die "packed $1 failed."
     fi
 }
 
 pack_a_package() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    is_package_installed "$1" || die_from_package_is_not_installed "$1"
-    
-    [ -d "$DIR_BOTTLE" ] || mkdir -p "$DIR_BOTTLE"
-    
-    if command -v tar > /dev/null ; then
+    if command -v zip > /dev/null ; then
+        pack_a_package_via_zip "$1"
+    elif command -v tar > /dev/null ; then
         if command -v gzip > /dev/null ; then
-            FILE_PATH_BOTTLE="$DIR_BOTTLE/$1-bottle.tar.gz"
-            info "packing $1..." &&
-            tar zvcf "$FILE_PATH_BOTTLE" -C "$DIR_PKG" "$1"
+            pack_a_package_via_tar_gzip "$1"
         elif command -v xz > /dev/null ; then
-            FILE_PATH_BOTTLE="$DIR_BOTTLE/$1-bottle.tar.xz"
-            info "packing $1..." &&
-            tar zvcf "$FILE_PATH_BOTTLE" -C "$DIR_PKG" "$1"
+            pack_a_package_via_tar_xz "$1"
         elif command -v bzip2 > /dev/null ; then
-            FILE_PATH_BOTTLE="$DIR_BOTTLE/$1-bottle.tar.bz2"
-            info "packing $1..." &&
-            tar zvcf "$FILE_PATH_BOTTLE" -C "$DIR_PKG" "$1"
-        fi
-    elif command -v zip > /dev/null ; then
-        FILE_PATH_BOTTLE="$DIR_BOTTLE/$1-bottle.zip"
-        cd "$DIR_PKG" &&
-        info "packing $1..." &&
-        zip -r "$FILE_PATH_BOTTLE" "$1"
-    fi
-    
-    if [ $? -eq 0 ] ; then
-        success "packed success. $FILE_PATH_BOTTLE"
-    else
-        die "pack $1 failed."
-    fi
-}
-
-get_direct_dependencies_of_a_package() {
-    grep '^dependencies=".*"' "$DIR_FORMULA/$1.sh" | sed 's/dependencies="\(.*\)"/\1/'
-}
-
-get_dependencies_of_a_package() {
-    for dependencyPkgName in $(get_direct_dependencies_of_a_package "$1")
-    do
-        is_package_available "$dependencyPkgName" || die_from_package_is_not_available "$dependencyPkgName"
-        DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST"
-        get_dependencies_of_a_package "$dependencyPkgName"
-    done
-}
-
-install_packages() {
-    [ -z "$TARGET_PACKAGE_LIST" ] && die_from_packages_is_not_specified
-    
-    for TARGET_PACKAGE in $TARGET_PACKAGE_LIST
-    do
-        get_dependencies_of_a_package "$TARGET_PACKAGE"
-    done
-    
-    for TARGET_PACKAGE in $DEPENDENCY_PACKAGE_LIST $TARGET_PACKAGE_LIST
-    do
-        if is_package_installed "$TARGET_PACKAGE" ; then
-            success "$TARGET_PACKAGE is already installed."
+            pack_a_package_via_tar_bzip2 "$1"
         else
-            install_a_package "$TARGET_PACKAGE"
+            die "please install gzip or xz or bzip2 utility."
+        fi
+    else
+        die "please install zip or tar utility."
+    fi
+}
+
+get_direct_dependency_package_list_of_a_package() {
+    grep '^dependencies=".*"' "$MY_FORMULA_DIR/$1.sh" | sed 's/dependencies="\(.*\)"/\1/'
+}
+
+resolve_DEPENDENCY_PACKAGE_LIST_of_a_package() {
+    for dependencyPkgName in $(get_direct_dependency_package_list_of_a_package "$1")
+    do
+        die_if_package_is_not_available "$dependencyPkgName"
+
+        DEPENDENCY_PACKAGE_LIST_TEMP=""
+
+        for item in $DEPENDENCY_PACKAGE_LIST
+        do
+            if [ "$dependencyPkgName" = "$item" ] ; then
+                continue
+            else
+                DEPENDENCY_PACKAGE_LIST_TEMP="$DEPENDENCY_PACKAGE_LIST_TEMP $item"
+            fi
+        done
+        
+        DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST_TEMP"
+
+        resolve_DEPENDENCY_PACKAGE_LIST_of_a_package "$dependencyPkgName"
+    done
+}
+
+install_package_list() {
+    die_if_package_list_is_not_specified "$TO_BE_INSTALLED_PACKAGE_LIST"
+    
+    for TO_BE_INSTALLED_PACKAGE in $TO_BE_INSTALLED_PACKAGE_LIST
+    do
+        resolve_DEPENDENCY_PACKAGE_LIST_of_a_package "$TO_BE_INSTALLED_PACKAGE"
+    done
+    
+    for TO_BE_INSTALLED_PACKAGE in $DEPENDENCY_PACKAGE_LIST $TO_BE_INSTALLED_PACKAGE_LIST
+    do
+        if is_package_installed "$TO_BE_INSTALLED_PACKAGE" ; then
+            success "$TO_BE_INSTALLED_PACKAGE is already installed."
+        else
+            install_a_package "$TO_BE_INSTALLED_PACKAGE"
         fi
     done
 }
 
 install_a_package() {
     fetch_a_package "$1"
-    
-    [ -d "$DIR_PKG/$1" ] && rm -rf "$DIR_PKG/$1"
-    
-    if DIR_SRC=$(mktemp -d) ; then
-        cd "$DIR_SRC" || exit 1
+
+    if WORKING_DIR=$(mktemp -d) ; then
+        SOURCE_DIR="$WORKING_DIR"
+        cd "$WORKING_DIR" || exit 1
     else
-        die "create DIR_SRC directory failed."
+        die "create WORKING_DIR directory failed."
     fi
-     
+    
     case $FETCH_URL in
-        *.git)  cp -r $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME/* "$DIR_SRC" ;;
-        *)      uncompress "$FETCH_OUTPUT_FILE_PATH" "$DIR_SRC"
+        *.git)  cp -r $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME/* "$WORKING_DIR" ;;
+        *)      uncompress "$FETCH_OUTPUT_FILE_PATH" "$WORKING_DIR"
     esac
     
     if command -v prepare > /dev/null ; then
-        prepare || die "install $1 failed! you can go to $DIR_SRC to see see."
+        prepare || die "install $1 failed! you can go to $WORKING_DIR to see see."
     fi
-    
-    if install_a_package_for_all_target_abis "$1" ; then
-        install_a_package_success "$1"
-        rm -rf "$DIR_SRC"
+
+    if install_a_package_all_abis "$1" ; then
+        if [ "$KEEP_WORKING_DIR" != 'true' ] ; then
+            rm -rf "$WORKING_DIR"
+        fi
     else
-        die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
+        die "install $1/$BUILD_FOR_ABI failed! you can go to $WORKING_DIR to see see."
     fi
 }
 
-install_a_package_for_all_target_abis() {
-    for TARGET_ABI in $(list_target_abis)
+install_a_package_all_abis() {
+    for BUILD_FOR_ABI in $BUILD_FOR_ABI_LIST
     do
-        make_env "$1" && 
-        build &&
-        collect_installation_logs &&
-        continue
-        return 1
+        install_a_package_one_abi "$1" || return 1
     done
+
+    if [ ! -d "$PKG_INSTALL_DIR" ] ; then
+        die "build all abis passed, but installed nothing. you can go to $WORKING_DIR to see see."
+    fi
+
+    echo "$BUILD_FOR_ABI_LIST" > "$PKG_INSTALL_DIR/manifest.txt"
+
+    success "$1 installed success. in $PKG_INSTALL_DIR directory."
+    
+    tree_a_installed_package "$1" || true
 }
 
-collect_installation_logs() {
-    if [ ! -d "$DIR_INSTALL_PREFIX/log" ] ; then
-        mkdir "$DIR_INSTALL_PREFIX/log" || return 1
-    fi
+install_a_package_one_abi() {
+    config_vars "$1" &&
+    export_vars &&
+    {
+        if [ "$DRYRUN" = 'true' ] ; then
+            printf_vars "$1" &&
+            exec zsh
+        else
+            (
+            cd "$BUILD_DIR" &&
+            mkfifo pipe &&
+            (tee install.log.txt < pipe &) &&
+            {
+                printf_vars "$1" &&
+                rm -rf "$ABI_INSTALL_DIR" &&
+                build
+            } > pipe 2>&1
+            )
+        fi
+    } &&
+    {
+        LOG_DIR="$ABI_INSTALL_DIR/log"
 
-    if [ -f "$DIR_BUILD"/config.log ] ; then
-        cp  "$DIR_BUILD"/config.log "$DIR_INSTALL_PREFIX/log/" || return 1
-    fi
-}
+        install -d "$LOG_DIR" || return 1
 
-install_a_package_success() {
-    [ -d "$DIR_INSTALL_PACKAGE" ] || die "install $1/$TARGET_ABI failed! you can go to $DIR_SRC to see see."
-    
-    write_installed_info
-     
-    success "$1 installed success. in $DIR_INSTALL_PACKAGE directory."
-    
-    if command -v tree > /dev/null ; then
-        tree -L 3 --dirsfirst "$DIR_INSTALL_PACKAGE"
-    fi
+        install_installed_log
+
+        install -m 644 "$MY_FORMULA_DIR/$1.sh" "$LOG_DIR/$1.sh.log.txt" || return 1
+
+        if [ -f "$SOURCE_DIR/config.log" ] ; then
+            install -m 644 "$SOURCE_DIR/config.log" "$LOG_DIR/config.log.txt" || return 1
+        fi
+
+        if [ -f "$BUILD_DIR/config.log" ] ; then
+            install -m 644 "$BUILD_DIR/config.log" "$LOG_DIR/config.log.txt" || return 1
+        fi
+
+        if [ -f "$BUILD_DIR/install.log.txt" ] ; then
+            install -m 644 "$BUILD_DIR/install.log.txt" "$LOG_DIR" || return 1
+        fi
+    }
 }
 
 info_packages() {
     unset INFO
-    unset TARGET_PACKAGE
-    unset TARGET_PACKAGE_LIST
+    unset PACKAGE
+    unset PACKAGE_LIST
 
     if [ -z "$1" ] ; then
-        [ -d "$DIR_FORMULA" ] || update_formula_repository
-        cd "$DIR_FORMULA" || exit 1
-        TARGET_PACKAGE_LIST=$(ls *.sh | sed 's/\.sh//g')
+        [ -d "$MY_FORMULA_DIR" ] || update_formula_repository
+        cd "$MY_FORMULA_DIR" || exit 1
+        PACKAGE_LIST=$(ls *.sh | sed 's/\.sh//g')
     else
-        TARGET_PACKAGE_LIST=$@
+        PACKAGE_LIST=$@
     fi
 
-    for TARGET_PACKAGE in $TARGET_PACKAGE_LIST
+    for PACKAGE in $PACKAGE_LIST
     do
         if [ "$INFO" = 'true' ] ; then
             echo "============================================================"
         else
             INFO=true
         fi
-        info_a_package "$TARGET_PACKAGE"
+        info_a_package "$PACKAGE"
     done
 }
 
 info_a_package() {
-    load_formula_of_a_package "$1"
+    die_if_load_formula_of_a_package_failed "$1"
 
     echo "name      : $(mark_is_package_installed_or_not $1)"
 
@@ -717,20 +862,29 @@ info_a_package() {
 
     case $url in
         *.git)
-            FETCH_OUTPUT_FILE_PATH="$DIR_DOWNLOAD/$(basename $url .git)"
+            FETCH_OUTPUT_FILE_PATH="$MY_CACHED_DIR/$(basename $url .git)"
             if [ -d "$FETCH_OUTPUT_FILE_PATH" ] ; then
                 echo "src_cache ${COLOR_PURPLE}==>${COLOR_OFF} $FETCH_OUTPUT_FILE_PATH"
+            else
+                echo "src_cache : ${COLOR_RED}Not cached${COLOR_OFF}"
             fi
             ;;
-        *)  FETCH_OUTPUT_FILE_PATH="$DIR_DOWNLOAD/$(basename $url)"
+        *)  FETCH_OUTPUT_FILE_PATH="$MY_CACHED_DIR/$1-$version.$URL_CONTENT_TYPE"
             if [ -f "$FETCH_OUTPUT_FILE_PATH" ] ; then
                 echo "src_cache ${COLOR_PURPLE}==>${COLOR_OFF} $FETCH_OUTPUT_FILE_PATH"
+            else
+                echo "src_cache : ${COLOR_RED}Not cached${COLOR_OFF}"
             fi
     esac
 
     if is_package_installed "$1" ; then
-        load_installed_info_of_a_package "$1" &&
-        show_installed_info_of_a_package "$1"
+        echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$MY_INSTALL_DIR/$1" | awk '{print $2, $1}')"
+        for ABI in $(cat "$MY_INSTALL_DIR/$1/manifest.txt")
+        do
+            echo "              ├── $(printf "%-12s" "$ABI") $(du -sh "$MY_INSTALL_DIR/$1/$ABI" | awk '{print $1}')"
+        done
+        die_if_load_installed_log_failed "$1" "$ABI"
+        print_installed_log "$1" "$ABI"
     fi
 }
 
@@ -742,8 +896,8 @@ mark_is_package_installed_or_not() {
     fi
 }
 
-load_formula_of_a_package() {
-    is_package_available "$1" || die_from_package_is_not_available "$1"
+die_if_load_formula_of_a_package_failed() {
+    die_if_package_is_not_available "$1"
 
     unset -f prepare
     unset -f build
@@ -754,68 +908,476 @@ load_formula_of_a_package() {
     unset homepage
     unset dependencies
     
-    FORMULA_FILE_PATH="$DIR_FORMULA/$1.sh"
+    FORMULA_FILE_PATH="$MY_FORMULA_DIR/$1.sh"
      
     . "$FORMULA_FILE_PATH" || die "$FORMULA_FILE_PATH is broken."
     
     [ -z "$summary" ]  && die "summary variable must be specified in $FORMULA_FILE_PATH"
     [ -z "$homepage" ] && die "homepage variable must be specified in $FORMULA_FILE_PATH"
     [ -z "$url" ]      && die "url variable must be specified in $FORMULA_FILE_PATH"
-    
+
     case $url in
-        *.git);;
-        *)  [ -z "$sha256" ]   && die "sha256 variable must be specified in $FORMULA_FILE_PATH"
-            [ -z "$version" ]  && version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
-            [ -z "$version" ]  && die "version can't be parsed in $FORMULA_FILE_PATH"
+        *.git)     URL_CONTENT_TYPE=git ;;
+        *.zip)     URL_CONTENT_TYPE=zip ;;
+        *.tar.xz)  URL_CONTENT_TYPE=tar.xz ;;
+        *.tar.gz)  URL_CONTENT_TYPE=tar.gz ;;
+        *.tar.bz2) URL_CONTENT_TYPE=tar.bz2;;
+        *.tgz)     URL_CONTENT_TYPE=tar.gz ;;
+        *.txz)     URL_CONTENT_TYPE=tar.xz ;;
+        *)  die "$url : extension isn't recognized. the supported extensions are .git .zip .xz .gz .bz2 .tgz .txz"
     esac
+
+    if [ "$URL_CONTENT_TYPE" != git ] ; then
+        if [ -z "$sha256" ] ; then
+            die "sha256 variable is not declared in $FORMULA_FILE_PATH"
+        fi
+        if [ -z "$version" ] ; then
+            version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+            if [ -z "$version" ] ; then
+                die "version variable is not declared in $FORMULA_FILE_PATH"
+            fi
+        fi
+    fi
 }
 
-write_installed_info() {
-    cat > "$DIR_INSTALL_PACKAGE/installed" <<EOF
-installed_time=$TIMESTAMP_UNIX
+install_installed_log() {
+    cat > "$LOG_DIR/installed.log.txt" <<EOF
+installed_datetime=$TIMESTAMP_UNIX
 installed_pkg_version=$version
-installed_ndk_version=$ANDROID_NDK_VERSION
-installed_target_api=$TARGET_API
+min_sdk_api_level=$MIN_SDK_API_LEVEL
+using_ndk_version=$ANDROID_NDK_VERSION
 EOF
 }
 
-load_installed_info_of_a_package() {
-    unset installed_time
+die_if_load_installed_log_failed() {
+    die_if_package_is_not_installed "$1"
+    die_if_abi_____is_not_supported "$2"
+
+    INSTALLED_LOG_FILE_PATH="$MY_INSTALL_DIR/$1/$2/log/installed.log.txt"
+
+    unset installed_datetime
     unset installed_pkg_version
-    unset installed_ndk_version
-    unset installed_target_api
+    unset min_platform_version
+    unset using_xcode_version
     
-    . "$DIR_PKG/$1/installed"
+    . "$INSTALLED_LOG_FILE_PATH" || die "$INSTALLED_LOG_FILE_PATH is broken."
 }
 
-show_installed_info_of_a_package() {
-    echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$DIR_PKG/$1" | awk '{print $2, $1}')"
-    echo "install_time: $(format_unix_timestamp $installed_time '+%Y/%m/%d %H:%M:%S')"
-    echo "pkg_version : $installed_pkg_version"
-    echo "ndk_version : $installed_ndk_version"
-    echo "target_api  : $installed_target_api"
+print_installed_log() {
+    echo "installed_datetime    : $(format_unix_timestamp $installed_datetime '+%Y/%m/%d %H:%M:%S')"
+    echo "installed_pkg_version : $installed_pkg_version"
+    echo "min_sdk_api_level : $min_sdk_api_level"
+    echo "using_ndk_version : $using_ndk_version"
+}
+
+config_vars() {
+    die_if_package_is_not_available "$1"
+
+    case "$BUILD_FOR_ABI" in
+        armeabi-v7a)
+            TOOLCHAIN_NAME='arm-linux-androideabi'
+            BUILD_FOR_HOST='armv7a-linux-androideabi'
+            BUILD_FOR_ARCH='arm'
+            BUILD_FOR_CPU_FAMILY='arm'
+            BUILD_FOR_CPU_NAME='armv7a'
+            ;;
+        arm64-v8a)
+            TOOLCHAIN_NAME='aarch64-linux-android'
+            BUILD_FOR_HOST='aarch64-linux-android'
+            BUILD_FOR_ARCH='arm64'
+            BUILD_FOR_CPU_FAMILY='aarch64'
+            BUILD_FOR_CPU_NAME='armv8a'
+            ;;
+        x86)
+            TOOLCHAIN_NAME='i686-linux-android'
+            BUILD_FOR_HOST='i686-linux-android'
+            BUILD_FOR_ARCH='x86'
+            BUILD_FOR_CPU_FAMILY='x86'
+            BUILD_FOR_CPU_NAME='i686'
+            ;;
+        x86_64)
+            TOOLCHAIN_NAME='x86_64-linux-android'
+            BUILD_FOR_HOST='x86_64-linux-android'
+            BUILD_FOR_ARCH='x86_64'
+            BUILD_FOR_CPU_FAMILY='x86_64'
+            BUILD_FOR_CPU_NAME='x86_64'
+            ;;
+        *)  TOOLCHAIN_NAME='unkown'
+            BUILD_FOR_HOST='unkown'
+            BUILD_FOR_ARCH='unkown'
+            BUILD_FOR_CPU_FAMILY='unkown'
+            BUILD_FOR_CPU_NAME='unkown'
+    esac
+
+    TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$BUILD_FOR_HOST$MIN_SDK_API_LEVEL-"
+
+    CC="${TOOLCHAIN_PREFIX}clang"
+   CXX="${TOOLCHAIN_PREFIX}clang++"
+   CPP="$CC -E"
+    
+    TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_NAME-"
+    
+        AR="${TOOLCHAIN_PREFIX}ar"
+        AS="${TOOLCHAIN_PREFIX}as"
+        LD="${TOOLCHAIN_PREFIX}ld"
+        NM="${TOOLCHAIN_PREFIX}nm"
+    RANLIB="${TOOLCHAIN_PREFIX}ranlib"
+     STRIP="${TOOLCHAIN_PREFIX}strip"
+
+    die_if_file_is_not_executable "$CC"
+    die_if_file_is_not_executable "$CXX"
+    die_if_file_is_not_executable "$AR"
+    die_if_file_is_not_executable "$AS"
+    die_if_file_is_not_executable "$LD"
+    die_if_file_is_not_executable "$NM"
+    die_if_file_is_not_executable "$RANLIB"
+    die_if_file_is_not_executable "$STRIP"
+
+    SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
+    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TOOLCHAIN_NAME/$MIN_SDK_API_LEVEL"
+
+      CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
+    CPPFLAGS="--sysroot $SYSROOT -I$SYSTEM_INCLUDE_DIR -Qunused-arguments"
+     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR"
+    
+    PKG_CONFIG_PATH=''
+
+    # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
+    # int fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
+    # off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
+    if [ $MIN_SDK_API_LEVEL -lt 24 ] ; then
+        CPPFLAGS="$CPPFLAGS -Dftello=ftell -Dfseeko=fseek"
+    fi
+
+    unset DEPENDENCY_PACKAGE_LIST
+    resolve_DEPENDENCY_PACKAGE_LIST_of_a_package "$1"
+
+    for PACKAGE in $DEPENDENCY_PACKAGE_LIST
+    do
+        PKG=$(printf "$PACKAGE" | tr '-' '_')
+        
+        PACKAGE_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE/$BUILD_FOR_ABI"
+        PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALL_DIR/include"
+        PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
+
+        eval "${PKG}_INSTALL_DIR='$PACKAGE_INSTALL_DIR'"
+        eval "${PKG}_INCLUDE_DIR='$PACKAGE_INCLUDE_DIR'"
+        eval "${PKG}_LIBRARY_DIR='$PACKAGE_LIBRARY_DIR'"
+
+        CPPFLAGS="-I$PACKAGE_INCLUDE_DIR $CPPFLAGS"
+         LDFLAGS="-L$PACKAGE_LIBRARY_DIR $LDFLAGS"
+        PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$PACKAGE_LIBRARY_DIR/pkgconfig"
+    done
+
+    if [ "$VERBOSE" = 'true' ] ; then
+        CFLAGS="$CFLAGS -v"
+        MAKE='make --debug'
+    else
+        MAKE='make'
+    fi
+
+    PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
+    ABI_INSTALL_DIR="$PKG_INSTALL_DIR/$BUILD_FOR_ABI"
+    
+    if [ -n "$WORKING_DIR" ] ; then
+        [ -d "$WORKING_DIR" ] || die "WORKING_DIR=[$WORKING_DIR] is not exist."
+        BUILD_DIR="$WORKING_DIR/$TIMESTAMP_UNIX/$BUILD_FOR_ABI"
+        mkdir -p "$BUILD_DIR"
+    fi
+}
+
+export_vars() {
+    export CC="$CC"
+    export CXX="$CXX"
+    export CPP="$CPP"
+    export AR="$AR"
+    export AS="$AS"
+    export LD="$LD"
+    export NM="$NM"
+    export RANLIB="$RANLIB"
+    export STRIP="$STRIP"    
+
+    export CFLAGS="$CFLAGS"
+    export CXXFLAGS="$CFLAGS"
+    export CPPFLAGS="$CPPFLAGS"
+    export LDFLAGS="$LDFLAGS"
+
+    export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+    export PKG_CONFIG_LIBDIR="$MY_INSTALL_DIR"
+    
+    if [ "$VERBOSE" = 'true' ] ; then
+        export PKG_CONFIG_DEBUG_SPEW=set
+    fi
+}
+
+printf_vars() {
+    print_seperator 'printf_vars start'
+
+    info "        PACKAGE = $1"
+    info "DIRECT_DEP_PKGS = $(get_direct_dependency_package_list_of_a_package "$1")"
+    info ""
+    info "ANDROID_NDK_VER  = $ANDROID_NDK_VERSION"
+    info "ANDROID_NDK_HOME = $ANDROID_NDK_HOME"
+    info "TOOLCHAIN_DIR    = $TOOLCHAIN_DIR"
+    info "              CC = $CC"
+    info "             CXX = $CXX"
+    info "             CPP = $CPP"
+    info "              AR = $AR"
+    info "              AS = $AS"
+    info "              LD = $LD"
+    info "              NM = $NM"
+    info "          RANLIB = $RANLIB"
+    info "           STRIP = $STRIP"
+    info "         SYSROOT = $SYSROOT"
+    info ""
+    info "SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR"
+    info "SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR"
+    info ""
+    info "MIN_SDK_API_LEVEL = $MIN_SDK_API_LEVEL"
+    info ""
+    info "TOOLCHAIN_NAME = $TOOLCHAIN_NAME"
+    info "BUILD_FOR_HOST = $BUILD_FOR_HOST"
+    info "BUILD_FOR_ARCH = $BUILD_FOR_ARCH"
+    info "BUILD_FOR_ABI  = $BUILD_FOR_ABI"
+    info ""
+    info "CFLAGS"
+    for item in $CFLAGS
+    do
+        echo "    $item"
+    done
+    info ""
+    info "CXXFLAGS"
+    for item in $CXXFLAGS
+    do
+        echo "    $item"
+    done
+    info ""
+    info "CPPFLAGS"
+    for item in $CPPFLAGS
+    do
+        echo "    $item"
+    done
+    info ""
+    info "LDFLAGS"
+    for item in $LDFLAGS
+    do
+        echo "    $item"
+    done
+    info ""
+    info "PKG_CONFIG_PATH"
+    for item in $(echo $PKG_CONFIG_PATH | tr ':' ' ')
+    do
+        echo "    $item"
+    done
+    info ""
+    info "PKG_CONFIG_LIBDIR = $PKG_CONFIG_LIBDIR"
+    info ""
+    info "PATH"
+    for item in $(echo $PATH | tr ':' ' ')
+    do
+        echo "    $item"
+    done
+    info ""
+    info "WORKING_DIR = $WORKING_DIR"
+    info " SOURCE_DIR = $SOURCE_DIR"
+    info "  BUILD_DIR = $BUILD_DIR"
+    info ""
+    info "PKG_INSTALL_DIR = $PKG_INSTALL_DIR"
+    info "ABI_INSTALL_DIR = $ABI_INSTALL_DIR"
+    print_seperator 'printf_vars end'
+}
+
+print_seperator() {
+    info "=========================================> $1"
+}
+
+# run in a subshell
+configure() {
+    print_seperator "config start"
+    
+    if "$SOURCE_DIR"/configure \
+        --host="$BUILD_FOR_HOST" \
+        --prefix="$ABI_INSTALL_DIR" \
+        --disable-option-checking \
+        --disable-rpath \
+        --disable-debug \
+        --disable-nls\
+        --enable-largefile \
+        --enable-static \
+        --enable-shared \
+        CC="$CC" \
+        CFLAGS="$CFLAGS" \
+        CXX="$CXX" \
+        CXXFLAGS="$CXXFLAGS" \
+        CPP="$CPP" \
+        CPPFLAGS="$CPPFLAGS" \
+        LDFLAGS="$LDFLAGS" \
+        AR="$AR" \
+        RANLIB="$RANLIB" \
+        CC_FOR_BUILD=/usr/bin/cc \
+        PKG_CONFIG_PATH="$PKG_CONFIG_PATH" \
+        PKG_CONFIG_LIBDIR="$PKG_CONFIG_LIBDIR" \
+        $@ ; then
+        print_seperator "config success"
+    else
+        print_seperator "config failed"
+        return 1
+    fi
+
+    print_seperator "clean start"
+    if $MAKE clean ; then
+        print_seperator "clean success"
+    else
+        print_seperator "clean failed"
+        return 1
+    fi
+
+    print_seperator "build start"
+    if $MAKE ; then
+        print_seperator "build success"
+    else
+        print_seperator "build failed"
+        return 1
+    fi
+
+    print_seperator "install start"
+    if $MAKE install ; then
+        print_seperator "install success"
+    else
+        print_seperator "install failed"
+        return 1
+    fi
+}
+
+# https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
+# https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX.html
+# https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
+# https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
+# https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
+# run in a subshell
+cmake() {
+    unset -f meson
+
+    command cmake \
+    -DCMAKE_VERBOSE_MAKEFILE=ON \
+    -DCMAKE_COLOR_MAKEFILE=ON \
+    -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+    -DCMAKE_PREFIX_PATH="$MY_INSTALL_DIR" \
+    -DCMAKE_FIND_ROOT_PATH="$MY_INSTALL_DIR" \
+    -DCMAKE_INSTALL_PREFIX="$ABI_INSTALL_DIR" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
+    -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DBUILD_TESTING=OFF \
+    -DANDROID_TOOLCHAIN=clang \
+    -DANDROID_ABI="$BUILD_FOR_ABI" \
+    -DANDROID_PLATFORM="$MIN_SDK_API_LEVEL" \
+    -G "Unix Makefiles" \
+    -Wno-dev \
+    -S "$SOURCE_DIR" \
+    -B "$BUILD_DIR" $@ &&
+    $MAKE --directory="$BUILD_DIR" &&
+    $MAKE --directory="$BUILD_DIR" install
+}
+
+# run in a subshell
+meson() {
+    unset -f cmake
+
+    CMAKE_EXECUTABLE=$(command -v cmake)
+    
+    PKG_CONFIG_EXECUTABLE=$(command -v pkg-config) ||
+    PKG_CONFIG_EXECUTABLE=$(command -v pkgconf)
+
+    cat >> "$BUILD_DIR/cross-file" <<EOF
+[host_machine]
+system = 'android'
+endian = 'little'
+cpu_family = '$BUILD_FOR_CPU_FAMILY'
+cpu = '$BUILD_FOR_CPU_NAME'
+
+[binaries]
+c = '$CC'
+cpp = '$CXX'
+ar = '$AR'
+strip = '$STRIP'
+cmake = '$CMAKE_EXECUTABLE'
+pkgconfig = '$PKG_CONFIG_EXECUTABLE'
+
+[properties]
+c_args = $(to_meson_array $CFLAGS $CPPFLAGS)
+c_link_args = $(to_meson_array $LDFLAGS)
+cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
+cpp_link_args = $(to_meson_array $LDFLAGS)
+EOF
+    command meson setup \
+        --prefix="$ABI_INSTALL_DIR" \
+        --buildtype=release \
+        --backend=ninja \
+        --cross-file="$BUILD_DIR/cross-file" \
+        $@ "$BUILD_DIR" "$SOURCE_DIR" &&
+    ninja -C "$BUILD_DIR" install
+}
+
+to_meson_array() {
+    RESULT="[''"
+    for item in $@
+    do
+        RESULT="$RESULT, '$item'"
+    done
+    RESULT="$RESULT]"
+    echo "$RESULT"
 }
 
 ########################################################################
 
-is_package_installed() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    [ -d "$DIR_PKG/$1" ] &&
-    [ -f "$DIR_PKG/$1/installed" ]
+ldd() {
+    die_if_package_is_not_installed "$1"
+    die_if_abi_____is_not_supported "$2"
+    [ -z "$3" ] && die "type is not specified."
+    [ -z "$4" ] && die "name is not specified."
+
+    case $2 in
+        armeabi-v7a) TOOLCHAIN_NAME='arm-linux-androideabi' ;;
+        arm64-v8a)   TOOLCHAIN_NAME='aarch64-linux-android' ;;
+        x86)         TOOLCHAIN_NAME='i686-linux-android' ;;
+        x86_64)      TOOLCHAIN_NAME='x86_64-linux-android' ;;
+        *)           die "$2: abi is not supported."
+    esac
+
+    TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_NAME"
+    READELF="$TOOLCHAIN_PREFIX-readelf"
+    die_if_file_is_not_executable "$READELF"
+
+    ldd_recursion() {
+        die_if_package_is_not_installed "$1"
+        die_if_abi_____is_not_supported "$2"
+        [ -z "$3" ] && die "type is not specified."
+        [ -z "$4" ] && die "name is not specified."
+
+        FILE_PATH="$MY_INSTALL_DIR/$1/$2/$3/$4"
+        [ -f "$FILE_PATH" ] || die "$FILE_PATH not exist."
+        echo "$FILE_PATH"
+
+        DLL=$("$READELF" -d "$FILE_PATH" | grep ".so" | sed 's/.*\[\(.*\)\].*/\1/')
+        for item in $DLL
+        do
+            ldd_recursion $(read_ldd_cache $item)
+        done
+    }
+
+    ldd_recursion "$1" "$2" "$3" "$4"
 }
 
-is_package_outdated() {
-    [ -z "$1" ] && die_from_package_is_not_specified
-    [ -z "$2" ] || warn "outdated? command accept only one parameter."
-    
-    is_package_available "$1" || die_from_package_is_not_available "$1"
-    is_package_installed "$1" || die_from_package_is_not_installed "$1"
+list_supported_abis() {
+    print_list armeabi-v7a arm64-v8a x86 x86_64
+}
 
-    load_formula_of_a_package "$1"
-    load_installed_info_of_a_package "$1"
-
-    [ "$version" = "$installed_pkg_version" ] && return 1
-    [ "$version" = $(printf "$version\n$installed_pkg_version" | sort --version-sort --reverse | head -n 1) ]
+list_supported_sdk_api_levels() {
+    print_list 21 22 23 24 25 26 27 28 29
 }
 
 get_ndk_version_via_awk() {
@@ -910,313 +1472,45 @@ get_ndk_version_major() {
     echo 0
 }
 
-check_ANDROID_NDK_HOME() {
-    [ -z "$ANDROID_ROOT" ] || export ANDROID_NDK_HOME="$ANDROID_ROOT"
-    [ -z "$ANDROID_NDK_HOME" ] && die "please set ANDROID_NDK_HOME environment variable, then try again!"
+check_requirements() {
+    [ -z "$ANDROID_NDK_ROOT" ] || export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
+    [ -z "$ANDROID_NDK_HOME" ] && die "please set and export ANDROID_NDK_HOME environment variable, then try again!"
     [ -d "$ANDROID_NDK_HOME" ] || die "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
-    export PATH=$ANDROID_NDK_HOME:$PATH
-}
-
-check_ANDROID_NDK_VERSION() {
-    ANDROID_NDK_VERSION="$(get_ndk_version)"
-    [ "$(get_ndk_version_major)" -lt 19 ] && die "your ndk version is $ANDROID_NDK_VERSION, please update to r19 or newer."
-}
-
-list_target_abis() {
-    print_list armeabi-v7a arm64-v8a x86 x86_64
-}
-
-list_target_apis() {
-    print_list 21 22 23 24 25 26 27 28 29
-}
-
-make_env() {
-    is_package_available "$1" || die_from_package_is_not_available "$1"
     
+    export PATH=$ANDROID_NDK_HOME:$PATH
+
     TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$OS_NAME-$(uname -m)"
     SYSROOT="$TOOLCHAIN_DIR/sysroot"
     export PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
-    case "$TARGET_ABI" in
-        armeabi-v7a) 
-            TOOLCHAIN_NAME='arm-linux-androideabi'
-            TARGET_HOST='armv7a-linux-androideabi'
-            TARGET_ARCH='arm'
-            TARGET_CPU_FAMILY='arm'
-            TARGET_CPU_NAME='armv7a'
-            ;;
-        arm64-v8a)
-            TOOLCHAIN_NAME='aarch64-linux-android'
-            TARGET_HOST='aarch64-linux-android'
-            TARGET_ARCH='arm64'
-            TARGET_CPU_FAMILY='aarch64'
-            TARGET_CPU_NAME='armv8a'
-            ;;
-        x86)
-            TOOLCHAIN_NAME='i686-linux-android'
-            TARGET_HOST='i686-linux-android'
-            TARGET_ARCH='x86'
-            TARGET_CPU_FAMILY='x86'
-            TARGET_CPU_NAME='i686'
-            ;;
-        x86_64)
-            TOOLCHAIN_NAME='x86_64-linux-android'
-            TARGET_HOST='x86_64-linux-android'
-            TARGET_ARCH='x86_64'
-            TARGET_CPU_FAMILY='x86_64'
-            TARGET_CPU_NAME='x86_64'
-            ;;
-        *)  TOOLCHAIN_NAME='unkown'
-            TARGET_HOST='unkown'
-            TARGET_ARCH='unkown'
-            TARGET_CPU_FAMILY='unkown'
-            TARGET_CPU_NAME='unkown'
-    esac
+    ANDROID_NDK_VERSION="$(get_ndk_version)"
+    ANDROID_NDK_VERSION_MAJOR="$(get_ndk_version_major)"
 
-    
-    FILE_PATH_LIBZ_SO="$TOOLCHAIN_DIR/sysroot/usr/lib/$TOOLCHAIN_NAME/$TARGET_API/libz.so"
-    
-    DIR_INSTALL_PACKAGE="$DIR_PKG/$1"
-    DIR_INSTALL_PREFIX="$DIR_INSTALL_PACKAGE/$TARGET_ABI"
-    
-    if [ -n "$DIR_SRC" ] ; then
-        if [ -d "$DIR_SRC" ] ; then
-            DIR_BUILD="$DIR_SRC/$TIMESTAMP_UNIX/$TARGET_ABI"
-            mkdir -p "$DIR_BUILD" || exit 1
-        else
-            exit 1
-        fi
+    # Android NDK version must be r19 or newer.
+    if [ "$ANDROID_NDK_VERSION_MAJOR" -lt 19 ] ; then
+        die "your installed android-ndk [$ANDROID_NDK_HOME] version is $ANDROID_NDK_VERSION, please update to r19 or newer."
     fi
-
-    info "-------------------------------------------------------"
-    info "        PKG_NAME = $1"
-    info "    DEPENDENCIES = $(get_direct_dependencies_of_a_package "$1")"
-    info "ANDROID_NDK_HOME = $ANDROID_NDK_HOME"
-    info "ANDROID_NDK_VER  = $ANDROID_NDK_VERSION"
-    info "FILE_PATH_LIBZ_SO = $FILE_PATH_LIBZ_SO"
-    info "   TOOLCHAIN_DIR = $TOOLCHAIN_DIR"
-    info "   TOOLCHAIN_NAME= $TOOLCHAIN_NAME"
-    info "         SYSROOT = $SYSROOT"
-    info "     TARGET_HOST = $TARGET_HOST"
-    info "     TARGET_ARCH = $TARGET_ARCH"
-    info "     TARGET_ABI  = $TARGET_ABI"
-    info "     TARGET_API  = $TARGET_API"
-    info "DIR_INSTALL_PACKAGE= $DIR_INSTALL_PACKAGE"
-    info "DIR_INSTALL_PREFIX = $DIR_INSTALL_PREFIX"
-    info "     DIR_SRC     = $DIR_SRC"
-    info "     DIR_BUILD   = $DIR_BUILD"
-
-    TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$TARGET_HOST$TARGET_API-"
-
-    CC="${TOOLCHAIN_PREFIX}clang"
-    is_exist_and_executable "$CC" && export CC="$CC"
-    info "    CC = $CC"
-
-    CXX="${TOOLCHAIN_PREFIX}clang++"
-    is_exist_and_executable "$CXX" && export CXX="$CXX"
-    info "   CXX = $CXX"
-
-    export CPP="$CC -E"
-    info "   CPP = $CPP"
-    
-    if [ "$TARGET_HOST" = 'armv7a-linux-androideabi' ] ; then
-        TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/arm-linux-androideabi-"
-    else
-        TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$TARGET_HOST-"
-    fi
-
-    info "TOOLCHAIN_PREFIX = $TOOLCHAIN_PREFIX"
-    
-    AR="${TOOLCHAIN_PREFIX}ar"
-    is_exist_and_executable "$AR" && export AR="$AR"
-    info "    AR = $AR"
-
-    AS="${TOOLCHAIN_PREFIX}as"
-    is_exist_and_executable "$AS" && export AS="$AS"
-    info "    AS = $AS"
-
-    LD="${TOOLCHAIN_PREFIX}ld"
-    is_exist_and_executable "$LD" && export LD="$LD"
-    info "    LD = $LD"
-
-    NM="${TOOLCHAIN_PREFIX}nm"
-    is_exist_and_executable "$NM" && export NM="$NM"
-    info "    NM = $NM"
-     
-    RANLIB="${TOOLCHAIN_PREFIX}ranlib"
-    is_exist_and_executable "$RANLIB" && export RANLIB="$RANLIB"
-    info "RANLIB = $RANLIB"
-    
-    STRIP="${TOOLCHAIN_PREFIX}strip"
-    is_exist_and_executable "$STRIP" && export STRIP="$STRIP"
-    info " STRIP = $STRIP"
-
-      CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
-    CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments"
-     LDFLAGS="--sysroot $SYSROOT"
-    PKG_CONFIG_PATH=''
-
-    # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
-    # int fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
-    # off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
-    if [ $TARGET_API -lt 24 ] ; then
-        CPPFLAGS="$CPPFLAGS -Dftello=ftell -Dfseeko=fseek"
-    fi
-
-    for item in $DEPENDENCY_PACKAGE_LIST
-    do
-        item2=$(printf "$item" | tr '-' '_')
-        
-        ITEM_DIR_INSTALL_PREFIX="$DIR_PKG/$item/$TARGET_ABI"
-        ITEM_DIR_INCLUDE="$ITEM_DIR_INSTALL_PREFIX/include"
-        ITEM_DIR_LIB="$ITEM_DIR_INSTALL_PREFIX/lib"
-
-        eval "${item2}_DIR_INSTALL_PREFIX='$ITEM_DIR_INSTALL_PREFIX'"
-        eval "${item2}_DIR_INCLUDE='$ITEM_DIR_INCLUDE'"
-        eval "${item2}_DIR_LIB='$ITEM_DIR_LIB'"
-
-        CPPFLAGS="-I$ITEM_DIR_INCLUDE $CPPFLAGS"
-        LDFLAGS="-L$ITEM_DIR_LIB $LDFLAGS"
-        PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ITEM_DIR_LIB/pkgconfig"
-    done
-    
-    [ "$VERBOSE" = 'true' ] && {
-        export CFLAGS="$CFLAGS -v"
-        export PKG_CONFIG_DEBUG_SPEW=set
-    }
-
-    export CFLAGS="$CFLAGS"
-    export CXXFLAGS="$CFLAGS"
-    export CPPFLAGS="$CPPFLAGS"
-    export LDFLAGS="$LDFLAGS"
-    export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-    export PKG_CONFIG_LIBDIR="$DIR_PKG"
-
-    info "CFLAGS  =$CFLAGS"
-    info "CXXFLAGS=$CXXFLAGS"
-    info "CPPFLAGS=$CPPFLAGS"
-    info "LDFLAGS =$LDFLAGS"
-    info "PKG_CONFIG_PATH   = $PKG_CONFIG_PATH"
-    info "PKG_CONFIG_LIBDIR = $PKG_CONFIG_LIBDIR"
-    
-    info "-------------------------------------------------------"
 }
 
-configure() {
-    (cd "$DIR_BUILD" || return 1; \
-    "$DIR_SRC"/configure \
-        --host="$TARGET_HOST" \
-        --prefix="$DIR_INSTALL_PREFIX" \
-        --disable-option-checking \
-        --disable-rpath \
-        --disable-debug \
-        --disable-nls\
-        --enable-largefile \
-        --enable-static \
-        --enable-shared \
-        CC="$CC" \
-        CFLAGS="$CFLAGS" \
-        CXX="$CXX" \
-        CXXFLAGS="$CXXFLAGS" \
-        CPP="$CPP" \
-        CPPFLAGS="$CPPFLAGS" \
-        LDFLAGS="$LDFLAGS" \
-        AR="$AR" \
-        RANLIB="$RANLIB" \
-        $@ &&
-    make clean &&
-    make &&
-    make install)
-}
+parse_arguments() {
+    # https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element#api-level-table
+    unset MIN_SDK_API_LEVEL
 
-# https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
-# https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX.html
-# https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
-# https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
-# https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
-cmake() {
-    unset -f meson
+    unset TO_BE_INSTALLED_PACKAGE_LIST
 
-    command cmake \
-    -DCMAKE_VERBOSE_MAKEFILE=ON \
-    -DCMAKE_COLOR_MAKEFILE=ON \
-    -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-    -DCMAKE_PREFIX_PATH="$DIR_PKG" \
-    -DCMAKE_FIND_ROOT_PATH="$DIR_PKG" \
-    -DCMAKE_INSTALL_PREFIX="$DIR_INSTALL_PREFIX" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
-    -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DBUILD_TESTING=OFF \
-    -DANDROID_TOOLCHAIN=clang \
-    -DANDROID_ABI="$TARGET_ABI" \
-    -DANDROID_PLATFORM="$TARGET_API" \
-    -G "Unix Makefiles" \
-    -Wno-dev \
-    -S "$DIR_SRC" \
-    -B "$DIR_BUILD" $@ &&
-    make --directory="$DIR_BUILD" &&
-    make --directory="$DIR_BUILD" install
-}
-
-meson() {
-    unset -f cmake
-
-    CMAKE_EXECUTABLE=$(command -v cmake)
-    
-    PKG_CONFIG_EXECUTABLE=$(command -v pkg-config) ||
-    PKG_CONFIG_EXECUTABLE=$(command -v pkgconf)
-
-    cat >> "$DIR_BUILD/android-cross-file" <<EOF
-[host_machine]
-system = 'android'
-endian = 'little'
-cpu_family = '$TARGET_CPU_FAMILY'
-cpu = '$TARGET_CPU_NAME'
-
-[binaries]
-c = '$CC'
-cpp = '$CXX'
-ar = '$AR'
-strip = '$STRIP'
-cmake = '$CMAKE_EXECUTABLE'
-pkgconfig = '$PKG_CONFIG_EXECUTABLE'
-EOF
-    command meson setup \
-        --prefix="$DIR_INSTALL_PREFIX" \
-        --buildtype=minsize \
-        --backend=ninja \
-        --strip \
-        --cross-file="$DIR_BUILD/android-cross-file" \
-        $@ \
-        "$DIR_BUILD" &&
-    ninja -C "$DIR_BUILD" install
-}
-
-parse_params() {
-    unset TARGET_ABI
-    unset TARGET_API
-    unset TARGET_PACKAGE
-    unset TARGET_PACKAGE_LIST
-    unset COMMAND
-    unset VERBOSE
+    unset DRYRUN
     unset XTRACE
-    
-    COMMAND="$1"
+    unset VERBOSE
+
+    unset KEEP_WORKING_DIR
     
     shift
     
     while test -n "$1"
     do
         case "$1" in
-            --target-api=[1-9][0-9])
-                TARGET_API=$(getvalue "$1")
-                ;;
-            --target-abi=*)
-                TARGET_ABI=$(getvalue "$1")
+            --min-sdk-api-level=[1-9][0-9])
+                MIN_SDK_API_LEVEL=$(getvalue "$1")
                 ;;
             --verbose|-v)
                 VERBOSE=true
@@ -1225,74 +1519,69 @@ parse_params() {
                 XTRACE=true
                 set -x
                 ;;
+            --dry-run)
+                DRYRUN=true
+                ;;
+            --keep-working-dir)
+                KEEP_WORKING_DIR=true
+                ;;
             [a-z]*)
-                if [ "$COMMAND" = 'env' ] ; then
-                    if [ -z "$TARGET_PACKAGE" ] ; then
-                        TARGET_PACKAGE="$1"
-                    else
-                        die "env command accept only one package name."
-                    fi
+                if [ -z "$TO_BE_INSTALLED_PACKAGE_LIST" ] ; then
+                    TO_BE_INSTALLED_PACKAGE_LIST="$1"
                 else
-                    if [ -z "$TARGET_PACKAGE_LIST" ] ; then
-                        TARGET_PACKAGE_LIST="$1"
-                    else
-                        TARGET_PACKAGE_LIST="$TARGET_PACKAGE_LIST $1"
-                    fi
+                    TO_BE_INSTALLED_PACKAGE_LIST="$TO_BE_INSTALLED_PACKAGE_LIST $1"
                 fi
                 ;;
-            *)  die "$1 is a invalid param."
+            *)  die "$1 is a invalid argument."
         esac
         shift
     done
 
-    [ -z "$TARGET_API" ] && {
-        TARGET_API=21
-        warn "--target-api=VALUE argument is not specified. so, use the default value [21]."
+    [ -z "$MIN_SDK_API_LEVEL" ] && {
+        MIN_SDK_API_LEVEL=$(list_supported_sdk_api_levels | head -n 1)
+        warn "--min-sdk-api-level=INTEGER argument is not specified. so, use the default value [$MIN_SDK_API_LEVEL]."
     }
 
-    if [ "$COMMAND" = 'env' ] ; then
-        [ -z "$TARGET_ABI" ] && {
-            TARGET_ABI='armeabi-v7a'
-            warn "--target-abi=VALUE argument is not specified. so, use the default value [armeabi-v7a]."
-        }
-    fi
+    BUILD_FOR_ABI_LIST="$(list_supported_abis)"
 }
 
 help() {
     cat << EOF
-Usage: ndk-pkg [COMMAND [ARGUMENT...]]
-COMMAND:
-    help | --help | -h     --show help information.
-    version | --version -V --print version of ndk-pkg and NDK.
+$MY_NAME is a package manager for Android NDK to build C/C++ project.
+
+Usage: $MY_NAME <ACTION> [ARGUMENT...]
+
+ACTION:
+    help    | --help    | -h    --show help information.
+    version | --version | -V    --print version of $MY_NAME and Android NDK.
     
-    list target-abis       --list the supported target abis.
-    list target-apis       --list the supported target api levels.
+    list supported-abis              --list the supported abis.
+    list supported-sdk-api-levels    --list the supported android-sdk api-levels.
+    
     list available         --list the available packages.
     list installed         --list the installed packages.
     list outdated          --list the outdated packages.
 
-    is available PKG_NAME  --is PKG_NAME available?
-    is installed PKG_NAME  --is PKG_NAME installed?
-    is outdated  PKG_NAME  --is PKG_NAME outdated?
+    is available PACKAGE  --is PACKAGE available?
+    is installed PACKAGE  --is PACKAGE installed?
+    is outdated  PACKAGE  --is PACKAGE outdated?
     
-    search KEYWORD         --search packages.
+    search KEYWORD        --search packages.
     
-    cat  PKG_NAME          --show the formula source code of a package.
-    edit PKG_NAME          --edit the formula source code of a package.
-    tree PKG_NAME          --list contents of a installed package directory in a tree-like format.
-    pack PKG_NAME          --pack a installed package.
-    logs PKG_NAME          --print the logs of a installed package.
-    fetch PKG_NAME         --download formula resources of a package to the cache.
-    prefix PKG_NAME        --show the installation direcotory of a formula or the ndk-pkg home.
-    homepage PKG_NAME      --visit the homepage of a formula or the ndk-pkg project.
-    
-    env  PKG_NAME --target-api=21 --target-abi=armeabi-v7a -v -x
-    
-    install   PKG_NAME... [--target-api=21 -v -x]     --install packages.
-    reinstall PKG_NAME... [--target-api=21 -v -x]     --reinstall packages.
-    upgrade   PKG_NAME... [--target-api=21 -v -x]     --upgrade packages.
-    uninstall PKG_NAME...                          --uninstall packages.
-    info      PKG_NAME...                          --print the information of packages.
+    view PACKAGE          --show the formula source code of a package.
+    edit PACKAGE          --edit the formula source code of a package.
+    tree PACKAGE          --list contents of a installed package directory in a tree-like format.
+    pack PACKAGE          --pack a installed package.
+    logs PACKAGE ABI      --print the logs of a installed package.
+    info PACKAGE...       --print the information of packages.
+    fetch PACKAGE         --download formula resources of a package to the cache.
+    prefix PACKAGE        --show the installation direcotory of a formula or the $MY_NAME home.
+    homepage PACKAGE      --visit the homepage of a formula or the $MY_NAME project.
+
+    install   PACKAGE... [--min-sdk-api-level=21 -v -x --dry-run]     --install packages.
+    reinstall PACKAGE... [--min-sdk-api-level=21 -v -x --dry-run]     --reinstall packages.
+    upgrade   PACKAGE... [--min-sdk-api-level=21 -v -x --dry-run]     --upgrade packages.
+    uninstall PACKAGE...   --uninstall packages.
     
     cleanup          --cleanup the unused cache.
     update           --update the formula repository.
@@ -1304,24 +1593,29 @@ EOF
     fi
 }
 
-main() {
+init() {
+    # MY represents this software's
+    MY_NAME=ndk-pkg
+    MY_VERSION=0.1.0
+    MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
+
     if [ -z "$NDK_PKG_FORMULA_REPO_URL" ] ; then
-        MY_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula.git'
+        MY_FORMULA_REPO_URL="https://github.com/leleliu008/$MY_NAME-formula.git"
     else
         MY_FORMULA_REPO_URL="$NDK_PKG_FORMULA_REPO_URL"
     fi
 
     if [ -z "$NDK_PKG_HOME_DIR" ] ; then
-        MY_HOME_DIR="$HOME/.ndk-pkg"
+        MY_HOME_DIR="$HOME/.$MY_NAME"
     else
         MY_HOME_DIR="$NDK_PKG_HOME_DIR"
     fi
 
-    DIR_FORMULA="$MY_HOME_DIR/formula"
-    DIR_DOWNLOAD="$MY_HOME_DIR/downloads"
-    DIR_BOTTLE="$MY_HOME_DIR/bottles"
-    DIR_BACKUP="$MY_HOME_DIR/backup"
-    DIR_PKG="$MY_HOME_DIR/pkg"
+    MY_FORMULA_DIR="$MY_HOME_DIR/formula"
+    MY_INSTALL_DIR="$MY_HOME_DIR/pkg"
+    MY_CACHED_DIR="$MY_HOME_DIR/downloads"
+    MY_BOTTLE_DIR="$MY_HOME_DIR/bottles"
+    MY_BACKUP_DIR="$MY_HOME_DIR/backup"
 
     TIMESTAMP_UNIX="$(date +%s)"
     
@@ -1329,26 +1623,30 @@ main() {
     case $OS_NAME in
         msys*|mingw*|cygwin*) OS_NAME=windows
     esac
+}
+
+main() {
+    init
 
     case $1 in
         --help|help|-h) 
             help
             ;;
         --version|version|-V)
-            echo "ndk-pkg $MY_VERSION"
-            check_ANDROID_NDK_HOME
-            echo "NDK     $(get_ndk_version)"
+            echo "$MY_NAME $MY_VERSION"
+            check_requirements
+            echo "NDK     $ANDROID_NDK_VERSION"
             ;;
         list)
             shift
             case "$1" in
-                target-abis)
+                supported-abis)
                     shift
-                    list_target_abis
+                    list_supported_abis
                     ;;
-                target-apis)
+                supported-sdk-api-levels)
                     shift
-                    list_target_apis
+                    list_supported_sdk_api_levels
                     ;;
                 available)
                     shift
@@ -1373,39 +1671,34 @@ main() {
             shift
             search_packages "$*"
             ;;
-        env) 
-            check_ANDROID_NDK_HOME
-            check_ANDROID_NDK_VERSION
-            parse_params "$@"
-            make_env "$TARGET_PACKAGE"
-            ;;
         install)
-            check_ANDROID_NDK_HOME
-            check_ANDROID_NDK_VERSION
-            parse_params "$@"
-            install_packages
+            check_requirements
+            parse_arguments "$@"
+            if [ "$DRYRUN" = 'true' ] ; then
+                install_a_package "$TO_BE_INSTALLED_PACKAGE_LIST"
+            else
+                install_package_list
+            fi
             ;;
         reinstall)
-            check_ANDROID_NDK_HOME
-            check_ANDROID_NDK_VERSION
-            parse_params "$@"
-            reinstall_packages
+            check_requirements
+            parse_arguments "$@"
+            reinstall_package_list
             ;;
         upgrade)
-            check_ANDROID_NDK_HOME
-            check_ANDROID_NDK_VERSION
-            parse_params "$@"
+            check_requirements
+            parse_arguments "$@"
             upgrade_packages
             ;;
         uninstall)
             shift
-            uninstall_packages "$@"
+            uninstall_package_list "$@"
             ;;
         info)
             shift
             info_packages "$@"
             ;;
-        cat)
+        view)
             shift
             cat_formula_of_a_package "$@"
             ;;
@@ -1454,6 +1747,11 @@ main() {
                     ;;
                 *) help 1
             esac
+            ;;
+            ldd)
+                shift
+                check_requirements
+                ldd "$@"
             ;;
         *) help 1
     esac
