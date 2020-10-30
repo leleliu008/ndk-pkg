@@ -27,7 +27,7 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         ndk-pkg --help
         ndk-pkg help
         
-*   print the version of `ndk-pkg` and `NDK`
+*   print the version of `ndk-pkg` and [Android NDK](https://developer.android.google.cn/ndk)
         
         ndk-pkg -V
         ndk-pkg --version
@@ -46,12 +46,16 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
 *   install packages
         
         ndk-pkg install curl
-        ndk-pkg install curl bzip2 --target-api=21 -v
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v --xtrace
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v --xtrace --verbose
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v --xtrace --verbose --dry-run
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v --xtrace --verbose --keep-working-dir
         
 *   reinstall packages
         
         ndk-pkg reinstall curl
-        ndk-pkg reinstall curl bzip2 --target-api=21 -v
+        ndk-pkg reinstall curl bzip2 --min-sdk-api-level=21 -v
         
 *   uninstall packages
         
@@ -61,23 +65,23 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
 *   upgrade the outdated packages
         
         ndk-pkg upgrade curl
-        ndk-pkg upgrade curl bzip2 --target-api=21 -v
+        ndk-pkg upgrade curl bzip2 --min-sdk-api-level=21 -v
 
 *   view the formula source code of a package
         
-        ndk-pkg cat curl
+        ndk-pkg view curl
         
 *   edit the formula source code of a package
         
         ndk-pkg edit curl
         
-*   list the supported target abis
+*   list the supported abis
         
-        ndk-pkg list target-abis
+        ndk-pkg list supported-abis
         
-*   list the supported target api-levels
+*   list the supported sdk api-levels
         
-        ndk-pkg list target-apis
+        ndk-pkg list supported-sdk-api-levels
         
 *   list the available packages
         
@@ -107,14 +111,8 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
 *   list contents of a installed package directory in a tree-like format.
         
         ndk-pkg tree curl
+        ndk-pkg tree curl -L 3
         
-*   print the environment variable settings
-        
-        ndk-pkg env curl --target-api=21 --target-abi=armeabi-v7a - -x
-        ndk-pkg env curl --target-api=21 --target-abi=arm64-v8a -x
-        ndk-pkg env curl --target-api=21 --target-abi=x86 -x
-        ndk-pkg env curl --target-api=21 --target-abi=x86_64 -x
-
 *   update the [formula repository](https://github.com/leleliu008/ndk-pkg-formula)
         
         ndk-pkg update
@@ -125,7 +123,10 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         
 *   print the logs of a installed package
         
-        ndk-pkg logs curl
+        ndk-pkg logs curl armeabi-v7a
+        ndk-pkg logs curl arm64-v8a
+        ndk-pkg logs curl x86
+        ndk-pkg logs curl x86_64
         
 *   pack a installed package
         
