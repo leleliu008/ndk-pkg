@@ -461,10 +461,10 @@ uninstall_a_package() {
     success "$1 uninstalled."
 }
 
-cat_formula_of_a_package() {
+view_formula_of_a_package() {
     die_if_package_is_not_available "$1"
 
-    [ -z "$2" ] || warn "cat action accept only one argument."
+    [ -z "$2" ] || warn "view action accept only one argument."
     
     if command -v bat > /dev/null ; then
         bat "$MY_FORMULA_DIR/$1.sh"
@@ -778,7 +778,8 @@ install_a_package_one_abi() {
             {
                 printf_vars "$1" &&
                 rm -rf "$ABI_INSTALL_DIR" &&
-                build
+                build &&
+                __justfy_pc_files
             } > pipe 2>&1
             )
         fi
@@ -804,6 +805,25 @@ install_a_package_one_abi() {
             install -m 644 "$BUILD_DIR/install.log.txt" "$LOG_DIR" || return 1
         fi
     }
+}
+
+__justfy_pc_files() {
+    if [ -d "$ABI_INSTALL_DIR/lib/pkgconfig" ] ; then
+        cd  "$ABI_INSTALL_DIR/lib/pkgconfig" || return 1
+        for item in *.pc
+        do
+            die_if_file_is_not_exist "$item"
+            {
+                if grep 'Libs.private:' "$item" > /dev/null ; then
+                    LIBS_CONTENT=$(awk '/Libs:/{print}' "$item")
+                    LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$item") &&
+                    sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$item" &&
+                    sed_in_place '/Libs.private/d' "$item"
+                fi
+            } &&
+            sed_in_place 's/-lpthread//g' "$item"
+        done
+    fi
 }
 
 info_packages() {
@@ -1071,9 +1091,7 @@ config_vars() {
 
     if [ "$VERBOSE" = 'true' ] ; then
         CFLAGS="$CFLAGS -v"
-        MAKE='make --debug'
-    else
-        MAKE='make'
+        MAKE="$MAKE --debug"
     fi
 
     PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
@@ -1095,7 +1113,7 @@ export_vars() {
     export LD="$LD"
     export NM="$NM"
     export RANLIB="$RANLIB"
-    export STRIP="$STRIP"    
+    export STRIP="$STRIP"
 
     export CFLAGS="$CFLAGS"
     export CXXFLAGS="$CFLAGS"
@@ -1129,6 +1147,10 @@ printf_vars() {
     info "          RANLIB = $RANLIB"
     info "           STRIP = $STRIP"
     info "         SYSROOT = $SYSROOT"
+    info "      PKG_CONFIG = $PKG_CONFIG"
+    info "            MAKE = $MAKE"
+    info "           CMAKE = $CMAKE"
+    info "           MESON = $MESON"
     info ""
     info "SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR"
     info "SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR"
@@ -1287,11 +1309,6 @@ cmake() {
 meson() {
     unset -f cmake
 
-    CMAKE_EXECUTABLE=$(command -v cmake)
-    
-    PKG_CONFIG_EXECUTABLE=$(command -v pkg-config) ||
-    PKG_CONFIG_EXECUTABLE=$(command -v pkgconf)
-
     cat >> "$BUILD_DIR/cross-file" <<EOF
 [host_machine]
 system = 'android'
@@ -1304,8 +1321,8 @@ c = '$CC'
 cpp = '$CXX'
 ar = '$AR'
 strip = '$STRIP'
-cmake = '$CMAKE_EXECUTABLE'
-pkgconfig = '$PKG_CONFIG_EXECUTABLE'
+cmake = '$CMAKE'
+pkgconfig = '$PKG_CONFIG'
 
 [properties]
 c_args = $(to_meson_array $CFLAGS $CPPFLAGS)
@@ -1477,11 +1494,8 @@ check_requirements() {
     [ -z "$ANDROID_NDK_HOME" ] && die "please set and export ANDROID_NDK_HOME environment variable, then try again!"
     [ -d "$ANDROID_NDK_HOME" ] || die "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
     
-    export PATH=$ANDROID_NDK_HOME:$PATH
-
     TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$OS_NAME-$(uname -m)"
     SYSROOT="$TOOLCHAIN_DIR/sysroot"
-    export PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
     ANDROID_NDK_VERSION="$(get_ndk_version)"
     ANDROID_NDK_VERSION_MAJOR="$(get_ndk_version_major)"
@@ -1490,6 +1504,32 @@ check_requirements() {
     if [ "$ANDROID_NDK_VERSION_MAJOR" -lt 19 ] ; then
         die "your installed android-ndk [$ANDROID_NDK_HOME] version is $ANDROID_NDK_VERSION, please update to r19 or newer."
     fi
+
+    MAKE=$(command -v make)
+
+    PKG_CONFIG=$(command -v pkg-config) ||
+    PKG_CONFIG=$(command -v pkgconf)
+
+    for item in $(echo "$PATH" | tr ':' ' ')
+    do
+        if [ -z "$CMAKE" ] ; then
+            if [ -f "$item/cmake" ] && [ -x "$item/cmake" ] ; then
+                CMAKE="$item/cmake"
+            fi
+        fi
+
+        if [ -z "$MESON" ] ; then
+            if [ -f "$item/meson" ] && [ -x "$item/meson" ] ; then
+                MESON="$item/meson"
+            fi
+        fi
+
+        if [ -n "$CMAKE" ] && [ -n "$MESON" ] ; then
+            break
+        fi
+    done
+
+    export PATH="$TOOLCHAIN_DIR/bin:$ANDROID_NDK_HOME:$PATH"
 }
 
 parse_arguments() {
@@ -1700,7 +1740,7 @@ main() {
             ;;
         view)
             shift
-            cat_formula_of_a_package "$@"
+            view_formula_of_a_package "$@"
             ;;
         edit)
             shift
