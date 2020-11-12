@@ -66,22 +66,34 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         
         ndk-pkg upgrade curl
         ndk-pkg upgrade curl bzip2 --min-sdk-api-level=21 -v
-
-*   view the formula source code of a package
         
-        ndk-pkg view curl
+*   view the formula of a package
         
-*   edit the formula source code of a package
+        ndk-pkg formula view curl
         
-        ndk-pkg edit curl
+*   edit the formula of a package
+        
+        ndk-pkg formula edit curl
+        
+*   create a formula
+        
+        ndk-pkg formula create curl
+        
+*   delete a formula
+        
+        ndk-pkg formula delete curl
+        
+*   rename a formula to new name
+        
+        ndk-pkg formula rename curl curl7
         
 *   list the supported abis
         
-        ndk-pkg list supported-abis
+        ndk-pkg list abis
         
 *   list the supported sdk api-levels
         
-        ndk-pkg list supported-sdk-api-levels
+        ndk-pkg list sdk-api-levels
         
 *   list the available packages
         

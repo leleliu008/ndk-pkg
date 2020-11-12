@@ -85,34 +85,14 @@ prompt_user_to_install_bat() {
     warn "if you want to have a better experience, I strongly recommend you install ${COLOR_RED}bat${COLOR_OFF} on your os. For more details, see ${COLOR_RED}https://github.com/sharkdp/bat${COLOR_OFF}"
 }
 
-fetch_via_curl() {
-    info "Fetching $FETCH_URL"
-    
-    if curl -L -o "$FETCH_OUTPUT_FILE_PATH" "$FETCH_URL" ; then
-        success "Fetched $FETCH_URL success."
-    else
-        die "Fetched $FETCH_URL failed."
-    fi
-}
-
-fetch_via_wget() {
-    info "Fetching $FETCH_URL"
-    
-    if wget -O "$FETCH_OUTPUT_FILE_PATH" "$FETCH_URL" ; then
-        success "Fetched $FETCH_URL success."
-    else
-        die "Fetched $FETCH_URL failed."
-    fi
-}
-
-fetch_via_git() {
+__fetch_via_git() {
     info "Fetching $FETCH_URL"
 
-    if [ -d "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" ] ; then
-        if  git -C "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" rev-parse 2> /dev/null ; then
-            git -C "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" pull
+    if [ -d "$FETCH_OUTPUT_FILE_PATH" ] ; then
+        if  git -C "$FETCH_OUTPUT_FILE_PATH" rev-parse 2> /dev/null ; then
+            git -C "$FETCH_OUTPUT_FILE_PATH" pull
         else
-            rm -rf "$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME" &&
+            rm -rf "$FETCH_OUTPUT_FILE_PATH" &&
             git -C "$FETCH_OUTPUT_DIR" clone "$FETCH_URL" "$FETCH_OUTPUT_NAME"
         fi
     else
@@ -120,19 +100,41 @@ fetch_via_git() {
     fi
     
     if [ $? -eq 0 ] ; then
-        success "Fetched to $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME success."
+        success "Fetched to $FETCH_OUTPUT_FILE_PATH success."
     else
-        die "Fetched to $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME failed."
+        die "Fetched to $FETCH_OUTPUT_FILE_PATH failed."
     fi
 }
 
-fetch_archive_via_tools() {
+__fetch_archive_via_tools() {
+    if [ -f "$FETCH_OUTPUT_FILE_PATH" ] ; then
+        if [ -n "$FETCH_OUTPUT_FILE_SHA256" ] ; then
+            if is_sha256sum_match "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256" ; then
+                success "$FETCH_OUTPUT_FILE_PATH is already downloaded."
+                return 0
+            fi
+        fi
+        rm -f "$FETCH_OUTPUT_FILE_PATH"
+    fi
+
     if command -v curl > /dev/null ; then
-        fetch_via_curl
+        info "Fetching $FETCH_URL"
+        curl -L -o "$FETCH_OUTPUT_FILE_PATH" "$FETCH_URL"
     elif command -v wget > /dev/null ; then
-        fetch_via_wget
+        info "Fetching $FETCH_URL"
+        wget -O "$FETCH_OUTPUT_FILE_PATH" "$FETCH_URL"
     else
         die "please install curl or wget."
+    fi
+
+    if [ $? -eq 0 ] ; then
+        success "Fetched to $FETCH_OUTPUT_FILE_PATH success."
+    else
+        die "Fetched to $FETCH_OUTPUT_FILE_PATH failed."
+    fi
+
+    if [ -n "$FETCH_OUTPUT_FILE_SHA256" ] ; then
+        die_if_sha256sum_mismatch "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256"
     fi
 }
 
@@ -144,9 +146,10 @@ fetch() {
     unset FETCH_OUTPUT_FILE_PATH
     unset FETCH_OUTPUT_FILE_SHA256
     
-    FETCH_URL="$1"
-    if [ -z "$FETCH_URL" ] ; then
+    if [ -z "$1" ] ; then
         die "please specify a fetch url."
+    else
+        FETCH_URL="$1"
     fi
     
     shift
@@ -177,41 +180,14 @@ fetch() {
         shift
     done
     
-    [ -z "$FETCH_OUTPUT_DIR" ] && FETCH_OUTPUT_DIR="$PWD"
-     
-    case $FETCH_URL in
-        *.git)
-            if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                FETCH_OUTPUT_NAME=$(basename "$FETCH_URL" .git)
-            fi
-            fetch_via_git
-            ;;
-        *)
-            if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                FETCH_OUTPUT_NAME=$(basename "$FETCH_URL")
-            fi
-             
-            FETCH_OUTPUT_FILE_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME"
-             
-            echo 
-            info "FETCH_OUTPUT_FILE_PATH   = $FETCH_OUTPUT_FILE_PATH"
-            info "FETCH_OUTPUT_FILE_SHA256 = $FETCH_OUTPUT_FILE_SHA256"
-             
-            if [ -f "$FETCH_OUTPUT_FILE_PATH" ] ; then
-                if [ -n "$FETCH_OUTPUT_FILE_SHA256" ] ; then
-                    if is_sha256sum_match "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256" ; then
-                        success "$FETCH_OUTPUT_FILE_PATH is already downloaded."
-                        return 0
-                    fi
-                fi
-                rm -f "$FETCH_OUTPUT_FILE_PATH"
-            fi
+    [ -z "$FETCH_OUTPUT_DIR" ]  && FETCH_OUTPUT_DIR="$PWD"
+    [ -z "$FETCH_OUTPUT_NAME" ] && FETCH_OUTPUT_NAME=$(basename "$FETCH_URL")
 
-            fetch_archive_via_tools
-            
-            if [ -n "$FETCH_OUTPUT_FILE_SHA256" ] ; then
-                die_if_sha256sum_mismatch "$FETCH_OUTPUT_FILE_PATH" "$FETCH_OUTPUT_FILE_SHA256"
-            fi
+    FETCH_OUTPUT_FILE_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME"
+
+    case $FETCH_URL in
+        *.git) __fetch_via_git ;;
+        *)     __fetch_archive_via_tools ;;
     esac
 }
 
@@ -261,9 +237,9 @@ uncompress() {
     case $1 in
         *.zip)
             unzip "$1" "$2" ;;
-        *.tar.xz|*.tar.gz|*.tar.bz2|*.tar.tgz|*.tar.txz)
+        *.tar.xz|*.tar.gz|*.tar.bz2|*.tgz|*.txz)
             untar "$1" "$2" ;;
-        *)  die "$1 : extension isn't recognized. the supported extensions are .zip .xz .gz .bz2 .tgz .txz"
+        *)  die "$1 : extension isn't recognized. the supported extensions are .zip .tar.xz .tar.gz .tar.bz2 .tgz .txz"
     esac
 }
 
@@ -289,7 +265,7 @@ fetch_config_guess() {
 
 fetch_a_package() {
     die_if_load_formula_of_a_package_failed "$1"
-    fetch "$url" --output-dir="$MY_CACHED_DIR" --output-name="$1-$version.$URL_CONTENT_TYPE" --sha256="$sha256"
+    fetch "$url" --output-dir="$MY_CACHED_DIR" --output-name="$FETCH_OUTPUT_NAME" --sha256="$sha256"
 }
 
 die_if_file_is_not_exist() {
@@ -329,6 +305,11 @@ die_if_package_is_not_available() {
     is_package_available "$1" || die "$1 is not available."
 }
 
+die_if_package_is_already_exist() {
+    die_if_package_is_not_specified "$1"
+    [ -f "$MY_FORMULA_DIR/$1.sh" ] && die "$1 package is already exist."
+}
+
 die_from_package_is_not_installed() {
     die "$1 is not installed."
 }
@@ -356,7 +337,7 @@ is_package_installed() {
     done
 }
 
-is_package_outdated() {
+is_package__outdated() {
     die_if_load_formula_of_a_package_failed "$1"
 
     [ -d "$MY_INSTALL_DIR/$1" ]              || die_from_package_is_not_installed "$1"
@@ -418,19 +399,24 @@ list_installed_packages() {
     done
 }
 
-list_outdated_packages() {
+list__outdated_packages() {
     cd "$MY_INSTALL_DIR" 2>/dev/null || exit 1
 
     for packageName in *
     do
         is_package_available "$packageName" || continue
         is_package_installed "$packageName" || continue
-        is_package_outdated  "$packageName" || continue
+        is_package__outdated "$packageName" || continue
         echo "$packageName"
     done
 }
 
-tree_a_installed_package() {
+list_abis_of_a_installed_package() {
+    die_if_package_is_not_installed "$1"
+    cat "$MY_INSTALL_DIR/$1/manifest.txt"
+}
+
+tree_a_package() {
     die_if_package_is_not_installed "$1"
 
     PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
@@ -444,7 +430,9 @@ tree_a_installed_package() {
     fi
 }
 
-uninstall_package_list() {
+uninstall_packages() {
+    shift
+
     die_if_package_list_is_not_specified "$1"
     
     for packageName in $@
@@ -461,7 +449,7 @@ uninstall_a_package() {
     success "$1 uninstalled."
 }
 
-view_formula_of_a_package() {
+view_a_formula() {
     die_if_package_is_not_available "$1"
 
     [ -z "$2" ] || warn "view action accept only one argument."
@@ -475,19 +463,76 @@ view_formula_of_a_package() {
     fi    
 }
 
-edit_formula_of_a_package() {
+edit_a_formula() {
     die_if_package_is_not_available "$1"
 
     [ -z "$2" ] || warn "edit action accept only one argument."
 
     [ -z "$EDITOR" ] &&
-    EDITOR=$(command -v vi) ||
-    EDITOR=$(command -v vim) ||
     EDITOR=$(command -v nvim) ||
+    EDITOR=$(command -v vim) ||
+    EDITOR=$(command -v vi) ||
     EDITOR=$(command -v open) ||
     die "please set EDITOR environment variable."
 
     "$EDITOR" "$MY_FORMULA_DIR/$1.sh"
+}
+
+create_a_formula() {
+    die_if_package_is_already_exist "$1"
+
+    cat > "$MY_FORMULA_DIR/$1.sh" <<EOF
+summary="Summary of this package"
+
+homepage="https://www.xx.com"
+
+# the source code download url of this package. the value of url must end with one of .git .zip .tar.xz .tar.gz .tar.bz2 .tar.tgz .tar.txz
+url="https://www.xx.com/pkgname-x.y.z.tar.gz"
+
+# the version of this package. If this variable is not declared, it will be calculated from url.
+#version=x.y.z
+
+# the sha256sum of source code. If the value of url end with .git, this variable is optional, otherwise, this variable must be declared.
+sha256="c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
+
+# the dependencies of this package. If specify multiple values, separate them with spaces.
+#dependencies="a b c"
+
+prepare() {
+    :
+    #this function is optional, you can delete it, if don't use it.
+}
+
+build() {
+    :
+    #configure
+    #cmake
+    #meson
+    #$MAKE
+}
+EOF
+    edit_a_formula "$1"
+}
+
+delete_a_formula() {
+    die_if_package_is_not_available "$1"
+
+    if rm "$MY_FORMULA_DIR/$1.sh" ; then
+        success "delete $1 formula success."
+    else
+        die "delete $1 formula failed."
+    fi
+}
+
+rename_a_formula() {
+    die_if_package_is_not_available "$1"
+    die_if_package_is_already_exist "$2"
+
+    if mv "$MY_FORMULA_DIR/$1.sh" "$MY_FORMULA_DIR/$2.sh" ; then
+        success "rename formula $1 -> $2 success."
+    else
+        die "rename formula $1 -> $2 failed."
+    fi   
 }
 
 update_formula_repository() {
@@ -496,13 +541,19 @@ update_formula_repository() {
 }
 
 upgrade_packages() {
-    [ -z "$TO_BE_INSTALLED_PACKAGE_LIST" ] && TO_BE_INSTALLED_PACKAGE_LIST=$(list_outdated_packages)
+    check_requirements
+    parse_arguments "$@"
+
+    [ -z "$TO_BE_INSTALLED_PACKAGE_LIST" ] && TO_BE_INSTALLED_PACKAGE_LIST=$(list__outdated_packages)
     [ -z "$TO_BE_INSTALLED_PACKAGE_LIST" ] && return 0
 
-    reinstall_package_list
+    reinstall_packages
 }
 
-reinstall_package_list() {
+reinstall_packages() {
+    check_requirements
+    parse_arguments "$@"
+    
     die_if_package_list_is_not_specified "$TO_BE_INSTALLED_PACKAGE_LIST"
 
     for packageName in $TO_BE_INSTALLED_PACKAGE_LIST
@@ -700,7 +751,10 @@ resolve_DEPENDENCY_PACKAGE_LIST_of_a_package() {
     done
 }
 
-install_package_list() {
+install_packages() {
+    check_requirements
+    parse_arguments "$@"
+    
     die_if_package_list_is_not_specified "$TO_BE_INSTALLED_PACKAGE_LIST"
     
     for TO_BE_INSTALLED_PACKAGE in $TO_BE_INSTALLED_PACKAGE_LIST
@@ -716,6 +770,10 @@ install_package_list() {
             install_a_package "$TO_BE_INSTALLED_PACKAGE"
         fi
     done
+}
+
+die_from_package_installed_failed() {
+    die "install $1 failed! you can go to $WORKING_DIR to see see."
 }
 
 install_a_package() {
@@ -737,7 +795,7 @@ install_a_package() {
         prepare || die "install $1 failed! you can go to $WORKING_DIR to see see."
     fi
 
-    if install_a_package_all_abis "$1" ; then
+    if install_a_package_all_builds "$1" ; then
         if [ "$KEEP_WORKING_DIR" != 'true' ] ; then
             rm -rf "$WORKING_DIR"
         fi
@@ -746,24 +804,24 @@ install_a_package() {
     fi
 }
 
-install_a_package_all_abis() {
-    for BUILD_FOR_ABI in $BUILD_FOR_ABI_LIST
+install_a_package_all_builds() {
+    for BUILD in $BUILD_LIST
     do
-        install_a_package_one_abi "$1" || return 1
+        install_a_package_one_build "$1" || return 1
     done
 
     if [ ! -d "$PKG_INSTALL_DIR" ] ; then
-        die "build all abis passed, but installed nothing. you can go to $WORKING_DIR to see see."
+        die "all build passed, but installed nothing. you can go to $WORKING_DIR to see see."
     fi
 
     echo "$BUILD_FOR_ABI_LIST" > "$PKG_INSTALL_DIR/manifest.txt"
 
     success "$1 installed success. in $PKG_INSTALL_DIR directory."
     
-    tree_a_installed_package "$1" || true
+    tree_a_package "$1" || true
 }
 
-install_a_package_one_abi() {
+install_a_package_one_build() {
     config_vars "$1" &&
     export_vars &&
     {
@@ -880,16 +938,17 @@ info_a_package() {
 
     echo "src_url   : $url"
 
+    FETCH_OUTPUT_FILE_PATH="$MY_CACHED_DIR/$FETCH_OUTPUT_NAME"
+
     case $url in
         *.git)
-            FETCH_OUTPUT_FILE_PATH="$MY_CACHED_DIR/$(basename $url .git)"
             if [ -d "$FETCH_OUTPUT_FILE_PATH" ] ; then
                 echo "src_cache ${COLOR_PURPLE}==>${COLOR_OFF} $FETCH_OUTPUT_FILE_PATH"
             else
                 echo "src_cache : ${COLOR_RED}Not cached${COLOR_OFF}"
             fi
             ;;
-        *)  FETCH_OUTPUT_FILE_PATH="$MY_CACHED_DIR/$1-$version.$URL_CONTENT_TYPE"
+        *)
             if [ -f "$FETCH_OUTPUT_FILE_PATH" ] ; then
                 echo "src_cache ${COLOR_PURPLE}==>${COLOR_OFF} $FETCH_OUTPUT_FILE_PATH"
             else
@@ -944,10 +1003,12 @@ die_if_load_formula_of_a_package_failed() {
         *.tar.bz2) URL_CONTENT_TYPE=tar.bz2;;
         *.tgz)     URL_CONTENT_TYPE=tar.gz ;;
         *.txz)     URL_CONTENT_TYPE=tar.xz ;;
-        *)  die "$url : extension isn't recognized. the supported extensions are .git .zip .xz .gz .bz2 .tgz .txz"
+        *)  die "$url : extension isn't recognized. the supported extensions are .git .zip .tar.xz .tar.gz .tar.bz2 .tgz .txz"
     esac
 
-    if [ "$URL_CONTENT_TYPE" != git ] ; then
+    if [ "$URL_CONTENT_TYPE" = 'git' ] ; then
+        FETCH_OUTPUT_NAME="$1.git"
+    else
         if [ -z "$sha256" ] ; then
             die "sha256 variable is not declared in $FORMULA_FILE_PATH"
         fi
@@ -957,6 +1018,7 @@ die_if_load_formula_of_a_package_failed() {
                 die "version variable is not declared in $FORMULA_FILE_PATH"
             fi
         fi
+        FETCH_OUTPUT_NAME="$1-$version.$URL_CONTENT_TYPE"
     fi
 }
 
@@ -992,6 +1054,8 @@ print_installed_log() {
 
 config_vars() {
     die_if_package_is_not_available "$1"
+
+    BUILD_FOR_ABI=$BUILD
 
     case "$BUILD_FOR_ABI" in
         armeabi-v7a)
@@ -1352,6 +1416,8 @@ to_meson_array() {
 ########################################################################
 
 ldd() {
+    check_requirements
+
     die_if_package_is_not_installed "$1"
     die_if_abi_____is_not_supported "$2"
     [ -z "$3" ] && die "type is not specified."
@@ -1583,6 +1649,7 @@ parse_arguments() {
     }
 
     BUILD_FOR_ABI_LIST="$(list_supported_abis)"
+    BUILD_LIST="$BUILD_FOR_ABI_LIST"
 }
 
 help() {
@@ -1608,8 +1675,13 @@ ACTION:
     
     search KEYWORD        --search packages.
     
-    view PACKAGE          --show the formula source code of a package.
-    edit PACKAGE          --edit the formula source code of a package.
+    formula create PACKAGE   --create a new formula.
+    formula delete PACKAGE   --delete a exist formula.
+    formula rename P1 P2     --rename a exist formula to new name.
+    formula view PACKAGE     --view the formula of a package.
+    formula edit PACKAGE     --edit the formula of a package.
+    formula list             --equipment to list available
+
     tree PACKAGE          --list contents of a installed package directory in a tree-like format.
     pack PACKAGE          --pack a installed package.
     logs PACKAGE ABI      --print the logs of a installed package.
@@ -1680,120 +1752,58 @@ main() {
         list)
             shift
             case "$1" in
-                supported-abis)
+                abis)
                     shift
                     list_supported_abis
                     ;;
-                supported-sdk-api-levels)
+                sdk-api-levels)
                     shift
                     list_supported_sdk_api_levels
                     ;;
-                available)
-                    shift
-                    list_available_packages "$@"
-                    ;;
-                installed)
-                    shift
-                    list_installed_packages
-                    ;;
-                outdated)
-                    shift
-                    list_outdated_packages
-                    ;;
+                available) shift; list_available_packages ;;
+                installed) shift; list_installed_packages ;;
+                outdated)  shift; list__outdated_packages ;;
                 *) help 1
             esac
             ;;
-        tree)
-            shift
-            tree_a_installed_package "$@"
+        search)  shift; search_packages "$*" ;;
+        formula) shift
+            case $1 in
+                create) shift; create_a_formula "$@" ;;
+                delete) shift; delete_a_formula "$@" ;;
+                rename) shift; rename_a_formula "$@" ;;
+                view)   shift; view_a_formula   "$@" ;;
+                edit)   shift; edit_a_formula   "$@" ;;
+                list)   shift; list_available_packages ;;
+                   *)   help 1
+            esac
             ;;
-        search)
-            shift
-            search_packages "$*"
-            ;;
-        install)
-            check_requirements
-            parse_arguments "$@"
-            if [ "$DRYRUN" = 'true' ] ; then
-                install_a_package "$TO_BE_INSTALLED_PACKAGE_LIST"
-            else
-                install_package_list
-            fi
-            ;;
-        reinstall)
-            check_requirements
-            parse_arguments "$@"
-            reinstall_package_list
-            ;;
-        upgrade)
-            check_requirements
-            parse_arguments "$@"
-            upgrade_packages
-            ;;
-        uninstall)
-            shift
-            uninstall_package_list "$@"
-            ;;
-        info)
-            shift
-            info_packages "$@"
-            ;;
-        view)
-            shift
-            view_formula_of_a_package "$@"
-            ;;
-        edit)
-            shift
-            edit_formula_of_a_package "$@"
-            ;;
-        update)
-            update_formula_repository;;
-        cleanup)
-            cleanup;;
-        homepage)
-            shift
-            open_homepage_of_a_package "$@"
-            ;;
-        prefix)
-            shift
-            print_prefix_of_a_package "$@"
-            ;;
-        fetch)
-            shift
-            fetch_a_package "$@"
-            ;;
-        logs)
-            shift
-            logs_a_package "$@"
-            ;;
-        pack)
-            shift
-            pack_a_package "$@"
-            ;;
+        update)  update_formula_repository ;;
+        cleanup) cleanup ;;
+
+        install)     install_packages "$@" ;;
+        reinstall) reinstall_packages "$@" ;;
+        uninstall) uninstall_packages "$@" ;;
+        upgrade)     upgrade_packages "$@" ;;
+
+        homepage) shift; open_homepage_of_a_package "$@" ;;
+        prefix) shift; print_prefix_of_a_package "$@" ;;
+        fetch) shift; fetch_a_package "$@" ;;
+        logs)  shift; logs_a_package  "$@" ;;
+        pack)  shift; pack_a_package  "$@" ;;
+        tree)  shift; tree_a_package  "$@" ;;
+        info)  shift; info_packages "$@" ;;
         is)
             shift
             case $1 in
-                available)
-                    shift
-                    is_package_available "$@"
-                    ;;
-                installed)
-                    shift
-                    is_package_installed "$@"
-                    ;;
-                outdated)
-                    shift
-                    is_package_outdated "$@"
-                    ;;
+                available) shift; is_package_available "$@" ;;
+                installed) shift; is_package_installed "$@" ;;
+                outdated)  shift; is_package__outdated "$@" ;;
                 *) help 1
             esac
             ;;
-            ldd)
-                shift
-                check_requirements
-                ldd "$@"
-            ;;
-        *) help 1
+        ldd) shift; ldd "$@" ;;
+        *)   help 1
     esac
 }
 
