@@ -837,6 +837,7 @@ install_a_package_one_build() {
                 printf_vars "$1" &&
                 rm -rf "$ABI_INSTALL_DIR" &&
                 build &&
+                __justfy_la_files &&
                 __justfy_pc_files
             } > pipe 2>&1
             )
@@ -863,6 +864,16 @@ install_a_package_one_build() {
             install -m 644 "$BUILD_DIR/install.log.txt" "$LOG_DIR" || return 1
         fi
     }
+}
+
+__justfy_la_files() {
+    if [ -d "$ABI_INSTALL_DIR/lib" ] ; then
+        cd  "$ABI_INSTALL_DIR/lib" || return 1
+        for item in *.la
+        do
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g" "$item"
+        done
+    fi
 }
 
 __justfy_pc_files() {
