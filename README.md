@@ -33,6 +33,10 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         ndk-pkg --version
         ndk-pkg version
         
+*   update the [ndk-pkg-formula repository](https://github.com/leleliu008/ndk-pkg-formula)
+        
+        ndk-pkg update
+        
 *   search packages can be installed
         
         ndk-pkg search curl
@@ -124,10 +128,6 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         
         ndk-pkg tree curl
         ndk-pkg tree curl -L 3
-        
-*   update the [formula repository](https://github.com/leleliu008/ndk-pkg-formula)
-        
-        ndk-pkg update
         
 *   download formula resources of a package to the cache
         
