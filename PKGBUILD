@@ -9,7 +9,7 @@ license=('custom')
 url="https://github.com/leleliu008/ndk-pkg"
 makedepends=()
 source=("https://github.com/leleliu008/ndk-pkg/releases/download/v${pkgver}/${pkgname}-${pkgver}.tar.gz")
-sha256sums=('50e5520fcd9d256252cc75d54c1e7bcee2d3c795d367ef5ccba532a919f14591')
+sha256sums=('869096feaaec83631a5a4ebaff5ca02b12d9b78534ca9e64f40dcd1916c35ef7')
 
 build() {
     true

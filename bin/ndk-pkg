@@ -243,29 +243,12 @@ uncompress() {
     esac
 }
 
-fetch_config_url() {
-    echo "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.$1;hb=HEAD"
-}
-
-fetch_config_xx() {
-    if [ -z "$2" ] ; then
-        fetch $(fetch_config_url $1) --output-name=config.$1
-    else
-        fetch $(fetch_config_url $1) --output-name=config.$1 --output-dir=$2
-    fi
-}
-
-fetch_config_sub() {
-    fetch_config_xx sub $1
-}
-
-fetch_config_guess() {
-    fetch_config_xx guess $1
-}
-
 fetch_a_package() {
-    die_if_load_formula_of_a_package_failed "$1"
-    fetch "$url" --output-dir="$MY_CACHED_DIR" --output-name="$FETCH_OUTPUT_NAME" --sha256="$sha256"
+    die_if_load_formula_failed "$1"
+    case $url in
+        dir://*) ;;
+              *) fetch "$url" --output-dir="$MY_CACHED_DIR" --output-name="$FETCH_OUTPUT_NAME" --sha256="$sha256"
+    esac
 }
 
 die_if_file_is_not_exist() {
@@ -338,7 +321,7 @@ is_package_installed() {
 }
 
 is_package__outdated() {
-    die_if_load_formula_of_a_package_failed "$1"
+    die_if_load_formula_failed "$1"
 
     [ -d "$MY_INSTALL_DIR/$1" ]              || die_from_package_is_not_installed "$1"
     [ -f "$MY_INSTALL_DIR/$1/manifest.txt" ] || die_from_package_is_not_installed "$1"
@@ -541,7 +524,7 @@ update_formula_repository() {
 }
 
 upgrade_packages() {
-    check_requirements
+    check_prerequisites
     parse_arguments "$@"
 
     [ -z "$TO_BE_INSTALLED_PACKAGE_LIST" ] && TO_BE_INSTALLED_PACKAGE_LIST=$(list__outdated_packages)
@@ -551,9 +534,9 @@ upgrade_packages() {
 }
 
 reinstall_packages() {
-    check_requirements
+    check_prerequisites
     parse_arguments "$@"
-    
+
     die_if_package_list_is_not_specified "$TO_BE_INSTALLED_PACKAGE_LIST"
 
     for packageName in $TO_BE_INSTALLED_PACKAGE_LIST
@@ -593,7 +576,7 @@ open_homepage_of_a_package() {
     if [ -z "$1" ] ; then
         homepage="$MY_HOME_PAGE"
     else
-        die_if_load_formula_of_a_package_failed "$1"
+        die_if_load_formula_failed "$1"
     fi
     
     if command -v open > /dev/null ; then
@@ -726,7 +709,7 @@ pack_a_package() {
 }
 
 get_direct_dependency_package_list_of_a_package() {
-    grep '^dependencies=".*"' "$MY_FORMULA_DIR/$1.sh" | sed 's/dependencies="\(.*\)"/\1/'
+    grep '^\s*dependencies=".*"' "$MY_FORMULA_DIR/$1.sh" | sed 's/.*dependencies="\(.*\)"/\1/'
 }
 
 resolve_DEPENDENCY_PACKAGE_LIST_of_a_package() {
@@ -752,9 +735,9 @@ resolve_DEPENDENCY_PACKAGE_LIST_of_a_package() {
 }
 
 install_packages() {
-    check_requirements
+    check_prerequisites
     parse_arguments "$@"
-    
+
     die_if_package_list_is_not_specified "$TO_BE_INSTALLED_PACKAGE_LIST"
     
     for TO_BE_INSTALLED_PACKAGE in $TO_BE_INSTALLED_PACKAGE_LIST
@@ -772,35 +755,152 @@ install_packages() {
     done
 }
 
-die_from_package_installed_failed() {
-    die "install $1 failed! you can go to $WORKING_DIR to see see."
+__prepare_installation() {
+    if [ -z "$SHELL" ] ; then
+        SHELL=$(command -v zsh) ||
+        SHELL=$(command -v bash) ||
+        SHELL=$(command -v sh)
+    fi
+
+    if [ -z "$MAKE" ] ; then
+        MAKE=$(command -v gmake) ||
+        MAKE=$(command -v make)
+    fi
+
+    if [ -z "$NINJA" ] ; then
+        NINJA=$(command -v ninja) ||
+        NINJA=$(command -v ninja-build)
+    fi
+
+    if [ -z "$PKG_CONFIG" ] ; then
+        PKG_CONFIG=$(command -v pkg-config) ||
+        PKG_CONFIG=$(command -v pkgconfig) ||
+        PKG_CONFIG=$(command -v pkgconf)
+    fi
+
+    for item in $(echo "$PATH" | tr ':' ' ')
+    do
+        if [ -z "$CMAKE" ] ; then
+            if [ -f "$item/cmake" ] && [ -x "$item/cmake" ] ; then
+                CMAKE="$item/cmake"
+            fi
+        fi
+
+        if [ -z "$MESON" ] ; then
+            if [ -f "$item/meson" ] && [ -x "$item/meson" ] ; then
+                MESON="$item/meson"
+            fi
+        fi
+
+        if [ -n "$CMAKE" ] && [ -n "$MESON" ] ; then
+            break
+        fi
+    done
+
+    if [ -z "$CC" ] ; then
+        CC=$(command -v cc) ||
+        CC=$(command -v gcc) ||
+        CC=$(command -v clang)
+    fi
+
+    if [ -z "$CXX" ] ; then
+        CXX=$(command -v c++) ||
+        CXX=$(command -v g++) ||
+        CXX=$(command -v clang++)
+    fi
+
+    if [ -z "$AR" ] ; then
+        AR=$(command -v ar)
+    fi
+
+    if [ -z "$RANLIB" ] ; then
+        RANLIB=$(command -v ranlib)
+    fi
+
+    export CC="$CC"
+    export CXX="$CXX"
+    export AR="$AR"
+    export RABLIB="$RANLIB"
+    export CFLAGS="$CFLAGS"
+    export CXXFLAGS="$CXXFLAGS"
+    export CPPFLAGS="$CPPFLAGS"
+    export LDFLAGS="$LDFLAGS"
+
+    export CC_FOR_BUILD="$CC"
+    export CXX_FOR_BUILD="$CXX"
+    export AR_FOR_BUILD="$AR"
+    export RABLIB_FOR_BUILD="$RANLIB"
+    export CFLAGS_FOR_BUILD="$CFLAGS"
+    export CXXFLAGS_FOR_BUILD="$CXXFLAGS"
+    export CPPFLAGS_FOR_BUILD="$CPPFLAGS"
+    export LDFLAGS_FOR_BUILD="$LDFLAGS"
+
+    export PATH="$TOOLCHAIN_DIR/bin:$PATH"
+}
+
+die_if_command_not_found() {
+    case $1 in
+        make) [ -z "$MAKE" ]  && die_from_command_not_found "$1"  "MAKE" ;;
+       cmake) [ -z "$CMAKE" ] && die_from_command_not_found "$1" "CMAKE" ;;
+       meson) [ -z "$MESON" ] && die_from_command_not_found "$1" "MESON" ;;
+       ninja) [ -z "$NINJA" ] && die_from_command_not_found "$1" "NINJA" ;;
+       pkg-config|pkgconfig|pkgconf)
+              [ -z "$PKG_CONFIG" ] && die_from_command_not_found "$1" "PKG_CONFIG" ;;
+           *) command -v "$requirement" > /dev/null || die_from_command_not_found "$1"
+    esac
+}
+
+die_from_command_not_found() {
+    if [ -z "$2" ] ; then
+        die "command not found: $1. please make sure it in PATH."
+    else
+        die "command not found: $1. please make sure it in PATH or export $2=path/to/$1 environment."
+    fi
+}
+
+die_from_installation_failed() {
+    if [ -z "$BUILD_FOR_ABI" ] ; then
+        die "install $1 failed! you can go to $WORKING_DIR to see see."
+    else
+        die "install $1/$BUILD_FOR_ABI failed! you can go to $WORKING_DIR to see see."
+    fi
 }
 
 install_a_package() {
+    unset BUILD_FOR_ABI
+    unset BUILD_FOR_ARCH
+    unset BUILD_FOR_HOST
+
     fetch_a_package "$1"
+
+    __prepare_installation
+
+    for requirement in $requirements
+    do
+        die_if_command_not_found "$requirement"
+    done
 
     if WORKING_DIR=$(mktemp -d) ; then
         SOURCE_DIR="$WORKING_DIR"
         cd "$WORKING_DIR" || exit 1
     else
-        die "create WORKING_DIR directory failed."
+        die "create working directory failed."
     fi
-    
-    case $FETCH_URL in
-        *.git)  cp -r $FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME/* "$WORKING_DIR" ;;
-        *)      uncompress "$FETCH_OUTPUT_FILE_PATH" "$WORKING_DIR"
+
+    case $url in
+        dir://*)cp -rv     "$FETCH_OUTPUT_FILE_PATH"/* "$WORKING_DIR" ;;
+        *.git)  cp -rv     "$FETCH_OUTPUT_FILE_PATH"/* "$WORKING_DIR" ;;
+        *)      uncompress "$FETCH_OUTPUT_FILE_PATH"   "$WORKING_DIR" ;;
     esac
     
     if command -v prepare > /dev/null ; then
-        prepare || die "install $1 failed! you can go to $WORKING_DIR to see see."
+        prepare || die_from_installation_failed "$1"
     fi
 
-    if install_a_package_all_builds "$1" ; then
-        if [ "$KEEP_WORKING_DIR" != 'true' ] ; then
-            rm -rf "$WORKING_DIR"
-        fi
-    else
-        die "install $1/$BUILD_FOR_ABI failed! you can go to $WORKING_DIR to see see."
+    install_a_package_all_builds "$1" || die_from_installation_failed "$1"
+
+    if [ "$KEEP_WORKING_DIR" != 'true' ] ; then
+        rm -rf "$WORKING_DIR"
     fi
 }
 
@@ -827,7 +927,7 @@ install_a_package_one_build() {
     {
         if [ "$DRYRUN" = 'true' ] ; then
             printf_vars "$1" &&
-            exec zsh
+            exec "$SHELL"
         else
             (
             cd "$BUILD_DIR" &&
@@ -837,7 +937,6 @@ install_a_package_one_build() {
                 printf_vars "$1" &&
                 rm -rf "$ABI_INSTALL_DIR" &&
                 build &&
-                __justfy_la_files &&
                 __justfy_pc_files
             } > pipe 2>&1
             )
@@ -866,32 +965,26 @@ install_a_package_one_build() {
     }
 }
 
-__justfy_la_files() {
-    if [ -d "$ABI_INSTALL_DIR/lib" ] ; then
-        cd  "$ABI_INSTALL_DIR/lib" || return 1
-        for item in *.la
+__justfy_pc_files() {
+    if [ -d "$ABI_INSTALL_DIR/lib/pkgconfig" ] ; then
+        cd  "$ABI_INSTALL_DIR/lib/pkgconfig" || return 1
+        for item in $(find . -name "*.pc")
         do
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g" "$item"
+            __justfy_a_file "$item"
         done
     fi
 }
 
-__justfy_pc_files() {
-    if [ -d "$ABI_INSTALL_DIR/lib/pkgconfig" ] ; then
-        cd  "$ABI_INSTALL_DIR/lib/pkgconfig" || return 1
-        for item in *.pc
-        do
-            die_if_file_is_not_exist "$item"
-            {
-                if grep 'Libs.private:' "$item" > /dev/null ; then
-                    LIBS_CONTENT=$(awk '/Libs:/{print}' "$item")
-                    LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$item") &&
-                    sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$item" &&
-                    sed_in_place '/Libs.private/d' "$item"
-                fi
-            } &&
-            sed_in_place 's/-lpthread//g' "$item"
-        done
+__justfy_a_file() {
+    die_if_file_is_not_exist "$1"
+
+    sed_in_place 's/-lpthread//g' "$1" || return 1
+
+    if grep 'Libs.private:' "$1" > /dev/null ; then
+        LIBS_CONTENT=$(awk '/Libs:/{print}' "$1")
+        LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$1") &&
+        sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$1" &&
+        sed_in_place '/Libs.private/d' "$1"
     fi
 }
 
@@ -920,14 +1013,13 @@ info_packages() {
 }
 
 info_a_package() {
-    die_if_load_formula_of_a_package_failed "$1"
+    die_if_load_formula_failed "$1"
 
     echo "name      : $(mark_is_package_installed_or_not $1)"
 
-    case $url in
-        *.git);;
-        *)  echo "version   : $version"
-    esac
+    if [ -n "$version" ] ; then
+        echo "version   : $version"
+    fi
 
     echo "summary   : $summary"
     echo "homepage  : $homepage"
@@ -952,6 +1044,7 @@ info_a_package() {
     FETCH_OUTPUT_FILE_PATH="$MY_CACHED_DIR/$FETCH_OUTPUT_NAME"
 
     case $url in
+        dir://*) ;;
         *.git)
             if [ -d "$FETCH_OUTPUT_FILE_PATH" ] ; then
                 echo "src_cache ${COLOR_PURPLE}==>${COLOR_OFF} $FETCH_OUTPUT_FILE_PATH"
@@ -986,16 +1079,18 @@ mark_is_package_installed_or_not() {
     fi
 }
 
-die_if_load_formula_of_a_package_failed() {
+die_if_load_formula_failed() {
     die_if_package_is_not_available "$1"
 
     unset -f prepare
     unset -f build
+    unset -f build_configed
     unset url
     unset sha256
     unset version
     unset summary
     unset homepage
+    unset requirements
     unset dependencies
     
     FORMULA_FILE_PATH="$MY_FORMULA_DIR/$1.sh"
@@ -1007,6 +1102,7 @@ die_if_load_formula_of_a_package_failed() {
     [ -z "$url" ]      && die "url variable must be specified in $FORMULA_FILE_PATH"
 
     case $url in
+        dir://*)   URL_CONTENT_TYPE=dir ;;
         *.git)     URL_CONTENT_TYPE=git ;;
         *.zip)     URL_CONTENT_TYPE=zip ;;
         *.tar.xz)  URL_CONTENT_TYPE=tar.xz ;;
@@ -1017,20 +1113,30 @@ die_if_load_formula_of_a_package_failed() {
         *)  die "$url : extension isn't recognized. the supported extensions are .git .zip .tar.xz .tar.gz .tar.bz2 .tgz .txz"
     esac
 
-    if [ "$URL_CONTENT_TYPE" = 'git' ] ; then
-        FETCH_OUTPUT_NAME="$1.git"
-    else
-        if [ -z "$sha256" ] ; then
-            die "sha256 variable is not declared in $FORMULA_FILE_PATH"
-        fi
-        if [ -z "$version" ] ; then
-            version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
-            if [ -z "$version" ] ; then
-                die "version variable is not declared in $FORMULA_FILE_PATH"
+    case $URL_CONTENT_TYPE in
+        dir)
+            if command -v cut > /dev/null ; then
+                FETCH_OUTPUT_FILE_PATH=$(echo $url | cut -c7-${#url})
+            elif command -v awk > /dev/null ; then
+                FETCH_OUTPUT_FILE_PATH=$(echo $url | awk '{print(substr($0, 7))}')
+            else
+                FETCH_OUTPUT_FILE_PATH=$(expr substr "$url" 7 ${#url})
             fi
-        fi
-        FETCH_OUTPUT_NAME="$1-$version.$URL_CONTENT_TYPE"
-    fi
+            [ -d "$FETCH_OUTPUT_FILE_PATH" ] || "url variable point to dir is not exist."
+            ;;
+        git) FETCH_OUTPUT_NAME="$1.git" ;;
+        *)
+            if [ -z "$sha256" ] ; then
+                die "sha256 variable is not declared in $FORMULA_FILE_PATH"
+            fi
+            if [ -z "$version" ] ; then
+                version="$(basename "$url" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+                if [ -z "$version" ] ; then
+                    die "version variable is not declared in $FORMULA_FILE_PATH"
+                fi
+            fi
+            FETCH_OUTPUT_NAME="$1-$version.$URL_CONTENT_TYPE"
+    esac
 }
 
 install_installed_log() {
@@ -1065,6 +1171,8 @@ print_installed_log() {
 
 config_vars() {
     die_if_package_is_not_available "$1"
+
+    BUILD_ROUND_NUM=$(expr ${BUILD_ROUND_NUM-0} + 1)
 
     BUILD_FOR_ABI=$BUILD
 
@@ -1132,8 +1240,8 @@ config_vars() {
     SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TOOLCHAIN_NAME/$MIN_SDK_API_LEVEL"
 
       CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
-    CPPFLAGS="--sysroot $SYSROOT -I$SYSTEM_INCLUDE_DIR -Qunused-arguments"
-     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR"
+    CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments"
+     LDFLAGS="--sysroot $SYSROOT"
     
     PKG_CONFIG_PATH=''
 
@@ -1166,7 +1274,9 @@ config_vars() {
 
     if [ "$VERBOSE" = 'true' ] ; then
         CFLAGS="$CFLAGS -v"
-        MAKE="$MAKE --debug"
+        if [ -n "$MAKE" ] ; then
+            MAKE="$MAKE --debug"
+        fi
     fi
 
     PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
@@ -1206,6 +1316,7 @@ export_vars() {
 printf_vars() {
     print_seperator 'printf_vars start'
 
+    info "BUILD_ROUND_NUM = $BUILD_ROUND_NUM"
     info "        PACKAGE = $1"
     info "DIRECT_DEP_PKGS = $(get_direct_dependency_package_list_of_a_package "$1")"
     info ""
@@ -1226,6 +1337,8 @@ printf_vars() {
     info "            MAKE = $MAKE"
     info "           CMAKE = $CMAKE"
     info "           MESON = $MESON"
+    info "           NINJA = $NINJA"
+    info "           SHELL = $SHELL"
     info ""
     info "SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR"
     info "SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR"
@@ -1290,6 +1403,22 @@ print_seperator() {
 
 # run in a subshell
 configure() {
+    die_if_command_not_found make
+
+    if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
+        # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
+        # https://git.savannah.gnu.org/cgit/config.git/tree/
+        if [ ! -f "$MY_CACHED_DIR/config/config.sub" ] ; then
+            fetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD" --output-name=config.sub --output-dir="$MY_CACHED_DIR/config" || return 1
+        fi
+        if [ ! -f "$MY_CACHED_DIR/config/config.guess" ] ; then
+            fetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD" --output-name=config.guess --output-dir="$MY_CACHED_DIR/config" || return 1
+        fi
+
+        find "$SOURCE_DIR" -name "config.sub"   -exec cp -v "$MY_CACHED_DIR/config/config.sub"   {} \; || return 1
+        find "$SOURCE_DIR" -name "config.guess" -exec cp -v "$MY_CACHED_DIR/config/config.guess" {} \; || return 1
+    fi
+
     print_seperator "config start"
     
     if "$SOURCE_DIR"/configure \
@@ -1311,7 +1440,7 @@ configure() {
         LDFLAGS="$LDFLAGS" \
         AR="$AR" \
         RANLIB="$RANLIB" \
-        CC_FOR_BUILD=/usr/bin/cc \
+        CC_FOR_BUILD="$CC_FOR_BUILD" \
         PKG_CONFIG_PATH="$PKG_CONFIG_PATH" \
         PKG_CONFIG_LIBDIR="$PKG_CONFIG_LIBDIR" \
         $@ ; then
@@ -1355,9 +1484,10 @@ configure() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmake() {
-    unset -f meson
+    die_if_command_not_found cmake
+    die_if_command_not_found  make
 
-    command cmake \
+    "$CMAKE" \
     -DCMAKE_VERBOSE_MAKEFILE=ON \
     -DCMAKE_COLOR_MAKEFILE=ON \
     -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
@@ -1380,9 +1510,11 @@ cmake() {
     $MAKE --directory="$BUILD_DIR" install
 }
 
+# https://mesonbuild.com/Cross-compilation.html
 # run in a subshell
 meson() {
-    unset -f cmake
+    die_if_command_not_found meson
+    die_if_command_not_found ninja
 
     cat >> "$BUILD_DIR/cross-file" <<EOF
 [host_machine]
@@ -1404,14 +1536,15 @@ c_args = $(to_meson_array $CFLAGS $CPPFLAGS)
 c_link_args = $(to_meson_array $LDFLAGS)
 cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
+pkg_config_libdir = '$PKG_CONFIG_LIBDIR'
 EOF
-    command meson setup \
+    "$MESON" setup \
         --prefix="$ABI_INSTALL_DIR" \
         --buildtype=release \
         --backend=ninja \
         --cross-file="$BUILD_DIR/cross-file" \
         $@ "$BUILD_DIR" "$SOURCE_DIR" &&
-    ninja -C "$BUILD_DIR" install
+    "$NINJA" -C "$BUILD_DIR" install
 }
 
 to_meson_array() {
@@ -1427,7 +1560,7 @@ to_meson_array() {
 ########################################################################
 
 ldd() {
-    check_requirements
+    check_prerequisites
 
     die_if_package_is_not_installed "$1"
     die_if_abi_____is_not_supported "$2"
@@ -1566,12 +1699,12 @@ get_ndk_version_major() {
     echo 0
 }
 
-check_requirements() {
+check_prerequisites() {
     [ -z "$ANDROID_NDK_ROOT" ] || export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
-    [ -z "$ANDROID_NDK_HOME" ] && die "please set and export ANDROID_NDK_HOME environment variable, then try again!"
+    [ -z "$ANDROID_NDK_HOME" ] && die "please set and export ANDROID_NDK_HOME=DIR environment variable, then try again!"
     [ -d "$ANDROID_NDK_HOME" ] || die "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
     
-    TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$OS_NAME-$(uname -m)"
+    TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)"
     SYSROOT="$TOOLCHAIN_DIR/sysroot"
 
     ANDROID_NDK_VERSION="$(get_ndk_version)"
@@ -1582,31 +1715,7 @@ check_requirements() {
         die "your installed android-ndk [$ANDROID_NDK_HOME] version is $ANDROID_NDK_VERSION, please update to r19 or newer."
     fi
 
-    MAKE=$(command -v make)
-
-    PKG_CONFIG=$(command -v pkg-config) ||
-    PKG_CONFIG=$(command -v pkgconf)
-
-    for item in $(echo "$PATH" | tr ':' ' ')
-    do
-        if [ -z "$CMAKE" ] ; then
-            if [ -f "$item/cmake" ] && [ -x "$item/cmake" ] ; then
-                CMAKE="$item/cmake"
-            fi
-        fi
-
-        if [ -z "$MESON" ] ; then
-            if [ -f "$item/meson" ] && [ -x "$item/meson" ] ; then
-                MESON="$item/meson"
-            fi
-        fi
-
-        if [ -n "$CMAKE" ] && [ -n "$MESON" ] ; then
-            break
-        fi
-    done
-
-    export PATH="$TOOLCHAIN_DIR/bin:$ANDROID_NDK_HOME:$PATH"
+    export PATH="$ANDROID_NDK_HOME:$PATH"
 }
 
 parse_arguments() {
@@ -1740,12 +1849,28 @@ init() {
     MY_BOTTLE_DIR="$MY_HOME_DIR/bottles"
     MY_BACKUP_DIR="$MY_HOME_DIR/backup"
 
-    TIMESTAMP_UNIX="$(date +%s)"
-    
-    OS_NAME="$(uname -s | awk '{print(tolower($0))}')"
-    case $OS_NAME in
-        msys*|mingw*|cygwin*) OS_NAME=windows
-    esac
+    if command -v date > /dev/null ; then
+        TIMESTAMP_UNIX="$(date +%s)"
+    else
+        die "command not found: date. please make sure it in PATH."
+    fi
+
+    if command -v uname > /dev/null ; then
+        if command -v tr > /dev/null ; then
+            BUILD_MACHINE_OS="$(uname -s | tr A-Z a-z)"
+        elif command -v  awk > /dev/null ; then
+            BUILD_MACHINE_OS="$(uname -s |  awk '{print(tolower($0))}')"
+        elif command -v gawk > /dev/null ; then
+            BUILD_MACHINE_OS="$(uname -s | gawk '{print(tolower($0))}')"
+        else
+            die "please install GNU CoreUtils or awk."
+        fi
+        case $BUILD_MACHINE_OS in
+            msys*|mingw*|cygwin*) BUILD_MACHINE_OS=windows
+        esac
+    else
+        die "command not found: uname. please make sure it in PATH."
+    fi
 }
 
 main() {
@@ -1757,7 +1882,7 @@ main() {
             ;;
         --version|version|-V)
             echo "$MY_NAME $MY_VERSION"
-            check_requirements
+            check_prerequisites
             echo "NDK     $ANDROID_NDK_VERSION"
             ;;
         list)
