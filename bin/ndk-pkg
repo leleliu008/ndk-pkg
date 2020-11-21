@@ -607,16 +607,15 @@ logs_a_package() {
 
     for item in $(ls "$MY_INSTALL_DIR/$1/$2/log"/*.log.txt)
     do
-        case $item in
-            *.sh.log.txt|*/installed.log.txt)
-                bat -l bash "$item";;
-            *)
-                if [ "$VIEWER" = 'bat' ] ; then
-                    bat "$item"
-                else
-                    "$VIEWER" "$item"
-                fi
-        esac
+        if [ "$VIEWER" = 'bat' ] ; then
+            case $item in
+                *.sh.log.txt|*/installed.log.txt)
+                    bat -l bash "$item" ;;
+                *)  bat "$item"
+            esac
+        else
+            "$VIEWER" "$item"
+        fi
     done
 
     if [ "$VIEWER" != 'bat' ] ; then
@@ -1487,6 +1486,12 @@ cmake() {
     die_if_command_not_found cmake
     die_if_command_not_found  make
 
+    // CMAKE_HOST_SYSTEM_NAME = $(uname -s)
+    // CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
+    if [ "$BUILD_MACHINE_OS" = 'windows' ] ; then
+        sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+    fi
+
     "$CMAKE" \
     -DCMAKE_VERBOSE_MAKEFILE=ON \
     -DCMAKE_COLOR_MAKEFILE=ON \
@@ -1719,6 +1724,9 @@ check_prerequisites() {
 }
 
 parse_arguments() {
+    # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
+    unset TARGET_ARCH
+
     # https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element#api-level-table
     unset MIN_SDK_API_LEVEL
 
