@@ -547,15 +547,15 @@ search_packages() {
 
 open_homepage_of_a_package() {
     if [ -z "$1" ] ; then
-        homepage="$MY_HOME_PAGE"
+        PACKAGE_HOMEPAGE="$MY_HOME_PAGE"
     else
         die_if_load_formula_failed "$1"
     fi
     
     if command -v open > /dev/null ; then
-        open "$homepage"
+        open "$PACKAGE_HOMEPAGE"
     else
-        echo "$homepage"
+        echo "$PACKAGE_HOMEPAGE"
     fi
 }
 
@@ -804,7 +804,7 @@ __config_glob_installation_variables() {
     export PKG_CONFIG_PATH_FOR_BUILD="$PKG_CONFIG_PATH"
     export PKG_CONFIG_LIBDIR_FOR_BUILD="$PKG_CONFIG_LIBDIR"
 
-    export PATH="$TOOLCHAIN_DIR/bin:$PATH"
+    export PATH="$TOOLCHAIN_BIN_DIR:$PATH"
 
     if [ "$VERBOSE" = 'true' ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
@@ -865,7 +865,7 @@ die_from_installation_failed() {
 
 install_a_package() {
     unset BUILD_FOR_ABI
-    
+
     fetch_a_package "$1"
 
     for requirement in $PACKAGE_REQUIREMENTS
@@ -968,10 +968,20 @@ install_a_package_all_builds() {
 
     PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
 
+    unset BUILD_FOR_ABI_LIST
+
     for BUILD in $BUILD_LIST
     do
         BUILD_ROUND_NUM=$(expr ${BUILD_ROUND_NUM-0} + 1)
+        
         BUILD_FOR_ABI=$BUILD
+
+        if [ -z "$BUILD_FOR_ABI_LIST" ] ; then
+            BUILD_FOR_ABI_LIST="$BUILD_FOR_ABI"
+        else
+            BUILD_FOR_ABI_LIST=$(printf "%s\n%s" "$BUILD_FOR_ABI_LIST" "$BUILD_FOR_ABI")
+        fi
+
         BUILD_DIR="$WORKING_DIR/$TIMESTAMP_UNIX/$BUILD_FOR_ABI"
         mkdir -p "$BUILD_DIR" || return 1
 
@@ -1344,74 +1354,24 @@ print_installed_log() {
 __config_this_build_variables() {
     die_if_package_is_not_available "$1"
 
-    case "$BUILD_FOR_ABI" in
-        armeabi-v7a)
-            TOOLCHAIN_NAME='arm-linux-androideabi'
-            BUILD_FOR_HOST='armv7a-linux-androideabi'
-            BUILD_FOR_ARCH='arm'
-            BUILD_FOR_CPU_FAMILY='arm'
-            BUILD_FOR_CPU_NAME='armv7a'
-            ;;
-        arm64-v8a)
-            TOOLCHAIN_NAME='aarch64-linux-android'
-            BUILD_FOR_HOST='aarch64-linux-android'
-            BUILD_FOR_ARCH='arm64'
-            BUILD_FOR_CPU_FAMILY='aarch64'
-            BUILD_FOR_CPU_NAME='armv8a'
-            ;;
-        x86)
-            TOOLCHAIN_NAME='i686-linux-android'
-            BUILD_FOR_HOST='i686-linux-android'
-            BUILD_FOR_ARCH='x86'
-            BUILD_FOR_CPU_FAMILY='x86'
-            BUILD_FOR_CPU_NAME='i686'
-            ;;
-        x86_64)
-            TOOLCHAIN_NAME='x86_64-linux-android'
-            BUILD_FOR_HOST='x86_64-linux-android'
-            BUILD_FOR_ARCH='x86_64'
-            BUILD_FOR_CPU_FAMILY='x86_64'
-            BUILD_FOR_CPU_NAME='x86_64'
-            ;;
-        *)  TOOLCHAIN_NAME='unkown'
-            BUILD_FOR_HOST='unkown'
-            BUILD_FOR_ARCH='unkown'
-            BUILD_FOR_CPU_FAMILY='unkown'
-            BUILD_FOR_CPU_NAME='unkown'
-    esac
+    BUILD_FOR_TARGET_TRIPLE=$(get_target_triple_by_abi "$BUILD_FOR_ABI")
+    BUILD_FOR_ARCH=$(echo "$BUILD_FOR_TARGET_TRIPLE" | cut -d- -f1)
 
-    TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$BUILD_FOR_HOST$MIN_SDK_API_LEVEL-"
-
-    CC="${TOOLCHAIN_PREFIX}clang"
-   CXX="${TOOLCHAIN_PREFIX}clang++"
+    CC="$(get_tool_of_chain clang)"
+   CXX="$(get_tool_of_chain clang++)"
    CPP="$CC -E"
-    
-    TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_NAME-"
-    
-        AR="${TOOLCHAIN_PREFIX}ar"
-        AS="${TOOLCHAIN_PREFIX}as"
-        LD="${TOOLCHAIN_PREFIX}ld"
-        NM="${TOOLCHAIN_PREFIX}nm"
-    RANLIB="${TOOLCHAIN_PREFIX}ranlib"
-     STRIP="${TOOLCHAIN_PREFIX}strip"
 
-    die_if_file_is_not_executable "$CC"
-    die_if_file_is_not_executable "$CXX"
-    die_if_file_is_not_executable "$AR"
-    die_if_file_is_not_executable "$AS"
-    die_if_file_is_not_executable "$LD"
-    die_if_file_is_not_executable "$NM"
-    die_if_file_is_not_executable "$RANLIB"
-    die_if_file_is_not_executable "$STRIP"
+    for tool in as ar ranlib ld nm strip
+    do
+        eval $(echo "$tool" | tr a-z A-Z)=$(get_tool_of_chain "$tool")
+    done
 
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
-    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TOOLCHAIN_NAME/$MIN_SDK_API_LEVEL"
+    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$(echo $BUILD_FOR_TARGET_TRIPLE | sed 's/armv7a/arm/')/$MIN_SDK_API_LEVEL"
 
       CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments"
      LDFLAGS="--sysroot $SYSROOT"
-    
-    PKG_CONFIG_PATH=''
 
     # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
     # int fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
@@ -1419,6 +1379,8 @@ __config_this_build_variables() {
     if [ $MIN_SDK_API_LEVEL -lt 24 ] ; then
         CPPFLAGS="$CPPFLAGS -Dftello=ftell -Dfseeko=fseek"
     fi
+
+    PKG_CONFIG_PATH=''
 
     for PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
@@ -1487,8 +1449,8 @@ __printf_this_build_variables() {
     info ""
     info "ANDROID_NDK_VER  = $ANDROID_NDK_VERSION"
     info "ANDROID_NDK_HOME = $ANDROID_NDK_HOME"
-    info "TOOLCHAIN_DIR    = $TOOLCHAIN_DIR"
     info "         SYSROOT = $SYSROOT"
+    info "TOOLCHAIN_BIN_DIR= $TOOLCHAIN_BIN_DIR"
     info "              CC = $CC"
     info "             CXX = $CXX"
     info "             CPP = $CPP"
@@ -1521,10 +1483,9 @@ __printf_this_build_variables() {
     info ""
     info "MIN_SDK_API_LEVEL = $MIN_SDK_API_LEVEL"
     info ""
-    info "TOOLCHAIN_NAME = $TOOLCHAIN_NAME"
-    info "BUILD_FOR_HOST = $BUILD_FOR_HOST"
-    info "BUILD_FOR_ARCH = $BUILD_FOR_ARCH"
-    info "BUILD_FOR_ABI  = $BUILD_FOR_ABI"
+    info "BUILD_FOR_TARGET_TRIPLE = $BUILD_FOR_TARGET_TRIPLE"
+    info "BUILD_FOR_ARCH          = $BUILD_FOR_ARCH"
+    info "BUILD_FOR_ABI           = $BUILD_FOR_ABI"
     info ""
     info "CFLAGS"
     for item in $CFLAGS
@@ -1569,8 +1530,8 @@ __printf_this_build_variables() {
     info "  BUILD_DIR = $BUILD_DIR"
     info ""
     info "PKG_INSTALL_DIR = $PKG_INSTALL_DIR"
-    info "ABI_BINARY_DIR  = $ABI_BINARY_DIR"
     info "ABI_INSTALL_DIR = $ABI_INSTALL_DIR"
+    info "ABI_BINARY_DIR  = $ABI_BINARY_DIR"
     info "ABI_INCLUDE_DIR = $ABI_INCLUDE_DIR"
     info "ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR"
     info "ABI_PKG_CONFIG_DIR = $ABI_PKG_CONFIG_DIR"
@@ -1603,7 +1564,7 @@ configure() {
     print_seperator "config start"
     
     if "$SOURCE_DIR"/configure \
-        --host="$BUILD_FOR_HOST" \
+        --host="$BUILD_FOR_TARGET_TRIPLE" \
         --prefix="$ABI_INSTALL_DIR" \
         --disable-option-checking \
         --disable-rpath \
@@ -1703,12 +1664,34 @@ meson() {
     die_if_command_not_found meson
     die_if_command_not_found ninja
 
+    case $BUILD_FOR_ABI in
+        armeabi-v7a)
+            BUILD_FOR_TARGET_CPU_FAMILY='arm'
+            BUILD_FOR_TARGET_CPU_NAME='armv7a'
+            ;;
+        arm64-v8a)
+            BUILD_FOR_TARGET_CPU_FAMILY='aarch64'
+            BUILD_FOR_TARGET_CPU_NAME='armv8a'
+            ;;
+        x86)
+            BUILD_FOR_TARGET_CPU_FAMILY='x86'
+            BUILD_FOR_TARGET_CPU_NAME='i686'
+            ;;
+        x86_64)
+            BUILD_FOR_TARGET_CPU_FAMILY='x86_64'
+            BUILD_FOR_TARGET_CPU_NAME='x86_64'
+            ;;
+        *)
+            BUILD_FOR_TARGET_CPU_FAMILY='unkown'
+            BUILD_FOR_TARGET_CPU_NAME='unkown'
+    esac
+
     cat >> "$BUILD_DIR/cross-file" <<EOF
 [host_machine]
 system = 'android'
 endian = 'little'
-cpu_family = '$BUILD_FOR_CPU_FAMILY'
-cpu = '$BUILD_FOR_CPU_NAME'
+cpu_family = '$BUILD_FOR_TARGET_CPU_FAMILY'
+cpu = '$BUILD_FOR_TARGET_CPU_NAME'
 
 [binaries]
 c = '$CC'
@@ -1742,6 +1725,51 @@ to_meson_array() {
     done
     RESULT="$RESULT]"
     echo "$RESULT"
+}
+
+cargo() {
+    die_if_command_not_found rustup
+    die_if_command_not_found cargo
+
+    if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
+        for supportedTarget in $(list_supported_targets)
+        do
+            for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
+            do
+                [ "$supportedTarget" = "$installedTarget" ] && break
+            done
+            [ "$supportedTarget" = "$installedTarget" ] || {
+                rustup target add "$supportedTarget" || return 1
+            }
+        done
+        grep '\[lib\]' "$SOURCE_DIR/Cargo.toml" ||
+        cat >> "$SOURCE_DIR/Cargo.toml" <<EOF
+
+[lib]
+crate-type = ["staticlib", "cdylib"]
+EOF
+    fi
+
+    # https://doc.rust-lang.org/cargo/reference/environment-variables.html
+    case $BUILD_FOR_ABI in
+        armeabi-v7a)
+            export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_AR="$AR"
+            export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$CC"
+            ;;
+        arm64-v8a)
+            export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="$AR"
+            export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
+            ;;
+        x86)
+            export CARGO_TARGET_I686_LINUX_ANDROID_AR="$AR"
+            export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="$CC"
+            ;;
+        x86_64)
+            export CARGO_TARGET_X86_64_LINUX_ANDROID_AR="$AR"
+            export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$CC"
+            ;;
+    esac
+    command cargo build --target $BUILD_FOR_TARGET_TRIPLE --release --verbose
 }
 
 ########################################################################
@@ -1796,17 +1824,8 @@ ldd() {
     [ -z "$3" ] && die "type is not specified."
     [ -z "$4" ] && die "name is not specified."
 
-    case $2 in
-        armeabi-v7a) TOOLCHAIN_NAME='arm-linux-androideabi' ;;
-        arm64-v8a)   TOOLCHAIN_NAME='aarch64-linux-android' ;;
-        x86)         TOOLCHAIN_NAME='i686-linux-android' ;;
-        x86_64)      TOOLCHAIN_NAME='x86_64-linux-android' ;;
-        *)           die "$2: abi is not supported."
-    esac
-
-    TOOLCHAIN_PREFIX="$TOOLCHAIN_DIR/bin/$TOOLCHAIN_NAME"
-    READELF="$TOOLCHAIN_PREFIX-readelf"
-    die_if_file_is_not_executable "$READELF"
+    BUILD_FOR_TARGET_TRIPLE=$(get_target_triple_by_abi "$2")
+    READELF="$(get_tool_of_chain readelf)"
 
     ldd_recursion() {
         die_if_package_is_not_installed "$1"
@@ -1832,8 +1851,33 @@ list_supported_abis() {
     print_list armeabi-v7a arm64-v8a x86 x86_64
 }
 
+list_supported_targets() {
+    print_list armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
+}
+
 list_supported_sdk_api_levels() {
     print_list 21 22 23 24 25 26 27 28 29
+}
+
+get_target_triple_by_abi() {
+    case $1 in
+        armeabi-v7a) echo  'armv7a-linux-androideabi' ;;
+        arm64-v8a)   echo 'aarch64-linux-android'     ;;
+        x86)         echo    'i686-linux-android'     ;;
+        x86_64)      echo  'x86_64-linux-android'     ;;
+        *)           die "$1 : not supported abi."
+    esac
+}
+
+get_tool_of_chain() {
+    unset TOOL
+    case $1 in
+        clang|clang++)
+            TOOL="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET_TRIPLE$MIN_SDK_API_LEVEL-$1" ;;
+        *)  TOOL="$TOOLCHAIN_BIN_DIR/$(echo $BUILD_FOR_TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
+    esac
+    die_if_file_is_not_executable "$TOOL"
+    echo "$TOOL"
 }
 
 get_ndk_version_via_awk() {
@@ -1934,6 +1978,7 @@ check_prerequisites() {
     [ -d "$ANDROID_NDK_HOME" ] || die "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
     
     TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)"
+    TOOLCHAIN_BIN_DIR="$TOOLCHAIN_DIR/bin"
     SYSROOT="$TOOLCHAIN_DIR/sysroot"
 
     ANDROID_NDK_VERSION="$(get_ndk_version)"
@@ -2000,8 +2045,7 @@ parse_arguments() {
         warn "--min-sdk-api-level=INTEGER argument is not specified. so, use the default value [$MIN_SDK_API_LEVEL]."
     }
 
-    BUILD_FOR_ABI_LIST="$(list_supported_abis)"
-    BUILD_LIST="$BUILD_FOR_ABI_LIST"
+    BUILD_LIST="$(list_supported_abis)"
 }
 
 help() {
@@ -2161,7 +2205,7 @@ main() {
         logs)  shift; logs_a_package  "$@" ;;
         pack)  shift; pack_a_package  "$@" ;;
         tree)  shift; tree_a_package  "$@" ;;
-        info)  shift; info_packages "$@" ;;
+        info)  shift; info_packages   "$@" ;;
         is)
             shift
             case $1 in
@@ -2172,7 +2216,7 @@ main() {
             esac
             ;;
         ldd) shift; ldd "$@" ;;
-        *)   help 1
+        *) help 1
     esac
 }
 
