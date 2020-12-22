@@ -13,40 +13,45 @@ COLOR_BLUE='\033[0;34m'         # Blue
 COLOR_PURPLE='\033[0;35m'       # Purple
 COLOR_OFF='\033[0m'             # Reset
 
-msg() {
+print() {
     printf "%b" "$*"
 }
 
 echo() {
-    msg "$*\n"
+    print "$*\n"
 }
 
 info() {
-    msg "${COLOR_PURPLE}$*\n${COLOR_OFF}"
+    print "${COLOR_PURPLE}$*\n${COLOR_OFF}"
 }
 
 success() {
-    msg "${COLOR_GREEN}[✔] $*\n${COLOR_OFF}"
+    print "${COLOR_GREEN}[✔] $*\n${COLOR_OFF}"
 }
 
 warn() {
-    msg "${COLOR_YELLOW}🔥 $*\n${COLOR_OFF}"
+    print "${COLOR_YELLOW}🔥 $*\n${COLOR_OFF}"
 }
 
 error() {
-    msg "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
 }
 
 die() {
-    msg "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
     exit 1
 }
 
-print_list() {
+list() {
     for item in $@
     do
         echo "$item"
     done
+}
+
+eeval() {
+    echo "$@"
+    eval "$@"
 }
 
 nproc() {
@@ -90,13 +95,14 @@ __fetch_via_git() {
 
     if [ -d "$FETCH_OUTPUT_FILE_PATH" ] ; then
         if  git -C "$FETCH_OUTPUT_FILE_PATH" rev-parse 2> /dev/null ; then
-            git -C "$FETCH_OUTPUT_FILE_PATH" pull
+            git -C "$FETCH_OUTPUT_FILE_PATH" pull &&
+            git -C "$FETCH_OUTPUT_FILE_PATH" submodule update --recursive
         else
             rm -rf "$FETCH_OUTPUT_FILE_PATH" &&
-            git -C "$FETCH_OUTPUT_DIR" clone "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+            git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
         fi
     else
-        git -C "$FETCH_OUTPUT_DIR" clone "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+        git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
     fi
     
     if [ $? -eq 0 ] ; then
@@ -743,7 +749,13 @@ __config_glob_installation_variables() {
             fi
         fi
 
-        if [ -n "$CMAKE" ] && [ -n "$MESON" ] ; then
+        if [ -z "$CARGO" ] ; then
+            if [ -f "$item/cargo" ] && [ -x "$item/cargo" ] ; then
+                CARGO="$item/cargo"
+            fi
+        fi
+
+        if [ -n "$CMAKE" ] && [ -n "$MESON" ] && [ -n "$CARGO" ] ; then
             break
         fi
     done
@@ -754,49 +766,23 @@ __config_glob_installation_variables() {
         CC=$(command -v clang)
     fi
 
-    if [ -z "$CPP" ] ; then
-        CPP=$(command -v cpp)
-    fi
-
     if [ -z "$CXX" ] ; then
         CXX=$(command -v c++) ||
         CXX=$(command -v g++) ||
         CXX=$(command -v clang++)
     fi
 
-    if [ -z "$AS" ] ; then
-        AS=$(command -v as)
-    fi
+    for tool in cpp as ar ranlib ld nm strip size strings objcopy objdump readelf
+    do
+        unset COMMAND_PATH
+        COMMAND_PATH=$(command -v "$tool")
+        COMMAND_UPPER=$(echo "$tool" | tr a-z A-Z)
+        eval $COMMAND_UPPER=$COMMAND_PATH
+        eval export ${COMMAND_UPPER}_FOR_BUILD=$COMMAND_PATH
+    done
 
-    if [ -z "$LD" ] ; then
-        LD=$(command -v ld)
-    fi
-
-    if [ -z "$AR" ] ; then
-        AR=$(command -v ar)
-    fi
-
-    if [ -z "$RANLIB" ] ; then
-        RANLIB=$(command -v ranlib)
-    fi
-
-    if [ -z "$NM" ] ; then
-        NM=$(command -v nm)
-    fi
-
-    if [ -z "$STRIP" ] ; then
-        STRIP=$(command -v strip)
-    fi
-    
     export CC_FOR_BUILD="$CC"
-    export CPP_FOR_BUILD="$CPP"
     export CXX_FOR_BUILD="$CXX"
-    export AS_FOR_BUILD="$AS"
-    export LD_FOR_BUILD="$LD"
-    export AR_FOR_BUILD="$AR"
-    export RANLIB_FOR_BUILD="$RANLIB"
-    export NM_FOR_BUILD="$NM"
-    export STRIP_FOR_BUILD="$STRIP"
     export CFLAGS_FOR_BUILD="$CFLAGS"
     export CXXFLAGS_FOR_BUILD="$CXXFLAGS"
     export CPPFLAGS_FOR_BUILD="$CPPFLAGS"
@@ -841,6 +827,7 @@ die_if_command_not_found() {
        cmake) [ -z "$CMAKE" ] && die_from_command_not_found "$1" "CMAKE" ;;
        meson) [ -z "$MESON" ] && die_from_command_not_found "$1" "MESON" ;;
        ninja) [ -z "$NINJA" ] && die_from_command_not_found "$1" "NINJA" ;;
+       cargo) [ -z "$CARGO" ] && die_from_command_not_found "$1" "CARGO" ;;
        pkg-config|pkgconfig|pkgconf)
               [ -z "$PKG_CONFIG" ] && die_from_command_not_found "$1" "PKG_CONFIG" ;;
            *) command -v "$1" > /dev/null || die_from_command_not_found "$1"
@@ -884,6 +871,8 @@ install_a_package() {
         dir://*|*.git)
             echo "$FETCH_OUTPUT_FILE_PATH -> $WORKING_DIR"
             cp -r "$FETCH_OUTPUT_FILE_PATH"/* "$WORKING_DIR" || return 1 ;;
+        *.c|*.cc|*.cxx|*.cpp)
+            cp -v "$FETCH_OUTPUT_FILE_PATH" "$WORKING_DIR" || return 1 ;;
         *.zip)
             info "unzip ← $FETCH_OUTPUT_FILE_PATH"
             if unzip "$FETCH_OUTPUT_FILE_PATH" -d "$WORKING_DIR" ; then
@@ -905,50 +894,39 @@ install_a_package() {
 
     if command -v prepare > /dev/null ; then
         # may be build something for building
-        export CC="$CC_FOR_BUILD"
-        export CPP="$CPP_FOR_BUILD"
-        export CXX="$CXX_FOR_BUILD"
-        export AS="$AS_FOR_BUILD"
-        export LD="$LD_FOR_BUILD"
-        export AR="$AR_FOR_BUILD"
-        export RANLIB="$RANLIB_FOR_BUILD"
-        export NM="$NM_FOR_BUILD"
-        export STRIP="$STRIP_FOR_BUILD"
-        export CFLAGS="$CFLAGS_FOR_BUILD"
-        export CXXFLAGS="$CXXFLAGS_FOR_BUILD"
-        export CPPFLAGS="$CPPFLAGS_FOR_BUILD"
-        export LDFLAGS="$LDFLAGS_FOR_BUILD"
-        export PKG_CONFIG_PATH="$PKG_CONFIG_PATH_FOR_BUILD"
-        export PKG_CONFIG_LIBDIR="$PKG_CONFIG_LIBDIR_FOR_BUILD"
-
-        print_seperator 'print_glob_installation_variables start'
-        info ""
-        info "           SHELL = $SHELL"
-        info "            MAKE = $MAKE"
-        info "           CMAKE = $CMAKE"
-        info "           MESON = $MESON"
-        info "           NINJA = $NINJA"
-        info "      PKG_CONFIG = $PKG_CONFIG"
-
-        info "              CC = $CC"
-        info "             CPP = $CPP"
-        info "             CXX = $CXX"
-        info "              AS = $AS"
-        info "              LD = $LD"
-        info "              AR = $AR"
-        info "          RANLIB = $RANLIB"
-        info "           STRIP = $STRIP"
-        info "              NM = $NM"
         
-        info "           CFLAGS = $CFLAGS"
-        info "         CXXFLAGS = $CXXFLAGS"
-        info "         CPPFLAGS = $CPPFLAGS"
-        info "          LDFLAGS = $LDFLAGS"
-        info "PKG_CONFIG_PATH   = $PKG_CONFIG_PATH"
-        info "PKG_CONFIG_LIBDIR = $PKG_CONFIG_LIBDIR"
-        info ""
+        info "=========================================> prepare pre"
+        
+        for TOOL in SHELL MAKE CMAKE MESON NINJA CARGO PKG_CONFIG
+        do
+            printf "%16s = %s\n" "$TOOL" $(eval echo \$$TOOL)
+        done
 
-        print_seperator 'print_glob_installation_variables end'
+        echo
+
+        for TOOL in CC CXX CPP AS LD AR RANLIB NM STRIP SIZE STRINGS OBJCOPY OBJDUMP READELF
+        do
+            eval export $TOOL=\$"${TOOL}_FOR_BUILD"
+            printf "%16s = %s\n" "$TOOL" $(eval echo \$$TOOL)
+        done
+
+        for FLAGS in CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
+        do
+            eval export $FLAGS=\$"${FLAGS}_FOR_BUILD"
+            printf "\n%16s = " "$FLAGS"
+            FIRST='true'
+            for item in $(eval echo \$$FLAGS | tr ':' ' ')
+            do
+                if [ "$FIRST" = 'true' ] ; then
+                    FIRST='false'
+                    echo "$item"
+                else
+                    echo "                   $item"
+                fi
+            done
+        done
+        echo
+        info "=========================================> prepare pre"
 
         prepare || die_from_installation_failed "$1"
     fi
@@ -973,8 +951,8 @@ install_a_package_all_builds() {
     for BUILD in $BUILD_LIST
     do
         BUILD_ROUND_NUM=$(expr ${BUILD_ROUND_NUM-0} + 1)
-        
-        BUILD_FOR_ABI=$BUILD
+
+        BUILD_FOR_ABI=$(echo "$BUILD" | cut -d: -f1)
 
         if [ -z "$BUILD_FOR_ABI_LIST" ] ; then
             BUILD_FOR_ABI_LIST="$BUILD_FOR_ABI"
@@ -1006,14 +984,12 @@ install_a_package_all_builds() {
 
 ___dryrun_a_package_one_build() {
     __config_this_build_variables "$1" &&
-    __export_this_build_variables      &&
     __printf_this_build_variables "$1" &&
     exec "$SHELL"
 }
 
 __install_a_package_one_build() {
     __config_this_build_variables "$1" &&
-    __export_this_build_variables      &&
     __printf_this_build_variables "$1" &&
     rm -rf "$ABI_INSTALL_DIR" &&
     build && {
@@ -1027,8 +1003,8 @@ __install_a_package_one_build() {
 }
 
 __justfy_pc_files() {
-    if [ -d "$ABI_PKG_CONFIG_DIR" ] ; then
-        for item in $(find "$ABI_PKG_CONFIG_DIR" -name "*.pc")
+    if [ -d "$ABI_PKGCONF_DIR" ] ; then
+        for item in $(find "$ABI_PKGCONF_DIR" -name "*.pc")
         do
             sed_in_place 's/-lpthread//g' "$item" || return 1
             if grep 'Libs.private:' "$item" > /dev/null ; then
@@ -1059,6 +1035,72 @@ __install_logs() {
     if [ -f "$BUILD_DIR/install.log.txt" ] ; then
         install -m 644 "$BUILD_DIR/install.log.txt" "$ABI_LOG_DIR" || return 1
     fi
+}
+
+install_incs() {
+    while [ -n "$1" ]
+    do
+        unset X1
+        unset X2
+        X1=$(echo "$1" | cut -d: -f1)
+        X2=$(echo "$1" | cut -d: -f2)
+
+        [ "$X1" = "$X2" ] && unset X2
+
+        install -v -d         "$ABI_INCLUDE_DIR/$X2" || return 1
+        install -v -m 644 $X1 "$ABI_INCLUDE_DIR/$X2" || return 1
+
+        shift
+    done
+}
+
+install_libs() {
+    install -v -d "$ABI_LIBRARY_DIR" || return 1
+    for item in $@
+    do
+        case $item in
+            *.so) install -v -m 755 $item "$ABI_LIBRARY_DIR" || return 1 ;;
+            *)    install -v -m 644 $item "$ABI_LIBRARY_DIR" || return 1
+        esac
+    done
+}
+
+install_bins() {
+    install -v -d        "$ABI_BINARY__DIR" &&
+    install -v -m 755 $@ "$ABI_BINARY__DIR"
+}
+
+install_mans() {
+    for item in $@
+    do
+        unset NUMBER
+        NUMBER=$(echo "$item" | cut -c ${#item}-${#item})
+        case $NUMBER in
+            [1-8]);;
+            *)    die "$item: not a manpage."
+        esac
+        install -v -d           "$ABI_INSTALL_DIR/share/man/man$NUMBER" &&
+        install -v -m 644 $item "$ABI_INSTALL_DIR/share/man/man$NUMBER"
+    done
+}
+
+install_pc_file() {
+    install -v -d "$ABI_PKGCONF_DIR" &&
+    cat >         "$ABI_PKGCONF_DIR/$1.pc"
+}
+
+install_files() {
+    while [ -n "$1" ]
+    do
+        case $(echo "$1" | cut -d: -f1) in
+            *.[1-8]) install_mans "$1" || return 1 ;;
+            *.h)     install_incs "$1" || return 1 ;;
+            *.a)     install_libs "$1" || return 1 ;;
+            *.so)    install_libs "$1" || return 1 ;;
+            *)       install_bins "$1" || return 1 ;;
+        esac
+        shift
+    done
 }
 
 info_packages() {
@@ -1282,6 +1324,10 @@ die_if_load_formula_failed() {
         *.tar.bz2) URL_CONTENT_TYPE=tar.bz2;;
         *.tgz)     URL_CONTENT_TYPE=tar.gz ;;
         *.txz)     URL_CONTENT_TYPE=tar.xz ;;
+        *.c)       URL_CONTENT_TYPE=c   ;;
+        *.cc)      URL_CONTENT_TYPE=cxx ;;
+        *.cxx)     URL_CONTENT_TYPE=cxx ;;
+        *.cpp)     URL_CONTENT_TYPE=cxx ;;
         *)  die "$PACKAGE_URL : extension isn't recognized. the supported extensions are .git .zip .tar.xz .tar.gz .tar.bz2 .tgz .txz"
     esac
 
@@ -1354,20 +1400,20 @@ print_installed_log() {
 __config_this_build_variables() {
     die_if_package_is_not_available "$1"
 
-    BUILD_FOR_TARGET_TRIPLE=$(get_target_triple_by_abi "$BUILD_FOR_ABI")
-    BUILD_FOR_ARCH=$(echo "$BUILD_FOR_TARGET_TRIPLE" | cut -d- -f1)
+    BUILD_FOR_TARGET=$(echo_target_by_abi "$BUILD_FOR_ABI")
+    BUILD_FOR_ARCH=$(echo "$BUILD_FOR_TARGET" | cut -d- -f1)
 
-    CC="$(get_tool_of_chain clang)"
-   CXX="$(get_tool_of_chain clang++)"
+    CC="$(echo_tool_of_chain clang)"
+   CXX="$(echo_tool_of_chain clang++)"
    CPP="$CC -E"
 
-    for tool in as ar ranlib ld nm strip
+    for tool in as ar ranlib ld nm strip size strings objcopy objdump readelf
     do
-        eval $(echo "$tool" | tr a-z A-Z)=$(get_tool_of_chain "$tool")
+        eval $(echo "$tool" | tr a-z A-Z)=$(echo_tool_of_chain "$tool")
     done
 
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
-    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$(echo $BUILD_FOR_TARGET_TRIPLE | sed 's/armv7a/arm/')/$MIN_SDK_API_LEVEL"
+    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')/$MIN_SDK_API_LEVEL"
 
       CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments"
@@ -1380,6 +1426,7 @@ __config_this_build_variables() {
         CPPFLAGS="$CPPFLAGS -Dftello=ftell -Dfseeko=fseek"
     fi
 
+    PKG_CONFIG_LIBDIR="$MY_INSTALL_DIR"
     PKG_CONFIG_PATH=''
 
     for PACKAGE in $DEPENDENCY_PACKAGE_LIST
@@ -1389,7 +1436,7 @@ __config_this_build_variables() {
         ABI_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE/$BUILD_FOR_ABI"
         ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
         ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
-        ABI_PKG_CONFIG_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
+        ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 
         eval "${PKG}_INSTALL_DIR='$ABI_INSTALL_DIR'"
         eval "${PKG}_INCLUDE_DIR='$ABI_INCLUDE_DIR'"
@@ -1397,7 +1444,7 @@ __config_this_build_variables() {
 
         CPPFLAGS="-I$ABI_INCLUDE_DIR $CPPFLAGS"
          LDFLAGS="-L$ABI_LIBRARY_DIR $LDFLAGS"
-        PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKG_CONFIG_DIR"
+        PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
     done
 
     if [ "$VERBOSE" = 'true' ] ; then
@@ -1407,136 +1454,108 @@ __config_this_build_variables() {
         fi
     fi
 
+    CXXFLAGS="$CFLAGS"
+
     ABI_INSTALL_DIR="$PKG_INSTALL_DIR/$BUILD_FOR_ABI"
-    ABI_BINARY_DIR="$ABI_INSTALL_DIR/bin"
+    ABI_BINARY__DIR="$ABI_INSTALL_DIR/bin"
     ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
-    ABI_PKG_CONFIG_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
-}
-
-__export_this_build_variables() {
-    export CC="$CC"
-    export CXX="$CXX"
-    export CPP="$CPP"
-    export AR="$AR"
-    export AS="$AS"
-    export LD="$LD"
-    export NM="$NM"
-    export RANLIB="$RANLIB"
-    export STRIP="$STRIP"
-
-    export CFLAGS="$CFLAGS"
-    export CXXFLAGS="$CFLAGS"
-    export CPPFLAGS="$CPPFLAGS"
-    export LDFLAGS="$LDFLAGS"
-
-    export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-    export PKG_CONFIG_LIBDIR="$MY_INSTALL_DIR"
-    
-    if [ "$VERBOSE" = 'true' ] ; then
-        export PKG_CONFIG_DEBUG_SPEW=set
-    fi
+    ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 }
 
 __printf_this_build_variables() {
     print_seperator 'printf_this_build_variables start'
 
-    info "BUILD_ROUND_NUM = $BUILD_ROUND_NUM"
-    info ""
-    info "INSTALLING_PACKAGE      = $1"
-    info "DIRECT_DEP_PACKAGE_LIST = $(get_direct_dependency_package_list_of_a_package "$1")"
-    info "DEPENDENCY_PACKAGE_LIST = $DEPENDENCY_PACKAGE_LIST"
-    info ""
-    info "ANDROID_NDK_VER  = $ANDROID_NDK_VERSION"
-    info "ANDROID_NDK_HOME = $ANDROID_NDK_HOME"
-    info "         SYSROOT = $SYSROOT"
-    info "TOOLCHAIN_BIN_DIR= $TOOLCHAIN_BIN_DIR"
-    info "              CC = $CC"
-    info "             CXX = $CXX"
-    info "             CPP = $CPP"
-    info "              AR = $AR"
-    info "              AS = $AS"
-    info "              LD = $LD"
-    info "              NM = $NM"
-    info "          RANLIB = $RANLIB"
-    info "           STRIP = $STRIP"
-    info ""
-    info "    CC_FOR_BUILD = $CC_FOR_BUILD"
-    info "   CXX_FOR_BUILD = $CXX_FOR_BUILD"
-    info "   CPP_FOR_BUILD = $CPP_FOR_BUILD"
-    info "    AR_FOR_BUILD = $AR_FOR_BUILD"
-    info "    AS_FOR_BUILD = $AS_FOR_BUILD"
-    info "    LD_FOR_BUILD = $LD_FOR_BUILD"
-    info "    NM_FOR_BUILD = $NM_FOR_BUILD"
-    info "RANLIB_FOR_BUILD = $RANLIB_FOR_BUILD"
-    info " STRIP_FOR_BUILD = $STRIP_FOR_BUILD"
-    info ""
-    info "      PKG_CONFIG = $PKG_CONFIG"
-    info "            MAKE = $MAKE"
-    info "           CMAKE = $CMAKE"
-    info "           MESON = $MESON"
-    info "           NINJA = $NINJA"
-    info "           SHELL = $SHELL"
-    info ""
-    info "SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR"
-    info "SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR"
-    info ""
-    info "MIN_SDK_API_LEVEL = $MIN_SDK_API_LEVEL"
-    info ""
-    info "BUILD_FOR_TARGET_TRIPLE = $BUILD_FOR_TARGET_TRIPLE"
-    info "BUILD_FOR_ARCH          = $BUILD_FOR_ARCH"
-    info "BUILD_FOR_ABI           = $BUILD_FOR_ABI"
-    info ""
-    info "CFLAGS"
-    for item in $CFLAGS
+    echo "BUILD_ROUND_NUM = $BUILD_ROUND_NUM"
+    echo
+    echo "INSTALLING_PACKAGE      = $1"
+    echo "DIRECT_DEP_PACKAGE_LIST = $(get_direct_dependency_package_list_of_a_package "$1")"
+    echo "DEPENDENCY_PACKAGE_LIST = $DEPENDENCY_PACKAGE_LIST"
+    echo
+    echo " ANDROID_NDK_VER  = $ANDROID_NDK_VERSION"
+    echo
+    echo " BUILD_FOR_TARGET = $BUILD_FOR_TARGET"
+    echo " BUILD_FOR_ARCH   = $BUILD_FOR_ARCH"
+    echo " BUILD_FOR_ABI    = $BUILD_FOR_ABI"
+    echo "MIN_SDK_API_LEVEL = $MIN_SDK_API_LEVEL"
+    echo " ANDROID_NDK_HOME = $ANDROID_NDK_HOME"
+    echo "          SYSROOT = $SYSROOT"
+    echo "SYSTEM_INCLUDE_DIR= $SYSTEM_INCLUDE_DIR"
+    echo "SYSTEM_LIBRARY_DIR= $SYSTEM_LIBRARY_DIR"
+    echo "TOOLCHAIN_BIN_DIR = $TOOLCHAIN_BIN_DIR"
+
+    for TOOL in CC CXX CPP AS LD AR RANLIB NM STRIP SIZE STRINGS OBJCOPY OBJDUMP READELF
     do
-        echo "    $item"
+        case $TOOL in
+            CPP)
+                export CPP="$CPP"
+                printf "%17s = %s\n" CPP "$CPP"
+                ;;
+            -E) continue ;;
+            *)
+                eval export $TOOL=\$$TOOL
+                printf "%17s = %s\n" "$TOOL" $(eval echo \$$TOOL)
+        esac
     done
-    info ""
-    info "CXXFLAGS"
-    for item in $CXXFLAGS
+
+    echo
+
+    for TOOL in CC CXX CPP AS LD AR RANLIB NM STRIP SIZE STRINGS OBJCOPY OBJDUMP READELF
     do
-        echo "    $item"
+        case $TOOL in
+            CPP)
+                export CPP_FOR_BUILD="$CPP_FOR_BUILD"
+                printf "%17s = %s\n" CPP_FOR_BUILD "$CPP_FOR_BUILD"
+                ;;
+            -E) continue ;;
+            *)
+                eval export ${TOOL}_FOR_BUILD=\$${TOOL}_FOR_BUILD
+                printf "%17s = %s\n" "${TOOL}_FOR_BUILD" $(eval echo \$${TOOL}_FOR_BUILD)
+        esac
     done
-    info ""
-    info "CPPFLAGS"
-    for item in $CPPFLAGS
+
+    echo
+
+    for TOOL in PKG_CONFIG MAKE CMAKE MESON NINJA CARGO SHELL
     do
-        echo "    $item"
+        printf "%17s = %s\n" "$TOOL" $(eval echo \$$TOOL)
     done
-    info ""
-    info "LDFLAGS"
-    for item in $LDFLAGS
+
+    for FLAGS in CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
     do
-        echo "    $item"
+        eval export $FLAGS=\$$FLAGS
+        printf "\n%17s = " "$FLAGS"
+        FIRST=true
+        for item in $(eval echo \$$FLAGS | tr ':' ' ')
+        do
+            if [ "$FIRST" = 'true' ] ; then
+                FIRST=false
+                echo "$item"
+            else
+                echo "                    $item"
+            fi
+        done
     done
-    info ""
-    info "PKG_CONFIG_PATH"
-    for item in $(echo $PKG_CONFIG_PATH | tr ':' ' ')
-    do
-        echo "    $item"
-    done
-    info ""
-    info "PKG_CONFIG_LIBDIR = $PKG_CONFIG_LIBDIR"
-    info ""
-    info "PATH"
-    for item in $(echo $PATH | tr ':' ' ')
-    do
-        echo "    $item"
-    done
-    info ""
-    info "WORKING_DIR = $WORKING_DIR"
-    info " SOURCE_DIR = $SOURCE_DIR"
-    info "  BUILD_DIR = $BUILD_DIR"
-    info ""
-    info "PKG_INSTALL_DIR = $PKG_INSTALL_DIR"
-    info "ABI_INSTALL_DIR = $ABI_INSTALL_DIR"
-    info "ABI_BINARY_DIR  = $ABI_BINARY_DIR"
-    info "ABI_INCLUDE_DIR = $ABI_INCLUDE_DIR"
-    info "ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR"
-    info "ABI_PKG_CONFIG_DIR = $ABI_PKG_CONFIG_DIR"
+
+    echo
+
+    echo "      WORKING_DIR = $WORKING_DIR"
+    echo "       SOURCE_DIR = $SOURCE_DIR"
+    echo "        BUILD_DIR = $BUILD_DIR"
+    echo
+    echo "  PKG_INSTALL_DIR = $PKG_INSTALL_DIR"
+    echo "  ABI_INSTALL_DIR = $ABI_INSTALL_DIR"
+    echo "  ABI_BINARY__DIR = $ABI_BINARY__DIR"
+    echo "  ABI_INCLUDE_DIR = $ABI_INCLUDE_DIR"
+    echo "  ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR"
+    echo "  ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR"
 
     print_seperator 'printf_this_build_variables end'
+
+    if [ "$VERBOSE" = 'true' ] ; then
+        export -p
+        print_seperator
+    fi
 }
 
 print_seperator() {
@@ -1564,7 +1583,7 @@ configure() {
     print_seperator "config start"
     
     if "$SOURCE_DIR"/configure \
-        --host="$BUILD_FOR_TARGET_TRIPLE" \
+        --host="$BUILD_FOR_TARGET" \
         --prefix="$ABI_INSTALL_DIR" \
         --disable-option-checking \
         --disable-rpath \
@@ -1590,6 +1609,15 @@ configure() {
     else
         print_seperator "config failed"
         return 1
+    fi
+
+    if [ "$VERBOSE" = 'true' ] ; then
+        for Makefile in $(find "$SOURCE_DIR" -name Makefile)
+        do
+            sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
+            sed_in_place 's|@echo|echo|g' "$Makefile" || return 1
+        done
+        unset Makefile
     fi
 
     print_seperator "clean start"
@@ -1666,32 +1694,32 @@ meson() {
 
     case $BUILD_FOR_ABI in
         armeabi-v7a)
-            BUILD_FOR_TARGET_CPU_FAMILY='arm'
-            BUILD_FOR_TARGET_CPU_NAME='armv7a'
+            HOST_MACHINE_CPU_FAMILY='arm'
+            HOST_MACHINE_CPU_NAME='armv7a'
             ;;
         arm64-v8a)
-            BUILD_FOR_TARGET_CPU_FAMILY='aarch64'
-            BUILD_FOR_TARGET_CPU_NAME='armv8a'
+            HOST_MACHINE_CPU_FAMILY='aarch64'
+            HOST_MACHINE_CPU_NAME='armv8a'
             ;;
         x86)
-            BUILD_FOR_TARGET_CPU_FAMILY='x86'
-            BUILD_FOR_TARGET_CPU_NAME='i686'
+            HOST_MACHINE_CPU_FAMILY='x86'
+            HOST_MACHINE_CPU_NAME='i686'
             ;;
         x86_64)
-            BUILD_FOR_TARGET_CPU_FAMILY='x86_64'
-            BUILD_FOR_TARGET_CPU_NAME='x86_64'
+            HOST_MACHINE_CPU_FAMILY='x86_64'
+            HOST_MACHINE_CPU_NAME='x86_64'
             ;;
         *)
-            BUILD_FOR_TARGET_CPU_FAMILY='unkown'
-            BUILD_FOR_TARGET_CPU_NAME='unkown'
+            HOST_MACHINE_CPU_FAMILY='unkown'
+            HOST_MACHINE_CPU_NAME='unkown'
     esac
 
     cat >> "$BUILD_DIR/cross-file" <<EOF
 [host_machine]
 system = 'android'
 endian = 'little'
-cpu_family = '$BUILD_FOR_TARGET_CPU_FAMILY'
-cpu = '$BUILD_FOR_TARGET_CPU_NAME'
+cpu_family = '$HOST_MACHINE_CPU_FAMILY'
+cpu = '$HOST_MACHINE_CPU_NAME'
 
 [binaries]
 c = '$CC'
@@ -1734,6 +1762,7 @@ cargo() {
     if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
         for supportedTarget in $(list_supported_targets)
         do
+            supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
             for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
             do
                 [ "$supportedTarget" = "$installedTarget" ] && break
@@ -1742,7 +1771,7 @@ cargo() {
                 rustup target add "$supportedTarget" || return 1
             }
         done
-        grep '\[lib\]' "$SOURCE_DIR/Cargo.toml" ||
+        grep -q '\[lib\]' "$SOURCE_DIR/Cargo.toml" ||
         cat >> "$SOURCE_DIR/Cargo.toml" <<EOF
 
 [lib]
@@ -1750,16 +1779,39 @@ crate-type = ["staticlib", "cdylib"]
 EOF
     fi
 
-    BUILD_FOR_TARGET_TRIPLE=$(echo "$BUILD_FOR_TARGET_TRIPLE" | sed 's/armv7a/armv7/')
+    BUILD_FOR_TARGET=$(echo "$BUILD_FOR_TARGET" | sed 's/armv7a/armv7/')
 
     # https://doc.rust-lang.org/cargo/reference/environment-variables.html
-    XXX=$(echo "$BUILD_FOR_TARGET_TRIPLE" | tr a-z A-Z | tr - _)
-    eval export CARGO_TARGET_${XXX}_AR=$AR
-    eval export CARGO_TARGET_${XXX}_LINKER=$CC
+    CARGO_TARGET_XXX=$(echo "$BUILD_FOR_TARGET" | tr a-z A-Z | tr - _)
+    eval export CARGO_TARGET_${CARGO_TARGET_XXX}_AR=$AR
+    eval export CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=$CC
 
     env | grep CARGO_TARGET_
-    echo
-    command cargo build --target $BUILD_FOR_TARGET_TRIPLE --release --verbose
+
+    print_seperator "build start"
+    if command cargo build --target $BUILD_FOR_TARGET --release --verbose ; then
+        print_seperator "build success"
+    else
+        print_seperator "build failed"
+        return 1
+    fi
+
+    print_seperator "install start"
+
+    for item in $@
+    do
+        case $(echo "$item" | cut -d: -f1) in
+           /*.[1-8]) install_mans "$item"             || return 1 ;;
+            *.[1-8]) install_mans "$SOURCE_DIR/$item" || return 1 ;;
+           /*.h)     install_incs "$item"             || return 1 ;;
+            *.h)     install_incs "$SOURCE_DIR/$item" || return 1 ;;
+            *.a)     install_libs "$SOURCE_DIR/target/$BUILD_FOR_TARGET/release/$item" || return 1 ;;
+            *.so)    install_libs "$SOURCE_DIR/target/$BUILD_FOR_TARGET/release/$item" || return 1 ;;
+            *)       install_bins "$SOURCE_DIR/target/$BUILD_FOR_TARGET/release/$item" || return 1 ;;
+        esac
+    done
+
+    print_seperator "install success"
 }
 
 ########################################################################
@@ -1814,8 +1866,8 @@ ldd() {
     [ -z "$3" ] && die "type is not specified."
     [ -z "$4" ] && die "name is not specified."
 
-    BUILD_FOR_TARGET_TRIPLE=$(get_target_triple_by_abi "$2")
-    READELF="$(get_tool_of_chain readelf)"
+    BUILD_FOR_TARGET=$(echo_target_by_abi "$2")
+    READELF="$(echo_tool_of_chain readelf)"
 
     ldd_recursion() {
         die_if_package_is_not_installed "$1"
@@ -1837,19 +1889,22 @@ ldd() {
     ldd_recursion "$1" "$2" "$3" "$4"
 }
 
+list_supported_sdk_api_levels() {
+    list 21 22 23 24 25 26 27 28 29
+}
+
 list_supported_abis() {
-    print_list armeabi-v7a arm64-v8a x86 x86_64
+    list armeabi-v7a arm64-v8a x86 x86_64
 }
 
 list_supported_targets() {
-    print_list armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
+    for ABI in $(list_supported_abis)
+    do
+        echo_target_by_abi "$ABI"
+    done
 }
 
-list_supported_sdk_api_levels() {
-    print_list 21 22 23 24 25 26 27 28 29
-}
-
-get_target_triple_by_abi() {
+echo_target_by_abi() {
     case $1 in
         armeabi-v7a) echo  'armv7a-linux-androideabi' ;;
         arm64-v8a)   echo 'aarch64-linux-android'     ;;
@@ -1859,31 +1914,28 @@ get_target_triple_by_abi() {
     esac
 }
 
-get_tool_of_chain() {
+echo_tool_of_chain() {
     unset TOOL
     case $1 in
         clang|clang++)
-            TOOL="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET_TRIPLE$MIN_SDK_API_LEVEL-$1" ;;
-        *)  TOOL="$TOOLCHAIN_BIN_DIR/$(echo $BUILD_FOR_TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
+            TOOL="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-$1" ;;
+        *)  TOOL="$TOOLCHAIN_BIN_DIR/$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')-$1"
     esac
     die_if_file_is_not_executable "$TOOL"
     echo "$TOOL"
 }
 
-get_ndk_version_via_awk() {
-    awk -F= '/Pkg.Revision/{print(substr($2, 2))}' "$ANDROID_NDK_HOME/source.properties"
-}
-
-get_ndk_version_via_cut() {
-    grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | cut -d " " -f3
-}
-
-get_ndk_version_via_sed() {
-    grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | "$SED" 's/Pkg\.Revision = \(.*\).*/\1/'
-}
-
-get_ndk_version_via_ruby() {
-    ruby <<EOF
+ndk_version() {
+    if   command -v cut  > /dev/null ; then
+        grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | cut -d " " -f3
+    elif command -v awk  > /dev/null ; then
+        awk -F= '/Pkg.Revision/{print(substr($2, 2))}' "$ANDROID_NDK_HOME/source.properties"
+    elif command -v sed  > /dev/null ; then
+        grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | sed  's/Pkg\.Revision = \(.*\).*/\1/'
+    elif command -v gsed > /dev/null ; then
+        grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | gsed 's/Pkg\.Revision = \(.*\).*/\1/'
+    elif command -v ruby > /dev/null ; then
+        ruby <<EOF
 File.open(ENV['ANDROID_NDK_HOME'] + '/source.properties', 'r') {|f|
   f.each_line {|lineText|
     if (lineText =~ /Pkg.Revision =.*/)
@@ -1893,10 +1945,8 @@ File.open(ENV['ANDROID_NDK_HOME'] + '/source.properties', 'r') {|f|
   f.close
 }
 EOF
-}
-
-get_ndk_version_via_perl() {
-    perl << EOF
+    elif command -v perl > /dev/null ; then
+        perl << EOF
 open(DATA, "<$ANDROID_NDK_HOME/source.properties") or die "$ANDROID_NDK_HOME/source.properties文件无法打开, $!";
 while(<DATA>) {
     if ("\$_" =~ m/Pkg.Revision/) {
@@ -1904,21 +1954,8 @@ while(<DATA>) {
     }
 }
 EOF
-}
-
-get_ndk_version_via_python() {
-    "$PYTHON" << EOF
-import re;
-file = open("$ANDROID_NDK_HOME/source.properties");
-lines = file.readlines();
-for line in lines:
-    if -1 != line.find("Pkg.Revision"):
-        print(re.findall("[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,7}", line)[0]);
-EOF
-}
-
-get_ndk_version_via_nodejs() {
-    node << EOF
+    elif command -v node > /dev/null ; then
+        node << EOF
 const fs = require('fs');
 
 const buffer = fs.readFileSync("$ANDROID_NDK_HOME/source.properties");
@@ -1936,30 +1973,36 @@ lines.forEach((line, index, lines) => {
     }
 });
 EOF
+    else
+        PYTHON=$(command -v python3) ||
+        PYTHON=$(command -v python)  ||
+        PYTHON=$(command -v python2)
+
+        if [ -z "$PYTHON" ] ; then
+            die "please install GNU CoreUtils."
+        else
+            "$PYTHON" << EOF
+import re;
+file = open("$ANDROID_NDK_HOME/source.properties");
+lines = file.readlines();
+for line in lines:
+    if -1 != line.find("Pkg.Revision"):
+        print(re.findall("[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,7}", line)[0]);
+EOF
+        fi
+    fi
 }
 
-get_ndk_version() {
-    command -v cut  > /dev/null && get_ndk_version_via_cut    && return 0 
-    command -v awk  > /dev/null && get_ndk_version_via_awk    && return 0
-    command -v ruby > /dev/null && get_ndk_version_via_ruby   && return 0 
-    command -v perl > /dev/null && get_ndk_version_via_perl   && return 0    
-    command -v node > /dev/null && get_ndk_version_via_nodejs && return 0
-    
-    SED=$(command -v gsed) ||
-    SED=$(command -v  sed)
-    [ -z "$SED" ] || get_ndk_version_via_sed && return 0
-     
-    PYTHON=$(command -v python3) ||
-    PYTHON=$(command -v python)  ||
-    PYTHON=$(command -v python2) 
-    [ -z "$PYTHON" ] || get_ndk_version_via_python && return 0
-}
-
-get_ndk_version_major() {
-    command -v cut > /dev/null && printf "$ANDROID_NDK_VERSION" | cut -d. -f1          && return 0
-    command -v awk > /dev/null && printf "$ANDROID_NDK_VERSION" | awk -F. '{print $1}' && return 0
-    command -v sed > /dev/null && printf "$ANDROID_NDK_VERSION" | sed 's/\..*//g'      && return 0
-    echo 0
+ndk_version_major() {
+    if   command -v cut > /dev/null ; then
+        printf "$ANDROID_NDK_VERSION" | cut -d. -f1
+    elif command -v awk > /dev/null ; then
+        printf "$ANDROID_NDK_VERSION" | awk -F. '{print $1}'
+    elif command -v sed > /dev/null ; then
+        printf "$ANDROID_NDK_VERSION" | sed 's/\..*//g'
+    else
+        die "please install GNU CoreUtils."
+    fi
 }
 
 check_prerequisites() {
@@ -1967,12 +2010,12 @@ check_prerequisites() {
     [ -z "$ANDROID_NDK_HOME" ] && die "please set and export ANDROID_NDK_HOME=DIR environment variable, then try again!"
     [ -d "$ANDROID_NDK_HOME" ] || die "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
     
-    TOOLCHAIN_DIR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)"
-    TOOLCHAIN_BIN_DIR="$TOOLCHAIN_DIR/bin"
-    SYSROOT="$TOOLCHAIN_DIR/sysroot"
+    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)"
+    TOOLCHAIN_BIN_DIR="$TOOLCHAIN_ROOT/bin"
+    SYSROOT="$TOOLCHAIN_ROOT/sysroot"
 
-    ANDROID_NDK_VERSION="$(get_ndk_version)"
-    ANDROID_NDK_VERSION_MAJOR="$(get_ndk_version_major)"
+    ANDROID_NDK_VERSION="$(ndk_version)"
+    ANDROID_NDK_VERSION_MAJOR="$(ndk_version_major)"
 
     # Android NDK version must be r19 or newer.
     if [ "$ANDROID_NDK_VERSION_MAJOR" -lt 19 ] ; then
@@ -2038,6 +2081,55 @@ parse_arguments() {
     BUILD_LIST="$(list_supported_abis)"
 }
 
+init() {
+    # MY represents this software's
+    MY_NAME=ndk-pkg
+    MY_VERSION=0.1.0
+    MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
+
+    if [ -z "$NDK_PKG_FORMULA_REPO_URL" ] ; then
+        MY_FORMULA_REPO_URL="https://github.com/leleliu008/$MY_NAME-formula.git"
+    else
+        MY_FORMULA_REPO_URL="$NDK_PKG_FORMULA_REPO_URL"
+    fi
+
+    if [ -z "$NDK_PKG_HOME_DIR" ] ; then
+        MY_HOME_DIR="$HOME/.$MY_NAME"
+    else
+        MY_HOME_DIR="$NDK_PKG_HOME_DIR"
+    fi
+
+    MY_FORMULA_DIR="$MY_HOME_DIR/formula"
+    MY_INSTALL_DIR="$MY_HOME_DIR/pkg"
+    MY_CACHED_DIR="$MY_HOME_DIR/downloads"
+    MY_BOTTLE_DIR="$MY_HOME_DIR/bottles"
+    MY_BACKUP_DIR="$MY_HOME_DIR/backup"
+    MY_PATCH_DIR="$MY_HOME_DIR/patches"
+
+    if command -v date > /dev/null ; then
+        TIMESTAMP_UNIX="$(date +%s)"
+    else
+        die "command not found: date. please make sure it in PATH."
+    fi
+
+    if command -v uname > /dev/null ; then
+        if command -v tr > /dev/null ; then
+            BUILD_MACHINE_OS="$(uname -s | tr A-Z a-z)"
+        elif command -v  awk > /dev/null ; then
+            BUILD_MACHINE_OS="$(uname -s |  awk '{print(tolower($0))}')"
+        elif command -v gawk > /dev/null ; then
+            BUILD_MACHINE_OS="$(uname -s | gawk '{print(tolower($0))}')"
+        else
+            die "please install GNU CoreUtils or awk."
+        fi
+        case $BUILD_MACHINE_OS in
+            msys*|mingw*|cygwin*) BUILD_MACHINE_OS=windows
+        esac
+    else
+        die "command not found: uname. please make sure it in PATH."
+    fi
+}
+
 help() {
     cat << EOF
 $MY_NAME is a package manager for Android NDK to build C/C++ project.
@@ -2088,55 +2180,6 @@ EOF
         exit
     else
         exit "$1"
-    fi
-}
-
-init() {
-    # MY represents this software's
-    MY_NAME=ndk-pkg
-    MY_VERSION=0.1.0
-    MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
-
-    if [ -z "$NDK_PKG_FORMULA_REPO_URL" ] ; then
-        MY_FORMULA_REPO_URL="https://github.com/leleliu008/$MY_NAME-formula.git"
-    else
-        MY_FORMULA_REPO_URL="$NDK_PKG_FORMULA_REPO_URL"
-    fi
-
-    if [ -z "$NDK_PKG_HOME_DIR" ] ; then
-        MY_HOME_DIR="$HOME/.$MY_NAME"
-    else
-        MY_HOME_DIR="$NDK_PKG_HOME_DIR"
-    fi
-
-    MY_FORMULA_DIR="$MY_HOME_DIR/formula"
-    MY_INSTALL_DIR="$MY_HOME_DIR/pkg"
-    MY_CACHED_DIR="$MY_HOME_DIR/downloads"
-    MY_BOTTLE_DIR="$MY_HOME_DIR/bottles"
-    MY_BACKUP_DIR="$MY_HOME_DIR/backup"
-    MY_PATCH_DIR="$MY_HOME_DIR/patches"
-
-    if command -v date > /dev/null ; then
-        TIMESTAMP_UNIX="$(date +%s)"
-    else
-        die "command not found: date. please make sure it in PATH."
-    fi
-
-    if command -v uname > /dev/null ; then
-        if command -v tr > /dev/null ; then
-            BUILD_MACHINE_OS="$(uname -s | tr A-Z a-z)"
-        elif command -v  awk > /dev/null ; then
-            BUILD_MACHINE_OS="$(uname -s |  awk '{print(tolower($0))}')"
-        elif command -v gawk > /dev/null ; then
-            BUILD_MACHINE_OS="$(uname -s | gawk '{print(tolower($0))}')"
-        else
-            die "please install GNU CoreUtils or awk."
-        fi
-        case $BUILD_MACHINE_OS in
-            msys*|mingw*|cygwin*) BUILD_MACHINE_OS=windows
-        esac
-    else
-        die "command not found: uname. please make sure it in PATH."
     fi
 }
 
