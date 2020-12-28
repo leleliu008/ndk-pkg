@@ -877,35 +877,45 @@ __config_glob_installation_variables() {
         fi
     done
 
-    if [ -z "$CC" ] ; then
-        CC=$(command -v cc) ||
-        CC=$(command -v gcc) ||
-        CC=$(command -v clang)
-    fi
-
-    if [ -z "$CXX" ] ; then
-        CXX=$(command -v c++) ||
-        CXX=$(command -v g++) ||
-        CXX=$(command -v clang++)
-    fi
-
-    for tool in cpp as ar ranlib ld nm strip size strings objcopy objdump readelf
+    for tool in $(list_tools_in_the_toolchain)
     do
-        unset COMMAND_PATH
-        COMMAND_PATH=$(command -v "$tool")
-        COMMAND_UPPER=$(echo "$tool" | tr a-z A-Z)
-        eval $COMMAND_UPPER=$COMMAND_PATH
-        eval export ${COMMAND_UPPER}_FOR_BUILD=$COMMAND_PATH
-    done
+        unset TOOL_PATH
+        case $tool in
+            cc)
+                if [ -z "$CC" ] ; then
+                    TOOL_PATH=$(command -v cc) ||
+                    TOOL_PATH=$(command -v gcc) ||
+                    TOOL_PATH=$(command -v clang)
+                else
+                    TOOL_PATH="$CC"
+                fi
+                ;;
+            cxx)
+                if [ -z "$CXX" ] ; then
+                    TOOL_PATH=$(command -v c++) ||
+                    TOOL_PATH=$(command -v g++) ||
+                    TOOL_PATH=$(command -v clang++)
+                else
+                    TOOL_PATH="$CXX"
+                fi
+                ;;
+            *)  TOOL_PATH=$(command -v "$tool")
+        esac
 
-    export CC_FOR_BUILD="$CC"
-    export CXX_FOR_BUILD="$CXX"
-    export CFLAGS_FOR_BUILD="$CFLAGS"
-    export CXXFLAGS_FOR_BUILD="$CXXFLAGS"
-    export CPPFLAGS_FOR_BUILD="$CPPFLAGS"
-    export LDFLAGS_FOR_BUILD="$LDFLAGS"
-    export PKG_CONFIG_PATH_FOR_BUILD="$PKG_CONFIG_PATH"
-    export PKG_CONFIG_LIBDIR_FOR_BUILD="$PKG_CONFIG_LIBDIR"
+        unset TOOL_UPPER
+        TOOL_UPPER=$(echo "$tool" | tr a-z A-Z)
+
+        eval $TOOL_UPPER=$TOOL_PATH
+        eval export ${TOOL_UPPER}_FOR_BUILD=$TOOL_PATH
+    done
+    unset TOOL_PATH
+    unset TOOL_UPPER
+
+    for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
+    do
+        eval export ${FLAG}_FOR_BUILD="\$$FLAG"
+    done
+    unset FLAG
 
     export PATH="$TOOLCHAIN_BIN_DIR:$PATH"
 
@@ -1018,23 +1028,23 @@ __install_a_package() {
 
         for TOOL in SHELL MAKE CMAKE MESON NINJA CARGO PKG_CONFIG
         do
-            printf "%16s = %s\n" "$TOOL" $(eval echo \$$TOOL)
+            printf "%16s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
         done
 
         echo
 
-        for TOOL in CC CXX CPP AS LD AR RANLIB NM STRIP SIZE STRINGS OBJCOPY OBJDUMP READELF
+        for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
         do
             eval export $TOOL=\$"${TOOL}_FOR_BUILD"
-            printf "%16s = %s\n" "$TOOL" $(eval echo \$$TOOL)
+            printf "%16s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
         done
 
-        for FLAGS in CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
+        for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
         do
-            eval export $FLAGS=\$"${FLAGS}_FOR_BUILD"
-            printf "\n%16s = " "$FLAGS"
+            eval export $FLAG=\$"${FLAG}_FOR_BUILD"
+            printf "\n%16s = " "$FLAG"
             FIRST='true'
-            for item in $(eval echo \$$FLAGS | tr ':' ' ')
+            for item in $(eval echo \$$FLAG | tr ':' ' ')
             do
                 if [ "$FIRST" = 'true' ] ; then
                     FIRST='false'
@@ -1044,6 +1054,13 @@ __install_a_package() {
                 fi
             done
         done
+
+        echo
+        echo
+        echo "      WORKING_DIR = $WORKING_DIR"
+        echo "       SOURCE_DIR = $SOURCE_DIR"
+        echo "        EMPTY_DIR = $EMPTY_DIR"
+        echo "        BUILD_DIR = $BUILD_DIR"
         echo
         info "=========================================> prepare pre"
 
@@ -1193,6 +1210,11 @@ install_libs() {
     done
 }
 
+install_pcfs() {
+    install -v -d        "$ABI_PKGCONF_DIR" &&
+    install -v -m 644 $@ "$ABI_PKGCONF_DIR"
+}
+
 install_bins() {
     install -v -d        "$ABI_BINARY__DIR" &&
     install -v -m 755 $@ "$ABI_BINARY__DIR"
@@ -1225,6 +1247,7 @@ install_files() {
             *.h)     install_incs "$1" || return 1 ;;
             *.a)     install_libs "$1" || return 1 ;;
             *.so)    install_libs "$1" || return 1 ;;
+            *.pc)    install_pcfs "$1" || return 1 ;;
             *)       install_bins "$1" || return 1 ;;
         esac
         shift
@@ -1558,16 +1581,16 @@ __show_installed_log() {
 __config_this_build_variables() {
     die_if_package_is_not_available "$1"
 
-    BUILD_FOR_TARGET=$(echo_target_by_abi "$BUILD_FOR_ABI")
-    BUILD_FOR_ARCH=$(echo "$BUILD_FOR_TARGET" | cut -d- -f1)
+    BUILD_FOR_ARCH=$(echo_arch_by_abi "$BUILD_FOR_ABI")
+    BUILD_FOR_TARGET=$(echo_target_by_arch "$BUILD_FOR_ARCH")
 
-    CC="$(echo_tool_of_chain clang)"
-   CXX="$(echo_tool_of_chain clang++)"
-   CPP="$CC -E"
-
-    for tool in as ar ranlib ld nm strip size strings objcopy objdump readelf
+    for tool in $(list_tools_in_the_toolchain)
     do
-        eval $(echo "$tool" | tr a-z A-Z)=$(echo_tool_of_chain "$tool")
+        if [ "$tool" = 'cpp' ] ; then
+            CPP="$CC -E"
+        else
+            eval $(echo "$tool" | tr a-z A-Z)=$(echo_path_of_tool_in_the_toolchain "$tool")
+        fi
     done
 
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
@@ -1584,8 +1607,9 @@ __config_this_build_variables() {
         CPPFLAGS="$CPPFLAGS -Dftello=ftell -Dfseeko=fseek"
     fi
 
-    PKG_CONFIG_LIBDIR="$MY_INSTALL_DIR"
-    PKG_CONFIG_PATH=''
+    # https://www.freedesktop.org/wiki/Software/pkg-config/CrossCompileProposal
+    unset PKG_CONFIG_LIBDIR
+    unset PKG_CONFIG_PATH
 
     for PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
@@ -1644,51 +1668,36 @@ __printf_this_build_variables() {
     echo "          SYSROOT = $SYSROOT"
     echo "SYSTEM_INCLUDE_DIR= $SYSTEM_INCLUDE_DIR"
     echo "SYSTEM_LIBRARY_DIR= $SYSTEM_LIBRARY_DIR"
+    echo
     echo "TOOLCHAIN_BIN_DIR = $TOOLCHAIN_BIN_DIR"
 
-    for TOOL in CC CXX CPP AS LD AR RANLIB NM STRIP SIZE STRINGS OBJCOPY OBJDUMP READELF
+    for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
-        case $TOOL in
-            CPP)
-                export CPP="$CPP"
-                printf "%17s = %s\n" CPP "$CPP"
-                ;;
-            -E) continue ;;
-            *)
-                eval export $TOOL=\$$TOOL
-                printf "%17s = %s\n" "$TOOL" $(eval echo \$$TOOL)
-        esac
+        eval export $TOOL="\$$TOOL"
+        printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
     done
 
     echo
 
-    for TOOL in CC CXX CPP AS LD AR RANLIB NM STRIP SIZE STRINGS OBJCOPY OBJDUMP READELF
+    for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
-        case $TOOL in
-            CPP)
-                export CPP_FOR_BUILD="$CPP_FOR_BUILD"
-                printf "%17s = %s\n" CPP_FOR_BUILD "$CPP_FOR_BUILD"
-                ;;
-            -E) continue ;;
-            *)
-                eval export ${TOOL}_FOR_BUILD=\$${TOOL}_FOR_BUILD
-                printf "%17s = %s\n" "${TOOL}_FOR_BUILD" $(eval echo \$${TOOL}_FOR_BUILD)
-        esac
+        eval export ${TOOL}_FOR_BUILD="\$${TOOL}_FOR_BUILD"
+        printf "%17s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$${TOOL}_FOR_BUILD)"
     done
 
     echo
 
-    for TOOL in PKG_CONFIG MAKE CMAKE MESON NINJA CARGO SHELL
+    for TOOL in  SHELL MAKE CMAKE MESON NINJA CARGO PKG_CONFIG
     do
-        printf "%17s = %s\n" "$TOOL" $(eval echo \$$TOOL)
+        printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
     done
 
-    for FLAGS in CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
+    for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
-        eval export $FLAGS=\$$FLAGS
-        printf "\n%17s = " "$FLAGS"
+        eval export $FLAG=\$$FLAG
+        printf "\n%17s = " "$FLAG"
         FIRST=true
-        for item in $(eval echo \$$FLAGS | tr ':' ' ')
+        for item in $(eval echo \$$FLAG | tr ':' ' ')
         do
             if [ "$FIRST" = 'true' ] ; then
                 FIRST=false
@@ -1700,9 +1709,10 @@ __printf_this_build_variables() {
     done
 
     echo
-
+    echo
     echo "      WORKING_DIR = $WORKING_DIR"
     echo "       SOURCE_DIR = $SOURCE_DIR"
+    echo "        EMPTY_DIR = $EMPTY_DIR"
     echo "        BUILD_DIR = $BUILD_DIR"
     echo
     echo "  PKG_INSTALL_DIR = $PKG_INSTALL_DIR"
@@ -1763,9 +1773,10 @@ configure() {
         LDFLAGS="$LDFLAGS" \
         AR="$AR" \
         RANLIB="$RANLIB" \
-        CC_FOR_BUILD="$CC_FOR_BUILD" \
+        PKG_CONFIG="$PKG_CONFIG" \
         PKG_CONFIG_PATH="$PKG_CONFIG_PATH" \
-        PKG_CONFIG_LIBDIR="$PKG_CONFIG_LIBDIR" \
+        PKG_CONFIG_LIBDIR="" \
+        CC_FOR_BUILD="$CC_FOR_BUILD" \
         $@ ; then
         print_seperator "config success"
     else
@@ -1826,6 +1837,7 @@ cmake() {
     fi
 
     "$CMAKE" \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_VERBOSE_MAKEFILE=ON \
     -DCMAKE_COLOR_MAKEFILE=ON \
     -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
@@ -1854,26 +1866,23 @@ meson() {
     die_if_command_not_found meson
     die_if_command_not_found ninja
 
-    case $BUILD_FOR_ABI in
-        armeabi-v7a)
+    case $BUILD_FOR_ARCH in
+        armv7a)
             HOST_MACHINE_CPU_FAMILY='arm'
-            HOST_MACHINE_CPU_NAME='armv7a'
+            HOST_MACHINE_CPU_NAME="$BUILD_FOR_ARCH"
             ;;
-        arm64-v8a)
+        aarch64)
             HOST_MACHINE_CPU_FAMILY='aarch64'
             HOST_MACHINE_CPU_NAME='armv8a'
             ;;
-        x86)
+        i686)
             HOST_MACHINE_CPU_FAMILY='x86'
-            HOST_MACHINE_CPU_NAME='i686'
+            HOST_MACHINE_CPU_NAME="$BUILD_FOR_ARCH"
             ;;
         x86_64)
             HOST_MACHINE_CPU_FAMILY='x86_64'
-            HOST_MACHINE_CPU_NAME='x86_64'
+            HOST_MACHINE_CPU_NAME="$BUILD_FOR_ARCH"
             ;;
-        *)
-            HOST_MACHINE_CPU_FAMILY='unkown'
-            HOST_MACHINE_CPU_NAME='unkown'
     esac
 
     cat >> "$BUILD_DIR/cross-file" <<EOF
@@ -1896,12 +1905,13 @@ c_args = $(to_meson_array $CFLAGS $CPPFLAGS)
 c_link_args = $(to_meson_array $LDFLAGS)
 cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
-pkg_config_libdir = '$PKG_CONFIG_LIBDIR'
 EOF
     "$MESON" setup \
         --prefix="$ABI_INSTALL_DIR" \
         --buildtype=release \
         --backend=ninja \
+        --pkg-config-path="$PKG_CONFIG_PATH" \
+        --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$BUILD_DIR/cross-file" \
         $@ "$BUILD_DIR" "$SOURCE_DIR" &&
     "$NINJA" -C "$BUILD_DIR" install
@@ -2028,8 +2038,9 @@ ldd() {
     [ -z "$3" ] && die "type is not specified."
     [ -z "$4" ] && die "name is not specified."
 
-    BUILD_FOR_TARGET=$(echo_target_by_abi "$2")
-    READELF="$(echo_tool_of_chain readelf)"
+    BUILD_FOR_ARCH=$(echo_arch_by_abi "$2")
+    BUILD_FOR_TARGET=$(echo_target_by_arch "$BUILD_FOR_ARCH")
+    READELF="$(echo_path_of_tool_in_the_toolchain readelf)"
 
     ldd_recursion() {
         die_if_package_is_not_installed "$1"
@@ -2059,32 +2070,52 @@ __list_supported_abis() {
     list armeabi-v7a arm64-v8a x86 x86_64
 }
 
+__list_supported_archs() {
+    list armv7a aarch64 i686 x86_64
+}
+
 __list_supported_targets() {
-    for ABI in $(__list_supported_abis)
+    for ARCH in $(__list_supported_archs)
     do
-        echo_target_by_abi "$ABI"
+        echo_target_by_arch "$ARCH"
     done
 }
 
-echo_target_by_abi() {
+echo_arch_by_abi() {
     case $1 in
-        armeabi-v7a) echo  'armv7a-linux-androideabi' ;;
-        arm64-v8a)   echo 'aarch64-linux-android'     ;;
-        x86)         echo    'i686-linux-android'     ;;
-        x86_64)      echo  'x86_64-linux-android'     ;;
-        *)           die "$1 : not supported abi."
+        '')          die  "abi is not specified." ;;
+        armeabi-v7a) echo armv7a  ;;
+        arm64-v8a)   echo aarch64 ;;
+        x86)         echo i686    ;;
+        x86_64)      echo x86_64  ;;
     esac
 }
 
-echo_tool_of_chain() {
-    unset TOOL
+echo_target_by_arch() {
     case $1 in
-        clang|clang++)
-            TOOL="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-$1" ;;
-        *)  TOOL="$TOOLCHAIN_BIN_DIR/$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')-$1"
+        '')     die   "arch is not specified."   ;;
+        armv7a) echo  "armv7a-linux-androideabi" ;;
+        *)      echo  "$1-linux-android"         ;;
     esac
-    die_if_file_is_not_executable "$TOOL"
-    echo "$TOOL"
+}
+
+list_tools_in_the_toolchain() {
+    list cc cxx cpp as ar ranlib ld nm strip size strings objdump objcopy readelf
+}
+
+list_flags_used_by_tools_in_the_toolchain() {
+    list CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
+}
+
+echo_path_of_tool_in_the_toolchain() {
+    unset TOOL_PATH
+    case $1 in
+        cc)  TOOL_PATH="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang"   ;;
+        cxx) TOOL_PATH="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang++" ;;
+        *)   TOOL_PATH="$TOOLCHAIN_BIN_DIR/$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')-$1"
+    esac
+    die_if_file_is_not_executable "$TOOL_PATH"
+    echo "$TOOL_PATH"
 }
 
 ndk_version() {
@@ -2360,10 +2391,11 @@ main() {
             ;;
         list)
             shift
-            case "$1" in
+            case $1 in
                 available) shift; __list_available_packages ;;
                 installed) shift; __list_installed_packages ;;
                 outdated)  shift; __list__outdated_packages ;;
+                archs)     shift; __list_supported_archs ;;
                 abis)      shift; __list_supported_abis ;;
                 sdk-api-levels)
                            shift; __list_supported_sdk_api_levels ;;

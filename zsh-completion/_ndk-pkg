@@ -28,6 +28,7 @@ _commands=(
 
 _list=(
     'abis:list the supported abis.'
+    'archs:list the supported archs.'
     'sdk-api-levels:list the supported android-sdk api-levels.'
     'available:list the available packages.'
     'installed:list the installed packages.'
