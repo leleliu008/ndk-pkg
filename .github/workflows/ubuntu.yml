@@ -12,21 +12,23 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
+      LANG: C.UTF-8
       ANDROID_NDK_HOME: /home/runner/android-ndk-r21d
 
     steps:
     - uses: actions/checkout@v2
     
-    - name: update apt
+    - name: update apt-get
       run: sudo apt-get -y -o APT::Immediate-Configure=false update
 
-    - name: install build tools
-      run: sudo apt-get -y -o APT::Immediate-Configure=false install automake autoconf libtool make cmake meson ninja-build curl gawk sed grep unzip tar xz-utils gzip bzip2 lzip
+    - name: install build tools via apt-get
+      run: sudo apt-get -y -o APT::Immediate-Configure=false install automake autoconf libtool pkg-config make cmake meson ninja-build gcc g++ curl gawk sed grep unzip tar xz-utils gzip bzip2 lzip tree
 
     - name: install android-ndk
       run: |
         curl -LO https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip
         unzip -q android-ndk-r21d-linux-x86_64.zip -d $HOME
+        rm android-ndk-r21d-linux-x86_64.zip
 
     - name: install ndk-pkg
       run: |

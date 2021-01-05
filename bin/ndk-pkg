@@ -815,7 +815,11 @@ __gen_dependency_tree() {
         if [ -f "$DEPENDENCIES__GV" ] ; then
             echo "}" >> "$DEPENDENCIES__GV"
 
-            dot -Tpng -o "$DEPENDENCIES_PNG" "$DEPENDENCIES__GV"
+            if command -v dot > /dev/null ; then
+                dot -Tpng -o "$DEPENDENCIES_PNG" "$DEPENDENCIES__GV"
+            else
+                warn "graphviz is not installed. we do not generate png format dependency image."
+            fi
 
             # https://github.com/ggerganov/dot-to-ascii
             curl \
@@ -906,14 +910,14 @@ __config_glob_installation_variables() {
         TOOL_UPPER=$(echo "$tool" | tr a-z A-Z)
 
         eval $TOOL_UPPER=$TOOL_PATH
-        eval export ${TOOL_UPPER}_FOR_BUILD=$TOOL_PATH
+        eval export ${TOOL_UPPER}_FOR_BUILD=\"$TOOL_PATH\"
     done
     unset TOOL_PATH
     unset TOOL_UPPER
 
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
-        eval export ${FLAG}_FOR_BUILD="\$$FLAG"
+        eval export ${FLAG}_FOR_BUILD=\"\$$FLAG\"
     done
     unset FLAG
 
@@ -1714,7 +1718,7 @@ __printf_this_build_variables() {
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
-        eval export $TOOL="\$$TOOL"
+        eval export $TOOL=\"\$$TOOL\"
         printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
     done
 
@@ -1735,7 +1739,7 @@ __printf_this_build_variables() {
 
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
-        eval export $FLAG=\$$FLAG
+        eval export $FLAG=\"\$$FLAG\"
         printf "\n%17s = " "$FLAG"
         FIRST=true
         for item in $(eval echo \$$FLAG | tr ':' ' ')
