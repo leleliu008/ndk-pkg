@@ -12,7 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      ANDROID_NDK_HOME: $HOME/android-ndk-r21d
+      ANDROID_NDK_HOME: ${HOME}/android-ndk-r21d
+      PATH: ${ANDROID_NDK_HOME}:${PATH}
 
     steps:
     - uses: actions/checkout@v2
@@ -29,7 +30,9 @@ jobs:
         unzip android-ndk-r21d-linux-x86_64.zip -d $HOME
 
     - name: install ndk-pkg
-      run: sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh)"
+      run: |
+        curl -L -o ${ANDROID_NDK_HOME}/ndk-pkg https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
+        chmod u+x  ${ANDROID_NDK_HOME}/ndk-pkg
 
     - name: ndk-pkg --version
       run: ndk-pkg --version
