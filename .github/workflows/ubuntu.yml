@@ -29,7 +29,9 @@ jobs:
         unzip -q android-ndk-r21d-linux-x86_64.zip -d $HOME
 
     - name: install ndk-pkg
-      run: curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
+      run: |
+        curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
+        chmod u+x ndk-pkg
 
     - name:  ndk-pkg --version
       run: ./ndk-pkg --version
