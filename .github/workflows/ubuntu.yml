@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      ANDROID_NDK_HOME: ${HOME}/android-ndk-r21d
+      ANDROID_NDK_HOME: /home/runner/android-ndk-r21d
 
     steps:
     - uses: actions/checkout@v2
