@@ -485,7 +485,7 @@ summary "Summary of this package"
 
 webpage "https://www.xx.com"
 
-# the source code download url of this package. the value of src_url must end with one of .git .zip .tar.xz .tar.gz .tar.bz2 .tar.tgz .tar.txz
+# the source code download url of this package. the value of src_url must end with one of .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz
 src_url "https://www.xx.com/pkgname-x.y.z.tar.gz"
 
 # the sha256sum of source code. If the value of src_url end with .git, this function is optional, otherwise, this function must be invoked.
@@ -985,18 +985,10 @@ __install_a_package() {
     done
 
     if WORKING_DIR=$(mktemp -d) ; then
-        echo "install: mkdir $WORKING_DIR"
+        echo "mkdir $WORKING_DIR"
     else
         die "create working directory failed."
     fi
-
-    cd "$WORKING_DIR" || exit 1
-
-    SOURCE_DIR="$WORKING_DIR"
-     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
-     BUILD_DIR="$EMPTY_DIR/native"
-
-    install -v -d "$BUILD_DIR" || exit 1
 
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
@@ -1011,12 +1003,25 @@ __install_a_package() {
             echo "unzip $PACKAGE_SRC_PATH -> $WORKING_DIR"
             unzip "$PACKAGE_SRC_PATH" -d "$WORKING_DIR" || return 1
             ;;
-        *.tar.xz|*.tar.gz|*.tar.bz2|*.tgz|*.txz)
+        *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
             echo "untar $PACKAGE_SRC_PATH -> $WORKING_DIR"
             tar xf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
             ;;
-        *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .zip .tar.xz .tar.gz .tar.bz2 .tgz .txz"
+        *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
+
+    if [ -z "$PACKAGE_SOURCE_DIR" ] ; then
+        SOURCE_DIR="$WORKING_DIR"
+    else
+        SOURCE_DIR="$WORKING_DIR/$PACKAGE_SOURCE_DIR"
+    fi
+
+    cd "$SOURCE_DIR" || die "check the $FORMULA_FILE_PATH. argument of sourced command is not right."
+
+    EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
+    BUILD_DIR="$EMPTY_DIR/native"
+
+    install -v -d "$BUILD_DIR" || exit 1
 
     if command -v prepare > /dev/null ; then
         # may be build something for building
@@ -1061,6 +1066,7 @@ __install_a_package() {
         echo "       SOURCE_DIR = $SOURCE_DIR"
         echo "        EMPTY_DIR = $EMPTY_DIR"
         echo "        BUILD_DIR = $BUILD_DIR"
+        echo "              PWD = $PWD"
         echo
         info "=========================================> prepare pre"
 
@@ -1126,6 +1132,10 @@ ___dryrun_a_package_one_build() {
 }
 
 __install_a_package_one_build() {
+    if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
+        cd "$SOURCE_DIR" || return 1
+    fi
+
     __config_this_build_variables "$1" &&
     __printf_this_build_variables "$1" &&
     rm -rf "$ABI_INSTALL_DIR" &&
@@ -1399,6 +1409,18 @@ src_sum() {
     fi
 }
 
+sourced() {
+    if [ -z "$1" ] ; then
+        echo "$PACKAGE_SOURCE_DIR"
+    else
+        PACKAGE_SOURCE_DIR="$1"
+    fi
+}
+
+build_in_sourced() {
+    PACKAGE_BUILD_IN_SOURCE_DIR=true
+}
+
 version() {
     if [ -z "$1" ] ; then
         echo "$PACKAGE_VERSION"
@@ -1431,6 +1453,14 @@ depends() {
     fi
 }
 
+ldflags() {
+    if [ -z "$1" ] ; then
+        echo "$PACKAGE_LDFLAGS"
+    else
+        PACKAGE_LDFLAGS="$@"
+    fi
+}
+
 patches() {
     if [ -z "$1" ] ; then
         echo "$PACKAGE_PATCHES"
@@ -1447,10 +1477,11 @@ patches() {
                 *.zip)     PATCH_CONTENT_TYPE=zip    ;;
                 *.tar.xz)  PATCH_CONTENT_TYPE=tar.xz ;;
                 *.tar.gz)  PATCH_CONTENT_TYPE=tar.gz ;;
+                *.tar.lz)  PATCH_CONTENT_TYPE=tar.lz ;;
                 *.tar.bz2) PATCH_CONTENT_TYPE=tar.bz2;;
                 *.tgz)     PATCH_CONTENT_TYPE=tar.gz ;;
                 *.txz)     PATCH_CONTENT_TYPE=tar.xz ;;
-                *)  die "$1 : extension isn't recognized. the supported extensions are .patch .zip .tar.xz .tar.gz .tar.bz2 .tgz .txz"
+                *)  die "$1 : extension isn't recognized. the supported extensions are .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
             esac
 
             [ ${#2} -eq 64 ] || die "$2 is not sha256sum. the length of sha256sum must be 64."
@@ -1477,6 +1508,11 @@ ___load_formula_of_a_package() {
     unset PACKAGE_PATCHES
     unset PACKAGE_REQUIRE
     unset PACKAGE_DEPENDS
+    unset PACKAGE_LDFLAGS
+
+    # relative to $WORKING_DIR, which contains configure, CMakeLists.txt, etc.
+    unset PACKAGE_SOURCE_DIR
+    unset PACKAGE_BUILD_IN_SOURCE_DIR
 
     unset -f prepare
     unset -f build
@@ -1498,6 +1534,7 @@ ___load_formula_of_a_package() {
         *.zip)     PACKAGE_SRC_TYPE=zip ;;
         *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ;;
         *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ;;
+        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ;;
         *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2;;
         *.tgz)     PACKAGE_SRC_TYPE=tar.gz ;;
         *.txz)     PACKAGE_SRC_TYPE=tar.xz ;;
@@ -1505,7 +1542,7 @@ ___load_formula_of_a_package() {
         *.cc)      PACKAGE_SRC_TYPE=cxx ;;
         *.cxx)     PACKAGE_SRC_TYPE=cxx ;;
         *.cpp)     PACKAGE_SRC_TYPE=cxx ;;
-        *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .git .zip .tar.xz .tar.gz .tar.bz2 .tgz .txz"
+        *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
     case $PACKAGE_SRC_TYPE in
@@ -1528,7 +1565,7 @@ ___load_formula_of_a_package() {
                 die "src_sum command is not invoked in $FORMULA_FILE_PATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
-                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 if [ -z "$PACKAGE_VERSION" ] ; then
                     die "version command is not invoked in $FORMULA_FILE_PATH"
                 else
@@ -1599,6 +1636,10 @@ __config_this_build_variables() {
       CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments"
      LDFLAGS="--sysroot $SYSROOT"
+
+    if [ -n "$PACKAGE_LDFLAGS" ] ; then
+        LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
+    fi
 
     # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
     # int fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
@@ -1714,6 +1755,7 @@ __printf_this_build_variables() {
     echo "       SOURCE_DIR = $SOURCE_DIR"
     echo "        EMPTY_DIR = $EMPTY_DIR"
     echo "        BUILD_DIR = $BUILD_DIR"
+    echo "              PWD = $PWD"
     echo
     echo "  PKG_INSTALL_DIR = $PKG_INSTALL_DIR"
     echo "  ABI_INSTALL_DIR = $ABI_INSTALL_DIR"
@@ -1741,15 +1783,21 @@ configure() {
     if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
         # https://git.savannah.gnu.org/cgit/config.git/tree/
-        if [ ! -f "$MY_CACHED_DIR/config/config.sub" ] ; then
-            fetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD" --output-name=config.sub --output-dir="$MY_CACHED_DIR/config" || return 1
-        fi
-        if [ ! -f "$MY_CACHED_DIR/config/config.guess" ] ; then
-            fetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD" --output-name=config.guess --output-dir="$MY_CACHED_DIR/config" || return 1
-        fi
-
-        find "$SOURCE_DIR" -name "config.sub"   -exec cp -v "$MY_CACHED_DIR/config/config.sub"   {} \; || return 1
-        find "$SOURCE_DIR" -name "config.guess" -exec cp -v "$MY_CACHED_DIR/config/config.guess" {} \; || return 1
+        for item in config.sub config.guess
+        do
+            for file in $(find "$SOURCE_DIR" -name "$item")
+            do
+                CONFIG_XX="$MY_CACHED_DIR/config/$item"
+                if [ ! -f "$CONFIG_XX" ] ; then
+                    fetch $(config_url "$item") --output-path="$CONFIG_XX" || return 1
+                    chmod a+x "$CONFIG_XX" || return 1
+                    if [ "$item" = 'config.sub' ] ; then
+                        sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$CONFIG_XX" || return 1
+                    fi
+                fi
+                cp -v "$CONFIG_XX" "$file" || return 1
+            done
+        done
     fi
 
     print_seperator "config start"
@@ -1819,6 +1867,7 @@ configure() {
 }
 
 # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
+# https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html
 # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
 # https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
 # https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX.html

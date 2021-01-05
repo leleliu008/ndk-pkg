@@ -1,0 +1,41 @@
+name: workflow on macOS
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+    
+    env:
+      ANDROID_NDK_HOME: /usr/local/share/android-ndk
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: update homebrew
+      run: brew update
+
+    - name: install build tools
+      run: |
+        brew upgrade python@3.9 || brew link --overwrite python@3.9
+        brew install automake meson
+        brew cask install android-ndk
+
+    - name: install ndk-pkg via homebrew
+      run: |
+        brew tap leleliu008/fpliu
+        brew install ndk-pkg
+
+    - name: ndk-pkg --version
+      run: ndk-pkg --version
+
+    - name: ndk-pkg update
+      run: ndk-pkg update
+
+    - name: ndk-pkg install curl
+      run: ndk-pkg install curl
