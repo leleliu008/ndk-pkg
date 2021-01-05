@@ -26,18 +26,16 @@ jobs:
     - name: install android-ndk
       run: |
         curl -LO https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip
-        unzip android-ndk-r21d-linux-x86_64.zip -d $HOME
+        unzip -q android-ndk-r21d-linux-x86_64.zip -d $HOME
 
     - name: install ndk-pkg
-      run: |
-        curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
-        sudo ln -s ndk-pkg /usr/bin/ndk-pkg
+      run: curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 
-    - name: ndk-pkg --version
-      run: ndk-pkg --version
+    - name:  ndk-pkg --version
+      run: ./ndk-pkg --version
 
-    - name: ndk-pkg update
-      run: ndk-pkg update
+    - name:  ndk-pkg update
+      run: ./ndk-pkg update
 
-    - name: ndk-pkg install curl
-      run: ndk-pkg install curl
+    - name:  ndk-pkg install curl
+      run: ./ndk-pkg install curl
