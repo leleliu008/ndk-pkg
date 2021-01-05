@@ -18,10 +18,10 @@ jobs:
     - uses: actions/checkout@v2
     
     - name: update apt
-      run: apt update
+      run: sudo apt-get -y -o APT::Immediate-Configure=false update
 
     - name: install build tools
-      run: apt install -y automake autoconf libtool make cmake meson ninja curl awk sed grep unzip tar xz gzip bzip2 lzip
+      run: sudo apt-get -y -o APT::Immediate-Configure=false install automake autoconf libtool make cmake meson ninja curl awk sed grep unzip tar xz gzip bzip2 lzip
 
     - name: install android-ndk
       run: |
