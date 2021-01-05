@@ -1776,6 +1776,10 @@ print_seperator() {
     info "=========================================> $1"
 }
 
+config_url() {
+    echo "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$1;hb=HEAD"
+}
+
 # run in a subshell
 configure() {
     die_if_command_not_found make

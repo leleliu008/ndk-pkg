@@ -1,0 +1,42 @@
+name: workflow on ubuntu
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    env:
+      ANDROID_NDK_HOME: /usr/local/opt/android-ndk-r21d
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: update apt
+      run: apt update
+
+    - name: install build tools
+      run: apt install -y automake autoconf libtool make cmake meson ninja curl awk sed grep unzip tar xz gzip bzip2 lzip
+
+    - name: install android-ndk
+      run: |
+        install -d /usr/local/opt
+        curl -LO https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip
+        unzip android-ndk-r21d-linux-x86_64.zip -d /usr/local/opt
+
+    - name: install ndk-pkg
+      run: sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh)"
+
+    - name: ndk-pkg --version
+      run: ndk-pkg --version
+
+    - name: ndk-pkg update
+      run: ndk-pkg update
+
+    - name: ndk-pkg install curl
+      run: ndk-pkg install curl
