@@ -13,7 +13,6 @@ jobs:
     
     env:
       ANDROID_NDK_HOME: ${HOME}/android-ndk-r21d
-      PATH: ${ANDROID_NDK_HOME}:${PATH}
 
     steps:
     - uses: actions/checkout@v2
@@ -31,8 +30,8 @@ jobs:
 
     - name: install ndk-pkg
       run: |
-        curl -L -o ${ANDROID_NDK_HOME}/ndk-pkg https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
-        chmod u+x  ${ANDROID_NDK_HOME}/ndk-pkg
+        curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
+        sudo ln -s ndk-pkg /usr/bin/ndk-pkg
 
     - name: ndk-pkg --version
       run: ndk-pkg --version
