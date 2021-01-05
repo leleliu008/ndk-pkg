@@ -21,7 +21,7 @@ jobs:
       run: sudo apt-get -y -o APT::Immediate-Configure=false update
 
     - name: install build tools
-      run: sudo apt-get -y -o APT::Immediate-Configure=false install automake autoconf libtool make cmake meson ninja curl awk sed grep unzip tar xz gzip bzip2 lzip
+      run: sudo apt-get -y -o APT::Immediate-Configure=false install automake autoconf libtool make cmake meson ninja-build curl gawk sed grep unzip tar xz-utils gzip bzip2 lzip
 
     - name: install android-ndk
       run: |
