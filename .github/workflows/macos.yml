@@ -23,8 +23,7 @@ jobs:
     - name: install build tools
       run: |
         brew upgrade python@3.9 || brew link --overwrite python@3.9
-        brew install automake meson
-        brew cask install android-ndk
+        brew install automake meson android-ndk
 
     - name: install ndk-pkg via homebrew
       run: |
