@@ -42,22 +42,4 @@ jobs:
       run: ./ndk-pkg update
 
     - name:  ndk-pkg install all
-      run: |
-        for item in $(./ndk-pkg list available)
-        do
-          case $item in
-            acl|attr|bison|gnu-coreutils|cpio|grep|gnu-sed)
-              API_LEVEL=23 ;;
-            dash|ideviceinstaller|libimobiledevice|libusbmuxd)
-              API_LEVEL=24 ;;
-            gawk|openmpi|numactl|lsof|libnl)
-              API_LEVEL=26 ;;
-            fish)
-              API_LEVEL=28 ;;
-            nss|pth|p7zip|libseccomp|gnu-tar|grep|m4|jemalloc|bat)
-              continue ;;
-            *)
-              API_LEVEL=21 ;;
-          esac
-          ./ndk-pkg install $item --min-sdk-api-level=$API_LEVEL
-        done
+      run: ./ndk-pkg install all 

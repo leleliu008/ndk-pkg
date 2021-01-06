@@ -938,6 +938,8 @@ ____install_packages() {
     __config_glob_installation_variables
     
     __gen_dependency_list 'true' '' || return 1
+
+    echo "packages may be installed are: $DEPENDENCY_PACKAGE_LIST"
     
     for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
@@ -1495,6 +1497,14 @@ patches() {
     fi
 }
 
+sdk_api() {
+    if [ -z "$1" ] ; then
+        echo "$MIN_SDK_API_LEVEL"
+    else
+        PACKAGE_MIN_SDK_API_LEVEL="$1"
+    fi
+}
+
 ___load_formula_of_a_package() {
     die_if_package_is_not_available "$1"
 
@@ -1514,6 +1524,9 @@ ___load_formula_of_a_package() {
     unset PACKAGE_DEPENDS
     unset PACKAGE_LDFLAGS
 
+    unset MIN_SDK_API_LEVEL
+    unset PACKAGE_MIN_SDK_API_LEVEL
+
     # relative to $WORKING_DIR, which contains configure, CMakeLists.txt, etc.
     unset PACKAGE_SOURCE_DIR
     unset PACKAGE_BUILD_IN_SOURCE_DIR
@@ -1531,6 +1544,20 @@ ___load_formula_of_a_package() {
     [ -z "$PACKAGE_SUMMARY" ] && die "summary command must be invoked in $FORMULA_FILE_PATH"
     [ -z "$PACKAGE_WEBPAGE" ] && die "webpage command must be invoked in $FORMULA_FILE_PATH"
     [ -z "$PACKAGE_SRC_URL" ] && die "src_url command must be invoked in $FORMULA_FILE_PATH"
+
+    if [ -z "$PACKAGE_MIN_SDK_API_LEVEL" ] ; then
+        PACKAGE_MIN_SDK_API_LEVEL=$(__list_supported_sdk_api_levels | head -n 1)
+    fi
+
+    if [ -z "$USER_SPECIFIED_MIN_SDK_API_LEVEL" ] ; then
+        MIN_SDK_API_LEVEL=$PACKAGE_MIN_SDK_API_LEVEL
+    else
+        if [ "$PACKAGE_MIN_SDK_API_LEVEL" -gt "$USER_SPECIFIED_MIN_SDK_API_LEVEL" ] ; then
+            die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_MIN_SDK_API_LEVEL, but you want is $USER_SPECIFIED_MIN_SDK_API_LEVEL"
+        else
+            MIN_SDK_API_LEVEL=$USER_SPECIFIED_MIN_SDK_API_LEVEL
+        fi
+    fi
 
     case $PACKAGE_SRC_URL in
         dir://*)   PACKAGE_SRC_TYPE=dir ;;
@@ -2280,7 +2307,7 @@ parse_arguments() {
     unset TARGET_ARCH
 
     # https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element#api-level-table
-    unset MIN_SDK_API_LEVEL
+    unset USER_SPECIFIED_MIN_SDK_API_LEVEL
 
     unset USER_SPECIFIED_PACKAGE_LIST
 
@@ -2297,7 +2324,7 @@ parse_arguments() {
     do
         case "$1" in
             --min-sdk-api-level=[1-9][0-9])
-                MIN_SDK_API_LEVEL=$(getvalue "$1")
+                USER_SPECIFIED_MIN_SDK_API_LEVEL=$(getvalue "$1")
                 ;;
             --verbose|-v)
                 VERBOSE=true
@@ -2313,21 +2340,20 @@ parse_arguments() {
                 KEEP_WORKING_DIR=true
                 ;;
             [a-z]*)
-                if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
-                    USER_SPECIFIED_PACKAGE_LIST="$1"
+                if [ "$1" = 'all' ] ; then
+                    USER_SPECIFIED_PACKAGE_LIST="$(__list_available_packages)"
                 else
-                    USER_SPECIFIED_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST $1"
+                    if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
+                        USER_SPECIFIED_PACKAGE_LIST="$1"
+                    else
+                        USER_SPECIFIED_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST $1"
+                    fi
                 fi
                 ;;
             *)  die "$1 is a invalid argument."
         esac
         shift
     done
-
-    [ -z "$MIN_SDK_API_LEVEL" ] && {
-        MIN_SDK_API_LEVEL=$(__list_supported_sdk_api_levels | head -n 1)
-        warn "--min-sdk-api-level=INTEGER argument is not specified. so, use the default value [$MIN_SDK_API_LEVEL]."
-    }
 
     BUILD_LIST="$(__list_supported_abis)"
 }
