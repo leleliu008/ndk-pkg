@@ -31,10 +31,10 @@ jobs:
         brew install ndk-pkg
 
     - name: ndk-pkg --version
-      run: ndk-pkg --version
+      run:  ndk-pkg --version
 
     - name: ndk-pkg update
-      run: ndk-pkg update
+      run:  ndk-pkg update
 
-    - name: ndk-pkg install curl
-      run: ndk-pkg install curl
+    - name: ndk-pkg install all
+      run:  ndk-pkg install all

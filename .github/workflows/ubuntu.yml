@@ -34,12 +34,19 @@ jobs:
       run: |
         curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
         chmod u+x ndk-pkg
+        echo "$PWD" >> $GITHUB_PATH
+        echo "------------"
+        ls
+        echo "------------"
+        env
+        echo "------------"
+        export -p
 
-    - name:  ndk-pkg --version
-      run: ./ndk-pkg --version
+    - name: ndk-pkg --version
+      run:  ndk-pkg --version
 
-    - name:  ndk-pkg update
-      run: ./ndk-pkg update
+    - name: ndk-pkg update
+      run:  ndk-pkg update
 
-    - name:  ndk-pkg install all
-      run: ./ndk-pkg install all 
+    - name: ndk-pkg install all
+      run:  ndk-pkg install all
