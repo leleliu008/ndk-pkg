@@ -29,11 +29,10 @@ jobs:
         curl -LO https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip
         unzip -q android-ndk-r21d-linux-x86_64.zip -d $HOME
         rm android-ndk-r21d-linux-x86_64.zip
-
-    - name: install ndk-pkg
-      run: |
-        curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
-        chmod u+x ndk-pkg
+        command -v sdkmanager
+        ls $ANDROID_HOME
+        ls $ANDROID_HOME/ndk
+        echo "PWD = $(realpath .)"
         echo "$PWD" >> $GITHUB_PATH
         echo "------------"
         ls
