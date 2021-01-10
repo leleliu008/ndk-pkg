@@ -833,6 +833,63 @@ __gen_dependency_tree() {
     fi
 }
 
+echo_version_of_a_tool() {
+    case "$1" in
+        cmake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         make) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+       rustup) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        cargo) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+   pkg-config) "$2" --version 2> /dev/null | head -n 1 ;;
+     automake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     autoconf) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+      libtool) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         flex) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        bison) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         yacc) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         nasm) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         yasm) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        patch) "$2" --version 2> /dev/null | head -n 1 | awk '{print($NF)}' ;;
+        gperf) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         file) "$2" --version 2> /dev/null | head -n 1 | cut -d '-' -f2 ;;
+         gzip) "$2" --version              | head -n 1 | awk '{print($NF)}' ;;
+         lzip) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+           xz) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+          zip) "$2" --version 2> /dev/null | sed -n '2p' | cut -d ' ' -f4 ;;
+        unzip) "$2" -v        2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        bzip2)
+            unset TEMP_FILE
+            TEMP_FILE=$(mktemp)
+            bzip2 --help 2> $TEMP_FILE
+            cat $TEMP_FILE | head -n 1 | cut -d ' ' -f 8 | cut -d ',' -f1
+            rm $TEMP_FILE
+            unset TEMP_FILE
+            ;;
+          tar)
+            VERSION_MSG=$("$2" --version 2> /dev/null | head -n 1)
+            case $VERSION_MSG in
+                  tar*) echo "$VERSION_MSG" | cut -d ' ' -f4 ;;
+               bsdtar*) echo "$VERSION_MSG" | cut -d ' ' -f2 ;;
+            esac
+            ;;
+          git) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         curl) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+          awk) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 | tr , ' ' ;;
+          sed) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         grep) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
+         ruby) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         perl) "$2" -v | sed -n '2p' | cut -d '(' -f2 | cut -d ')' -f1 | sed 's/v//' ;;
+       python) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         node) "$2" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
+        shell)
+            case $(basename "$2") in
+                zsh) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+               bash) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
+            esac
+            ;;
+            *) "$2" --version 2> /dev/null | head -n 1
+    esac
+}
+
 __config_glob_installation_variables() {
     if [ -z "$SHELL" ] ; then
         SHELL=$(command -v zsh) ||
@@ -880,6 +937,41 @@ __config_glob_installation_variables() {
             break
         fi
     done
+
+    if [   -f "$MY_HOME_DIR/tools.txt" ] ; then
+        rm -f "$MY_HOME_DIR/tools.txt"
+    fi
+
+    for tool in $(list_common_tools)
+    do
+        unset TOOL_PATH
+        unset TOOL_UPPER
+        unset TOOL_VERSION
+
+        TOOL_UPPER=$(echo "$tool" | tr a-z A-Z | tr - _)
+        TOOL_PATH="$(eval echo \$$TOOL_UPPER)"
+
+        if [ -z "$TOOL_PATH" ] ; then
+            TOOL_PATH=$(command -v "$tool")
+            if [ "$tool" = "$TOOL_PATH" ] ; then
+                TOOL_PATH=''
+            fi
+        fi
+
+        if [ -n "$TOOL_PATH" ] ; then
+            TOOL_VERSION=$(echo_version_of_a_tool "$tool" "$TOOL_PATH")
+        fi
+
+        printf "%10s %-10s %s\n" "$tool" "$TOOL_VERSION" "$TOOL_PATH" | tee -a "$MY_HOME_DIR/tools.txt"
+
+        if [ -z "$TOOL_PATH" ] ; then
+            TOOL_PATH="$tool"
+        fi
+
+        eval $TOOL_UPPER=\"$TOOL_PATH\"
+    done
+
+    echo
 
     for tool in $(list_tools_in_the_toolchain)
     do
@@ -1034,26 +1126,19 @@ __install_a_package() {
         
         info "=========================================> prepare pre"
 
-        printf "%16s = %s\n" "PACKAGE_NAME" "$PACKAGE_NAME"
-        echo
-
-        for TOOL in SHELL MAKE CMAKE MESON NINJA CARGO PKG_CONFIG
-        do
-            printf "%16s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
-        done
-
+        printf "%17s = %s\n" "PACKAGE_NAME" "$PACKAGE_NAME"
         echo
 
         for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
         do
             eval export $TOOL=\$"${TOOL}_FOR_BUILD"
-            printf "%16s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+            printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
         done
 
         for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
         do
             eval export $FLAG=\$"${FLAG}_FOR_BUILD"
-            printf "\n%16s = " "$FLAG"
+            printf "\n%17s = " "$FLAG"
             FIRST='true'
             for item in $(eval echo \$$FLAG | tr ':' ' ')
             do
@@ -1176,6 +1261,8 @@ __install_logs() {
     install -d "$ABI_LOG_DIR" || return 1
 
     install_installed_log
+
+    cp -v "$MY_HOME_DIR/tools.txt" "$ABI_LOG_DIR"
     
     for item in "$BUILD_DIR" "$SOURCE_DIR"
     do
@@ -1759,11 +1846,6 @@ __printf_this_build_variables() {
 
     echo
 
-    for TOOL in  SHELL MAKE CMAKE MESON NINJA CARGO PKG_CONFIG
-    do
-        printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
-    done
-
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
         eval export $FLAG=\"\$$FLAG\"
@@ -2181,6 +2263,10 @@ echo_target_by_arch() {
         armv7a) echo  "armv7a-linux-androideabi" ;;
         *)      echo  "$1-linux-android"         ;;
     esac
+}
+
+list_common_tools() {
+    list cmake meson ninja make rustup cargo pkg-config autoconf automake libtool flex bison yacc nasm yasm patch gperf doxygen file zip unzip xz bzip2 gzip lzip tar curl git awk sed grep ruby perl python node shell
 }
 
 list_tools_in_the_toolchain() {
