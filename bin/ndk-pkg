@@ -833,7 +833,7 @@ __gen_dependency_tree() {
     fi
 }
 
-echo_version_of_a_tool() {
+__version() {
     case "$1" in
         cmake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          make) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
@@ -843,6 +843,7 @@ echo_version_of_a_tool() {
      automake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      autoconf) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
       libtool) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+   libtoolize) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
          flex) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         bison) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
          yacc) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
@@ -851,7 +852,18 @@ echo_version_of_a_tool() {
         patch) "$2" --version 2> /dev/null | head -n 1 | awk '{print($NF)}' ;;
         gperf) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          file) "$2" --version 2> /dev/null | head -n 1 | cut -d '-' -f2 ;;
-         gzip) "$2" --version              | head -n 1 | awk '{print($NF)}' ;;
+      itstool) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        xmlto) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+      xmllint) ;;
+     xsltproc) ;;
+         gzip)
+            unset TEMP_FILE
+            TEMP_FILE=$(mktemp)
+            gzip --version > $TEMP_FILE 2>&1
+            cat $TEMP_FILE | head -n 1 | awk '{print($NF)}'
+            rm $TEMP_FILE
+            unset TEMP_FILE
+            ;;
          lzip) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
            xz) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
           zip) "$2" --version 2> /dev/null | sed -n '2p' | cut -d ' ' -f4 ;;
@@ -860,7 +872,7 @@ echo_version_of_a_tool() {
             unset TEMP_FILE
             TEMP_FILE=$(mktemp)
             bzip2 --help 2> $TEMP_FILE
-            cat $TEMP_FILE | head -n 1 | cut -d ' ' -f 8 | cut -d ',' -f1
+            cat $TEMP_FILE | head -n 1 | cut -d ' ' -f8 | cut -d ',' -f1
             rm $TEMP_FILE
             unset TEMP_FILE
             ;;
@@ -875,10 +887,13 @@ echo_version_of_a_tool() {
          curl) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
           awk) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 | tr , ' ' ;;
           sed) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+          pip) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         cpan) ;;
          grep) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
          ruby) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          perl) "$2" -v | sed -n '2p' | cut -d '(' -f2 | cut -d ')' -f1 | sed 's/v//' ;;
-       python) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+      python)  "$2" --version              | head -n 1 | cut -d ' ' -f2 ;;
+      python3) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          node) "$2" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
         shell)
             case $(basename "$2") in
@@ -913,6 +928,12 @@ __config_glob_installation_variables() {
         PKG_CONFIG=$(command -v pkgconf)
     fi
 
+    if [ -z "$YASM" ] ; then
+        if [ -f  "$TOOLCHAIN_BIN_DIR/yasm" ] ; then
+            YASM="$TOOLCHAIN_BIN_DIR/yasm"
+        fi
+    fi
+
     for item in $(echo "$PATH" | tr ':' ' ')
     do
         if [ -z "$CMAKE" ] ; then
@@ -942,7 +963,7 @@ __config_glob_installation_variables() {
         rm -f "$MY_HOME_DIR/tools.txt"
     fi
 
-    for tool in $(list_common_tools)
+    for tool in cmake meson ninja make rustup cargo pkg-config autoconf automake libtool libtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk sed grep cpan gem pip npm yarn ruby perl python python3 node shell
     do
         unset TOOL_PATH
         unset TOOL_UPPER
@@ -959,7 +980,7 @@ __config_glob_installation_variables() {
         fi
 
         if [ -n "$TOOL_PATH" ] ; then
-            TOOL_VERSION=$(echo_version_of_a_tool "$tool" "$TOOL_PATH")
+            TOOL_VERSION=$(__version "$tool" "$TOOL_PATH")
         fi
 
         printf "%10s %-10s %s\n" "$tool" "$TOOL_VERSION" "$TOOL_PATH" | tee -a "$MY_HOME_DIR/tools.txt"
@@ -2265,8 +2286,69 @@ echo_target_by_arch() {
     esac
 }
 
-list_common_tools() {
-    list cmake meson ninja make rustup cargo pkg-config autoconf automake libtool flex bison yacc nasm yasm patch gperf doxygen file zip unzip xz bzip2 gzip lzip tar curl git awk sed grep ruby perl python node shell
+sudo() {
+    if [ "$(whoami)" = 'root' ] ; then
+        $@
+    else
+        command sudo $@
+    fi
+}
+
+try_to_install_required_tools_via_package_manager_if_needed() {
+    for item in $@
+    do
+        command -v "$item" > /dev/null && continue
+        try_to_install_required_tools_via_package_manager "$item"
+    done
+}
+
+try_to_install_required_tools_via_package_manager() {
+    for item in brew apt-get dnf yum zypper pacman
+    do
+        case $item in
+            brew)
+                command -v brew > /dev/null && {
+                    brew install $@ &&
+                    return $?
+                }
+                ;;
+            apt-get)
+                command -v apt-get > /dev/null && {
+                    sudo apt-get -y update &&
+                    sudo apt-get -y install $@ &&
+                    return $?
+                }
+                ;;
+            dnf)
+                command -v dnf > /dev/null && {
+                    sudo dnf -y update &&
+                    sudo dnf -y install $@ &&
+                    return $?
+                }
+                ;;
+            yum)
+                command -v yum > /dev/null && {
+                    sudo yum -y update &&
+                    sudo yum -y install $@ &&
+                    return $?
+                }
+                ;;
+            zypper)
+                command -v zypper > /dev/null && {
+                    sudo zypper update -y &&
+                    sudo zypper install -y $@ &&
+                    return $?
+                }
+                ;;
+            pacman)
+                command -v pacman > /dev/null && {
+                    sudo pacman -Syyuu --noconfirm &&
+                    sudo pacman -S     --noconfirm $@ &&
+                    return $?
+                }
+                ;;
+        esac
+    done
 }
 
 list_tools_in_the_toolchain() {
