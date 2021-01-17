@@ -59,12 +59,12 @@ eeval() {
 }
 
 nproc() {
-    if nproc --version > /dev/null 2>&1 ; then
+    if command nproc --version > /dev/null 2>&1 ; then
         command nproc
-    elif command -v sysctl > /dev/null ; then
-        sysctl -n machdep.cpu.thread_count
     elif test -f /proc/cpuinfo ; then
         grep -c processor /proc/cpuinfo
+    elif command -v sysctl > /dev/null ; then
+        sysctl -n machdep.cpu.thread_count
     else
         echo 4
     fi
