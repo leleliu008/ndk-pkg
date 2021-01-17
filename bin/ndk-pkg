@@ -59,7 +59,7 @@ eeval() {
 }
 
 nproc() {
-    if command -v nproc > /dev/null ; then
+    if nproc --version > /dev/null 2>&1 ; then
         command nproc
     elif command -v sysctl > /dev/null ; then
         sysctl -n machdep.cpu.thread_count
@@ -837,11 +837,22 @@ __version() {
     case "$1" in
         cmake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          make) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+        gmake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
        rustup) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         cargo) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
    pkg-config) "$2" --version 2> /dev/null | head -n 1 ;;
-     automake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-     autoconf) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+           m4)
+                VERSION=$("$2" --version | head -n 1)
+                if echo "$VERSION" | grep -q '^m4' ; then
+                    echo "$VERSION" | sed 's/(//' | sed 's/)//' | cut -d ' ' -f2-4
+                else
+                    echo "$VERSION"
+                fi
+                ;;
+     automake|aclocal)
+               "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     autoconf|autoheader|autom4te|autoreconf|autoscan|autoupdate|ifnames)
+               "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
       libtool) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
    libtoolize) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
          flex) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
@@ -891,7 +902,7 @@ __version() {
          cpan) ;;
          grep) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
          ruby) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-         perl) "$2" -v | sed -n '2p' | cut -d '(' -f2 | cut -d ')' -f1 | sed 's/v//' ;;
+         perl) "$2" -v | sed -n '2p' | sed 's/.*v\([0-9]\.[0-9][0-9]\.[0-9]\).*/\1/' ;;
       python)  "$2" --version              | head -n 1 | cut -d ' ' -f2 ;;
       python3) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          node) "$2" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
@@ -963,7 +974,7 @@ __config_glob_installation_variables() {
         rm -f "$MY_HOME_DIR/tools.txt"
     fi
 
-    for tool in cmake meson ninja make rustup cargo pkg-config autoconf automake libtool libtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk sed grep cpan gem pip npm yarn ruby perl python python3 node shell
+    for tool in rustup cargo pkg-config cmake meson ninja make gmake bmake m4 gm4 autoconf automake libtool libtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk sed grep cpan gem pip npm yarn ruby perl python python3 node shell
     do
         unset TOOL_PATH
         unset TOOL_UPPER
@@ -2365,6 +2376,9 @@ echo_path_of_tool_in_the_toolchain() {
         cc)  TOOL_PATH="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang"   ;;
         cxx) TOOL_PATH="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang++" ;;
         *)   TOOL_PATH="$TOOLCHAIN_BIN_DIR/$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')-$1"
+             if [ "$1" = 'ld' ] && [ ! -f "$TOOL_PATH" ] ; then
+                TOOL_PATH="$TOOL_PATH.gold"
+             fi
     esac
     die_if_file_is_not_executable "$TOOL_PATH"
     echo "$TOOL_PATH"
