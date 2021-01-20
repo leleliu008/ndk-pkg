@@ -388,7 +388,11 @@ __list_available_packages() {
 }
 
 __list_installed_packages() {
-    cd "$MY_INSTALL_DIR" 2>/dev/null || exit 1
+    if [ -d "$MY_INSTALL_DIR" ] ; then
+         cd "$MY_INSTALL_DIR" 2>/dev/null || return 1
+    else
+        return 0
+    fi
 
     for packageName in *
     do
@@ -399,7 +403,11 @@ __list_installed_packages() {
 }
 
 __list__outdated_packages() {
-    cd "$MY_INSTALL_DIR" 2>/dev/null || exit 1
+    if [ -d "$MY_INSTALL_DIR" ] ; then
+         cd "$MY_INSTALL_DIR" 2>/dev/null || return 1
+    else
+        return 0
+    fi
 
     for packageName in *
     do
@@ -841,14 +849,7 @@ __version() {
        rustup) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         cargo) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
    pkg-config) "$2" --version 2> /dev/null | head -n 1 ;;
-           m4)
-                VERSION=$("$2" --version | head -n 1)
-                if echo "$VERSION" | grep -q '^m4' ; then
-                    echo "$VERSION" | sed 's/(//' | sed 's/)//' | cut -d ' ' -f2-4
-                else
-                    echo "$VERSION"
-                fi
-                ;;
+       m4|gm4) "$2" --version 2> /dev/null | head -n 1 | awk '{print($NF)}';;
      automake|aclocal)
                "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      autoconf|autoheader|autom4te|autoreconf|autoscan|autoupdate|ifnames)
@@ -896,8 +897,8 @@ __version() {
             ;;
           git) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          curl) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-          awk) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 | tr , ' ' ;;
-          sed) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     awk|gawk) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 | tr , ' ' ;;
+     sed|gsed) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
           pip) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          cpan) ;;
          grep) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
@@ -906,12 +907,8 @@ __version() {
       python)  "$2" --version              | head -n 1 | cut -d ' ' -f2 ;;
       python3) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          node) "$2" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
-        shell)
-            case $(basename "$2") in
-                zsh) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-               bash) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
-            esac
-            ;;
+          zsh) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         bash) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
             *) "$2" --version 2> /dev/null | head -n 1
     esac
 }
@@ -974,7 +971,7 @@ __config_glob_installation_variables() {
         rm -f "$MY_HOME_DIR/tools.txt"
     fi
 
-    for tool in rustup cargo pkg-config cmake meson ninja make gmake bmake m4 gm4 autoconf automake libtool libtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk sed grep cpan gem pip npm yarn ruby perl python python3 node shell
+    for tool in rustup cargo pkg-config cmake meson ninja make gmake bmake m4 gm4 autoconf automake libtool libtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk gawk sed gsed grep cpan gem pip npm yarn ruby perl python python3 node bash zsh
     do
         unset TOOL_PATH
         unset TOOL_UPPER
@@ -982,6 +979,12 @@ __config_glob_installation_variables() {
 
         TOOL_UPPER=$(echo "$tool" | tr a-z A-Z | tr - _)
         TOOL_PATH="$(eval echo \$$TOOL_UPPER)"
+
+        if [ -n "$TOOL_PATH" ] ; then
+            if [ ! -f "$TOOL_PATH" ] || [ ! -x "$TOOL_PATH" ] ; then
+                TOOL_PATH=''
+            fi
+        fi
 
         if [ -z "$TOOL_PATH" ] ; then
             TOOL_PATH=$(command -v "$tool")
@@ -1060,11 +1063,11 @@ ____install_packages() {
     die_if_package_list_is_not_specified "$USER_SPECIFIED_PACKAGE_LIST"
 
     __config_glob_installation_variables
-    
+
     __gen_dependency_list 'true' '' || return 1
 
     echo "packages may be installed are: $DEPENDENCY_PACKAGE_LIST"
-    
+
     for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
         if is_package_installed "$INSTALLING_PACKAGE" ; then
@@ -1158,8 +1161,7 @@ __install_a_package() {
         
         info "=========================================> prepare pre"
 
-        printf "%17s = %s\n" "PACKAGE_NAME" "$PACKAGE_NAME"
-        echo
+        printf "%17s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
 
         for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
         do
@@ -1295,7 +1297,7 @@ __install_logs() {
     install_installed_log
 
     cp -v "$MY_HOME_DIR/tools.txt" "$ABI_LOG_DIR"
-    
+
     for item in "$BUILD_DIR" "$SOURCE_DIR"
     do
         if [ -f "$item/config.log" ] ; then

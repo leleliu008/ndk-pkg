@@ -1,5 +1,5 @@
 # ndk-pkg
-a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build C/C++ project.
+a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build C/C++/Rust project.
 
 ## Install via package manager
 
@@ -19,6 +19,11 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/
 I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg` then type `TAB` key, it will auto complete the rest for you.
 
 **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
+
+
+## Give a Star!
+𝙄𝙛 𝙮𝙤𝙪 ❤𝙩𝙝𝙞𝙨 𝙥𝙧𝙤𝙟𝙚𝙘𝙩, 𝙥𝙡𝙚𝙖𝙨𝙚 𝙜𝙞𝙫𝙚 𝙞𝙩 𝙖 𝙨𝙩𝙖𝙧 <span style='color:red;font-size:1.2em'>★</span> . 𝙏𝙝𝙖𝙣𝙠𝙨!
+
 
 ## ndk-pkg command usage
 *   print the help infomation of `ndk-pkg` command
@@ -51,10 +56,9 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         
         ndk-pkg install curl
         ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v
-        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v --xtrace
-        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v --xtrace --verbose
-        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v --xtrace --verbose --dry-run
-        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v --xtrace --verbose --keep-working-dir
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v -x
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v -x --dry-run
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v -x --keep-working-dir
         
 *   reinstall packages
         

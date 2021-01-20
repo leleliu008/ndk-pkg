@@ -34,16 +34,36 @@ jobs:
       run: |
         curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
         chmod u+x ndk-pkg
-        echo "$PWD" >> $GITHUB_PATH
+        mv ipkg $(brew --prefix)/bin
 
     - name: set ANDROID_NDK_HOME environment variable
       run:  echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk-bundle" >> $GITHUB_ENV
 
-    - name: ndk-pkg --version
-      run:  ndk-pkg --version
+    - name: ndk-pkg version
+      run:  ndk-pkg version
 
     - name: ndk-pkg update
       run:  ndk-pkg update
 
     - name: ndk-pkg install boost
       run:  ndk-pkg install boost
+
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, macos-11.0, macos-10.15]
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      HOMEBREW_NO_INSTALL_CLEANUP: set
+
+    steps:
+    - name: install ndk-pkg via homebrew
+      run: |
+        brew tap leleliu008/fpliu
+        brew install ndk-pkg
+
+    - name: ndk-pkg --version
+      run:  ndk-pkg --version
