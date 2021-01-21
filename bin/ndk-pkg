@@ -1066,7 +1066,7 @@ ____install_packages() {
 
     __gen_dependency_list 'true' '' || return 1
 
-    echo "packages may be installed are: $DEPENDENCY_PACKAGE_LIST"
+    echo "packages may be installed are: $DEPENDENCY_PACKAGE_LIST \n"
 
     for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
@@ -2466,10 +2466,58 @@ ndk_version_major() {
     fi
 }
 
+is_a_valid_android_ndk_home_dir() {
+    [ -d "$1" ] &&
+    [ -f "$1/source.properties" ] &&
+    [ -f "$1/build/cmake/android.toolchain.cmake" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)/bin" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)/sysroot" ]
+}
+
 check_prerequisites() {
-    [ -z "$ANDROID_NDK_ROOT" ] || export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
+    echo
+
+    if [ -n "$ANDROID_NDK_HOME" ] ; then
+        if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_HOME" ; then
+            echo "you are setting the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, this direcotory used as the android ndk home."
+        else
+            echo "you are setting the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, but it is not a valid android ndk home directory."
+            unset ANDROID_NDK_HOME
+        fi
+    fi
+
+    if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_NDK_ROOT" ] ; then
+        if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_ROOT" ; then
+            echo "you are setting the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, this direcotory used as the android ndk home."
+            export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
+        else
+            echo "you are setting the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, but it is not a valid android ndk home directory."
+        fi
+    fi
+
+    # https://developer.android.com/studio/command-line/variables
+    if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_HOME" ] ; then
+        if is_a_valid_android_ndk_home_dir "$ANDROID_HOME/ndk-bundle" ; then
+            echo "you are setting the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} used as the android ndk home."
+            export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
+        else
+            echo "you are setting the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} direcotory is not exist."
+        fi
+    fi
+
+    if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_SDK_ROOT" ] ; then
+        if is_a_valid_android_ndk_home_dir "$ANDROID_SDK_ROOT/ndk-bundle" ; then
+            echo "you are setting the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} used as the android ndk home."
+            export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk-bundle"
+        else
+            echo "you are setting the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} direcotory is not exist."
+        fi
+    fi
+
+    echo
+
     [ -z "$ANDROID_NDK_HOME" ] && die "please set and export ANDROID_NDK_HOME=DIR environment variable, then try again!"
-    [ -d "$ANDROID_NDK_HOME" ] || die "ANDROID_NDK_HOME=$ANDROID_NDK_HOME is not a valid directory!"
     
     TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)"
     TOOLCHAIN_BIN_DIR="$TOOLCHAIN_ROOT/bin"

@@ -36,9 +36,6 @@ jobs:
         chmod u+x ndk-pkg
         mv ndk-pkg $(brew --prefix)/bin
 
-    - name: set ANDROID_NDK_HOME environment variable
-      run:  echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk-bundle" >> $GITHUB_ENV
-
     - name: ndk-pkg version
       run:  ndk-pkg version
 
