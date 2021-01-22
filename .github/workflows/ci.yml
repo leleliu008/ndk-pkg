@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-    # https://docs.github.com/en/free-pro-team@latest/actions/reference/specifications-for-github-hosted-runners#supported-runners-and-hardware-resources
     strategy:
       fail-fast: false
       matrix:
@@ -20,30 +19,20 @@ jobs:
       HOMEBREW_NO_INSTALL_CLEANUP: set
 
     steps:
-    - name: export -p
-      run:  export -p
+    - run: export -p
 
-    - name: brew install gnu-sed
-      if:   matrix.os == 'macos-11.0'
+    - if:   matrix.os == 'macos-11.0'
       run:  brew install gnu-sed
 
-    - name: brew install 
-      run:  brew install automake autoconf libtool pkg-config make cmake meson gperf itstool tree lzip nasm doxygen protobuf xmlto
+    - run:  brew install automake autoconf libtool pkg-config make cmake meson gperf itstool tree lzip nasm doxygen protobuf xmlto
 
-    - name: install ndk-pkg
-      run: |
-        curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
-        chmod u+x ndk-pkg
-        mv ndk-pkg $(brew --prefix)/bin
+    - uses: actions/checkout@v2
 
-    - name: ndk-pkg version
-      run:  ndk-pkg version
-
-    - name: ndk-pkg update
-      run:  ndk-pkg update
-
-    - name: ndk-pkg install boost
-      run:  ndk-pkg install boost
+    - run:  ln -s bin/ndk-pkg $(brew --prefix)/bin
+    
+    - run:  ndk-pkg version
+    - run:  ndk-pkg update
+    - run:  ndk-pkg install boost
 
   install:
     strategy:
@@ -62,5 +51,4 @@ jobs:
         brew tap leleliu008/fpliu
         brew install ndk-pkg
 
-    - name: ndk-pkg --version
-      run:  ndk-pkg --version
+    - run: ndk-pkg --version
