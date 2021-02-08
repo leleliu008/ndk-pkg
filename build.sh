@@ -1,22 +1,27 @@
 #!/bin/sh
 
-version=$(bin/ndk-pkg --version | awk '{print $2}' | head -n 1)
+version=$(bin/ndk-pkg --version)
 filename=ndk-pkg-$version.tar.gz
 
 COLOR_RED='\033[0;31m'          # Red
+COLOR_GREEN='\033[0;32m'        # Green
 COLOR_YELLOW='\033[0;33m'       # Yellow
 COLOR_OFF='\033[0m'             # Reset
 
-msg() {
+print() {
     printf "%b" "$*"
 }
 
+success() {
+    print "${COLOR_GREEN}[✔] $*\n${COLOR_OFF}"
+}
+
 warn() {
-    msg "${COLOR_YELLOW}🔥 $*\n${COLOR_OFF}"
+    print "${COLOR_YELLOW}🔥 $*\n${COLOR_OFF}"
 }
 
 die() {
-    msg "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
     exit 1
 }
 
@@ -48,6 +53,8 @@ build() {
     
     SHA256SUM=$(sha256sum "$filename") || exit 1
     
+    success "sha256sum($filename)=$SHA256SUM"
+
     sed_in_place "s|sha256sums=(.*)|sha256sums=(\'$SHA256SUM\')|" PKGBUILD
     sed_in_place "s|pkgver=.*|pkgver=\'$version\'|" PKGBUILD
     

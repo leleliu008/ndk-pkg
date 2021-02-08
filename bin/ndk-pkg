@@ -81,6 +81,40 @@ sed_in_place() {
     fi
 }
 
+tolower() {
+    if [ -z "$1" ] ; then
+        if command -v tr > /dev/null ; then
+            tr A-Z a-z
+        elif command -v  awk > /dev/null ; then
+            awk '{print(tolower($0))}'
+        elif command -v gawk > /dev/null ; then
+            gawk '{print(tolower($0))}'
+        else
+            die "please install GNU CoreUtils or awk."
+        fi
+    else
+        if command -v tr > /dev/null ; then
+            echo "$1" | tr A-Z a-z
+        elif command -v  awk > /dev/null ; then
+            echo "$1" | awk '{print(tolower($0))}'
+        elif command -v gawk > /dev/null ; then
+            echo "$1" | gawk '{print(tolower($0))}'
+        elif command -v python > /dev/null ; then
+            python  -c 'import sys; print(sys.argv[1].lower());' "$1"
+        elif command -v python3 > /dev/null ; then
+            python3 -c 'import sys; print(sys.argv[1].lower());' "$1"
+        elif command -v python2 > /dev/null ; then
+            python2 -c 'import sys; print(sys.argv[1].lower());' "$1"
+        elif command -v perl > /dev/null ; then
+            perl -e 'print @ARGV[0],"\n"' "$1"
+        elif command -v node > /dev/null ; then
+            node -e 'console.log(process.argv[2].toLowerCase())' - "$1"
+        else
+            die "please install GNU CoreUtils or awk."
+        fi
+    fi
+}
+
 format_unix_timestamp() {
    date -jf "%s" "$1" "$2" 2> /dev/null ||
    date -d      "@$1" "$2"
@@ -351,6 +385,50 @@ is_package__outdated() {
         [ "$PACKAGE_VERSION" = "$installed_pkg_version" ] && return 1
         [ "$PACKAGE_VERSION" = $(printf "$PACKAGE_VERSION\n$installed_pkg_version" | sort --version-sort --reverse | head -n 1) ]
     done
+}
+
+__list_packages_which_is_not_depended_by_others() {
+    unset BREAK
+    unset NDEPENDED_PACKAGES
+    unset AVAILABLE_PACKAGES
+
+    AVAILABLE_PACKAGES=$(__list_available_packages)
+
+    for x in $AVAILABLE_PACKAGES
+    do
+        for y in $AVAILABLE_PACKAGES
+        do
+            if [ "$x" = "$y" ] ; then
+                continue
+            else
+                ___load_formula_of_a_package "$y"
+                for z in $PACKAGE_DEPENDS
+                do
+                    if [ "$x" = "$z" ] ; then
+                        BREAK=true
+                        break 2
+                    fi
+                done
+            fi
+        done
+        if [ "$BREAK" = 'true' ] ; then
+            unset BREAK
+        else
+            if [ -z "$NDEPENDED_PACKAGES" ] ; then
+                NDEPENDED_PACKAGES="$x"
+            else
+                NDEPENDED_PACKAGES="$NDEPENDED_PACKAGES $x"
+            fi
+            if [ "$(list_length $NDEPENDED_PACKAGES)" -eq 20 ] ; then
+                echo "$NDEPENDED_PACKAGES" | tr ' ' ,
+                echo
+                unset NDEPENDED_PACKAGES
+            fi
+        fi
+    done
+    if [ -n "$NDEPENDED_PACKAGES" ] ; then
+        echo "$NDEPENDED_PACKAGES" | tr ' ' ,
+    fi
 }
 
 __list_available_packages() {
@@ -855,7 +933,8 @@ __version() {
      autoconf|autoheader|autom4te|autoreconf|autoscan|autoupdate|ifnames)
                "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
       libtool) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-   libtoolize) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+   libtoolize|glibtoolize)
+               "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
          flex) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         bison) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
          yacc) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
@@ -904,8 +983,14 @@ __version() {
          grep) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
          ruby) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          perl) "$2" -v | sed -n '2p' | sed 's/.*v\([0-9]\.[0-9][0-9]\.[0-9]\).*/\1/' ;;
-      python)  "$2" --version              | head -n 1 | cut -d ' ' -f2 ;;
-      python3) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+    python|python2|python3)
+            unset TEMP_FILE
+            TEMP_FILE=$(mktemp)
+            "$2" --version > $TEMP_FILE 2>&1
+            cat $TEMP_FILE | head -n 1 | cut -d ' ' -f2
+            rm $TEMP_FILE
+            unset TEMP_FILE
+            ;;
          node) "$2" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
           zsh) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          bash) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
@@ -971,7 +1056,7 @@ __config_glob_installation_variables() {
         rm -f "$MY_HOME_DIR/tools.txt"
     fi
 
-    for tool in rustup cargo pkg-config cmake meson ninja make gmake bmake m4 gm4 autoconf automake libtool libtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk gawk sed gsed grep cpan gem pip npm yarn ruby perl python python3 node bash zsh
+    for tool in rustup cargo pkg-config cmake meson ninja make gmake bmake m4 gm4 autoconf automake libtool libtoolize glibtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk gawk sed gsed grep cpan gem pip npm yarn ruby perl python python2 python3 node bash zsh
     do
         unset TOOL_PATH
         unset TOOL_UPPER
@@ -997,7 +1082,7 @@ __config_glob_installation_variables() {
             TOOL_VERSION=$(__version "$tool" "$TOOL_PATH")
         fi
 
-        printf "%10s %-10s %s\n" "$tool" "$TOOL_VERSION" "$TOOL_PATH" | tee -a "$MY_HOME_DIR/tools.txt"
+        printf "%11s %-10s %s\n" "$tool" "$TOOL_VERSION" "$TOOL_PATH" | tee -a "$MY_HOME_DIR/tools.txt"
 
         if [ -z "$TOOL_PATH" ] ; then
             TOOL_PATH="$tool"
@@ -1150,6 +1235,10 @@ __install_a_package() {
     fi
 
     cd "$SOURCE_DIR" || die "check the $FORMULA_FILE_PATH. argument of sourced command is not right."
+
+    echo "ls -l $SOURCE_DIR"
+    ls -l
+    echo
 
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
     BUILD_DIR="$EMPTY_DIR/native"
@@ -1849,6 +1938,8 @@ __printf_this_build_variables() {
     echo
     echo " BUILD_ROUND_NUM  = $BUILD_ROUND_NUM"
     echo
+    echo " BUILD_MACHINE_OS = $BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH"
+    echo
     echo " BUILD_FOR_TARGET = $BUILD_FOR_TARGET"
     echo " BUILD_FOR_ARCH   = $BUILD_FOR_ARCH"
     echo " BUILD_FOR_ABI    = $BUILD_FOR_ABI"
@@ -1946,7 +2037,7 @@ configure() {
                         sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$CONFIG_XX" || return 1
                     fi
                 fi
-                cp -v "$CONFIG_XX" "$file" || return 1
+                cp -v -f "$CONFIG_XX" "$file" || return 1
             done
         done
     fi
@@ -2032,7 +2123,7 @@ cmake() {
 
     # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
     # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
-    if [ "$BUILD_MACHINE_OS" = 'windows' ] ; then
+    if [ "$BUILD_MACHINE_OS_TYPE" = 'windows' ] ; then
         sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
     fi
 
@@ -2470,9 +2561,9 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1" ] &&
     [ -f "$1/source.properties" ] &&
     [ -f "$1/build/cmake/android.toolchain.cmake" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)/bin" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)/sysroot" ]
+    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH/bin" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH/sysroot" ]
 }
 
 check_prerequisites() {
@@ -2519,7 +2610,7 @@ check_prerequisites() {
 
     [ -z "$ANDROID_NDK_HOME" ] && die "please set and export ANDROID_NDK_HOME=DIR environment variable, then try again!"
     
-    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS-$(uname -m)"
+    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH"
     TOOLCHAIN_BIN_DIR="$TOOLCHAIN_ROOT/bin"
     SYSROOT="$TOOLCHAIN_ROOT/sysroot"
 
@@ -2622,18 +2713,11 @@ init() {
     fi
 
     if command -v uname > /dev/null ; then
-        if command -v tr > /dev/null ; then
-            BUILD_MACHINE_OS="$(uname -s | tr A-Z a-z)"
-        elif command -v  awk > /dev/null ; then
-            BUILD_MACHINE_OS="$(uname -s |  awk '{print(tolower($0))}')"
-        elif command -v gawk > /dev/null ; then
-            BUILD_MACHINE_OS="$(uname -s | gawk '{print(tolower($0))}')"
-        else
-            die "please install GNU CoreUtils or awk."
-        fi
-        case $BUILD_MACHINE_OS in
-            msys*|mingw*|cygwin*) BUILD_MACHINE_OS=windows
+        BUILD_MACHINE_OS_TYPE="$(tolower "$(uname)")"
+        case $BUILD_MACHINE_OS_TYPE in
+            msys*|mingw*|cygwin*) BUILD_MACHINE_OS_TYPE=windows
         esac
+        BUILD_MACHINE_OS_ARCH="$(uname -m)"
     else
         die "command not found: uname. please make sure it in PATH."
     fi
@@ -2700,9 +2784,11 @@ main() {
             help
             ;;
         --version|version|-V)
-            echo "$MY_NAME $MY_VERSION"
+            echo "$MY_VERSION"
+            ;;
+        version-ndk)
             check_prerequisites
-            echo "NDK     $ANDROID_NDK_VERSION"
+            echo "$ANDROID_NDK_VERSION"
             ;;
         list)
             shift
@@ -2710,6 +2796,7 @@ main() {
                 available) shift; __list_available_packages ;;
                 installed) shift; __list_installed_packages ;;
                 outdated)  shift; __list__outdated_packages ;;
+                notdepended) shift; __list_packages_which_is_not_depended_by_others ;;
                 archs)     shift; __list_supported_archs ;;
                 abis)      shift; __list_supported_abis ;;
                 sdk-api-levels)
