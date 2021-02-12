@@ -81,8 +81,18 @@ sed_in_place() {
     fi
 }
 
+trim() {
+    if [ $# -eq 0 ] ; then
+        sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
+    else
+        if [ -n "$*" ] ; then
+            echo "$*" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
+        fi
+    fi
+}
+
 tolower() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         if command -v tr > /dev/null ; then
             tr A-Z a-z
         elif command -v  awk > /dev/null ; then
@@ -93,22 +103,25 @@ tolower() {
             die "please install GNU CoreUtils or awk."
         fi
     else
+        if [ -z "$*" ] ; then
+            return 0
+        fi
         if command -v tr > /dev/null ; then
-            echo "$1" | tr A-Z a-z
+            echo "$*" | tr A-Z a-z
         elif command -v  awk > /dev/null ; then
-            echo "$1" | awk '{print(tolower($0))}'
+            echo "$*" | awk '{print(tolower($0))}'
         elif command -v gawk > /dev/null ; then
-            echo "$1" | gawk '{print(tolower($0))}'
+            echo "$*" | gawk '{print(tolower($0))}'
         elif command -v python > /dev/null ; then
-            python  -c 'import sys; print(sys.argv[1].lower());' "$1"
+            python  -c 'import sys; print(sys.argv[1].lower());' "$*"
         elif command -v python3 > /dev/null ; then
-            python3 -c 'import sys; print(sys.argv[1].lower());' "$1"
+            python3 -c 'import sys; print(sys.argv[1].lower());' "$*"
         elif command -v python2 > /dev/null ; then
-            python2 -c 'import sys; print(sys.argv[1].lower());' "$1"
+            python2 -c 'import sys; print(sys.argv[1].lower());' "$*"
         elif command -v perl > /dev/null ; then
             perl -e 'print @ARGV[0],"\n"' "$1"
         elif command -v node > /dev/null ; then
-            node -e 'console.log(process.argv[2].toLowerCase())' - "$1"
+            node -e 'console.log(process.argv[2].toLowerCase())' - "$*"
         else
             die "please install GNU CoreUtils or awk."
         fi
@@ -154,19 +167,31 @@ __fetch_archive_via_tools() {
     if [ -f "$FETCH_OUTPUT_PATH" ] ; then
         if [ -n "$FETCH_SHA256" ] ; then
             if is_sha256sum_match "$FETCH_OUTPUT_PATH" "$FETCH_SHA256" ; then
-                success "$FETCH_OUTPUT_PATH is already downloaded."
+                success "$FETCH_OUTPUT_PATH already have been downloaded."
                 return 0
             fi
         fi
         rm -f "$FETCH_OUTPUT_PATH"
     fi
 
-    if command -v curl > /dev/null ; then
+    if command -v aria2c > /dev/null ; then
         info "Fetching $FETCH_URL"
-        curl -L -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+        aria2c --split=3 -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+    elif command -v axel > /dev/null ; then
+        info "Fetching $FETCH_URL"
+        axel --num-connections=3 -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+    elif command -v curl > /dev/null ; then
+        info "Fetching $FETCH_URL"
+        curl --fail --retry 20 --retry-connrefused --retry-delay 30 --location -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
     elif command -v wget > /dev/null ; then
         info "Fetching $FETCH_URL"
         wget -O "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+    elif command -v http > /dev/null ; then
+        info "Fetching $FETCH_URL"
+        http --timeout=60 -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+    elif command -v lynx > /dev/null ; then
+        info "Fetching $FETCH_URL"
+        lynx -dump "$FETCH_URL" > "$FETCH_OUTPUT_PATH"
     else
         die "please install curl or wget."
     fi
@@ -1151,13 +1176,14 @@ ____install_packages() {
 
     __gen_dependency_list 'true' '' || return 1
 
-    echo "packages may be installed are: $DEPENDENCY_PACKAGE_LIST \n"
+    echo "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
 
     for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
         if is_package_installed "$INSTALLING_PACKAGE" ; then
-            success "$INSTALLING_PACKAGE is already installed."
+            printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
         else
+            printf "$COLOR_PURPLE==>$COLOR_OFF installing $COLOR_GREEN%s$COLOR_OFF\n\n" "$INSTALLING_PACKAGE"
             __install_a_package "$INSTALLING_PACKAGE"
         fi
     done
@@ -1165,13 +1191,13 @@ ____install_packages() {
 
 die_if_command_not_found() {
     case $1 in
-        make) [ -z "$MAKE" ]  && die_from_command_not_found "$1"  "MAKE" ;;
-       cmake) [ -z "$CMAKE" ] && die_from_command_not_found "$1" "CMAKE" ;;
-       meson) [ -z "$MESON" ] && die_from_command_not_found "$1" "MESON" ;;
-       ninja) [ -z "$NINJA" ] && die_from_command_not_found "$1" "NINJA" ;;
-       cargo) [ -z "$CARGO" ] && die_from_command_not_found "$1" "CARGO" ;;
+        make) [ "$MAKE"  =  "make" ] && die_from_command_not_found "$1"  "MAKE" ;;
+       cmake) [ "$CMAKE" = "cmake" ] && die_from_command_not_found "$1" "CMAKE" ;;
+       meson) [ "$MESON" = "meson" ] && die_from_command_not_found "$1" "MESON" ;;
+       ninja) [ "$NINJA" = "ninja" ] && die_from_command_not_found "$1" "NINJA" ;;
+       cargo) [ "$CARGO" = "cargo" ] && die_from_command_not_found "$1" "CARGO" ;;
        pkg-config|pkgconfig|pkgconf)
-              [ -z "$PKG_CONFIG" ] && die_from_command_not_found "$1" "PKG_CONFIG" ;;
+              [ "$PKG_CONFIG" = 'pkg-config' ] && die_from_command_not_found "$1" "PKG_CONFIG" ;;
            *) command -v "$1" > /dev/null || die_from_command_not_found "$1"
     esac
 }
@@ -1203,26 +1229,26 @@ __install_a_package() {
     done
 
     if WORKING_DIR=$(mktemp -d) ; then
-        echo "mkdir $WORKING_DIR"
+        echo "$COLOR_PURPLE==>$COLOR_OFF mkdir $WORKING_DIR\n"
     else
         die "create working directory failed."
     fi
 
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
-            echo "copy $PACKAGE_SRC_PATH -> $WORKING_DIR"
+            echo "$COLOR_PURPLE==>$COLOR_OFF copy  $WORKING_DIR <- $PACKAGE_SRC_PATH\n"
             cp -r "$PACKAGE_SRC_PATH"/* "$WORKING_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
-            echo "copy $PACKAGE_SRC_PATH -> $WORKING_DIR"
+            echo "$COLOR_PURPLE==>$COLOR_OFF copy  $WORKING_DIR <- $PACKAGE_SRC_PATH\n"
             cp "$PACKAGE_SRC_PATH" "$WORKING_DIR" || return 1
             ;;
         *.zip)
-            echo "unzip $PACKAGE_SRC_PATH -> $WORKING_DIR"
+            echo "$COLOR_PURPLE==>$COLOR_OFF unzip $WORKING_DIR <- $PACKAGE_SRC_PATH\n"
             unzip "$PACKAGE_SRC_PATH" -d "$WORKING_DIR" || return 1
             ;;
         *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
-            echo "untar $PACKAGE_SRC_PATH -> $WORKING_DIR"
+            echo "$COLOR_PURPLE==>$COLOR_OFF untar $WORKING_DIR <- $PACKAGE_SRC_PATH\n"
             tar xf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
             ;;
         *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
@@ -1236,14 +1262,18 @@ __install_a_package() {
 
     cd "$SOURCE_DIR" || die "check the $FORMULA_FILE_PATH. argument of sourced command is not right."
 
-    echo "ls -l $SOURCE_DIR"
+    echo "$COLOR_PURPLE==>$COLOR_OFF ls -l $SOURCE_DIR"
     ls -l
     echo
 
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
     BUILD_DIR="$EMPTY_DIR/native"
 
-    install -v -d "$BUILD_DIR" || exit 1
+    if install -d "$BUILD_DIR" ; then
+        echo "$COLOR_PURPLE==>$COLOR_OFF mkdir $BUILD_DIR\n"
+    else
+        exit 1
+    fi
 
     if command -v prepare > /dev/null ; then
         # may be build something for building
@@ -1334,7 +1364,7 @@ __install_a_package_all_builds() {
 
     echo "$BUILD_FOR_ABI_LIST" > "$PKG_INSTALL_DIR/manifest.txt"
 
-    success "$1 installed success. in $PKG_INSTALL_DIR directory."
+    success "$1 have been installed successfully."
     
     __tree_installed_of_a_package "$1" || true
 }
@@ -1385,7 +1415,8 @@ __install_logs() {
 
     install_installed_log
 
-    cp -v "$MY_HOME_DIR/tools.txt" "$ABI_LOG_DIR"
+    echo "copy $MY_HOME_DIR/tools.txt -> $ABI_LOG_DIR"
+    install -m 644 "$MY_HOME_DIR/tools.txt" "$ABI_LOG_DIR"
 
     for item in "$BUILD_DIR" "$SOURCE_DIR"
     do
@@ -2037,7 +2068,8 @@ configure() {
                         sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$CONFIG_XX" || return 1
                     fi
                 fi
-                cp -v -f "$CONFIG_XX" "$file" || return 1
+                echo "copy $CONFIG_XX -> $file"
+                cp -f "$CONFIG_XX" "$file" || return 1
             done
         done
     fi
@@ -2070,6 +2102,11 @@ configure() {
         $@ ; then
         print_seperator "config success"
     else
+        if [ -f "$BUILD_DIR/config.log" ] ; then
+            cat "$BUILD_DIR/config.log"
+        elif [ -f "$SOURCE_DIR/config.log" ] ; then
+            cat "$SOURCE_DIR/config.log"
+        fi
         print_seperator "config failed"
         return 1
     fi
@@ -2099,9 +2136,9 @@ configure() {
         return 1
     fi
 
-    print_seperator "install start"
+    print_seperator "installing start"
     if $MAKE install ; then
-        print_seperator "install success"
+        print_seperator "installed successfully."
     else
         print_seperator "install failed"
         return 1
@@ -2259,7 +2296,7 @@ EOF
         return 1
     fi
 
-    print_seperator "install start"
+    print_seperator "installing start"
 
     for item in $@
     do
@@ -2274,7 +2311,7 @@ EOF
         esac
     done
 
-    print_seperator "install success"
+    print_seperator "installed successfully."
 }
 
 ########################################################################
@@ -2571,38 +2608,38 @@ check_prerequisites() {
 
     if [ -n "$ANDROID_NDK_HOME" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_HOME" ; then
-            echo "you are setting the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, this direcotory used as the android ndk home."
+            echo "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, this direcotory used as the android ndk home."
         else
-            echo "you are setting the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, but it is not a valid android ndk home directory."
+            echo "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, but it is not a valid android ndk home directory."
             unset ANDROID_NDK_HOME
         fi
     fi
 
     if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_NDK_ROOT" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_ROOT" ; then
-            echo "you are setting the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, this direcotory used as the android ndk home."
+            echo "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, this direcotory used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
         else
-            echo "you are setting the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, but it is not a valid android ndk home directory."
+            echo "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, but it is not a valid android ndk home directory."
         fi
     fi
 
     # https://developer.android.com/studio/command-line/variables
     if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_HOME" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_HOME/ndk-bundle" ; then
-            echo "you are setting the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} used as the android ndk home."
+            echo "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
         else
-            echo "you are setting the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} direcotory is not exist."
+            echo "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} direcotory is not exist."
         fi
     fi
 
     if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_SDK_ROOT" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_SDK_ROOT/ndk-bundle" ; then
-            echo "you are setting the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} used as the android ndk home."
+            echo "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk-bundle"
         else
-            echo "you are setting the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} direcotory is not exist."
+            echo "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} direcotory is not exist."
         fi
     fi
 
