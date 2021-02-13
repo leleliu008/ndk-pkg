@@ -179,16 +179,18 @@ __fetch_archive_via_tools() {
         rm -f "$FETCH_OUTPUT_PATH"
     fi
 
-    if command -v aria2c > /dev/null ; then
-        run aria2c --split=3 -d "$FETCH_OUTPUT_DIR" -o "$FETCH_OUTPUT_NAME" "$FETCH_URL"
-    elif command -v axel > /dev/null ; then
-        run axel --num-connections=3 -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
-    elif command -v curl > /dev/null ; then
-        run curl --fail --retry 20 --retry-connrefused --retry-delay 30 --location -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+    if command -v curl > /dev/null ; then
+        run curl --fail --retry-connrefused --retry 20 --retry-delay 30 --location -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
     elif command -v wget > /dev/null ; then
-        run wget -O "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+        run wget --timeout=60 -O "$FETCH_OUTPUT_PATH" "$FETCH_URL"
     elif command -v http > /dev/null ; then
         run http --timeout=60 -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+    elif command -v lynx > /dev/null ; then
+        run lynx -source "$FETCH_URL" > "$FETCH_OUTPUT_PATH"
+    elif command -v aria2c > /dev/null ; then
+        run aria2c -d "$FETCH_OUTPUT_DIR" -o "$FETCH_OUTPUT_NAME" "$FETCH_URL"
+    elif command -v axel > /dev/null ; then
+        run axel -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
     else
         die "please install curl or wget."
     fi
