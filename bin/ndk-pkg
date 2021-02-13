@@ -180,7 +180,7 @@ __fetch_archive_via_tools() {
     fi
 
     if command -v curl > /dev/null ; then
-        run curl --fail --retry-connrefused --retry 20 --retry-delay 30 --location -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+        run curl --fail --retry 20 --retry-delay 30 --location -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
     elif command -v wget > /dev/null ; then
         run wget --timeout=60 -O "$FETCH_OUTPUT_PATH" "$FETCH_URL"
     elif command -v http > /dev/null ; then
