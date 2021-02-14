@@ -950,6 +950,7 @@ __version() {
         gmake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
        rustup) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         cargo) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+           go) "$2" version | cut -d ' ' -f3 | cut -c3- ;;
    pkg-config) "$2" --version 2> /dev/null | head -n 1 ;;
        m4|gm4) "$2" --version 2> /dev/null | head -n 1 | awk '{print($NF)}';;
      automake|aclocal)
@@ -1080,7 +1081,7 @@ __config_glob_installation_variables() {
         rm -f "$MY_HOME_DIR/tools.txt"
     fi
 
-    for tool in rustup cargo pkg-config cmake meson ninja make gmake bmake m4 gm4 autoconf automake libtool libtoolize glibtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk gawk sed gsed grep cpan gem pip npm yarn ruby perl python python2 python3 node bash zsh
+    for tool in go cargo rustup pkg-config cmake meson ninja make gmake bmake m4 gm4 autoconf automake libtool libtoolize glibtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk gawk sed gsed grep cpan gem pip npm yarn ruby perl python python2 python3 node bash zsh
     do
         unset TOOL_PATH
         unset TOOL_UPPER
@@ -1224,6 +1225,9 @@ __install_a_package() {
 
     for bin in $PACKAGE_REQUIRE
     do
+        if [ "$bin" = go ] ; then
+            REQUIRE_GO=true
+        fi
         die_if_command_not_found "$bin"
     done
 
@@ -1404,26 +1408,21 @@ __install_logs() {
 
     install_installed_log
 
-    run install -m 644 "$MY_HOME_DIR/tools.txt" "$ABI_LOG_DIR"
-
-    for item in "$BUILD_DIR" "$SOURCE_DIR"
-    do
-        if [ -f "$item/config.log" ] ; then
-            run install -m 644 "$item/config.log" "$ABI_LOG_DIR" || return 1
-        fi
-        if [ -f "$item/compile_commands.json" ] ; then
-            run install -m 644 "$item/compile_commands.json" "$ABI_LOG_DIR" || return 1
-        fi
-        if [ -f "$item/config.log" -a -f "$item/compile_commands.json" ] ; then
-            break
-        fi
-    done
-
-    for item in "$BUILD_DIR/install.log.txt" "$MY_FORMULA_DIR/$1.sh" "$DEPENDENCIES__GV" "$DEPENDENCIES_PNG" "$DEPENDENCIES_TXT"
+    for item in "$MY_FORMULA_DIR/$1.sh" "$MY_HOME_DIR/tools.txt" "$BUILD_DIR/install.log.txt" "$DEPENDENCIES__GV" "$DEPENDENCIES_PNG" "$DEPENDENCIES_TXT"
     do
         if [ -f "$item" ] ; then
             run install -m 644 "$item" "$ABI_LOG_DIR" || return 1
         fi
+    done
+
+    for item in "$BUILD_DIR" "$SOURCE_DIR"
+    do
+        for item2 in 'config.log' 'compile_commands.json'
+        do
+            if [ -f "$item/$item2" ] ; then
+                run install -m 644 "$item/$item2" "$ABI_LOG_DIR" || return 1
+            fi
+        done
     done
 }
 
@@ -1944,6 +1943,27 @@ __config_this_build_variables() {
     ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
+
+    if [ "$REQUIRE_GO" = 'true' ] ; then
+        # https://golang.org/doc/install/source#environment
+        export CGO_ENABLED=1
+        export CGO_CFLAGS="$CFLAGS"
+        export CGO_CXXFLAGS="$CXXFLAGS"
+        export CGO_CPPFLAGS="$CPPFLAGS"
+        export CGO_LDFLAGS="$LDFLAGS"
+
+        export GO111MODULE="auto"
+        export GOPROXY=https://goproxy.cn
+
+        export GOOS=android
+
+        case $BUILD_FOR_ARCH in
+            armv7a)  export GOARCH=arm   ;;
+            aarch64) export GOARCH=arm64 ;;
+            i686)    export GOARCH=386   ;;
+            x86_64)  export GOARCH=amd64 ;;
+        esac
+    fi
 }
 
 __printf_this_build_variables() {
@@ -2007,6 +2027,22 @@ __printf_this_build_variables() {
     done
 
     echo
+
+    if [ "$REQUIRE_GO" = 'true' ] ; then
+        echo
+        echo "      GO111MODULE = $GO111MODULE"
+        echo "      GOPROXY     = $GOPROXY"
+        echo
+        echo "     CGO_ENABLED  = $CGO_ENABLED"
+        echo "     CGO_CFLAGS   = $CGO_CFLAGS"
+        echo "     CGO_CXXFLAGS = $CGO_CXXFLAGS"
+        echo "     CGO_CPPFLAGS = $CGO_CPPFLAGS"
+        echo "     CGO_LDFLAGS  = $CGO_LDFLAGS"
+        echo
+        echo "           GOOS   = $GOOS"
+        echo "           GOARCH = $GOARCH"
+    fi
+
     echo
     echo "      WORKING_DIR = $WORKING_DIR"
     echo "       SOURCE_DIR = $SOURCE_DIR"
