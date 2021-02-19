@@ -1604,7 +1604,7 @@ mark_is_package_installed_or_not() {
 }
 
 summary() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_SUMMARY"
     else
         PACKAGE_SUMMARY="$1"
@@ -1612,7 +1612,7 @@ summary() {
 }
 
 webpage() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_WEBPAGE"
     else
         PACKAGE_WEBPAGE="$1"
@@ -1620,7 +1620,7 @@ webpage() {
 }
 
 src_git() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_SRC_GIT"
     else
         PACKAGE_SRC_GIT="$1"
@@ -1628,7 +1628,7 @@ src_git() {
 }
 
 src_url() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_SRC_URL"
     else
         PACKAGE_SRC_URL="$1"
@@ -1636,7 +1636,7 @@ src_url() {
 }
 
 src_sum() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_SRC_SUM"
     else
         PACKAGE_SRC_SUM="$1"
@@ -1644,7 +1644,7 @@ src_sum() {
 }
 
 sourced() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_SOURCE_DIR"
     else
         PACKAGE_SOURCE_DIR="$1"
@@ -1656,7 +1656,7 @@ build_in_sourced() {
 }
 
 version() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_VERSION"
     else
         PACKAGE_VERSION="$1"
@@ -1664,39 +1664,68 @@ version() {
 }
 
 license() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_LICENSE"
     else
-        PACKAGE_LICENSE="$1"
+        if [ -z "$PACKAGE_LICENSE" ] ; then
+            PACKAGE_LICENSE="$@"
+        else
+            PACKAGE_LICENSE="$PACKAGE_LICENSE $@"
+        fi
     fi
 }
 
 require() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_REQUIRE"
     else
-        PACKAGE_REQUIRE="$1"
+        if [ -z "$PACKAGE_REQUIRE" ] ; then
+            PACKAGE_REQUIRE="$@"
+        else
+            PACKAGE_REQUIRE="$PACKAGE_REQUIRE $@"
+        fi
     fi
 }
 
 depends() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_DEPENDS"
     else
-        PACKAGE_DEPENDS="$1"
+        if [ -z "$PACKAGE_DEPENDS" ] ; then
+            PACKAGE_DEPENDS="$@"
+        else
+            PACKAGE_DEPENDS="$PACKAGE_DEPENDS $@"
+        fi
+    fi
+}
+
+# -Dkey=value
+cdefine() {
+    if [ $# -eq 0 ] ; then
+        echo "$PACKAGE_CDEFINE"
+    else
+        if [ -z "$PACKAGE_CDEFINE" ] ; then
+            PACKAGE_CDEFINE="$@"
+        else
+            PACKAGE_CDEFINE="$PACKAGE_CDEFINE $@"
+        fi
     fi
 }
 
 ldflags() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_LDFLAGS"
     else
-        PACKAGE_LDFLAGS="$@"
+        if [ -z "$PACKAGE_LDFLAGS" ] ; then
+            PACKAGE_LDFLAGS="$@"
+        else
+            PACKAGE_LDFLAGS="$PACKAGE_LDFLAGS $@"
+        fi
     fi
 }
 
 patches() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$PACKAGE_PATCHES"
     else
         [ $# -lt 2 ]             && die "the number of arguments of patches command at least 2."
@@ -1726,7 +1755,7 @@ patches() {
 }
 
 sdk_api() {
-    if [ -z "$1" ] ; then
+    if [ $# -eq 0 ] ; then
         echo "$MIN_SDK_API_LEVEL"
     else
         PACKAGE_MIN_SDK_API_LEVEL="$1"
@@ -1750,6 +1779,8 @@ ___load_formula_of_a_package() {
     unset PACKAGE_PATCHES
     unset PACKAGE_REQUIRE
     unset PACKAGE_DEPENDS
+
+    unset PACKAGE_CDEFINE
     unset PACKAGE_LDFLAGS
 
     unset MIN_SDK_API_LEVEL
@@ -1895,6 +1926,11 @@ __config_this_build_variables() {
       CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments"
      LDFLAGS="--sysroot $SYSROOT"
+
+    for item in $PACKAGE_CDEFINE
+    do
+        CPPFLAGS="$CPPFLAGS -D$item"
+    done
 
     if [ -n "$PACKAGE_LDFLAGS" ] ; then
         LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
