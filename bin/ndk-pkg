@@ -129,7 +129,11 @@ format_unix_timestamp() {
 }
 
 getvalue() {
-    echo "$1" | cut -d= -f2
+    if [ $# -eq 0 ] ; then
+        cut -d= -f2
+    else
+        echo "$1" | cut -d= -f2
+    fi
 }
 
 eeval() {
@@ -147,24 +151,16 @@ prompt_user_to_install_bat() {
 }
 
 __fetch_via_git() {
-    info "Fetching $FETCH_URL"
-
     if [ -d "$FETCH_OUTPUT_PATH" ] ; then
-        if  git -C "$FETCH_OUTPUT_PATH" rev-parse 2> /dev/null ; then
-            git -C "$FETCH_OUTPUT_PATH" pull &&
-            git -C "$FETCH_OUTPUT_PATH" submodule update --recursive
+        if      git -C "$FETCH_OUTPUT_PATH" rev-parse 2> /dev/null ; then
+            run git -C "$FETCH_OUTPUT_PATH" pull &&
+            run git -C "$FETCH_OUTPUT_PATH" submodule update --recursive
         else
-            rm -rf "$FETCH_OUTPUT_PATH" &&
-            git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+            run rm -rf "$FETCH_OUTPUT_PATH" &&
+            run git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
         fi
     else
-        git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
-    fi
-    
-    if [ $? -eq 0 ] ; then
-        success "Fetched to $FETCH_OUTPUT_PATH success."
-    else
-        die "Fetched to $FETCH_OUTPUT_PATH failed."
+        run git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
     fi
 }
 
@@ -420,9 +416,12 @@ __list_packages_which_is_not_depended_by_others() {
 
     for x in $AVAILABLE_PACKAGES
     do
+        if [ "$x" = 'test' ] ; then
+            continue
+        fi
         for y in $AVAILABLE_PACKAGES
         do
-            if [ "$x" = "$y" ] ; then
+            if [ "$x" = "$y" ] || [ 'test' = "$y" ] ; then
                 continue
             else
                 ___load_formula_of_a_package "$y"
@@ -624,7 +623,8 @@ build() {
     #cmake
     #meson
     #cargo
-    #$MAKE
+    #go
+    #make
 }
 EOF
     ____edit_a_formula "$1"
@@ -716,6 +716,29 @@ __show_webpage_of_a_package() {
 
     if command -v open > /dev/null ; then
         open "$PACKAGE_WEBPAGE"
+    fi
+}
+
+__show_depends_of_a_package() {
+    die_if_package_is_not_specified "$1"
+
+    EMPTY_DIR=$(mktemp -d) || return 1
+    __gen_dependency_tree 'true' "$1"
+
+    if [ -f "$DEPENDENCIES_TXT" ] ; then
+        cat "$DEPENDENCIES_TXT"
+    elif [ -f "$DEPENDENCIES_PNG" ] ; then
+        if command -v open > /dev/null ; then
+            open "$DEPENDENCIES_PNG"
+        elif command -v feh > /dev/null ; then
+            feh "$DEPENDENCIES_PNG"
+        elif command -v eog > /dev/null ; then
+            eog "$DEPENDENCIES_PNG"
+        elif command -v lsix > /dev/null ; then
+            lsix "$DEPENDENCIES_PNG"
+        fi
+    elif [ -f "$DEPENDENCIES__GV" ] ; then
+        cat "$DEPENDENCIES__GV"
     fi
 }
 
@@ -1024,22 +1047,6 @@ __version() {
 }
 
 __config_glob_installation_variables() {
-    if [ -z "$SHELL" ] ; then
-        SHELL=$(command -v zsh) ||
-        SHELL=$(command -v bash) ||
-        SHELL=$(command -v sh)
-    fi
-
-    if [ -z "$MAKE" ] ; then
-        MAKE=$(command -v gmake) ||
-        MAKE=$(command -v make)
-    fi
-
-    if [ -z "$NINJA" ] ; then
-        NINJA=$(command -v ninja) ||
-        NINJA=$(command -v ninja-build)
-    fi
-
     if [ -z "$PKG_CONFIG" ] ; then
         PKG_CONFIG=$(command -v pkg-config) ||
         PKG_CONFIG=$(command -v pkgconfig) ||
@@ -1066,13 +1073,7 @@ __config_glob_installation_variables() {
             fi
         fi
 
-        if [ -z "$CARGO" ] ; then
-            if [ -f "$item/cargo" ] && [ -x "$item/cargo" ] ; then
-                CARGO="$item/cargo"
-            fi
-        fi
-
-        if [ -n "$CMAKE" ] && [ -n "$MESON" ] && [ -n "$CARGO" ] ; then
+        if [ -n "$CMAKE" ] && [ -n "$MESON" ] ; then
             break
         fi
     done
@@ -1160,8 +1161,11 @@ __config_glob_installation_variables() {
 
     export PATH="$TOOLCHAIN_BIN_DIR:$PATH"
 
+    MAKEFLAGS='-w'
+
     if [ "$VERBOSE" = 'true' ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
+        MAKEFLAGS="$MAKEFLAGS --debug"
     fi
 }
 
@@ -1191,11 +1195,8 @@ ____install_packages() {
 
 die_if_command_not_found() {
     case $1 in
-        make) [ "$MAKE"  =  "make" ] && die_from_command_not_found "$1"  "MAKE" ;;
        cmake) [ "$CMAKE" = "cmake" ] && die_from_command_not_found "$1" "CMAKE" ;;
        meson) [ "$MESON" = "meson" ] && die_from_command_not_found "$1" "MESON" ;;
-       ninja) [ "$NINJA" = "ninja" ] && die_from_command_not_found "$1" "NINJA" ;;
-       cargo) [ "$CARGO" = "cargo" ] && die_from_command_not_found "$1" "CARGO" ;;
        pkg-config|pkgconfig|pkgconf)
               [ "$PKG_CONFIG" = 'pkg-config' ] && die_from_command_not_found "$1" "PKG_CONFIG" ;;
            *) command -v "$1" > /dev/null || die_from_command_not_found "$1"
@@ -1225,9 +1226,10 @@ __install_a_package() {
 
     for bin in $PACKAGE_REQUIRE
     do
-        if [ "$bin" = go ] ; then
-            REQUIRE_GO=true
-        fi
+        case $bin in
+            go)    PACKAGE_REQUIRE_GO=true ;;
+            cargo) PACKAGE_REQUIRE_CARGO=true ;;
+        esac
         die_if_command_not_found "$bin"
     done
 
@@ -1239,10 +1241,10 @@ __install_a_package() {
 
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
-            run cp -r "$PACKAGE_SRC_PATH"/* "$WORKING_DIR" || return 1
+            run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
-            run cp "$PACKAGE_SRC_PATH" "$WORKING_DIR" || return 1
+            run cp    "$PACKAGE_SRC_PATH"   "$WORKING_DIR" || return 1
             ;;
         *.zip)
             run unzip "$PACKAGE_SRC_PATH" -d "$WORKING_DIR" || return 1
@@ -1363,6 +1365,11 @@ __install_a_package_all_builds() {
 }
 
 ___dryrun_a_package_one_build() {
+    if [ -z "$SHELL" ] ; then
+        SHELL=$(command -v zsh) ||
+        SHELL=$(command -v bash) ||
+        SHELL=$(command -v sh)
+    fi
     __config_this_build_variables "$1" &&
     __printf_this_build_variables "$1" &&
     exec "$SHELL"
@@ -1777,7 +1784,11 @@ ___load_formula_of_a_package() {
     unset PACKAGE_VERSION
     unset PACKAGE_LICENSE
     unset PACKAGE_PATCHES
+
     unset PACKAGE_REQUIRE
+    unset PACKAGE_REQUIRE_GO
+    unset PACKAGE_REQUIRE_CARGO
+
     unset PACKAGE_DEPENDS
 
     unset PACKAGE_CDEFINE
@@ -1965,13 +1976,6 @@ __config_this_build_variables() {
         PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
     done
 
-    if [ "$VERBOSE" = 'true' ] ; then
-        CFLAGS="$CFLAGS -v"
-        if [ -n "$MAKE" ] ; then
-            MAKE="$MAKE --debug"
-        fi
-    fi
-
     CXXFLAGS="$CFLAGS"
 
     ABI_INSTALL_DIR="$PKG_INSTALL_DIR/$BUILD_FOR_ABI"
@@ -1980,7 +1984,29 @@ __config_this_build_variables() {
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 
-    if [ "$REQUIRE_GO" = 'true' ] ; then
+    if [ "$PACKAGE_REQUIRE_CARGO" = 'true' ] ; then
+        for supportedTarget in $(__list_supported_targets)
+        do
+            supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
+            for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
+            do
+                [ "$supportedTarget" = "$installedTarget" ] && break
+            done
+            [ "$supportedTarget" = "$installedTarget" ] || {
+                rustup target add "$supportedTarget" || return 1
+            }
+        done
+
+        CARGO_TARGET=$(echo "$BUILD_FOR_TARGET" | sed 's/armv7a/armv7/')
+
+        # https://doc.rust-lang.org/cargo/reference/environment-variables.html
+        CARGO_TARGET_XXX=$(echo "$CARGO_TARGET" | tr a-z A-Z | tr - _)
+
+        eval export CARGO_TARGET_${CARGO_TARGET_XXX}_AR=$AR
+        eval export CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=$CC
+    fi
+
+    if [ "$PACKAGE_REQUIRE_GO" = 'true' ] ; then
         # https://golang.org/doc/install/source#environment
         export CGO_ENABLED=1
         export CGO_CFLAGS="$CFLAGS"
@@ -2010,6 +2036,8 @@ __printf_this_build_variables() {
     fi
 
     echo "INSTALLING_PACKAGE= $1"
+    echo
+    echo "   TIMESTAMP_UNIX = $TIMESTAMP_UNIX"
     echo
     echo " BUILD_ROUND_NUM  = $BUILD_ROUND_NUM"
     echo
@@ -2064,7 +2092,13 @@ __printf_this_build_variables() {
 
     echo
 
-    if [ "$REQUIRE_GO" = 'true' ] ; then
+    if [ "$PACKAGE_REQUIRE_CARGO" = 'true' ] ; then
+        echo
+        env | grep CARGO
+        echo
+    fi
+
+    if [ "$PACKAGE_REQUIRE_GO" = 'true' ] ; then
         echo
         echo "      GO111MODULE = $GO111MODULE"
         echo "      GOPROXY     = $GOPROXY"
@@ -2180,7 +2214,7 @@ configure() {
     fi
 
     print_seperator "clean start"
-    if $MAKE clean ; then
+    if make $MAKEFLAGS clean ; then
         print_seperator "clean success"
     else
         print_seperator "clean failed"
@@ -2188,7 +2222,7 @@ configure() {
     fi
 
     print_seperator "build start"
-    if $MAKE ; then
+    if make $MAKEFLAGS ; then
         print_seperator "build success"
     else
         print_seperator "build failed"
@@ -2196,7 +2230,7 @@ configure() {
     fi
 
     print_seperator "installing start"
-    if $MAKE install ; then
+    if make $MAKEFLAGS install ; then
         print_seperator "installed successfully."
     else
         print_seperator "install failed"
@@ -2243,8 +2277,8 @@ cmake() {
     -Wno-dev \
     -S "$SOURCE_DIR" \
     -B "$BUILD_DIR" $@ &&
-    $MAKE --directory="$BUILD_DIR" &&
-    $MAKE --directory="$BUILD_DIR" install
+    make $MAKEFLAGS --directory="$BUILD_DIR" &&
+    make $MAKEFLAGS --directory="$BUILD_DIR" install
 }
 
 # https://mesonbuild.com/Cross-compilation.html
@@ -2301,7 +2335,7 @@ EOF
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$BUILD_DIR/cross-file" \
         $@ "$BUILD_DIR" "$SOURCE_DIR" &&
-    "$NINJA" -C "$BUILD_DIR" install
+    ninja -C "$BUILD_DIR" install
 }
 
 to_meson_array() {
@@ -2312,65 +2346,6 @@ to_meson_array() {
     done
     RESULT="$RESULT]"
     echo "$RESULT"
-}
-
-cargo() {
-    die_if_command_not_found rustup
-    die_if_command_not_found cargo
-
-    if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
-        for supportedTarget in $(__list_supported_targets)
-        do
-            supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
-            for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
-            do
-                [ "$supportedTarget" = "$installedTarget" ] && break
-            done
-            [ "$supportedTarget" = "$installedTarget" ] || {
-                rustup target add "$supportedTarget" || return 1
-            }
-        done
-        grep -q '\[lib\]' "$SOURCE_DIR/Cargo.toml" ||
-        cat >> "$SOURCE_DIR/Cargo.toml" <<EOF
-
-[lib]
-crate-type = ["staticlib", "cdylib"]
-EOF
-    fi
-
-    BUILD_FOR_TARGET=$(echo "$BUILD_FOR_TARGET" | sed 's/armv7a/armv7/')
-
-    # https://doc.rust-lang.org/cargo/reference/environment-variables.html
-    CARGO_TARGET_XXX=$(echo "$BUILD_FOR_TARGET" | tr a-z A-Z | tr - _)
-    eval export CARGO_TARGET_${CARGO_TARGET_XXX}_AR=$AR
-    eval export CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=$CC
-
-    env | grep CARGO_TARGET_
-
-    print_seperator "build start"
-    if command cargo build --target $BUILD_FOR_TARGET --release --verbose ; then
-        print_seperator "build success"
-    else
-        print_seperator "build failed"
-        return 1
-    fi
-
-    print_seperator "installing start"
-
-    for item in $@
-    do
-        case $(echo "$item" | cut -d: -f1) in
-           /*.[1-8]) install_mans "$item"             || return 1 ;;
-            *.[1-8]) install_mans "$SOURCE_DIR/$item" || return 1 ;;
-           /*.h)     install_incs "$item"             || return 1 ;;
-            *.h)     install_incs "$SOURCE_DIR/$item" || return 1 ;;
-            *.a)     install_libs "$SOURCE_DIR/target/$BUILD_FOR_TARGET/release/$item" || return 1 ;;
-            *.so)    install_libs "$SOURCE_DIR/target/$BUILD_FOR_TARGET/release/$item" || return 1 ;;
-            *)       install_bins "$SOURCE_DIR/target/$BUILD_FOR_TARGET/release/$item" || return 1 ;;
-        esac
-    done
-
-    print_seperator "installed successfully."
 }
 
 ########################################################################
@@ -2921,6 +2896,7 @@ main() {
         upgrade)   ____upgrade_packages "$@" ;;
 
         homepage) shift; __show_webpage_of_a_package    "$@" ;;
+        depends)  shift; __show_depends_of_a_package    "$@" ;;
         prefix)   shift; __show_prefix_of_a_package     "$@" ;;
         fetch)    shift; __fetch_resources_of_a_package "$@" ;;
         logs)     shift; __show_logs_of_a_package       "$@" ;;

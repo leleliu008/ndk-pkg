@@ -20,6 +20,7 @@ _commands=(
     'upgrade:upgrade the outdated packages.'
     'fetch:download formula resources of a package to the cache.'
     'homepage:visit the homepage of a formula or the ndk-pkg project.'
+    'depends:show the depends of a package.'
     'prefix:show the installation direcotory of a formula or the ndk-pkg home.'
     'pack:pack a installed package.'
     'logs:print the logs of a installed package.'
@@ -91,7 +92,7 @@ function _ndk_pkg() {
                     ;;
                 info)
                     _arguments '*:package-name:_ndk_pkg_available_packages' ;;
-                fetch|homepage)
+                fetch|homepage|depends)
                     _arguments ':package-name:_ndk_pkg_available_packages' ;;
                 prefix|pack|tree)
                     _arguments ':package-name:_ndk_pkg_installed_packages' ;;
