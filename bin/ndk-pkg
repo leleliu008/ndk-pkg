@@ -552,9 +552,7 @@ __uninstall_packages() {
 __uninstall_a_package() {
     die_if_package_is_not_installed "$1"
 
-    info "uninstalling $1..." &&
-    rm -rf "$MY_INSTALL_DIR/$1" &&
-    success "$1 uninstalled."
+    run rm -rf "$MY_INSTALL_DIR/$1"
 }
 
 ____view_a_formula() {
@@ -648,11 +646,10 @@ __rename_a_formula() {
         success "rename formula $1 -> $2 success."
     else
         die "rename formula $1 -> $2 failed."
-    fi   
+    fi
 }
 
 __update_formula_repository() {
-    info "Updating formula repository."
     fetch "$MY_FORMULA_REPO_URL" --output-dir="$MY_HOME_DIR" --output-name=formula
 }
 
@@ -780,82 +777,21 @@ __show_logs_of_a_package() {
     fi
 }
 
-__pack_bottle_of_a_package_via_zip() {
-    die_if_package_is_not_installed "$1"
-    
-    install -d "$MY_BOTTLE_DIR" || return 1
-
-    cd "$MY_INSTALL_DIR" || return 1
-
-    FILE_PATH_BOTTLE="$MY_BOTTLE_DIR/$1-bottle.zip"
-
-    info "packing $1 ..."
-
-    if zip -r "$FILE_PATH_BOTTLE" "$1" ; then
-        success "packed $1 success. $FILE_PATH_BOTTLE"
-    else
-        die "packed $1 failed."
-    fi
-}
-
-__pack_bottle_of_a_package_via_tar_gzip() {
-    die_if_package_is_not_installed "$1"
-    
-    install -d "$MY_BOTTLE_DIR" || return 1
-
-    FILE_PATH_BOTTLE="$MY_BOTTLE_DIR/$1-bottle.tar.gz"
-
-    info "packing $1 ..."
-    
-    if tar zvcf "$FILE_PATH_BOTTLE" -C "$MY_INSTALL_DIR" "$1" ; then
-        success "packed $1 success. $FILE_PATH_BOTTLE"
-    else
-        die "packed $1 failed."
-    fi
-}
-
-__pack_bottle_of_a_package_via_tar_xz() {
-    die_if_package_is_not_installed "$1"
-    
-    install -d "$MY_BOTTLE_DIR" || return 1
-
-    FILE_PATH_BOTTLE="$MY_BOTTLE_DIR/$1-bottle.tar.xz"
-
-    info "packing $1 ..."
-
-    if tar Jvcf "$FILE_PATH_BOTTLE" -C "$MY_INSTALL_DIR" "$1" ; then
-        success "packed $1 success. $FILE_PATH_BOTTLE"
-    else
-        die "packed $1 failed."
-    fi
-}
-
-__pack_bottle_of_a_package_via_tar_bzip2() {
-    die_if_package_is_not_installed "$1"
-    
-    install -d "$MY_BOTTLE_DIR" || return 1
-
-    FILE_PATH_BOTTLE="$MY_BOTTLE_DIR/$1-bottle.tar.bz2"
-
-    info "packing $1 ..."
-
-    if tar jvcf "$FILE_PATH_BOTTLE" -C "$MY_INSTALL_DIR" "$1" ; then
-        success "packed $1 success. $FILE_PATH_BOTTLE"
-    else
-        die "packed $1 failed."
-    fi
-}
-
 __pack_bottle_of_a_package() {
+    die_if_package_is_not_installed "$1"
+    
+    install -d "$MY_BOTTLE_DIR" || return 1
+
     if command -v zip > /dev/null ; then
-        __pack_bottle_of_a_package_via_zip "$1"
+        run cd "$MY_INSTALL_DIR" || return 1
+        run zip -9 -r "$MY_BOTTLE_DIR/$1-bottle.zip" "$1"
     elif command -v tar > /dev/null ; then
         if command -v gzip > /dev/null ; then
-            __pack_bottle_of_a_package_via_tar_gzip "$1"
+            run tar zvcf "$MY_BOTTLE_DIR/$1-bottle.tar.gz" -C "$MY_INSTALL_DIR" "$1"
         elif command -v xz > /dev/null ; then
-            __pack_bottle_of_a_package_via_tar_xz "$1"
+            run tar Jvcf "$MY_BOTTLE_DIR/$1-bottle.tar.xz" -C "$MY_INSTALL_DIR" "$1"
         elif command -v bzip2 > /dev/null ; then
-            __pack_bottle_of_a_package_via_tar_bzip2 "$1"
+            run tar jvcf "$MY_BOTTLE_DIR/$1-bottle.tar.bz2" -C "$MY_INSTALL_DIR" "$1"
         else
             die "please install gzip or xz or bzip2 utility."
         fi
@@ -964,6 +900,37 @@ __gen_dependency_tree() {
                 "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php"
         fi
     fi
+}
+
+__get_brew_package_name_by_command_name() {
+    case $1 in
+       gmake) echo 'make'  ;;
+       cmake) echo 'cmake' ;;
+       smake) echo 'smake' ;;
+       meson) echo 'meson' ;;
+       ninja) echo 'ninja' ;;
+       patch) echo 'patch' ;;
+       gperf) echo 'gperf' ;;
+        nasm) echo 'nasm'  ;;
+        yasm) echo 'yasm'  ;;
+        gsed) echo 'gnu-sed' ;;
+        flex) echo 'flex'  ;;
+       bison) echo 'bison' ;;
+          go) echo 'go'    ;;
+        perl) echo 'perl'  ;;
+        tree) echo 'tree'  ;;
+       xmlto) echo 'xmlto' ;;
+     itstool) echo 'itstool' ;;
+      protoc) echo 'protobuf' ;;
+    help2man) echo 'help2man' ;;
+     doxygen) echo 'doxygen'  ;;
+      ps2pdf) echo "ghostscript" ;;
+    pkg-config) echo 'pkg-config' ;;
+    glibtool|glibtoolize)
+              echo "libtool" ;;
+    autoreconf|autoconf|automake|autoheader)
+              echo "automake" ;;
+    esac
 }
 
 __version() {
@@ -1273,7 +1240,7 @@ __install_a_package() {
     if command -v prepare > /dev/null ; then
         # may be build something for building
         
-        info "=========================================> prepare pre"
+        echo
 
         printf "%17s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
 
@@ -1307,16 +1274,21 @@ __install_a_package() {
         echo "        BUILD_DIR = $BUILD_DIR"
         echo "              PWD = $PWD"
         echo
-        info "=========================================> prepare pre"
 
-        prepare || die_from_installation_failed "$1"
+        run prepare || die_from_installation_failed "$1"
     fi
 
     __install_a_package_all_builds "$1" || die_from_installation_failed "$1"
 
+    echo
+    success "$1 have been installed successfully.\n"
+
     if [ "$KEEP_WORKING_DIR" != 'true' ] ; then
-        rm -rf "$WORKING_DIR"
+        run rm -rf "$WORKING_DIR" || true
     fi
+
+    echo
+    __tree_installed_of_a_package "$1" || true
 }
 
 __install_a_package_all_builds() {
@@ -1343,7 +1315,7 @@ __install_a_package_all_builds() {
         fi
 
         BUILD_DIR="$EMPTY_DIR/$BUILD_FOR_ABI"
-        mkdir -p "$BUILD_DIR" || return 1
+        run mkdir -p "$BUILD_DIR" || return 1
 
         if [ "$DRYRUN" = 'true' ] ; then
             ___dryrun_a_package_one_build "$1" || return 1
@@ -1358,10 +1330,6 @@ __install_a_package_all_builds() {
     done
 
     echo "$BUILD_FOR_ABI_LIST" > "$PKG_INSTALL_DIR/manifest.txt"
-
-    success "$1 have been installed successfully."
-    
-    __tree_installed_of_a_package "$1" || true
 }
 
 ___dryrun_a_package_one_build() {
@@ -1377,20 +1345,20 @@ ___dryrun_a_package_one_build() {
 
 __install_a_package_one_build() {
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
-        cd "$SOURCE_DIR" || return 1
+        run cd "$SOURCE_DIR" || return 1
     fi
 
-    __config_this_build_variables "$1" &&
-    __printf_this_build_variables "$1" &&
-    rm -rf "$ABI_INSTALL_DIR" &&
-    build && {
+    run __config_this_build_variables "$1" &&
+    run __printf_this_build_variables "$1" &&
+    run rm -rf "$ABI_INSTALL_DIR" &&
+    run build && {
         [ -d "$ABI_INSTALL_DIR" ] || {
             error "installed nothing."
             return 1
         }
     } &&
-    __justfy_pc_files &&
-    __install_logs "$1"
+    run __justfy_pc_files &&
+    run __install_logs "$1"
 }
 
 __justfy_pc_files() {
@@ -1455,8 +1423,8 @@ install_libs() {
     for item in $@
     do
         case $item in
-            *.so) install -v -m 755 $item "$ABI_LIBRARY_DIR" || return 1 ;;
-            *)    install -v -m 644 $item "$ABI_LIBRARY_DIR" || return 1
+            *.a) install -v -m 644 $item "$ABI_LIBRARY_DIR" || return 1 ;;
+            *)   install -v -m 755 $item "$ABI_LIBRARY_DIR" || return 1 ;;
         esac
     done
 }
@@ -1976,6 +1944,10 @@ __config_this_build_variables() {
         PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
     done
 
+    if [ "$VERBOSE" = 'true' ] ; then
+        CFLAGS="$CFLAGS -v"
+    fi
+
     CXXFLAGS="$CFLAGS"
 
     ABI_INSTALL_DIR="$PKG_INSTALL_DIR/$BUILD_FOR_ABI"
@@ -2029,8 +2001,6 @@ __config_this_build_variables() {
 }
 
 __printf_this_build_variables() {
-    print_seperator 'printf_this_build_variables start'
-
     if [ -f "$DEPENDENCIES_TXT" ] ; then
         cat "$DEPENDENCIES_TXT"
     fi
@@ -2126,17 +2096,13 @@ __printf_this_build_variables() {
     echo "  ABI_INCLUDE_DIR = $ABI_INCLUDE_DIR"
     echo "  ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR"
     echo "  ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR"
-
-    print_seperator 'printf_this_build_variables end'
+    echo
 
     if [ "$VERBOSE" = 'true' ] ; then
-        export -p
-        print_seperator
+        echo
+        run export -p
+        echo
     fi
-}
-
-print_seperator() {
-    info "=========================================> $1"
 }
 
 config_url() {
@@ -2167,8 +2133,8 @@ configure() {
         done
     fi
 
-    print_seperator "config start"
-    
+    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$SOURCE_DIR/configure ...$COLOR_OFF"
+
     if "$SOURCE_DIR"/configure \
         --host="$BUILD_FOR_TARGET" \
         --prefix="$ABI_INSTALL_DIR" \
@@ -2193,14 +2159,13 @@ configure() {
         PKG_CONFIG_LIBDIR="" \
         CC_FOR_BUILD="$CC_FOR_BUILD" \
         $@ ; then
-        print_seperator "config success"
+        echo
     else
         if [ -f "$BUILD_DIR/config.log" ] ; then
-            cat "$BUILD_DIR/config.log"
+            run cat "$BUILD_DIR/config.log"
         elif [ -f "$SOURCE_DIR/config.log" ] ; then
-            cat "$SOURCE_DIR/config.log"
+            run cat "$SOURCE_DIR/config.log"
         fi
-        print_seperator "config failed"
         return 1
     fi
 
@@ -2213,29 +2178,9 @@ configure() {
         unset Makefile
     fi
 
-    print_seperator "clean start"
-    if make $MAKEFLAGS clean ; then
-        print_seperator "clean success"
-    else
-        print_seperator "clean failed"
-        return 1
-    fi
-
-    print_seperator "build start"
-    if make $MAKEFLAGS ; then
-        print_seperator "build success"
-    else
-        print_seperator "build failed"
-        return 1
-    fi
-
-    print_seperator "installing start"
-    if make $MAKEFLAGS install ; then
-        print_seperator "installed successfully."
-    else
-        print_seperator "install failed"
-        return 1
-    fi
+    run make $MAKEFLAGS clean &&
+    run make $MAKEFLAGS       &&
+    run make $MAKEFLAGS install
 }
 
 # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
@@ -2277,8 +2222,8 @@ cmake() {
     -Wno-dev \
     -S "$SOURCE_DIR" \
     -B "$BUILD_DIR" $@ &&
-    make $MAKEFLAGS --directory="$BUILD_DIR" &&
-    make $MAKEFLAGS --directory="$BUILD_DIR" install
+    run make $MAKEFLAGS --directory="$BUILD_DIR" &&
+    run make $MAKEFLAGS --directory="$BUILD_DIR" install
 }
 
 # https://mesonbuild.com/Cross-compilation.html
@@ -2327,7 +2272,7 @@ c_link_args = $(to_meson_array $LDFLAGS)
 cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
 EOF
-    "$MESON" setup \
+    run "$MESON" setup \
         --prefix="$ABI_INSTALL_DIR" \
         --buildtype=release \
         --backend=ninja \
@@ -2335,7 +2280,7 @@ EOF
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$BUILD_DIR/cross-file" \
         $@ "$BUILD_DIR" "$SOURCE_DIR" &&
-    ninja -C "$BUILD_DIR" install
+    run ninja -C "$BUILD_DIR" install
 }
 
 to_meson_array() {
