@@ -143,7 +143,7 @@ eeval() {
 
 run() {
     echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
-    $@
+    eval "$*"
 }
 
 prompt_user_to_install_bat() {
@@ -1379,14 +1379,14 @@ __justfy_pc_files() {
 __install_logs() {
     ABI_LOG_DIR="$ABI_INSTALL_DIR/log"
 
-    run install -d "$ABI_LOG_DIR" || return 1
+    install -v -d "$ABI_LOG_DIR" || return 1
 
     install_installed_log
 
     for item in "$MY_FORMULA_DIR/$1.sh" "$MY_HOME_DIR/tools.txt" "$BUILD_DIR/install.log.txt" "$DEPENDENCIES__GV" "$DEPENDENCIES_PNG" "$DEPENDENCIES_TXT"
     do
         if [ -f "$item" ] ; then
-            run install -m 644 "$item" "$ABI_LOG_DIR" || return 1
+            install -v -m 644 "$item" "$ABI_LOG_DIR" || return 1
         fi
     done
 
@@ -1395,7 +1395,7 @@ __install_logs() {
         for item2 in 'config.log' 'compile_commands.json'
         do
             if [ -f "$item/$item2" ] ; then
-                run install -m 644 "$item/$item2" "$ABI_LOG_DIR" || return 1
+                install -v -m 644 "$item/$item2" "$ABI_LOG_DIR" || return 1
             fi
         done
     done
@@ -1411,8 +1411,8 @@ install_incs() {
 
         [ "$X1" = "$X2" ] && unset X2
 
-        run install -d         "$ABI_INCLUDE_DIR/$X2" || return 1
-        run install -m 644 $X1 "$ABI_INCLUDE_DIR/$X2" || return 1
+        install -v -d         "$ABI_INCLUDE_DIR/$X2" || return 1
+        install -v -m 644 $X1 "$ABI_INCLUDE_DIR/$X2" || return 1
 
         shift
     done
@@ -2133,11 +2133,9 @@ configure() {
         done
     fi
 
-    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$SOURCE_DIR/configure ...$COLOR_OFF"
-
-    if "$SOURCE_DIR"/configure \
-        --host="$BUILD_FOR_TARGET" \
-        --prefix="$ABI_INSTALL_DIR" \
+    if run "$SOURCE_DIR"/configure \
+        --host="\"$BUILD_FOR_TARGET\"" \
+        --prefix="\"$ABI_INSTALL_DIR\"" \
         --disable-option-checking \
         --disable-rpath \
         --disable-debug \
@@ -2145,19 +2143,19 @@ configure() {
         --enable-largefile \
         --enable-static \
         --enable-shared \
-        CC="$CC" \
-        CFLAGS="$CFLAGS" \
-        CXX="$CXX" \
-        CXXFLAGS="$CXXFLAGS" \
-        CPP="$CPP" \
-        CPPFLAGS="$CPPFLAGS" \
-        LDFLAGS="$LDFLAGS" \
-        AR="$AR" \
-        RANLIB="$RANLIB" \
-        PKG_CONFIG="$PKG_CONFIG" \
-        PKG_CONFIG_PATH="$PKG_CONFIG_PATH" \
-        PKG_CONFIG_LIBDIR="" \
-        CC_FOR_BUILD="$CC_FOR_BUILD" \
+        CC="\"$CC\"" \
+        CFLAGS="\"$CFLAGS\"" \
+        CXX="\"$CXX\"" \
+        CXXFLAGS="\"$CXXFLAGS\"" \
+        CPP="\"$CPP\"" \
+        CPPFLAGS="\"$CPPFLAGS\"" \
+        LDFLAGS="\"$LDFLAGS\"" \
+        AR="\"$AR\"" \
+        RANLIB="\"$RANLIB\"" \
+        PKG_CONFIG="\"$PKG_CONFIG\"" \
+        PKG_CONFIG_PATH="\"$PKG_CONFIG_PATH\"" \
+        PKG_CONFIG_LIBDIR="\"\"" \
+        CC_FOR_BUILD="\"$CC_FOR_BUILD\"" \
         $@ ; then
         echo
     else
@@ -2202,7 +2200,7 @@ cmake() {
         sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
     fi
 
-    "$CMAKE" \
+    run "$CMAKE" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_VERBOSE_MAKEFILE=ON \
     -DCMAKE_COLOR_MAKEFILE=ON \
@@ -2211,19 +2209,19 @@ cmake() {
     -DCMAKE_FIND_ROOT_PATH="$MY_INSTALL_DIR" \
     -DCMAKE_INSTALL_PREFIX="$ABI_INSTALL_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
-    -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
+    -DCMAKE_C_FLAGS="\"'$CFLAGS $CPPFLAGS $LDFLAGS'\"" \
+    -DCMAKE_CXX_FLAGS="\"'$CFLAGS $CPPFLAGS $LDFLAGS'\"" \
     -DBUILD_SHARED_LIBS=ON \
     -DBUILD_TESTING=OFF \
     -DANDROID_TOOLCHAIN=clang \
     -DANDROID_ABI="$BUILD_FOR_ABI" \
     -DANDROID_PLATFORM="$MIN_SDK_API_LEVEL" \
-    -G "Unix Makefiles" \
+    -G "\"Unix Makefiles\"" \
     -Wno-dev \
     -S "$SOURCE_DIR" \
     -B "$BUILD_DIR" $@ &&
-    run make $MAKEFLAGS --directory="$BUILD_DIR" &&
-    run make $MAKEFLAGS --directory="$BUILD_DIR" install
+    run make $MAKEFLAGS -C "$BUILD_DIR" &&
+    run make $MAKEFLAGS -C "$BUILD_DIR" install
 }
 
 # https://mesonbuild.com/Cross-compilation.html
@@ -2280,6 +2278,7 @@ EOF
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$BUILD_DIR/cross-file" \
         $@ "$BUILD_DIR" "$SOURCE_DIR" &&
+    run ninja -C "$BUILD_DIR" &&
     run ninja -C "$BUILD_DIR" install
 }
 
