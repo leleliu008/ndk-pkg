@@ -176,17 +176,17 @@ __fetch_archive_via_tools() {
     fi
 
     if command -v curl > /dev/null ; then
-        run curl --fail --retry 20 --retry-delay 30 --location -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+        run curl --fail --retry 20 --retry-delay 30 --location -o "$FETCH_OUTPUT_PATH" "\"$FETCH_URL\""
     elif command -v wget > /dev/null ; then
-        run wget --timeout=60 -O "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+        run wget --timeout=60 -O "$FETCH_OUTPUT_PATH" "\"$FETCH_URL\""
     elif command -v http > /dev/null ; then
-        run http --timeout=60 -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+        run http --timeout=60 -o "$FETCH_OUTPUT_PATH" "\"$FETCH_URL\""
     elif command -v lynx > /dev/null ; then
-        run lynx -source "$FETCH_URL" > "$FETCH_OUTPUT_PATH"
+        run lynx -source "$FETCH_URL" > "\"$FETCH_OUTPUT_PATH\""
     elif command -v aria2c > /dev/null ; then
-        run aria2c -d "$FETCH_OUTPUT_DIR" -o "$FETCH_OUTPUT_NAME" "$FETCH_URL"
+        run aria2c -d "$FETCH_OUTPUT_DIR" -o "$FETCH_OUTPUT_NAME" "\"$FETCH_URL\""
     elif command -v axel > /dev/null ; then
-        run axel -o "$FETCH_OUTPUT_PATH" "$FETCH_URL"
+        run axel -o "$FETCH_OUTPUT_PATH" "\"$FETCH_URL\""
     else
         die "please install curl or wget."
     fi
@@ -2122,7 +2122,7 @@ configure() {
             do
                 CONFIG_XX="$MY_CACHED_DIR/config/$item"
                 if [ ! -f "$CONFIG_XX" ] ; then
-                    fetch $(config_url "$item") --output-path="$CONFIG_XX" || return 1
+                    fetch "$(config_url "$item")" --output-path="$CONFIG_XX" || return 1
                     run chmod a+x "$CONFIG_XX" || return 1
                     if [ "$item" = 'config.sub' ] ; then
                         sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$CONFIG_XX" || return 1
