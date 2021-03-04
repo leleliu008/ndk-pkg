@@ -136,11 +136,6 @@ getvalue() {
     fi
 }
 
-eeval() {
-    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
-    eval "$@"
-}
-
 run() {
     echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
     eval "$*"
@@ -382,7 +377,7 @@ is_package_installed() {
     [ -d "$MY_INSTALL_DIR/$1" ]              || return 1
     [ -f "$MY_INSTALL_DIR/$1/manifest.txt" ] || return 1
 
-    for ABI in $(cat "$MY_INSTALL_DIR/$1/manifest.txt")
+    for ABI in $(__list_abis_of_a_installed_package "$1")
     do
         [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                       || return 1
         [ -d "$MY_INSTALL_DIR/$1/$ABI/log" ]                   || return 1
@@ -396,14 +391,14 @@ is_package__outdated() {
     [ -d "$MY_INSTALL_DIR/$1" ]              || die_from_package_is_not_installed "$1"
     [ -f "$MY_INSTALL_DIR/$1/manifest.txt" ] || die_from_package_is_not_installed "$1"
 
-    for ABI in $(cat "$MY_INSTALL_DIR/$1/manifest.txt")
+    for ABI in $(__list_abis_of_a_installed_package "$1")
     do
         [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                       || die_from_package_is_not_installed "$1"
         [ -d "$MY_INSTALL_DIR/$1/$ABI/log" ]                   || die_from_package_is_not_installed "$1"
         [ -f "$MY_INSTALL_DIR/$1/$ABI/log/installed.log.txt" ] || die_from_package_is_not_installed "$1"
         die_if_load_installed_log_failed "$1" "$ABI"
-        [ "$PACKAGE_VERSION" = "$installed_pkg_version" ] && return 1
-        [ "$PACKAGE_VERSION" = $(printf "$PACKAGE_VERSION\n$installed_pkg_version" | sort --version-sort --reverse | head -n 1) ]
+        [ "$PACKAGE_VERSION" = "$installed_version" ] && return 1
+        [ "$PACKAGE_VERSION" = $(printf "$PACKAGE_VERSION\n$installed_version" | sort --version-sort --reverse | head -n 1) ]
     done
 }
 
@@ -778,26 +773,42 @@ __show_logs_of_a_package() {
 }
 
 __pack_bottle_of_a_package() {
-    die_if_package_is_not_installed "$1"
-    
+    ABI="$(__list_abis_of_a_installed_package "$1" | head -n 1)"
+    die_if_load_installed_log_failed "$1" "$ABI"
+
     install -d "$MY_BOTTLE_DIR" || return 1
 
-    if command -v zip > /dev/null ; then
-        run cd "$MY_INSTALL_DIR" || return 1
-        run zip -9 -r "$MY_BOTTLE_DIR/$1-bottle.zip" "$1"
+    if command -v 7za > /dev/null ; then
+        SUFFIX=7z
+    elif command -v zip > /dev/null ; then
+        SUFFIX=zip
     elif command -v tar > /dev/null ; then
         if command -v gzip > /dev/null ; then
-            run tar zvcf "$MY_BOTTLE_DIR/$1-bottle.tar.gz" -C "$MY_INSTALL_DIR" "$1"
+            SUFFIX=tar.gz
         elif command -v xz > /dev/null ; then
-            run tar Jvcf "$MY_BOTTLE_DIR/$1-bottle.tar.xz" -C "$MY_INSTALL_DIR" "$1"
+            SUFFIX=tar.xz
         elif command -v bzip2 > /dev/null ; then
-            run tar jvcf "$MY_BOTTLE_DIR/$1-bottle.tar.bz2" -C "$MY_INSTALL_DIR" "$1"
+            SUFFIX=tar.bz2
         else
             die "please install gzip or xz or bzip2 utility."
         fi
     else
         die "please install zip or tar utility."
     fi
+
+    FILE_PATH="$MY_BOTTLE_DIR/$1-$installed_version.bottle.$SUFFIX"
+
+    if [ -f "$FILE_PATH" ] ; then
+        rm  "$FILE_PATH" || return 1
+    fi
+
+    case $SUFFIX in
+        7z)  run 7za a -t7z -r "$FILE_PATH" "$MY_INSTALL_DIR/$1" ;;
+        zip) run cd "$MY_INSTALL_DIR" && run zip -9 -r "$FILE_PATH" "$1" ;;
+        tar.gz)  run tar zvcf "$FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
+        tar.xz)  run tar Jvcf "$FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
+        tar.bz2) run tar jvcf "$FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
+    esac
 }
 
 get_direct_dependency_package_list_of_a_package() {
@@ -1552,7 +1563,7 @@ __show_infomation_of_a_package() {
         unset ABI_LIST
         unset ABI_LIST_LENGTH
 
-        ABI_LIST=$(cat "$MY_INSTALL_DIR/$1/manifest.txt")
+        ABI_LIST=$(__list_abis_of_a_installed_package "$1")
         ABI_LIST_LENGTH=$(list_length $ABI_LIST)
 
         for ABI in $ABI_LIST
@@ -2215,6 +2226,7 @@ cmake() {
     -DBUILD_TESTING=OFF \
     -DANDROID_TOOLCHAIN=clang \
     -DANDROID_ABI="$BUILD_FOR_ABI" \
+    -DANDROID_ARM_NEON=TRUE \
     -DANDROID_PLATFORM="$MIN_SDK_API_LEVEL" \
     -G "\"Unix Makefiles\"" \
     -Wno-dev \
