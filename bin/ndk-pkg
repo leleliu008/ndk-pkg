@@ -22,7 +22,7 @@ echo() {
 }
 
 info() {
-    print "${COLOR_PURPLE}$*\n${COLOR_OFF}"
+    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
 }
 
 success() {
@@ -137,7 +137,7 @@ getvalue() {
 }
 
 run() {
-    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
+    info "$*"
     eval "$*"
 }
 
@@ -1024,6 +1024,31 @@ __version() {
     esac
 }
 
+__list_commands_info() {
+    for bin in $@
+    do
+        unset COMMAND_PATH
+        unset COMMAND_VERSION
+
+        case $bin in
+            make)       COMMAND_PATH="$MAKE"  ;;
+            cmake)      COMMAND_PATH="$CMAKE" ;;
+            meson)      COMMAND_PATH="$MESON" ;;
+            pkg-config) COMMAND_PATH="$PKG_CONFIG" ;;
+                     *) COMMAND_PATH="$(command -v "$bin")"
+        esac
+
+        if [ -n "$COMMAND_PATH" ] ; then
+            COMMAND_VERSION=$(__version "$bin" "$COMMAND_PATH")
+        fi
+
+        printf "%11s %-10s %s\n" "$bin" "$COMMAND_VERSION" "$COMMAND_PATH"
+    done
+
+    unset COMMAND_PATH
+    unset COMMAND_VERSION
+}
+
 __config_glob_installation_variables() {
     if [ -z "$PKG_CONFIG" ] ; then
         PKG_CONFIG=$(command -v pkg-config) ||
@@ -1031,70 +1056,39 @@ __config_glob_installation_variables() {
         PKG_CONFIG=$(command -v pkgconf)
     fi
 
-    if [ -z "$YASM" ] ; then
-        if [ -f  "$TOOLCHAIN_BIN_DIR/yasm" ] ; then
-            YASM="$TOOLCHAIN_BIN_DIR/yasm"
-        fi
-    fi
-
     for item in $(echo "$PATH" | tr ':' ' ')
     do
+        if [ -z "$MAKE" ] ; then
+            if [ -f  "$item/make" ] && [ -x "$item/make" ] ; then
+                MAKE="$item/make"
+            fi
+        fi
+
+        if [ -z "$MAKE" ] ; then
+            if [ -f  "$item/gmake" ] && [ -x "$item/gmake" ] ; then
+                MAKE="$item/gmake"
+            fi
+        fi
+
         if [ -z "$CMAKE" ] ; then
-            if [ -f "$item/cmake" ] && [ -x "$item/cmake" ] ; then
+            if [ -f   "$item/cmake" ] && [ -x "$item/cmake" ] ; then
                 CMAKE="$item/cmake"
             fi
         fi
 
         if [ -z "$MESON" ] ; then
-            if [ -f "$item/meson" ] && [ -x "$item/meson" ] ; then
+            if [ -f   "$item/meson" ] && [ -x "$item/meson" ] ; then
                 MESON="$item/meson"
             fi
         fi
 
-        if [ -n "$CMAKE" ] && [ -n "$MESON" ] ; then
+        if [ -n "$MAKE" ] && [ -n "$CMAKE" ] && [ -n "$MESON" ] ; then
             break
         fi
     done
 
-    if [   -f "$MY_HOME_DIR/tools.txt" ] ; then
-        rm -f "$MY_HOME_DIR/tools.txt"
-    fi
-
-    for tool in go cargo rustup pkg-config cmake meson ninja make gmake bmake m4 gm4 autoconf automake libtool libtoolize glibtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk gawk sed gsed grep cpan gem pip npm yarn ruby perl python python2 python3 node bash zsh
-    do
-        unset TOOL_PATH
-        unset TOOL_UPPER
-        unset TOOL_VERSION
-
-        TOOL_UPPER=$(echo "$tool" | tr a-z A-Z | tr - _)
-        TOOL_PATH="$(eval echo \$$TOOL_UPPER)"
-
-        if [ -n "$TOOL_PATH" ] ; then
-            if [ ! -f "$TOOL_PATH" ] || [ ! -x "$TOOL_PATH" ] ; then
-                TOOL_PATH=''
-            fi
-        fi
-
-        if [ -z "$TOOL_PATH" ] ; then
-            TOOL_PATH=$(command -v "$tool")
-            if [ "$tool" = "$TOOL_PATH" ] ; then
-                TOOL_PATH=''
-            fi
-        fi
-
-        if [ -n "$TOOL_PATH" ] ; then
-            TOOL_VERSION=$(__version "$tool" "$TOOL_PATH")
-        fi
-
-        printf "%11s %-10s %s\n" "$tool" "$TOOL_VERSION" "$TOOL_PATH" | tee -a "$MY_HOME_DIR/tools.txt"
-
-        if [ -z "$TOOL_PATH" ] ; then
-            TOOL_PATH="$tool"
-        fi
-
-        eval $TOOL_UPPER=\"$TOOL_PATH\"
-    done
-
+    info "list commands"
+    __list_commands_info go cargo rustup pkg-config cmake meson ninja make gmake bmake m4 gm4 autoconf automake libtool libtoolize glibtoolize flex bison yacc nasm yasm patch gperf doxygen itstool xmlto xmllint xsltproc file zip unzip xz bzip2 gzip lzip tar curl git awk gawk sed gsed grep cpan gem pip npm yarn ruby perl python python2 python3 node bash zsh
     echo
 
     for tool in $(list_tools_in_the_toolchain)
@@ -1173,6 +1167,7 @@ ____install_packages() {
 
 die_if_command_not_found() {
     case $1 in
+        make) [  "$MAKE" =  "make" ] && die_from_command_not_found "$1"  "MAKE" ;;
        cmake) [ "$CMAKE" = "cmake" ] && die_from_command_not_found "$1" "CMAKE" ;;
        meson) [ "$MESON" = "meson" ] && die_from_command_not_found "$1" "MESON" ;;
        pkg-config|pkgconfig|pkgconf)
@@ -1204,10 +1199,6 @@ __install_a_package() {
 
     for bin in $PACKAGE_REQUIRE
     do
-        case $bin in
-            go)    PACKAGE_REQUIRE_GO=true ;;
-            cargo) PACKAGE_REQUIRE_CARGO=true ;;
-        esac
         die_if_command_not_found "$bin"
     done
 
@@ -1326,7 +1317,7 @@ __install_a_package_all_builds() {
         fi
 
         BUILD_DIR="$EMPTY_DIR/$BUILD_FOR_ABI"
-        run mkdir -p "$BUILD_DIR" || return 1
+        run install -d "$BUILD_DIR" || return 1
 
         if [ "$DRYRUN" = 'true' ] ; then
             ___dryrun_a_package_one_build "$1" || return 1
@@ -1355,14 +1346,55 @@ ___dryrun_a_package_one_build() {
 }
 
 __install_a_package_one_build() {
+    echo
+    echo "$COLOR_PURPLE=============== ROUND $BUILD_ROUND_NUM for $BUILD_FOR_ABI $COLOR_OFF "
+    echo
+
+    info "list required commands"
+    __list_commands_info $PACKAGE_REQUIRE || return 1
+    echo
+
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
         run cd "$SOURCE_DIR" || return 1
     fi
 
     run __config_this_build_variables "$1" &&
     run __printf_this_build_variables "$1" &&
-    run rm -rf "$ABI_INSTALL_DIR" &&
-    run build && {
+    run rm -rf "$ABI_INSTALL_DIR" && {
+        if command -v build > /dev/null ; then
+            build
+        else
+            case $PACKAGE_BUILD_SYSTEM in
+                autogen)
+                    if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
+                        if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
+                            run ./autogen.sh || return 1
+                        else
+                            (cd "$SOURCE_DIR" && run ./autogen.sh) || return 1
+                        fi
+                    fi
+                    configure
+                    ;;
+                autotools)
+                    if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
+                        if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
+                            run autoreconf -ivf || return 1
+                        else
+                            (cd "$SOURCE_DIR" && run autoreconf -ivf) || return 1
+                        fi
+                    fi
+                    configure
+                    ;;
+                configure) configure ;;
+                cmake*)    cmake ;;
+                meson)     meson ;;
+                ninja)     ninja clean && ninja && ninja install ;;
+                make)      make  clean && make  && make  install ;;
+                cargo)     run cargo install --target "$CARGO_TARGET" -vv --path "$SOURCE_DIR" --root="$ABI_INSTALL_DIR" ;;
+                go)        run go build -v -trimpath ;;
+            esac
+        fi
+    } && {
         [ -d "$ABI_INSTALL_DIR" ] || {
             error "installed nothing."
             return 1
@@ -1394,7 +1426,7 @@ __install_logs() {
 
     install_installed_log
 
-    for item in "$MY_FORMULA_DIR/$1.sh" "$MY_HOME_DIR/tools.txt" "$BUILD_DIR/install.log.txt" "$DEPENDENCIES__GV" "$DEPENDENCIES_PNG" "$DEPENDENCIES_TXT"
+    for item in "$MY_FORMULA_DIR/$1.sh" "$BUILD_DIR/install.log.txt" "$DEPENDENCIES__GV" "$DEPENDENCIES_PNG" "$DEPENDENCIES_TXT"
     do
         if [ -f "$item" ] ; then
             install -v -m 644 "$item" "$ABI_LOG_DIR" || return 1
@@ -1629,6 +1661,32 @@ src_sum() {
     fi
 }
 
+# set or get build system.
+# $1:
+# - autogen        require make automake autoconf autoreconf
+# - autotools      require make automake autoconf autoreconf
+# - configure      require make
+# - cmake          require cmake
+# - cmake-make     require cmake make
+# - cmake-ninja    require cmake ninja
+# - meson          require meson ninja
+# - make           require make
+# - ninja          require ninja
+# - cargo          require cargo rustup
+# - go             require go
+bsystem() {
+    if [ $# -eq 0 ] ; then
+        echo "$PACKAGE_BUILD_SYSTEM"
+    else
+        if [ -z "$PACKAGE_BUILD_SYSTEM" ] ; then
+            PACKAGE_BUILD_SYSTEM="$@"
+        else
+            PACKAGE_BUILD_SYSTEM="$PACKAGE_BUILD_SYSTEM $@"
+        fi
+    fi
+}
+
+# set or get source directory.
 sourced() {
     if [ $# -eq 0 ] ; then
         echo "$PACKAGE_SOURCE_DIR"
@@ -1637,10 +1695,12 @@ sourced() {
     fi
 }
 
+# set build in source directory, otherwise, build in build directory.
 build_in_sourced() {
     PACKAGE_BUILD_IN_SOURCE_DIR=true
 }
 
+# set or get version of current building package.
 version() {
     if [ $# -eq 0 ] ; then
         echo "$PACKAGE_VERSION"
@@ -1649,6 +1709,7 @@ version() {
     fi
 }
 
+# set or get license of current building package.
 license() {
     if [ $# -eq 0 ] ; then
         echo "$PACKAGE_LICENSE"
@@ -1661,6 +1722,7 @@ license() {
     fi
 }
 
+# set or get list of required commands used by current building package.
 require() {
     if [ $# -eq 0 ] ; then
         echo "$PACKAGE_REQUIRE"
@@ -1673,6 +1735,7 @@ require() {
     fi
 }
 
+# set or get list of packages depended by current building package.
 depends() {
     if [ $# -eq 0 ] ; then
         echo "$PACKAGE_DEPENDS"
@@ -1685,7 +1748,10 @@ depends() {
     fi
 }
 
-# -Dkey=value
+# set or get list of C/C++ definations(#define key value)
+# $1:
+# - key=value
+# - key
 cdefine() {
     if [ $# -eq 0 ] ; then
         echo "$PACKAGE_CDEFINE"
@@ -1698,6 +1764,7 @@ cdefine() {
     fi
 }
 
+# set or get list of linker flags
 ldflags() {
     if [ $# -eq 0 ] ; then
         echo "$PACKAGE_LDFLAGS"
@@ -1764,9 +1831,9 @@ ___load_formula_of_a_package() {
     unset PACKAGE_LICENSE
     unset PACKAGE_PATCHES
 
+    unset PACKAGE_BUILD_SYSTEM
+
     unset PACKAGE_REQUIRE
-    unset PACKAGE_REQUIRE_GO
-    unset PACKAGE_REQUIRE_CARGO
 
     unset PACKAGE_DEPENDS
 
@@ -1862,6 +1929,20 @@ ___load_formula_of_a_package() {
             fi
             PACKAGE_SRC_NAME="$PACKAGE_NAME-$PACKAGE_VERSION.$PACKAGE_SRC_TYPE"
             PACKAGE_SRC_PATH="$MY_CACHED_DIR/$PACKAGE_SRC_NAME"
+    esac
+
+    case $PACKAGE_BUILD_SYSTEM in
+        autogen)     require make automake autoconf autoreconf ;;
+        autotools)   require make automake autoconf autoreconf ;;
+        configure)   require make ;;
+        cmake)       require cmake ;;
+        cmake-make)  require cmake make  ;;
+        cmake-ninja) require cmake ninja ;;
+        meson)       require meson ninja ;;
+        make)        require make  ;;
+        ninja)       require ninja ;;
+        cargo)       require cargo rustup ;;
+        go)          require go ;;
     esac
 }
 
@@ -1967,7 +2048,7 @@ __config_this_build_variables() {
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 
-    if [ "$PACKAGE_REQUIRE_CARGO" = 'true' ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM" = 'cargo' ] ; then
         for supportedTarget in $(__list_supported_targets)
         do
             supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
@@ -1989,7 +2070,7 @@ __config_this_build_variables() {
         eval export CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=$CC
     fi
 
-    if [ "$PACKAGE_REQUIRE_GO" = 'true' ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
         # https://golang.org/doc/install/source#environment
         export CGO_ENABLED=1
         export CGO_CFLAGS="$CFLAGS"
@@ -2073,13 +2154,13 @@ __printf_this_build_variables() {
 
     echo
 
-    if [ "$PACKAGE_REQUIRE_CARGO" = 'true' ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM" = 'cargo' ] ; then
         echo
         env | grep CARGO
         echo
     fi
 
-    if [ "$PACKAGE_REQUIRE_GO" = 'true' ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
         echo
         echo "      GO111MODULE = $GO111MODULE"
         echo "      GOPROXY     = $GOPROXY"
@@ -2187,9 +2268,17 @@ configure() {
         unset Makefile
     fi
 
-    run make $MAKEFLAGS clean &&
-    run make $MAKEFLAGS       &&
-    run make $MAKEFLAGS install
+    make clean &&
+    make       &&
+    make install
+}
+
+make() {
+    if [ -z "$MAKE" ] ; then
+        MAKE="command make"
+    fi
+    info "$MAKE $MAKEFLAGS $*"
+    eval "$MAKE $MAKEFLAGS $*"
 }
 
 # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
@@ -2232,8 +2321,8 @@ cmake() {
     -Wno-dev \
     -S "$SOURCE_DIR" \
     -B "$BUILD_DIR" $@ &&
-    run make $MAKEFLAGS -C "$BUILD_DIR" &&
-    run make $MAKEFLAGS -C "$BUILD_DIR" install
+    make -C "$BUILD_DIR" &&
+    make -C "$BUILD_DIR" install
 }
 
 # https://mesonbuild.com/Cross-compilation.html
