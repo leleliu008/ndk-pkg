@@ -2095,9 +2095,6 @@ __config_this_build_variables() {
 
     if [ "$VERBOSE" = 'true' ] ; then
         CFLAGS="$CFLAGS -v"
-        ARFLAGS=rs
-    else
-        ARFLAGS=rsc
     fi
 
     CXXFLAGS="$CFLAGS"
@@ -2677,7 +2674,7 @@ list_tools_in_the_toolchain() {
 }
 
 list_flags_used_by_tools_in_the_toolchain() {
-    list CFLAGS CXXFLAGS CPPFLAGS LDFLAGS ARFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
+    list CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
 }
 
 echo_path_of_tool_in_the_toolchain() {
