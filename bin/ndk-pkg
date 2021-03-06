@@ -377,7 +377,7 @@ is_package_installed() {
     [ -d "$MY_INSTALL_DIR/$1" ]              || return 1
     [ -f "$MY_INSTALL_DIR/$1/manifest.txt" ] || return 1
 
-    for ABI in $(__list_abis_of_a_installed_package "$1")
+    for ABI in $(cat "$MY_INSTALL_DIR/$1/manifest.txt")
     do
         [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                       || return 1
         [ -d "$MY_INSTALL_DIR/$1/$ABI/log" ]                   || return 1
@@ -1159,8 +1159,8 @@ ____install_packages() {
         if is_package_installed "$INSTALLING_PACKAGE" ; then
             printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
         else
-            printf "$COLOR_PURPLE==>$COLOR_OFF installing $COLOR_GREEN%s$COLOR_OFF\n\n" "$INSTALLING_PACKAGE"
-            __install_a_package "$INSTALLING_PACKAGE"
+            echo "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${INSTALLING_PACKAGE}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
+            __install_a_package "$INSTALLING_PACKAGE" || die_from_installation_failed "$INSTALLING_PACKAGE"
         fi
     done
 }
@@ -1192,22 +1192,40 @@ die_from_installation_failed() {
     fi
 }
 
-__install_a_package() {
-    unset BUILD_FOR_ABI
+__state() {
+    STATE_NUM=$1
 
+    shift
+
+    STATE_MESSAGE="$@"
+
+    echo "\n${COLOR_PURPLE}=== STATE ${STATE_NUM} : ${STATE_MESSAGE} ${COLOR_OFF}"
+}
+
+__install_a_package() {
+    __state 1 "init variables"
+    unset WORKING_DIR
+    unset SOURCE_DIR
+    unset EMPTY_DIR
+    unset NATIVE_BUILD_DIR
+    unset BUILD_DIR
+    unset BUILD_FOR_ABI
+    unset CONFIG_XX_UPDATED
+
+    __state 2 "fetching resources if posible"
     __fetch_resources_of_a_package "$1"
 
+    __state 3 "checking required commands"
     for bin in $PACKAGE_REQUIRE
     do
         die_if_command_not_found "$bin"
     done
 
-    if WORKING_DIR=$(mktemp -d) ; then
-        echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mkdir $WORKING_DIR${COLOR_OFF}\n"
-    else
-        die "create working directory failed."
-    fi
+    __state 4 "creating working directory"
+    info "mktemp -d"
+    WORKING_DIR=$(mktemp -d) || die "create working directory failed."
 
+    __state 5 "unpacking resources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
             run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
@@ -1230,19 +1248,17 @@ __install_a_package() {
         SOURCE_DIR="$WORKING_DIR/$PACKAGE_SOURCE_DIR"
     fi
 
-    run cd "$SOURCE_DIR" || die "check the $FORMULA_FILE_PATH. argument of sourced command is not right."
+    __state 6 "change to source directory"
+    run cd "$SOURCE_DIR" || return 1
 
+    __state 7 "list content of source directory"
     run ls -l
 
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
-    BUILD_DIR="$EMPTY_DIR/native"
 
-    run install -d "$BUILD_DIR" || return 1
-
-    if command -v prepare > /dev/null ; then
-        # may be build something for building
-        
-        echo
+    __state 8 "build for build-machine"
+    if command -v build0 > /dev/null ; then
+        NATIVE_BUILD_DIR="$EMPTY_DIR/native"
 
         printf "%17s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
 
@@ -1263,33 +1279,57 @@ __install_a_package() {
                     FIRST='false'
                     echo "$item"
                 else
-                    echo "                   $item"
+                    echo "                    $item"
                 fi
             done
         done
-
         echo
+        printf "\n%17s = " PATH
+        FIRST='true'
+        for item in $(echo "$PATH" | tr ':' ' ')
+        do
+            if [ "$FIRST" = 'true' ] ; then
+                FIRST='false'
+                echo "$item"
+            else
+                echo "                    $item"
+            fi
+        done
+
         echo
         echo "      WORKING_DIR = $WORKING_DIR"
         echo "       SOURCE_DIR = $SOURCE_DIR"
         echo "        EMPTY_DIR = $EMPTY_DIR"
-        echo "        BUILD_DIR = $BUILD_DIR"
+        echo " NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR"
         echo "              PWD = $PWD"
         echo
 
-        run prepare || die_from_installation_failed "$1"
+        run install -d "$NATIVE_BUILD_DIR" || return 1
+        run cd "$NATIVE_BUILD_DIR"         || return 1
+        run build0                         || return 1
+    else
+        warn "no build0  function defined in formula, skipped."
     fi
 
-    __install_a_package_all_builds "$1" || die_from_installation_failed "$1"
+    __state 9 "do some preparation works"
+    if command -v prepare > /dev/null ; then
+        run prepare || return 1
+    else
+        warn "no prepare function defined in formula, skipped."
+    fi
+
+    __state 10 "build for target-machine"
+    __install_a_package_all_builds "$1" || return 1
 
     echo
-    success "$1 have been installed successfully.\n"
+    success "$1 have been installed successfully."
 
     if [ "$KEEP_WORKING_DIR" != 'true' ] ; then
+        __state 11 "clean working directory."
         run rm -rf "$WORKING_DIR" || true
     fi
 
-    echo
+    __state 12 "list installed content."
     __tree_installed_of_a_package "$1" || true
 }
 
@@ -1317,12 +1357,12 @@ __install_a_package_all_builds() {
         fi
 
         BUILD_DIR="$EMPTY_DIR/$BUILD_FOR_ABI"
-        run install -d "$BUILD_DIR" || return 1
 
         if [ "$DRYRUN" = 'true' ] ; then
             ___dryrun_a_package_one_build "$1" || return 1
         else
             (
+                install -d "$BUILD_DIR" &&
                 cd "$BUILD_DIR" &&
                 mkfifo pipe &&
                 (tee install.log.txt < pipe &) &&
@@ -1345,12 +1385,23 @@ ___dryrun_a_package_one_build() {
     exec "$SHELL"
 }
 
+__step() {
+    echo
+    echo "${COLOR_PURPLE}=== $*${COLOR_OFF}"
+}
+
 __install_a_package_one_build() {
     echo
-    echo "$COLOR_PURPLE=============== ROUND $BUILD_ROUND_NUM for $BUILD_FOR_ABI $COLOR_OFF "
+    echo "${COLOR_PURPLE}=============== cross-build ROUND $BUILD_ROUND_NUM for $BUILD_FOR_ABI ===============${COLOR_OFF}"
     echo
 
-    info "list required commands"
+    if [ -f "$DEPENDENCIES_TXT" ] ; then
+        __step "list depends packages"
+        cat "$DEPENDENCIES_TXT"
+        echo
+    fi
+
+    __step "list required commands"
     __list_commands_info $PACKAGE_REQUIRE || return 1
     echo
 
@@ -1847,6 +1898,7 @@ ___load_formula_of_a_package() {
     unset PACKAGE_SOURCE_DIR
     unset PACKAGE_BUILD_IN_SOURCE_DIR
 
+    unset -f build0
     unset -f prepare
     unset -f build
     unset -f build_configed
@@ -1859,7 +1911,8 @@ ___load_formula_of_a_package() {
 
     [ -z "$PACKAGE_SUMMARY" ] && die "summary command must be invoked in $FORMULA_FILE_PATH"
     [ -z "$PACKAGE_WEBPAGE" ] && die "webpage command must be invoked in $FORMULA_FILE_PATH"
-    [ -z "$PACKAGE_SRC_URL" ] && die "src_url command must be invoked in $FORMULA_FILE_PATH"
+    [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL=$PACKAGE_SRC_GIT
+    [ -z "$PACKAGE_SRC_URL" ] && die "src_url or src_git command must be invoked in $FORMULA_FILE_PATH"
 
     if [ -z "$PACKAGE_MIN_SDK_API_LEVEL" ] ; then
         PACKAGE_MIN_SDK_API_LEVEL=$(__list_supported_sdk_api_levels | head -n 1)
@@ -1931,19 +1984,23 @@ ___load_formula_of_a_package() {
             PACKAGE_SRC_PATH="$MY_CACHED_DIR/$PACKAGE_SRC_NAME"
     esac
 
-    case $PACKAGE_BUILD_SYSTEM in
-        autogen)     require make automake autoconf autoreconf ;;
-        autotools)   require make automake autoconf autoreconf ;;
-        configure)   require make ;;
-        cmake)       require cmake ;;
-        cmake-make)  require cmake make  ;;
-        cmake-ninja) require cmake ninja ;;
-        meson)       require meson ninja ;;
-        make)        require make  ;;
-        ninja)       require ninja ;;
-        cargo)       require cargo rustup ;;
-        go)          require go ;;
-    esac
+    for item in $PACKAGE_BUILD_SYSTEM
+    do
+        case $item in
+            autogen)     require make automake autoconf autoreconf ;;
+            autotools)   require make automake autoconf autoreconf ;;
+            configure)   require make ;;
+            ndk-build)   require make ;;
+            cmake)       require cmake ;;
+            cmake-make)  require cmake make  ;;
+            cmake-ninja) require cmake ninja ;;
+            meson)       require meson ninja ;;
+            make)        require make  ;;
+            ninja)       require ninja ;;
+            cargo)       require cargo rustup ;;
+            go)          require go ;;
+        esac
+    done
 }
 
 install_installed_log() {
@@ -2038,6 +2095,9 @@ __config_this_build_variables() {
 
     if [ "$VERBOSE" = 'true' ] ; then
         CFLAGS="$CFLAGS -v"
+        ARFLAGS=rs
+    else
+        ARFLAGS=rsc
     fi
 
     CXXFLAGS="$CFLAGS"
@@ -2048,55 +2108,60 @@ __config_this_build_variables() {
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 
-    if [ "$PACKAGE_BUILD_SYSTEM" = 'cargo' ] ; then
-        for supportedTarget in $(__list_supported_targets)
-        do
-            supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
-            for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
-            do
-                [ "$supportedTarget" = "$installedTarget" ] && break
-            done
-            [ "$supportedTarget" = "$installedTarget" ] || {
-                rustup target add "$supportedTarget" || return 1
-            }
-        done
+    for item in $PACKAGE_BUILD_SYSTEM
+    do
+        case $item in
+            cargo)
+                for supportedTarget in $(__list_supported_targets)
+                do
+                    supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
+                    for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
+                    do
+                        [ "$supportedTarget" = "$installedTarget" ] && break
+                    done
+                    [ "$supportedTarget" = "$installedTarget" ] || {
+                        rustup target add "$supportedTarget" || return 1
+                    }
+                done
 
-        CARGO_TARGET=$(echo "$BUILD_FOR_TARGET" | sed 's/armv7a/armv7/')
+                CARGO_TARGET=$(echo "$BUILD_FOR_TARGET" | sed 's/armv7a/armv7/')
 
-        # https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        CARGO_TARGET_XXX=$(echo "$CARGO_TARGET" | tr a-z A-Z | tr - _)
+                # https://doc.rust-lang.org/cargo/reference/environment-variables.html
+                CARGO_TARGET_XXX=$(echo "$CARGO_TARGET" | tr a-z A-Z | tr - _)
 
-        eval export CARGO_TARGET_${CARGO_TARGET_XXX}_AR=$AR
-        eval export CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=$CC
-    fi
+                eval export CARGO_TARGET_${CARGO_TARGET_XXX}_AR=$AR
+                eval export CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=$CC
+                ;;
+               go)
+                # https://golang.org/doc/install/source#environment
+                export CGO_ENABLED=1
+                export CGO_CFLAGS="$CFLAGS"
+                export CGO_CXXFLAGS="$CXXFLAGS"
+                export CGO_CPPFLAGS="$CPPFLAGS"
+                export CGO_LDFLAGS="$LDFLAGS"
 
-    if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
-        # https://golang.org/doc/install/source#environment
-        export CGO_ENABLED=1
-        export CGO_CFLAGS="$CFLAGS"
-        export CGO_CXXFLAGS="$CXXFLAGS"
-        export CGO_CPPFLAGS="$CPPFLAGS"
-        export CGO_LDFLAGS="$LDFLAGS"
+                export GO111MODULE="auto"
+                export GOPROXY=https://goproxy.cn
 
-        export GO111MODULE="auto"
-        export GOPROXY=https://goproxy.cn
+                export GOOS=android
 
-        export GOOS=android
-
-        case $BUILD_FOR_ARCH in
-            armv7a)  export GOARCH=arm   ;;
-            aarch64) export GOARCH=arm64 ;;
-            i686)    export GOARCH=386   ;;
-            x86_64)  export GOARCH=amd64 ;;
+                case $BUILD_FOR_ARCH in
+                    armv7a)  export GOARCH=arm   ;;
+                    aarch64) export GOARCH=arm64 ;;
+                    i686)    export GOARCH=386   ;;
+                    x86_64)  export GOARCH=amd64 ;;
+                esac
+                ;;
         esac
+    done
+
+    if [ -n "$NATIVE_BUILD_DIR" ] && [ -d "$NATIVE_BUILD_DIR/output/bin" ] ; then
+        export PATH="$NATIVE_BUILD_DIR/output/bin:$PATH"
     fi
 }
 
 __printf_this_build_variables() {
-    if [ -f "$DEPENDENCIES_TXT" ] ; then
-        cat "$DEPENDENCIES_TXT"
-    fi
-
+    echo
     echo "INSTALLING_PACKAGE= $1"
     echo
     echo "   TIMESTAMP_UNIX = $TIMESTAMP_UNIX"
@@ -2154,31 +2219,51 @@ __printf_this_build_variables() {
 
     echo
 
-    if [ "$PACKAGE_BUILD_SYSTEM" = 'cargo' ] ; then
-        echo
-        env | grep CARGO
-        echo
-    fi
+    printf "\n%17s = " PATH
+    FIRST='true'
+    for item in $(echo "$PATH" | tr ':' ' ')
+    do
+        if [ "$FIRST" = 'true' ] ; then
+            FIRST='false'
+            echo "$item"
+        else
+            echo "                    $item"
+        fi
+    done
 
-    if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
-        echo
-        echo "      GO111MODULE = $GO111MODULE"
-        echo "      GOPROXY     = $GOPROXY"
-        echo
-        echo "     CGO_ENABLED  = $CGO_ENABLED"
-        echo "     CGO_CFLAGS   = $CGO_CFLAGS"
-        echo "     CGO_CXXFLAGS = $CGO_CXXFLAGS"
-        echo "     CGO_CPPFLAGS = $CGO_CPPFLAGS"
-        echo "     CGO_LDFLAGS  = $CGO_LDFLAGS"
-        echo
-        echo "           GOOS   = $GOOS"
-        echo "           GOARCH = $GOARCH"
-    fi
+    for item in $PACKAGE_BUILD_SYSTEM
+    do
+        case item in
+            cargo)
+                echo
+                env | grep CARGO
+                echo
+                ;;
+               go)
+                echo
+                echo "      GO111MODULE = $GO111MODULE"
+                echo "      GOPROXY     = $GOPROXY"
+                echo
+                echo "     CGO_ENABLED  = $CGO_ENABLED"
+                echo "     CGO_CFLAGS   = $CGO_CFLAGS"
+                echo "     CGO_CXXFLAGS = $CGO_CXXFLAGS"
+                echo "     CGO_CPPFLAGS = $CGO_CPPFLAGS"
+                echo "     CGO_LDFLAGS  = $CGO_LDFLAGS"
+                echo
+                echo "           GOOS   = $GOOS"
+                echo "           GOARCH = $GOARCH"
+                ;;
+        esac
+    done
 
     echo
     echo "      WORKING_DIR = $WORKING_DIR"
     echo "       SOURCE_DIR = $SOURCE_DIR"
     echo "        EMPTY_DIR = $EMPTY_DIR"
+
+    [ -n "$NATIVE_BUILD_DIR" ] &&
+    echo " NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR"
+
     echo "        BUILD_DIR = $BUILD_DIR"
     echo "              PWD = $PWD"
     echo
@@ -2205,7 +2290,8 @@ config_url() {
 configure() {
     die_if_command_not_found make
 
-    if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
+    if [ -z "$CONFIG_XX_UPDATED" ] ; then
+        CONFIG_XX_UPDATED=true
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
         # https://git.savannah.gnu.org/cgit/config.git/tree/
         for item in config.sub config.guess
@@ -2225,38 +2311,53 @@ configure() {
         done
     fi
 
-    if run "$SOURCE_DIR"/configure \
-        --host="\"$BUILD_FOR_TARGET\"" \
-        --prefix="\"$ABI_INSTALL_DIR\"" \
-        --disable-option-checking \
-        --disable-rpath \
-        --disable-debug \
-        --disable-nls\
-        --enable-largefile \
-        --enable-static \
-        --enable-shared \
-        CC="\"$CC\"" \
-        CFLAGS="\"$CFLAGS\"" \
-        CXX="\"$CXX\"" \
-        CXXFLAGS="\"$CXXFLAGS\"" \
-        CPP="\"$CPP\"" \
-        CPPFLAGS="\"$CPPFLAGS\"" \
-        LDFLAGS="\"$LDFLAGS\"" \
-        AR="\"$AR\"" \
-        RANLIB="\"$RANLIB\"" \
-        PKG_CONFIG="\"$PKG_CONFIG\"" \
-        PKG_CONFIG_PATH="\"$PKG_CONFIG_PATH\"" \
-        PKG_CONFIG_LIBDIR="\"\"" \
-        CC_FOR_BUILD="\"$CC_FOR_BUILD\"" \
-        $@ ; then
-        echo
-    else
-        if [ -f "$BUILD_DIR/config.log" ] ; then
-            run cat "$BUILD_DIR/config.log"
-        elif [ -f "$SOURCE_DIR/config.log" ] ; then
-            run cat "$SOURCE_DIR/config.log"
+    if [ "$STATE_NUM" -eq 8 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
+        if run "$SOURCE_DIR"/configure \
+            --prefix="$NATIVE_BUILD_DIR/output" \
+            $@ ; then
+            echo
+        else
+            if [ -f "$BUILD_DIR/config.log" ] ; then
+                run cat "$BUILD_DIR/config.log"
+            elif [ -f "$SOURCE_DIR/config.log" ] ; then
+                run cat "$SOURCE_DIR/config.log"
+            fi
+            return 1
         fi
-        return 1
+    else
+        if run "$SOURCE_DIR"/configure \
+            --host="\"$BUILD_FOR_TARGET\"" \
+            --prefix="\"$ABI_INSTALL_DIR\"" \
+            --disable-option-checking \
+            --disable-rpath \
+            --disable-debug \
+            --disable-nls\
+            --enable-largefile \
+            --enable-static \
+            --enable-shared \
+            CC="\"$CC\"" \
+            CFLAGS="\"$CFLAGS\"" \
+            CXX="\"$CXX\"" \
+            CXXFLAGS="\"$CXXFLAGS\"" \
+            CPP="\"$CPP\"" \
+            CPPFLAGS="\"$CPPFLAGS\"" \
+            LDFLAGS="\"$LDFLAGS\"" \
+            AR="\"$AR\"" \
+            RANLIB="\"$RANLIB\"" \
+            PKG_CONFIG="\"$PKG_CONFIG\"" \
+            PKG_CONFIG_PATH="\"$PKG_CONFIG_PATH\"" \
+            PKG_CONFIG_LIBDIR="\"\"" \
+            CC_FOR_BUILD="\"$CC_FOR_BUILD\"" \
+            $@ ; then
+            echo
+        else
+            if [ -f "$BUILD_DIR/config.log" ] ; then
+                run cat "$BUILD_DIR/config.log"
+            elif [ -f "$SOURCE_DIR/config.log" ] ; then
+                run cat "$SOURCE_DIR/config.log"
+            fi
+            return 1
+        fi
     fi
 
     if [ "$VERBOSE" = 'true' ] ; then
@@ -2576,21 +2677,21 @@ list_tools_in_the_toolchain() {
 }
 
 list_flags_used_by_tools_in_the_toolchain() {
-    list CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
+    list CFLAGS CXXFLAGS CPPFLAGS LDFLAGS ARFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
 }
 
 echo_path_of_tool_in_the_toolchain() {
-    unset TOOL_PATH
+    unset TOOL_FILE_NAME
     case $1 in
-        cc)  TOOL_PATH="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang"   ;;
-        cxx) TOOL_PATH="$TOOLCHAIN_BIN_DIR/$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang++" ;;
-        *)   TOOL_PATH="$TOOLCHAIN_BIN_DIR/$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')-$1"
-             if [ "$1" = 'ld' ] && [ ! -f "$TOOL_PATH" ] ; then
-                TOOL_PATH="$TOOL_PATH.gold"
+        cc)  TOOL_FILE_NAME="$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang"   ;;
+        cxx) TOOL_FILE_NAME="$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang++" ;;
+        *)   TOOL_FILE_NAME="$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')-$1"
+             if [ "$1" = 'ld' ] && [ ! -f "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME" ] ; then
+                TOOL_FILE_NAME="$TOOL_FILE_NAME.gold"
              fi
     esac
-    die_if_file_is_not_executable "$TOOL_PATH"
-    echo "$TOOL_PATH"
+    die_if_file_is_not_executable "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME"
+    echo "$TOOL_FILE_NAME"
 }
 
 ndk_version() {
