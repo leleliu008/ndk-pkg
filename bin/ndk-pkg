@@ -938,7 +938,7 @@ __get_brew_package_name_by_command_name() {
      doxygen) echo 'doxygen'  ;;
       ps2pdf) echo "ghostscript" ;;
     pkg-config) echo 'pkg-config' ;;
-    glibtool|glibtoolize)
+    libtool|libtoolize|glibtool|glibtoolize)
               echo "libtool" ;;
     autoreconf|autoconf|automake|autoheader)
               echo "automake" ;;
@@ -970,6 +970,8 @@ __version() {
          yasm) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         patch) "$2" --version 2> /dev/null | head -n 1 | awk '{print($NF)}' ;;
         gperf) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+        groff) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     help2man) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          file) "$2" --version 2> /dev/null | head -n 1 | cut -d '-' -f2 ;;
       itstool) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         xmlto) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
@@ -1186,15 +1188,19 @@ command_not_found() {
 die_if_command_not_found() {
     if command_not_found "$1" ; then
         if command -v brew > /dev/null ; then
-            print "🔥  ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command not found, we try to install it via${COLOR_OFF} ${COLOR_GREEN}HomeBrew${COLOR_OFF}\n"
             BREW_PACKAGE_NAME="$(__get_brew_package_name_by_command_name "$1")"
-            if run brew install "$BREW_PACKAGE_NAME" ; then
-                case $1 in
-                    make|cmake|meson|pkg-config)
-                        eval "$(echo "$1" | tr a-z A-Z)=$(brew --prefix "$BREW_PACKAGE_NAME")/bin/$1"
-                esac
+            if [ -z "$BREW_PACKAGE_NAME" ] ; then
+                die "command not found: $1. you can install it then try again."
             else
-                die "install $BREW_PACKAGE_NAME via brew failed. you can install it then try again."
+                print "🔥  ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command not found, we try to install it via${COLOR_OFF} ${COLOR_GREEN}HomeBrew${COLOR_OFF}\n"
+                if run brew install "$BREW_PACKAGE_NAME" ; then
+                    case $1 in
+                        make|cmake|meson|pkg-config)
+                            eval "$(echo "$1" | tr a-z A-Z)=$(brew --prefix "$BREW_PACKAGE_NAME")/bin/$1"
+                    esac
+                else
+                    die "install $BREW_PACKAGE_NAME via brew failed. you can install it then try again."
+                fi
             fi
         else
             die "command not found: $1. you can install it then try again."
@@ -1282,6 +1288,7 @@ __install_a_package() {
     run ls -l
 
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
+    mkdir "$EMPTY_DIR"
 
     __state 9 "build for build-machine"
     if command -v build0 > /dev/null ; then
@@ -1331,9 +1338,9 @@ __install_a_package() {
         echo "              PWD = $PWD"
         echo
 
-        run install -d "$NATIVE_BUILD_DIR" || return 1
-        run cd "$NATIVE_BUILD_DIR"         || return 1
-        run build0                         || return 1
+        run mkdir "$NATIVE_BUILD_DIR" || return 1
+        run cd    "$NATIVE_BUILD_DIR" || return 1
+        run build0                    || return 1
     else
         warn "no build0  function defined in formula, skipped."
     fi
@@ -1342,7 +1349,17 @@ __install_a_package() {
     if command -v prepare > /dev/null ; then
         run prepare || return 1
     else
-        warn "no prepare function defined in formula, skipped."
+        case $PACKAGE_BUILD_SYSTEM in
+            autogen)
+                warn "no prepare function defined in formula."
+                run ./autogen.sh    || return 1
+                ;;
+            autotools)
+                warn "no prepare function defined in formula."
+                run autoreconf -ivf || return 1
+                ;;
+            *)  warn "no prepare function defined in formula, skipped."
+        esac
     fi
 
     __state 11 "build for target-machine"
@@ -1443,26 +1460,8 @@ __install_a_package_one_build() {
             build
         else
             case $PACKAGE_BUILD_SYSTEM in
-                autogen)
-                    if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
-                        if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
-                            run ./autogen.sh || return 1
-                        else
-                            (cd "$SOURCE_DIR" && run ./autogen.sh) || return 1
-                        fi
-                    fi
-                    configure
-                    ;;
-                autotools)
-                    if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
-                        if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
-                            run autoreconf -ivf || return 1
-                        else
-                            (cd "$SOURCE_DIR" && run autoreconf -ivf) || return 1
-                        fi
-                    fi
-                    configure
-                    ;;
+                autogen)   configure ;;
+                autotools) configure ;;
                 configure) configure ;;
                 cmake*)    cmake ;;
                 meson)     meson ;;
@@ -1959,18 +1958,18 @@ ___load_formula_of_a_package() {
 
     case $PACKAGE_SRC_URL in
         dir://*)   PACKAGE_SRC_TYPE=dir ;;
-        *.git)     PACKAGE_SRC_TYPE=git    ; require git   ;;
-        *.zip)     PACKAGE_SRC_TYPE=zip    ; require unzip ;;
-        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ; require tar xz ;;
-        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ; require tar gzip ;;
-        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ; require tar lzip ;;
-        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2; require tar bzip2 ;;
-        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ; require tar gzip ;;
-        *.txz)     PACKAGE_SRC_TYPE=tar.xz ; require tar xz ;;
-        *.c)       PACKAGE_SRC_TYPE=c   ;;
-        *.cc)      PACKAGE_SRC_TYPE=cxx ;;
-        *.cxx)     PACKAGE_SRC_TYPE=cxx ;;
-        *.cpp)     PACKAGE_SRC_TYPE=cxx ;;
+        *.git)     PACKAGE_SRC_TYPE=git    ; require git ;;
+        *.zip)     PACKAGE_SRC_TYPE=zip    ; require curl unzip ;;
+        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ; require curl tar xz ;;
+        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ; require curl tar gzip ;;
+        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ; require curl tar lzip ;;
+        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2; require curl tar bzip2 ;;
+        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ; require curl tar gzip ;;
+        *.txz)     PACKAGE_SRC_TYPE=tar.xz ; require curl tar xz ;;
+        *.c)       PACKAGE_SRC_TYPE=c      ; require curl ;;
+        *.cc)      PACKAGE_SRC_TYPE=cxx    ; require curl ;;
+        *.cxx)     PACKAGE_SRC_TYPE=cxx    ; require curl ;;
+        *.cpp)     PACKAGE_SRC_TYPE=cxx    ; require curl ;;
         *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
@@ -1989,7 +1988,7 @@ ___load_formula_of_a_package() {
             PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
             PACKAGE_SRC_PATH="$MY_CACHED_DIR/$PACKAGE_SRC_NAME"
             ;;
-        *)  require curl;
+        *)
             if [ -z "$PACKAGE_SRC_SUM" ] ; then
                 die "src_sum command is not invoked in $FORMULA_FILE_PATH"
             fi
@@ -2016,8 +2015,8 @@ ___load_formula_of_a_package() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            autogen)     require make automake autoconf ;;
-            autotools)   require make automake autoconf ;;
+            autogen)     require perl m4 autoconf automake make ;;
+            autotools)   require perl m4 autoconf automake make ;;
             configure)   require make ;;
             ndk-build)   require make ;;
             cmake)       require cmake make  ;;
@@ -2314,7 +2313,6 @@ config_url() {
 
 # run in a subshell
 configure() {
-    echo "MAKE=$MAKE"
     if [ -z "$CONFIG_XX_UPDATED" ] ; then
         CONFIG_XX_UPDATED=true
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
@@ -2417,8 +2415,6 @@ make() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmake() {
-    echo "MAKE=$MAKE"
-    echo "CMAKE=$CMAKE"
     # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
     # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
     if [ "$BUILD_MACHINE_OS_TYPE" = 'windows' ] ; then
