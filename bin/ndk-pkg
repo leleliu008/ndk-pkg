@@ -253,7 +253,9 @@ fetch() {
         FETCH_OUTPUT_NAME="$(basename $FETCH_OUTPUT_PATH)"
     fi
 
-    install -v -d "$FETCH_OUTPUT_DIR"
+    if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
+        run install -d "$FETCH_OUTPUT_DIR"
+    fi
 
     case $FETCH_URL in
         *.git) __fetch_via_git ;;
@@ -284,7 +286,7 @@ die_if_sha256sum_mismatch() {
 }
 
 __fetch_sources_of_a_package() {
-    # fetch source code if posible
+    # fetch source code if needed
     if [ "$PACKAGE_SRC_TYPE" != 'dir' ] ; then
         fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SUM" --output-path="$PACKAGE_SRC_PATH"
     fi
@@ -309,8 +311,6 @@ __fetch_patches_of_a_package() {
 }
 
 __fetch_resources_of_a_package() {
-    ___load_formula_of_a_package "$1"
-
     __fetch_sources_of_a_package
 
     __fetch_patches_of_a_package $PACKAGE_PATCHES
@@ -915,7 +915,8 @@ __gen_dependency_tree() {
 
 __get_brew_package_name_by_command_name() {
     case $1 in
-       gmake) echo 'make'  ;;
+        make) echo 'make'  ;;
+       gmake) echo 'gmake' ;;
        cmake) echo 'cmake' ;;
        smake) echo 'smake' ;;
        meson) echo 'meson' ;;
@@ -951,7 +952,8 @@ __version() {
         gmake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
        rustup) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         cargo) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-           go) "$2" version | cut -d ' ' -f3 | cut -c3- ;;
+           go) "$2"   version | cut -d ' ' -f3 | cut -c3- ;;
+         tree) "$2" --version | cut -d ' ' -f2 | cut -c2- ;;
    pkg-config) "$2" --version 2> /dev/null | head -n 1 ;;
        m4|gm4) "$2" --version 2> /dev/null | head -n 1 | awk '{print($NF)}';;
      automake|aclocal)
@@ -1042,7 +1044,7 @@ __list_commands_info() {
             COMMAND_VERSION=$(__version "$bin" "$COMMAND_PATH")
         fi
 
-        printf "%11s %-10s %s\n" "$bin" "$COMMAND_VERSION" "$COMMAND_PATH"
+        printf "%-11s %-10s %s\n" "$bin" "$COMMAND_VERSION" "$COMMAND_PATH"
     done
 
     unset COMMAND_PATH
@@ -1050,6 +1052,11 @@ __list_commands_info() {
 }
 
 __config_glob_installation_variables() {
+    unset MAKE
+    unset CMAKE
+    unset MESON
+    unset PKG_CONFIG
+
     if [ -z "$PKG_CONFIG" ] ; then
         PKG_CONFIG=$(command -v pkg-config) ||
         PKG_CONFIG=$(command -v pkgconfig) ||
@@ -1165,22 +1172,33 @@ ____install_packages() {
     done
 }
 
-die_if_command_not_found() {
+command_not_found() {
     case $1 in
-        make) [  "$MAKE" =  "make" ] && die_from_command_not_found "$1"  "MAKE" ;;
-       cmake) [ "$CMAKE" = "cmake" ] && die_from_command_not_found "$1" "CMAKE" ;;
-       meson) [ "$MESON" = "meson" ] && die_from_command_not_found "$1" "MESON" ;;
-       pkg-config|pkgconfig|pkgconf)
-              [ "$PKG_CONFIG" = 'pkg-config' ] && die_from_command_not_found "$1" "PKG_CONFIG" ;;
-           *) command -v "$1" > /dev/null || die_from_command_not_found "$1"
+        make) [ -z "$MAKE" ]  ;;
+       cmake) [ -z "$CMAKE" ] ;;
+       meson) [ -z "$MESON" ] ;;
+       pkg-config)
+              [ -z "$PKG_CONFIG" ] ;;
+           *) ! command -v "$1" > /dev/null
     esac
 }
 
-die_from_command_not_found() {
-    if [ -z "$2" ] ; then
-        die "command not found: $1. please make sure it in PATH."
-    else
-        die "command not found: $1. please make sure it in PATH or export $2=path/to/$1 environment."
+die_if_command_not_found() {
+    if command_not_found "$1" ; then
+        if command -v brew > /dev/null ; then
+            print "🔥  ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command not found, we try to install it via${COLOR_OFF} ${COLOR_GREEN}HomeBrew${COLOR_OFF}\n"
+            BREW_PACKAGE_NAME="$(__get_brew_package_name_by_command_name "$1")"
+            if run brew install "$BREW_PACKAGE_NAME" ; then
+                case $1 in
+                    make|cmake|meson|pkg-config)
+                        eval "$(echo "$1" | tr a-z A-Z)=$(brew --prefix "$BREW_PACKAGE_NAME")/bin/$1"
+                esac
+            else
+                die "install $BREW_PACKAGE_NAME via brew failed. you can install it then try again."
+            fi
+        else
+            die "command not found: $1. you can install it then try again."
+        fi
     fi
 }
 
@@ -1212,20 +1230,24 @@ __install_a_package() {
     unset BUILD_FOR_ABI
     unset CONFIG_XX_UPDATED
 
-    __state 2 "fetching resources if posible"
-    __fetch_resources_of_a_package "$1"
+    __state 2 "loading formula"
+    ___load_formula_of_a_package "$1"
 
     __state 3 "checking required commands"
     for bin in $PACKAGE_REQUIRE
     do
         die_if_command_not_found "$bin"
     done
+    __list_commands_info $PACKAGE_REQUIRE || return 1
 
-    __state 4 "creating working directory"
+    __state 4 "fetching resources if needed"
+    __fetch_resources_of_a_package "$1"
+
+    __state 5 "creating working directory"
     info "mktemp -d"
     WORKING_DIR=$(mktemp -d) || die "create working directory failed."
 
-    __state 5 "unpacking resources to working directory"
+    __state 6 "unpacking resources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
             run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
@@ -1248,15 +1270,15 @@ __install_a_package() {
         SOURCE_DIR="$WORKING_DIR/$PACKAGE_SOURCE_DIR"
     fi
 
-    __state 6 "change to source directory"
+    __state 7 "change to source directory"
     run cd "$SOURCE_DIR" || return 1
 
-    __state 7 "list content of source directory"
+    __state 8 "list content of source directory"
     run ls -l
 
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
 
-    __state 8 "build for build-machine"
+    __state 9 "build for build-machine"
     if command -v build0 > /dev/null ; then
         NATIVE_BUILD_DIR="$EMPTY_DIR/native"
 
@@ -1311,25 +1333,25 @@ __install_a_package() {
         warn "no build0  function defined in formula, skipped."
     fi
 
-    __state 9 "do some preparation works"
+    __state 10 "do some preparation works"
     if command -v prepare > /dev/null ; then
         run prepare || return 1
     else
         warn "no prepare function defined in formula, skipped."
     fi
 
-    __state 10 "build for target-machine"
+    __state 11 "build for target-machine"
     __install_a_package_all_builds "$1" || return 1
 
     echo
     success "$1 have been installed successfully."
 
     if [ "$KEEP_WORKING_DIR" != 'true' ] ; then
-        __state 11 "clean working directory."
+        __state 12 "clean working directory."
         run rm -rf "$WORKING_DIR" || true
     fi
 
-    __state 12 "list installed content."
+    __state 13 "list installed content."
     __tree_installed_of_a_package "$1" || true
 }
 
@@ -1840,14 +1862,14 @@ patches() {
         while [ -n "$1" ]
         do
             case $1 in
-                *.patch)   PATCH_CONTENT_TYPE=patch  ;;
-                *.zip)     PATCH_CONTENT_TYPE=zip    ;;
-                *.tar.xz)  PATCH_CONTENT_TYPE=tar.xz ;;
-                *.tar.gz)  PATCH_CONTENT_TYPE=tar.gz ;;
-                *.tar.lz)  PATCH_CONTENT_TYPE=tar.lz ;;
-                *.tar.bz2) PATCH_CONTENT_TYPE=tar.bz2;;
-                *.tgz)     PATCH_CONTENT_TYPE=tar.gz ;;
-                *.txz)     PATCH_CONTENT_TYPE=tar.xz ;;
+                *.patch)   PATCH_CONTENT_TYPE=patch  ; require patch     ;;
+                *.zip)     PATCH_CONTENT_TYPE=zip    ; require unzip     ;;
+                *.tar.xz)  PATCH_CONTENT_TYPE=tar.xz ; require tar xz    ;;
+                *.tar.gz)  PATCH_CONTENT_TYPE=tar.gz ; require tar gzip  ;;
+                *.tar.lz)  PATCH_CONTENT_TYPE=tar.lz ; require tar lzip  ;;
+                *.tar.bz2) PATCH_CONTENT_TYPE=tar.bz2; require tar bzip2 ;;
+                *.tgz)     PATCH_CONTENT_TYPE=tar.gz ; require tar gzip  ;;
+                *.txz)     PATCH_CONTENT_TYPE=tar.xz ; require tar xz    ;;
                 *)  die "$1 : extension isn't recognized. the supported extensions are .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
             esac
 
@@ -1903,6 +1925,8 @@ ___load_formula_of_a_package() {
     unset -f build
     unset -f build_configed
 
+    PACKAGE_REQUIRE='tree'
+
     PACKAGE_NAME="$1"
 
     FORMULA_FILE_PATH="$MY_FORMULA_DIR/$PACKAGE_NAME.sh"
@@ -1930,14 +1954,14 @@ ___load_formula_of_a_package() {
 
     case $PACKAGE_SRC_URL in
         dir://*)   PACKAGE_SRC_TYPE=dir ;;
-        *.git)     PACKAGE_SRC_TYPE=git ;;
-        *.zip)     PACKAGE_SRC_TYPE=zip ;;
-        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ;;
-        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ;;
-        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ;;
-        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2;;
-        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ;;
-        *.txz)     PACKAGE_SRC_TYPE=tar.xz ;;
+        *.git)     PACKAGE_SRC_TYPE=git    ; require git   ;;
+        *.zip)     PACKAGE_SRC_TYPE=zip    ; require unzip ;;
+        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ; require tar xz ;;
+        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ; require tar gzip ;;
+        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ; require tar lzip ;;
+        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2; require tar bzip2 ;;
+        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ; require tar gzip ;;
+        *.txz)     PACKAGE_SRC_TYPE=tar.xz ; require tar xz ;;
         *.c)       PACKAGE_SRC_TYPE=c   ;;
         *.cc)      PACKAGE_SRC_TYPE=cxx ;;
         *.cxx)     PACKAGE_SRC_TYPE=cxx ;;
@@ -1954,13 +1978,13 @@ ___load_formula_of_a_package() {
             else
                 PACKAGE_SRC_PATH=$(expr substr "$PACKAGE_SRC_URL" 7 ${#PACKAGE_SRC_URL})
             fi
-            [ -d "$PACKAGE_SRC_PATH" ] || "src_url argument point to dir is not exist."
+            [ -d "$PACKAGE_SRC_PATH" ] || die "src_url argument point to dir is not exist."
             ;;
         git)
             PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
             PACKAGE_SRC_PATH="$MY_CACHED_DIR/$PACKAGE_SRC_NAME"
             ;;
-        *)
+        *)  require curl;
             if [ -z "$PACKAGE_SRC_SUM" ] ; then
                 die "src_sum command is not invoked in $FORMULA_FILE_PATH"
             fi
@@ -1987,11 +2011,11 @@ ___load_formula_of_a_package() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            autogen)     require make automake autoconf autoreconf ;;
-            autotools)   require make automake autoconf autoreconf ;;
+            autogen)     require make automake autoconf ;;
+            autotools)   require make automake autoconf ;;
             configure)   require make ;;
             ndk-build)   require make ;;
-            cmake)       require cmake ;;
+            cmake)       require cmake make  ;;
             cmake-make)  require cmake make  ;;
             cmake-ninja) require cmake ninja ;;
             meson)       require meson ninja ;;
@@ -2230,7 +2254,7 @@ __printf_this_build_variables() {
 
     for item in $PACKAGE_BUILD_SYSTEM
     do
-        case item in
+        case $item in
             cargo)
                 echo
                 env | grep CARGO
@@ -2285,8 +2309,7 @@ config_url() {
 
 # run in a subshell
 configure() {
-    die_if_command_not_found make
-
+    echo "MAKE=$MAKE"
     if [ -z "$CONFIG_XX_UPDATED" ] ; then
         CONFIG_XX_UPDATED=true
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
@@ -2308,7 +2331,7 @@ configure() {
         done
     fi
 
-    if [ "$STATE_NUM" -eq 8 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
+    if [ "$STATE_NUM" -eq 9 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
         if run "$SOURCE_DIR"/configure \
             --prefix="$NATIVE_BUILD_DIR/output" \
             $@ ; then
@@ -2389,9 +2412,8 @@ make() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmake() {
-    die_if_command_not_found cmake
-    die_if_command_not_found  make
-
+    echo "MAKE=$MAKE"
+    echo "CMAKE=$CMAKE"
     # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
     # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
     if [ "$BUILD_MACHINE_OS_TYPE" = 'windows' ] ; then
@@ -2426,9 +2448,6 @@ cmake() {
 # https://mesonbuild.com/Cross-compilation.html
 # run in a subshell
 meson() {
-    die_if_command_not_found meson
-    die_if_command_not_found ninja
-
     case $BUILD_FOR_ARCH in
         armv7a)
             HOST_MACHINE_CPU_FAMILY='arm'
@@ -3041,7 +3060,8 @@ main() {
         homepage) shift; __show_webpage_of_a_package    "$@" ;;
         depends)  shift; __show_depends_of_a_package    "$@" ;;
         prefix)   shift; __show_prefix_of_a_package     "$@" ;;
-        fetch)    shift; __fetch_resources_of_a_package "$@" ;;
+        fetch)    shift; ___load_formula_of_a_package   "$@" &&
+                         __fetch_resources_of_a_package "$@" ;;
         logs)     shift; __show_logs_of_a_package       "$@" ;;
         pack)     shift; __pack_bottle_of_a_package     "$@" ;;
         tree)     shift; __tree_installed_of_a_package  "$@" ;;
