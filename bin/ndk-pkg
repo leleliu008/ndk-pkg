@@ -1221,6 +1221,11 @@ __state() {
 }
 
 __install_a_package() {
+    # brew install meson
+    # Error: The current working directory doesn't exist, cannot proceed.
+    # beacuse previous package's working direcotory is deleted.
+    cd ~ || return 1
+
     __state 1 "init variables"
     unset WORKING_DIR
     unset SOURCE_DIR
