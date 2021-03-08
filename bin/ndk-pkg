@@ -942,6 +942,7 @@ __get_brew_package_name_by_command_name() {
               echo "libtool" ;;
     autoreconf|autoconf|automake|autoheader)
               echo "automake" ;;
+    autopoint) echo "gettext" ;;
     esac
 }
 
@@ -956,6 +957,7 @@ __version() {
          tree) "$2" --version | cut -d ' ' -f2 | cut -c2- ;;
    pkg-config) "$2" --version 2> /dev/null | head -n 1 ;;
        m4|gm4) "$2" --version 2> /dev/null | head -n 1 | awk '{print($NF)}';;
+    autopoint) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      automake|aclocal)
                "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      autoconf|autoheader|autom4te|autoreconf|autoscan|autoupdate|ifnames)
@@ -2553,6 +2555,23 @@ static int stub_getdtablesize(void) {
 EOF
     fi
     export CPPFLAGS="$CPPFLAGS -include $SOURCE_DIR/stub-getdtablesize.c"
+}
+
+list_all_installed_libs() {
+    if [ -d "$MY_INSTALL_DIR" ] ; then
+        cd  "$MY_INSTALL_DIR" || return 1
+    else
+        return 0
+    fi
+
+    for item in *
+    do
+        if is_package_installed "$item" ; then
+            if [ -d "$MY_INSTALL_DIR/$item/libs" ] ; then
+                find "$MY_INSTALL_DIR/$item/libs" -name "lib*\."
+            fi
+        fi
+    done
 }
 
 ldd() {
