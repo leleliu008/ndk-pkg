@@ -2120,7 +2120,12 @@ __config_this_build_variables() {
 
         CPPFLAGS="-I$ABI_INCLUDE_DIR $CPPFLAGS"
          LDFLAGS="-L$ABI_LIBRARY_DIR $LDFLAGS"
-        PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
+
+        if [ -z "$PKG_CONFIG_PATH" ] ; then
+            PKG_CONFIG_PATH="$ABI_PKGCONF_DIR"
+        else
+            PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
+        fi
     done
 
     if [ "$VERBOSE" = 'true' ] ; then
@@ -2568,7 +2573,7 @@ list_all_installed_libs() {
     do
         if is_package_installed "$item" ; then
             if [ -d "$MY_INSTALL_DIR/$item/libs" ] ; then
-                find "$MY_INSTALL_DIR/$item/libs" -name "lib*\."
+                find "$MY_INSTALL_DIR/$item/libs" -name "lib*\.a"
             fi
         fi
     done
