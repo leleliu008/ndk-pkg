@@ -947,115 +947,188 @@ __get_brew_package_name_by_command_name() {
 }
 
 __version() {
-    case "$1" in
-        cmake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
-         make) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
-        gmake) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
-       rustup) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-        cargo) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-           go) "$2"   version | cut -d ' ' -f3 | cut -c3- ;;
-         tree) "$2" --version | cut -d ' ' -f2 | cut -c2- ;;
-   pkg-config) "$2" --version 2> /dev/null | head -n 1 ;;
-       m4|gm4) "$2" --version 2> /dev/null | head -n 1 | awk '{print($NF)}';;
-    autopoint) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+    case $(basename "$1") in
+        cmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         make) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+        gmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+       rustup) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        cargo) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+           go) "$1"   version | cut -d ' ' -f3 | cut -c3- ;;
+         tree) "$1" --version | cut -d ' ' -f2 | cut -c2- ;;
+   pkg-config) "$1" --version 2> /dev/null | head -n 1 ;;
+       m4|gm4) "$1" --version 2> /dev/null | head -n 1 | awk '{print($NF)}';;
+    autopoint) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      automake|aclocal)
-               "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+               "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      autoconf|autoheader|autom4te|autoreconf|autoscan|autoupdate|ifnames)
-               "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-      libtool) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+               "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+      libtool) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
    libtoolize|glibtoolize)
-               "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-         flex) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-        bison) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-         yacc) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-         nasm) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
-         yasm) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-        patch) "$2" --version 2> /dev/null | head -n 1 | awk '{print($NF)}' ;;
-        gperf) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
-        groff) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-     help2man) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
-         file) "$2" --version 2> /dev/null | head -n 1 | cut -d '-' -f2 ;;
-      itstool) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-        xmlto) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+               "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         flex) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        bison) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         yacc) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+         nasm) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         yasm) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        patch) "$1" --version 2> /dev/null | head -n 1 | awk '{print($NF)}' ;;
+        gperf) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+        groff) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     help2man) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         file) "$1" --version 2> /dev/null | head -n 1 | cut -d '-' -f2 ;;
+      itstool) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+        xmlto) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
       xmllint) ;;
      xsltproc) ;;
          gzip)
             unset TEMP_FILE
             TEMP_FILE=$(mktemp)
-            gzip --version > $TEMP_FILE 2>&1
+            "$1" --version > $TEMP_FILE 2>&1
             cat $TEMP_FILE | head -n 1 | awk '{print($NF)}'
             rm $TEMP_FILE
             unset TEMP_FILE
             ;;
-         lzip) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-           xz) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-          zip) "$2" --version 2> /dev/null | sed -n '2p' | cut -d ' ' -f4 ;;
-        unzip) "$2" -v        2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         lzip) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+           xz) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+          zip) "$1" --version 2> /dev/null | sed -n '2p' | cut -d ' ' -f4 ;;
+        unzip) "$1" -v        2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         bzip2)
             unset TEMP_FILE
             TEMP_FILE=$(mktemp)
-            bzip2 --help 2> $TEMP_FILE
+            "$1" --help 2> $TEMP_FILE
             cat $TEMP_FILE | head -n 1 | cut -d ' ' -f8 | cut -d ',' -f1
             rm $TEMP_FILE
             unset TEMP_FILE
             ;;
           tar)
-            VERSION_MSG=$("$2" --version 2> /dev/null | head -n 1)
+            VERSION_MSG=$("$1" --version 2> /dev/null | head -n 1)
             case $VERSION_MSG in
                   tar*) echo "$VERSION_MSG" | cut -d ' ' -f4 ;;
                bsdtar*) echo "$VERSION_MSG" | cut -d ' ' -f2 ;;
             esac
             ;;
-          git) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
-         curl) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-     awk|gawk) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 | tr , ' ' ;;
-     sed|gsed) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-          pip) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+          git) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         curl) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+     awk|gawk) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 | tr , ' ' ;;
+     sed|gsed) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+          pip) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          cpan) ;;
-         grep) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
-         ruby) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-         perl) "$2" -v | sed -n '2p' | sed 's/.*v\([0-9]\.[0-9][0-9]\.[0-9]\).*/\1/' ;;
+         grep) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
+         ruby) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         perl) "$1" -v | sed -n '2p' | sed 's/.*v\([0-9]\.[0-9][0-9]\.[0-9]\).*/\1/' ;;
     python|python2|python3)
             unset TEMP_FILE
             TEMP_FILE=$(mktemp)
-            "$2" --version > $TEMP_FILE 2>&1
+            "$1" --version > $TEMP_FILE 2>&1
             cat $TEMP_FILE | head -n 1 | cut -d ' ' -f2
             rm $TEMP_FILE
             unset TEMP_FILE
             ;;
-         node) "$2" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
-          zsh) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
-         bash) "$2" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
-            *) "$2" --version 2> /dev/null | head -n 1
+         node) "$1" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
+          zsh) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         bash) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
+            *) "$1" --version 2> /dev/null | head -n 1
+    esac
+}
+
+# eq  equal
+# gt  greater than
+# lt  less than
+# ge  greater than or equal
+# le  less than or equal
+#
+# version compare automake eq 1.16.0
+# version compare automake lt 1.16.0
+# version compare automake gt 1.16.0
+# version compare automake le 1.16.0
+# version compare automake ge 1.16.0
+__version_compare() {
+    unset VERSION_COMPARE_INPUT_COMMAND
+    unset VERSION_COMPARE_INPUT_OPERATOR
+    unset VERSION_COMPARE_INPUT_VERSION
+    unset VERSION_COMPARE_XXXXX_VERSION
+
+    VERSION_COMPARE_INPUT_COMMAND="$1"
+    VERSION_COMPARE_INPUT_OPERATOR="$2"
+    VERSION_COMPARE_INPUT_VERSION="$3"
+    VERSION_COMPARE_XXXXX_VERSION="$(__version $VERSION_COMPARE_INPUT_COMMAND)"
+
+    echo "VERSION_COMPARE_INPUT_COMMAND=$VERSION_COMPARE_INPUT_COMMAND"
+    echo "VERSION_COMPARE_INPUT_OPERATOR=$VERSION_COMPARE_INPUT_OPERATOR"
+    echo "VERSION_COMPARE_INPUT_VERSION=$VERSION_COMPARE_INPUT_VERSION"
+    echo "VERSION_COMPARE_XXXXX_VERSION=$VERSION_COMPARE_XXXXX_VERSION"
+
+    case $VERSION_COMPARE_INPUT_OPERATOR in
+        le)
+            [ "$VERSION_COMPARE_XXXXX_VERSION" = "$VERSION_COMPARE_INPUT_VERSION" ] && return 0
+            [ "$VERSION_COMPARE_XXXXX_VERSION" = $(printf "$VERSION_COMPARE_XXXXX_VERSION\n$VERSION_COMPARE_INPUT_VERSION" | sort --version-sort | head -n 1) ]
+            ;;
+        ge)
+            [ "$VERSION_COMPARE_XXXXX_VERSION" = "$VERSION_COMPARE_INPUT_VERSION" ] && return 0
+            [ "$VERSION_COMPARE_XXXXX_VERSION" = $(printf "$VERSION_COMPARE_XXXXX_VERSION\n$VERSION_COMPARE_INPUT_VERSION" | sort --version-sort --reverse | head -n 1) ]
+            ;;
+        eq)
+            [ "$VERSION_COMPARE_XXXXX_VERSION" = "$VERSION_COMPARE_INPUT_VERSION" ]
+            ;;
+        lt)
+            [ "$VERSION_COMPARE_XXXXX_VERSION" = "$VERSION_COMPARE_INPUT_VERSION" ] && return 1
+            [ "$VERSION_COMPARE_XXXXX_VERSION" = $(printf "$VERSION_COMPARE_XXXXX_VERSION\n$VERSION_COMPARE_INPUT_VERSION" | sort --version-sort | head -n 1) ]
+            ;;
+        gt)
+            [ "$VERSION_COMPARE_XXXXX_VERSION" = "$VERSION_COMPARE_INPUT_VERSION" ] && return 1
+            [ "$VERSION_COMPARE_XXXXX_VERSION" = $(printf "$VERSION_COMPARE_XXXXX_VERSION\n$VERSION_COMPARE_INPUT_VERSION" | sort --version-sort --reverse | head -n 1) ]
+            ;;
+        *) die '__version_compare: $VERSION_COMPARE_INPUT_OPERATOR: not recognized operator.'
+    esac
+}
+
+# $1:
+# automake<=1.16.0
+# automake>=1.16.0
+# automake=1.16.0
+# automake<1.16.0
+# automake>1.16.0
+# automake
+__get_command_from_require_item() {
+    case $1 in
+        *\<=*) echo "$1" | sed 's/<=/ /g' | cut -d ' ' -f1 ;;
+        *\>=*) echo "$1" | sed 's/>=/ /g' | cut -d ' ' -f1 ;;
+        *=*)   echo "$1" | cut -d '=' -f1 ;;
+        *\<*)  echo "$1" | cut -d '<' -f1 ;;
+        *\>*)  echo "$1" | cut -d '>' -f1 ;;
+        *)     echo "$1" ;;
     esac
 }
 
 __list_commands_info() {
-    for bin in $@
+    for item in $@
     do
+        unset COMMAND
         unset COMMAND_PATH
         unset COMMAND_VERSION
 
-        case $bin in
+        COMMAND="$(__get_command_from_require_item "$item")"
+
+        case $COMMAND in
             make)       COMMAND_PATH="$MAKE"  ;;
             cmake)      COMMAND_PATH="$CMAKE" ;;
             meson)      COMMAND_PATH="$MESON" ;;
             pkg-config) COMMAND_PATH="$PKG_CONFIG" ;;
-                     *) COMMAND_PATH="$(command -v "$bin")"
+                     *) COMMAND_PATH="$(command -v "$COMMAND")"
         esac
 
         if [ -n "$COMMAND_PATH" ] ; then
-            COMMAND_VERSION=$(__version "$bin" "$COMMAND_PATH")
+            COMMAND_VERSION=$(__version "$COMMAND_PATH")
         fi
 
-        printf "%-11s %-10s %s\n" "$bin" "$COMMAND_VERSION" "$COMMAND_PATH"
+        printf "%-11s %-10s %s\n" "$COMMAND" "$COMMAND_VERSION" "$COMMAND_PATH"
     done
 
+    unset COMMAND
     unset COMMAND_PATH
     unset COMMAND_VERSION
 }
 
-__config_glob_installation_variables() {
+__config_global_installation_variables() {
     unset MAKE
     unset CMAKE
     unset MESON
@@ -1159,7 +1232,7 @@ ____install_packages() {
 
     die_if_package_list_is_not_specified "$USER_SPECIFIED_PACKAGE_LIST"
 
-    __config_glob_installation_variables
+    __config_global_installation_variables
 
     __gen_dependency_list 'true' '' || return 1
 
@@ -1187,25 +1260,35 @@ command_not_found() {
     esac
 }
 
+__try_to_install_required_commands_via_package_manager() {
+    if command -v brew > /dev/null ; then
+        BREW_PACKAGE_NAME="$(__get_brew_package_name_by_command_name "$1")"
+        if [ -z "$BREW_PACKAGE_NAME" ] ; then
+            die "command not found: $*. you can install it then try again."
+        else
+            print "🔥  ${COLOR_GREEN}$*${COLOR_OFF} ${COLOR_YELLOW}command not found, we try to install it via${COLOR_OFF} ${COLOR_GREEN}HomeBrew${COLOR_OFF}\n"
+            if run brew install "$BREW_PACKAGE_NAME" ; then
+                case $1 in
+                    make|cmake|meson|pkg-config)
+                        eval "$(echo "$1" | tr a-z A-Z)=$(brew --prefix "$BREW_PACKAGE_NAME")/bin/$1"
+                esac
+            else
+                die "install $BREW_PACKAGE_NAME via brew failed. you can install it then try again."
+            fi
+        fi
+    else
+        die "command not found: $*. you can install it then try again."
+    fi
+}
+
 die_if_command_not_found() {
     if command_not_found "$1" ; then
-        if command -v brew > /dev/null ; then
-            BREW_PACKAGE_NAME="$(__get_brew_package_name_by_command_name "$1")"
-            if [ -z "$BREW_PACKAGE_NAME" ] ; then
-                die "command not found: $1. you can install it then try again."
-            else
-                print "🔥  ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command not found, we try to install it via${COLOR_OFF} ${COLOR_GREEN}HomeBrew${COLOR_OFF}\n"
-                if run brew install "$BREW_PACKAGE_NAME" ; then
-                    case $1 in
-                        make|cmake|meson|pkg-config)
-                            eval "$(echo "$1" | tr a-z A-Z)=$(brew --prefix "$BREW_PACKAGE_NAME")/bin/$1"
-                    esac
-                else
-                    die "install $BREW_PACKAGE_NAME via brew failed. you can install it then try again."
-                fi
+        __try_to_install_required_commands_via_package_manager "$1"
+    else
+        if [ $# -eq 3 ] ; then
+            if ! __version_compare $@ ; then
+                __try_to_install_required_commands_via_package_manager $@
             fi
-        else
-            die "command not found: $1. you can install it then try again."
         fi
     fi
 }
@@ -1228,6 +1311,17 @@ __state() {
     echo "\n${COLOR_PURPLE}=== STATE ${STATE_NUM} : ${STATE_MESSAGE} ${COLOR_OFF}"
 }
 
+__parse_require_item() {
+    case $1 in
+        *\<=*) echo "$1" | sed 's/<=/ le /g' ;;
+        *\>=*) echo "$1" | sed 's/>=/ ge /g' ;;
+        *=*)   echo "$1" | sed 's/<=/ eq /g' ;;
+        *\<*)  echo "$1" | sed 's/<=/ lt /g' ;;
+        *\>*)  echo "$1" | sed 's/<=/ gt /g' ;;
+        *)     echo "$1"
+    esac
+}
+
 __install_a_package() {
     # brew install meson
     # Error: The current working directory doesn't exist, cannot proceed.
@@ -1247,9 +1341,9 @@ __install_a_package() {
     ___load_formula_of_a_package "$1"
 
     __state 3 "checking required commands"
-    for bin in $PACKAGE_REQUIRE
+    for item in $PACKAGE_REQUIRE
     do
-        die_if_command_not_found "$bin"
+        run die_if_command_not_found $(__parse_require_item "$item")
     done
     __list_commands_info $PACKAGE_REQUIRE || return 1
 
@@ -2078,12 +2172,14 @@ __config_this_build_variables() {
         fi
     done
 
+    BUILD_FOR_TARGET2=$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')
+
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
-    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')/$MIN_SDK_API_LEVEL"
+    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib"
 
       CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
-    CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments"
-     LDFLAGS="--sysroot $SYSROOT"
+    CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$BUILD_FOR_TARGET2"
+     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR/$BUILD_FOR_TARGET2/$MIN_SDK_API_LEVEL"
 
     for item in $PACKAGE_CDEFINE
     do
