@@ -1962,6 +1962,7 @@ patches() {
         while [ -n "$1" ]
         do
             case $1 in
+                *.diff)    PATCH_CONTENT_TYPE=patch  ; require patch     ;;
                 *.patch)   PATCH_CONTENT_TYPE=patch  ; require patch     ;;
                 *.zip)     PATCH_CONTENT_TYPE=zip    ; require unzip     ;;
                 *.tar.xz)  PATCH_CONTENT_TYPE=tar.xz ; require tar xz    ;;
@@ -1970,7 +1971,7 @@ patches() {
                 *.tar.bz2) PATCH_CONTENT_TYPE=tar.bz2; require tar bzip2 ;;
                 *.tgz)     PATCH_CONTENT_TYPE=tar.gz ; require tar gzip  ;;
                 *.txz)     PATCH_CONTENT_TYPE=tar.xz ; require tar xz    ;;
-                *)  die "$1 : extension isn't recognized. the supported extensions are .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+                *)  die "$1 : extension isn't recognized. the supported extensions are .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
             esac
 
             [ ${#2} -eq 64 ] || die "$2 is not sha256sum. the length of sha256sum must be 64."
