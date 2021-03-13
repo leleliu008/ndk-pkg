@@ -1343,7 +1343,7 @@ __install_a_package() {
     __state 3 "checking required commands"
     for item in $PACKAGE_REQUIRE
     do
-        run die_if_command_not_found $(__parse_require_item "$item")
+        die_if_command_not_found $(__parse_require_item "$item")
     done
     __list_commands_info $PACKAGE_REQUIRE || return 1
 
@@ -2175,11 +2175,11 @@ __config_this_build_variables() {
     BUILD_FOR_TARGET2=$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')
 
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
-    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib"
+    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$BUILD_FOR_TARGET2/$MIN_SDK_API_LEVEL"
 
       CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$BUILD_FOR_TARGET2"
-     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR/$BUILD_FOR_TARGET2/$MIN_SDK_API_LEVEL"
+     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR"
 
     for item in $PACKAGE_CDEFINE
     do
