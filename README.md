@@ -158,6 +158,10 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         ndk-pkg prefix
         ndk-pkg prefix curl
         
+*   show the depended packages by a package
+        
+        ndk-pkg depends curl
+        
 *   cleanup the unused cache
         
         ndk-pkg cleanup
