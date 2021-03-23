@@ -896,7 +896,7 @@ __gen_dependency_tree() {
             echo "}" >> "$DEPENDENCIES__GV"
 
             if command -v dot > /dev/null ; then
-                dot -Tpng -o "$DEPENDENCIES_PNG" "$DEPENDENCIES__GV"
+                run dot -Tpng -o "$DEPENDENCIES_PNG" "$DEPENDENCIES__GV"
             else
                 warn "graphviz is not installed. we do not generate png format dependency image."
             fi
@@ -925,9 +925,10 @@ __get_brew_package_name_by_command_name() {
        gperf) echo 'gperf' ;;
         nasm) echo 'nasm'  ;;
         yasm) echo 'yasm'  ;;
-        gsed) echo 'gnu-sed' ;;
-        flex) echo 'flex'  ;;
-       bison) echo 'bison' ;;
+        gsed) echo 'gnu-sed'  ;;
+        flex) echo 'flex'     ;;
+       bison) echo 'bison'    ;;
+     objcopy) echo 'binutils' ;;
           go) echo 'go'    ;;
         perl) echo 'perl'  ;;
         tree) echo 'tree'  ;;
@@ -965,6 +966,7 @@ __version() {
       libtool) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
    libtoolize|glibtoolize)
                "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+      objcopy) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f5 ;;
          flex) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         bison) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
          yacc) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
@@ -1023,6 +1025,8 @@ __version() {
             rm $TEMP_FILE
             unset TEMP_FILE
             ;;
+         pip)  "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+         pip3) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          node) "$1" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
           zsh) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          bash) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
@@ -1438,23 +1442,26 @@ __install_a_package() {
         run cd    "$NATIVE_BUILD_DIR" || return 1
         run build0                    || return 1
     else
-        warn "no build0  function defined in formula, skipped."
+        warn " no build0  function defined in formula, skipped."
     fi
 
     __state 10 "do some preparation works"
     if command -v prepare > /dev/null ; then
+        if [ "$PWD" != "$SOURCE_DIR" ] ; then
+            cd "$SOURCE_DIR" || return 1
+        fi
         run prepare || return 1
     else
         case $PACKAGE_BUILD_SYSTEM in
             autogen)
-                warn "no prepare function defined in formula."
-                run ./autogen.sh    || return 1
+                warn " no prepare function defined in formula."
+                run NOCONFIGURE=yes ./autogen.sh    || return 1
                 ;;
             autotools)
-                warn "no prepare function defined in formula."
+                warn " no prepare function defined in formula."
                 run autoreconf -ivf || return 1
                 ;;
-            *)  warn "no prepare function defined in formula, skipped."
+            *)  warn " no prepare function defined in formula, skipped."
         esac
     fi
 
@@ -1937,6 +1944,19 @@ cdefine() {
     fi
 }
 
+# set or get list of cc flags
+ccflags() {
+    if [ $# -eq 0 ] ; then
+        echo "$PACKAGE_CCFLAGS"
+    else
+        if [ -z "$PACKAGE_CCFLAGS" ] ; then
+            PACKAGE_CCFLAGS="$@"
+        else
+            PACKAGE_CCFLAGS="$PACKAGE_CCFLAGS $@"
+        fi
+    fi
+}
+
 # set or get list of linker flags
 ldflags() {
     if [ $# -eq 0 ] ; then
@@ -2128,6 +2148,34 @@ ___load_formula_of_a_package() {
     done
 }
 
+__json_available_packages() {
+    unset PACKAGE
+    unset STR
+    unset I
+    unset AVAILABLE_PACKAGES
+    unset AVAILABLE_PACKAGES_LENGTH
+
+    AVAILABLE_PACKAGES=$(__list_available_packages)
+    AVAILABLE_PACKAGES_LENGTH=$(list_length $AVAILABLE_PACKAGES)
+
+    for item in $AVAILABLE_PACKAGES
+    do
+        I=$(expr ${I-0} + 1)
+
+        ___load_formula_of_a_package "$item"
+
+        if [ "$I" -eq 1 ] ; then
+            echo "["
+        fi
+
+        if [ "$I" -eq "$AVAILABLE_PACKAGES_LENGTH" ] ; then
+            printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM"
+        else
+            printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\"},\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM"
+        fi
+    done
+}
+
 install_installed_log() {
     cat > "$ABI_LOG_DIR/installed.log.txt" <<EOF
 installed_datetime=$TIMESTAMP_UNIX
@@ -2186,6 +2234,10 @@ __config_this_build_variables() {
     do
         CPPFLAGS="$CPPFLAGS -D$item"
     done
+
+    if [ -n "$PACKAGE_CCFLAGS" ] ; then
+        CFLAGS="$CFLAGS $PACKAGE_CCFLAGS"
+    fi
 
     if [ -n "$PACKAGE_LDFLAGS" ] ; then
         LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
@@ -3178,6 +3230,8 @@ main() {
         reinstall) __reinstall_packages "$@" ;;
         uninstall) __uninstall_packages "$@" ;;
         upgrade)   ____upgrade_packages "$@" ;;
+
+        json_available_packages) __json_available_packages ;;
 
         homepage) shift; __show_webpage_of_a_package    "$@" ;;
         depends)  shift; __show_depends_of_a_package    "$@" ;;
