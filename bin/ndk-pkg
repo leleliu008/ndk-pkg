@@ -978,6 +978,7 @@ __version() {
      help2man) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          file) "$1" --version 2> /dev/null | head -n 1 | cut -d '-' -f2 ;;
       itstool) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+       protoc) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         xmlto) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
       xmllint) ;;
      xsltproc) ;;
@@ -1221,6 +1222,13 @@ __config_global_installation_variables() {
 
     export PATH="$TOOLCHAIN_BIN_DIR:$PATH"
 
+    if [ -d "$MY_HOME_DIR/native" ] ; then
+        for item in $(find "$MY_HOME_DIR/native" -d 2 -type d -name bin)
+        do
+            export PATH="$item:$PATH"
+        done
+    fi
+
     MAKEFLAGS='-w'
 
     if [ "$VERBOSE" = 'true' ] ; then
@@ -1337,6 +1345,7 @@ __install_a_package() {
     unset SOURCE_DIR
     unset EMPTY_DIR
     unset NATIVE_BUILD_DIR
+    unset NATIVE_INSTALL_DIR
     unset BUILD_DIR
     unset BUILD_FOR_ABI
     unset CONFIG_XX_UPDATED
@@ -1358,7 +1367,7 @@ __install_a_package() {
     info "mktemp -d"
     WORKING_DIR=$(mktemp -d) || die "create working directory failed."
 
-    __state 6 "unpacking resources to working directory"
+    __state 6 "unpacking sources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
             run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
@@ -1393,21 +1402,50 @@ __install_a_package() {
     __state 9 "build for build-machine"
     if command -v build0 > /dev/null ; then
         NATIVE_BUILD_DIR="$EMPTY_DIR/native"
+        NATIVE_INSTALL_DIR="$MY_HOME_DIR/native/$PACKAGE_NAME"
 
-        printf "%17s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
+        if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
+            if [ "$(cat "$NATIVE_INSTALL_DIR/version.txt")" != "$PACKAGE_VERSION" ] ; then
+                warn " build for build-machine already have been done, but not same version. we will remove and rebuild it."
+                run rm -rf "$NATIVE_INSTALL_DIR"
+            fi
+        fi
 
-        for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
-        do
-            eval export $TOOL=\$"${TOOL}_FOR_BUILD"
-            printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
-        done
+        if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
+            warn " build for build-machine already have been done, skipped."
+        else
+            [ "$PACKAGE_BUILD_IN_SOURCE_DIR" == 'true' ] || {
+                run mkdir "$NATIVE_BUILD_DIR" || return 1
+                run cd    "$NATIVE_BUILD_DIR" || return 1
+            }
 
-        for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
-        do
-            eval export $FLAG=\$"${FLAG}_FOR_BUILD"
-            printf "\n%17s = " "$FLAG"
+            printf "%17s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
+
+            for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
+            do
+                eval export $TOOL=\$"${TOOL}_FOR_BUILD"
+                printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+            done
+
+            for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
+            do
+                eval export $FLAG=\$"${FLAG}_FOR_BUILD"
+                printf "\n%17s = " "$FLAG"
+                FIRST='true'
+                for item in $(eval echo \$$FLAG | tr ':' ' ')
+                do
+                    if [ "$FIRST" = 'true' ] ; then
+                        FIRST='false'
+                        echo "$item"
+                    else
+                        echo "                    $item"
+                    fi
+                done
+            done
+            echo
+            printf "\n%17s = " PATH
             FIRST='true'
-            for item in $(eval echo \$$FLAG | tr ':' ' ')
+            for item in $(echo "$PATH" | tr ':' ' ')
             do
                 if [ "$FIRST" = 'true' ] ; then
                     FIRST='false'
@@ -1416,31 +1454,24 @@ __install_a_package() {
                     echo "                    $item"
                 fi
             done
-        done
-        echo
-        printf "\n%17s = " PATH
-        FIRST='true'
-        for item in $(echo "$PATH" | tr ':' ' ')
-        do
-            if [ "$FIRST" = 'true' ] ; then
-                FIRST='false'
-                echo "$item"
-            else
-                echo "                    $item"
+
+            echo
+            echo "      WORKING_DIR = $WORKING_DIR"
+            echo "       SOURCE_DIR = $SOURCE_DIR"
+            echo "        EMPTY_DIR = $EMPTY_DIR"
+            echo " NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR"
+            echo " NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR"
+            echo "              PWD = $PWD"
+            echo
+
+            run build0 || return 1
+
+            echo "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
+
+            if [ -d "$NATIVE_INSTALL_DIR/bin" ] ; then
+                export PATH="$NATIVE_INSTALL_DIR/bin:$PATH"
             fi
-        done
-
-        echo
-        echo "      WORKING_DIR = $WORKING_DIR"
-        echo "       SOURCE_DIR = $SOURCE_DIR"
-        echo "        EMPTY_DIR = $EMPTY_DIR"
-        echo " NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR"
-        echo "              PWD = $PWD"
-        echo
-
-        run mkdir "$NATIVE_BUILD_DIR" || return 1
-        run cd    "$NATIVE_BUILD_DIR" || return 1
-        run build0                    || return 1
+        fi
     else
         warn " no build0  function defined in formula, skipped."
     fi
@@ -1465,30 +1496,29 @@ __install_a_package() {
         esac
     fi
 
-    __state 11 "build for target-machine"
+    __state 11 "generate dependency tree"
+    __gen_dependency_list 'true' "$1" || return 1
+    __gen_dependency_tree 'true' "$1" || return 1
+
+    __state 12 "build for target-machine"
     __install_a_package_all_builds "$1" || return 1
 
     echo
     success "$1 have been installed successfully."
 
     if [ "$KEEP_WORKING_DIR" != 'true' ] ; then
-        __state 12 "clean working directory."
+        __state 13 "clean working directory."
         run rm -rf "$WORKING_DIR" || true
     fi
 
-    __state 13 "list installed content."
+    __state 14 "list installed content."
     __tree_installed_of_a_package "$1" || true
 }
 
 __install_a_package_all_builds() {
-    unset BUILD_ROUND_NUM
-
-    __gen_dependency_list 'true' "$1" || return 1
-
-    __gen_dependency_tree 'true' "$1" || return 1
-
     PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
 
+    unset BUILD_ROUND_NUM
     unset BUILD_FOR_ABI_LIST
 
     for BUILD in $BUILD_LIST
@@ -1957,6 +1987,19 @@ ccflags() {
     fi
 }
 
+# set or get list of C++ Compiler flags
+xxflags() {
+    if [ $# -eq 0 ] ; then
+        echo "$PACKAGE_CXXFLAGS"
+    else
+        if [ -z "$PACKAGE_CXXFLAGS" ] ; then
+            PACKAGE_CXXFLAGS="$@"
+        else
+            PACKAGE_CXXFLAGS="$PACKAGE_CXXFLAGS $@"
+        fi
+    fi
+}
+
 # set or get list of linker flags
 ldflags() {
     if [ $# -eq 0 ] ; then
@@ -2032,6 +2075,8 @@ ___load_formula_of_a_package() {
     unset PACKAGE_DEPENDS
 
     unset PACKAGE_CDEFINE
+    unset PACKAGE_CCFLAGS
+    unset PACKAGE_CXXFLAGS
     unset PACKAGE_LDFLAGS
 
     unset MIN_SDK_API_LEVEL
@@ -2283,6 +2328,10 @@ __config_this_build_variables() {
 
     CXXFLAGS="$CFLAGS"
 
+    if [ -n "$PACKAGE_CXXFLAGS" ] ; then
+        CXXFLAGS="$CXXFLAGS $PACKAGE_CXXFLAGS"
+    fi
+
     ABI_INSTALL_DIR="$PKG_INSTALL_DIR/$BUILD_FOR_ABI"
     ABI_BINARY__DIR="$ABI_INSTALL_DIR/bin"
     ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
@@ -2335,10 +2384,6 @@ __config_this_build_variables() {
                 ;;
         esac
     done
-
-    if [ -n "$NATIVE_BUILD_DIR" ] && [ -d "$NATIVE_BUILD_DIR/output/bin" ] ; then
-        export PATH="$NATIVE_BUILD_DIR/output/bin:$PATH"
-    fi
 }
 
 __printf_this_build_variables() {
@@ -2441,10 +2486,6 @@ __printf_this_build_variables() {
     echo "      WORKING_DIR = $WORKING_DIR"
     echo "       SOURCE_DIR = $SOURCE_DIR"
     echo "        EMPTY_DIR = $EMPTY_DIR"
-
-    [ -n "$NATIVE_BUILD_DIR" ] &&
-    echo " NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR"
-
     echo "        BUILD_DIR = $BUILD_DIR"
     echo "              PWD = $PWD"
     echo
@@ -2492,7 +2533,7 @@ configure() {
 
     if [ "$STATE_NUM" -eq 9 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
         if run "$SOURCE_DIR"/configure \
-            --prefix="$NATIVE_BUILD_DIR/output" \
+            --prefix="$NATIVE_INSTALL_DIR" \
             $@ ; then
             echo
         else
@@ -2571,35 +2612,52 @@ make() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmake() {
-    # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
-    # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
-    if [ "$BUILD_MACHINE_OS_TYPE" = 'windows' ] ; then
-        sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
-    fi
+    if [ "$STATE_NUM" -eq 9 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
+        run "$CMAKE" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_VERBOSE_MAKEFILE=ON \
+        -DCMAKE_COLOR_MAKEFILE=ON \
+        -DCMAKE_INSTALL_PREFIX="$NATIVE_INSTALL_DIR" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DBUILD_TESTING=OFF \
+        -G "\"Unix Makefiles\"" \
+        -Wno-dev \
+        -S "$SOURCE_DIR" \
+        -B "$NATIVE_BUILD_DIR" $@ &&
+        make -C "$NATIVE_BUILD_DIR" &&
+        make -C "$NATIVE_BUILD_DIR" install
+    else
+        # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
+        # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
+        if [ "$BUILD_MACHINE_OS_TYPE" = 'windows' ] ; then
+            sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+        fi
 
-    run "$CMAKE" \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DCMAKE_VERBOSE_MAKEFILE=ON \
-    -DCMAKE_COLOR_MAKEFILE=ON \
-    -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-    -DCMAKE_PREFIX_PATH="$MY_INSTALL_DIR" \
-    -DCMAKE_FIND_ROOT_PATH="$MY_INSTALL_DIR" \
-    -DCMAKE_INSTALL_PREFIX="$ABI_INSTALL_DIR" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_FLAGS="\"'$CFLAGS $CPPFLAGS $LDFLAGS'\"" \
-    -DCMAKE_CXX_FLAGS="\"'$CFLAGS $CPPFLAGS $LDFLAGS'\"" \
-    -DBUILD_SHARED_LIBS=ON \
-    -DBUILD_TESTING=OFF \
-    -DANDROID_TOOLCHAIN=clang \
-    -DANDROID_ABI="$BUILD_FOR_ABI" \
-    -DANDROID_ARM_NEON=TRUE \
-    -DANDROID_PLATFORM="$MIN_SDK_API_LEVEL" \
-    -G "\"Unix Makefiles\"" \
-    -Wno-dev \
-    -S "$SOURCE_DIR" \
-    -B "$BUILD_DIR" $@ &&
-    make -C "$BUILD_DIR" &&
-    make -C "$BUILD_DIR" install
+        run "$CMAKE" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_VERBOSE_MAKEFILE=ON \
+        -DCMAKE_COLOR_MAKEFILE=ON \
+        -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+        -DCMAKE_PREFIX_PATH="$MY_INSTALL_DIR" \
+        -DCMAKE_FIND_ROOT_PATH="$MY_INSTALL_DIR" \
+        -DCMAKE_INSTALL_PREFIX="$ABI_INSTALL_DIR" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_C_FLAGS="\"'$CFLAGS $CPPFLAGS $LDFLAGS'\"" \
+        -DCMAKE_CXX_FLAGS="\"'$CFLAGS $CPPFLAGS $LDFLAGS'\"" \
+        -DBUILD_SHARED_LIBS=ON \
+        -DBUILD_TESTING=OFF \
+        -DANDROID_TOOLCHAIN=clang \
+        -DANDROID_ABI="$BUILD_FOR_ABI" \
+        -DANDROID_ARM_NEON=TRUE \
+        -DANDROID_PLATFORM="$MIN_SDK_API_LEVEL" \
+        -G "\"Unix Makefiles\"" \
+        -Wno-dev \
+        -S "$SOURCE_DIR" \
+        -B "$BUILD_DIR" $@ &&
+        make -C "$BUILD_DIR" &&
+        make -C "$BUILD_DIR" install
+    fi
 }
 
 # https://mesonbuild.com/Cross-compilation.html
