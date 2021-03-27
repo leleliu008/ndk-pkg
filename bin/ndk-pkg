@@ -1013,7 +1013,6 @@ __version() {
          curl) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
      awk|gawk) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 | tr , ' ' ;;
      sed|gsed) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
-          pip) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          cpan) ;;
          grep) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
          ruby) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
@@ -1293,16 +1292,47 @@ __try_to_install_required_commands_via_package_manager() {
     fi
 }
 
-die_if_command_not_found() {
-    if command_not_found "$1" ; then
-        __try_to_install_required_commands_via_package_manager "$1"
-    else
-        if [ $# -eq 3 ] ; then
-            if ! __version_compare $@ ; then
-                __try_to_install_required_commands_via_package_manager $@
+die_if_require_item_not_met() {
+    case $1 in
+        *::*)
+            case $(echo $1 | cut -d: -f1) in
+                python)
+                    die_if_require_item_not_met python
+                    die_if_require_item_not_met pip
+
+                    unset PACKAGE_REQUIRE_PYTHON_MODULE
+                    PACKAGE_REQUIRE_PYTHON_MODULE=$(echo $1 | cut -c9-)
+
+                    if ! python -c "import $PACKAGE_REQUIRE_PYTHON_MODULE" 2> /dev/null ; then
+                        pip install -U "$PACKAGE_REQUIRE_PYTHON_MODULE" || return 1
+                    fi
+
+                    if [ -z "$PACKAGE_REQUIRE_PYTHON_MODULES" ] ; then
+                        PACKAGE_REQUIRE_PYTHON_MODULES="$PACKAGE_REQUIRE_PYTHON_MODULE"
+                    else
+                        PACKAGE_REQUIRE_PYTHON_MODULES="$PACKAGE_REQUIRE_PYTHON_MODULES $PACKAGE_REQUIRE_PYTHON_MODULE"
+                    fi
+                    ;;
+                *) die "$1 not support."
+            esac
+            ;;
+        *)
+            if [ -z "$PACKAGE_REQUIRE_COMMANDS" ] ; then
+                PACKAGE_REQUIRE_COMMANDS="$1"
+            else
+                PACKAGE_REQUIRE_COMMANDS="$PACKAGE_REQUIRE_COMMANDS $1"
             fi
-        fi
-    fi
+
+            if command_not_found "$1" ; then
+                __try_to_install_required_commands_via_package_manager "$1"
+            else
+                if [ $# -eq 3 ] ; then
+                    if ! __version_compare $@ ; then
+                        __try_to_install_required_commands_via_package_manager $@
+                    fi
+                fi
+            fi
+    esac
 }
 
 die_from_installation_failed() {
@@ -1350,24 +1380,30 @@ __install_a_package() {
     unset BUILD_FOR_ABI
     unset CONFIG_XX_UPDATED
 
-    __state 2 "loading formula"
+    __state 2 "load formula"
     ___load_formula_of_a_package "$1"
 
-    __state 3 "checking required commands"
+    __state 3 "check requirements"
     for item in $PACKAGE_REQUIRE
     do
-        die_if_command_not_found $(__parse_require_item "$item")
+        die_if_require_item_not_met $(__parse_require_item "$item")
     done
-    __list_commands_info $PACKAGE_REQUIRE || return 1
 
-    __state 4 "fetching resources if needed"
+    __state 4 "list  requirements"
+    __list_commands_info $PACKAGE_REQUIRE_COMMANDS || return 1
+    for item in $PACKAGE_REQUIRE_PYTHON_MODULES
+    do
+        printf "%-11s %-10s %s\n" "$item" "$(pip show libxml2 | grep 'Version:' | cut -d ' ' -f2)" "$(pip show libxml2 | grep 'Location:' | cut -d ' ' -f2)"
+    done
+
+    __state 5 "fetch resources if needed"
     __fetch_resources_of_a_package "$1"
 
-    __state 5 "creating working directory"
+    __state 6 "create working directory"
     info "mktemp -d"
     WORKING_DIR=$(mktemp -d) || die "create working directory failed."
 
-    __state 6 "unpacking sources to working directory"
+    __state 7 "unpack sources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
             run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
@@ -1390,16 +1426,16 @@ __install_a_package() {
         SOURCE_DIR="$WORKING_DIR/$PACKAGE_SOURCE_DIR"
     fi
 
-    __state 7 "change to source directory"
+    __state 8 "change to source directory"
     run cd "$SOURCE_DIR" || return 1
 
-    __state 8 "list content of source directory"
+    __state 9 "list content of source directory"
     run ls -l
 
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
     mkdir "$EMPTY_DIR"
 
-    __state 9 "build for build-machine"
+    __state 10 "build for build-machine"
     if command -v build0 > /dev/null ; then
         NATIVE_BUILD_DIR="$EMPTY_DIR/native"
         NATIVE_INSTALL_DIR="$MY_HOME_DIR/native/$PACKAGE_NAME"
@@ -1414,7 +1450,7 @@ __install_a_package() {
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
             warn " build for build-machine already have been done, skipped."
         else
-            [ "$PACKAGE_BUILD_IN_SOURCE_DIR" == 'true' ] || {
+            [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] || {
                 run mkdir "$NATIVE_BUILD_DIR" || return 1
                 run cd    "$NATIVE_BUILD_DIR" || return 1
             }
@@ -1476,7 +1512,7 @@ __install_a_package() {
         warn " no build0  function defined in formula, skipped."
     fi
 
-    __state 10 "do some preparation works"
+    __state 11 "do some preparation works"
     if command -v prepare > /dev/null ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             cd "$SOURCE_DIR" || return 1
@@ -1496,22 +1532,31 @@ __install_a_package() {
         esac
     fi
 
-    __state 11 "generate dependency tree"
-    __gen_dependency_list 'true' "$1" || return 1
-    __gen_dependency_tree 'true' "$1" || return 1
+    __state 12 "calculate dependencies"
+    if [ -z "$PACKAGE_DEPENDS" ] ; then
+        warn " no dependencies."
+    else
+        __gen_dependency_list 'true' "$1" || return 1
+        __gen_dependency_tree 'true' "$1" || return 1
+        if [ -f "$DEPENDENCIES_TXT" ] ; then
+            cat "$DEPENDENCIES_TXT"
+        fi
+    fi
 
-    __state 12 "build for target-machine"
+    # __state 13
     __install_a_package_all_builds "$1" || return 1
 
     echo
     success "$1 have been installed successfully."
 
-    if [ "$KEEP_WORKING_DIR" != 'true' ] ; then
-        __state 13 "clean working directory."
+    __state 14 "clean working directory."
+    if [ "$KEEP_WORKING_DIR" = 'true' ] ; then
+        warn "keep  working directory."
+    else
         run rm -rf "$WORKING_DIR" || true
     fi
 
-    __state 14 "list installed content."
+    __state 15 "list installed content."
     __tree_installed_of_a_package "$1" || true
 }
 
@@ -1562,25 +1607,8 @@ ___dryrun_a_package_one_build() {
     exec "$SHELL"
 }
 
-__step() {
-    echo
-    echo "${COLOR_PURPLE}=== $*${COLOR_OFF}"
-}
-
 __install_a_package_one_build() {
-    echo
-    echo "${COLOR_PURPLE}=============== cross-build ROUND $BUILD_ROUND_NUM for $BUILD_FOR_ABI ===============${COLOR_OFF}"
-    echo
-
-    if [ -f "$DEPENDENCIES_TXT" ] ; then
-        __step "list depends packages"
-        cat "$DEPENDENCIES_TXT"
-        echo
-    fi
-
-    __step "list required commands"
-    __list_commands_info $PACKAGE_REQUIRE || return 1
-    echo
+    __state 13 "build for target-machine ${COLOR_GREEN}${BUILD_FOR_ABI}${COLOR_OFF}"
 
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
         run cd "$SOURCE_DIR" || return 1
@@ -1709,21 +1737,6 @@ install_mans() {
 install_pc_file() {
     install -v -d "$ABI_PKGCONF_DIR" &&
     cat >         "$ABI_PKGCONF_DIR/$1.pc"
-}
-
-install_files() {
-    while [ -n "$1" ]
-    do
-        case $(echo "$1" | cut -d: -f1) in
-            *.[1-8]) install_mans "$1" || return 1 ;;
-            *.h)     install_incs "$1" || return 1 ;;
-            *.a)     install_libs "$1" || return 1 ;;
-            *.so)    install_libs "$1" || return 1 ;;
-            *.pc)    install_pcfs "$1" || return 1 ;;
-            *)       install_bins "$1" || return 1 ;;
-        esac
-        shift
-    done
 }
 
 __show_infomation_of_packages() {
@@ -1974,7 +1987,7 @@ cdefine() {
     fi
 }
 
-# set or get list of cc flags
+# set or get list of C Compiler flags
 ccflags() {
     if [ $# -eq 0 ] ; then
         echo "$PACKAGE_CCFLAGS"
@@ -2071,6 +2084,8 @@ ___load_formula_of_a_package() {
     unset PACKAGE_BUILD_SYSTEM
 
     unset PACKAGE_REQUIRE
+    unset PACKAGE_REQUIRE_COMMANDS
+    unset PACKAGE_REQUIRE_PYTHON_MODULES
 
     unset PACKAGE_DEPENDS
 
@@ -2224,9 +2239,14 @@ __json_available_packages() {
 install_installed_log() {
     cat > "$ABI_LOG_DIR/installed.log.txt" <<EOF
 installed_datetime=$TIMESTAMP_UNIX
-installed_version=$PACKAGE_VERSION
-min_sdk_api_level=$MIN_SDK_API_LEVEL
-using_ndk_version=$ANDROID_NDK_VERSION
+
+installed_pkg_name=$PACKAGE_NAME
+installed_pkg_vers=$PACKAGE_VERSION
+
+used_toolchain_name='$TOOLCHAIN_NAME'
+used_toolchain_vers='$TOOLCHAIN_VERSION'
+
+min_platform_version=$PLATFORM_MIN_VERSION
 EOF
 }
 
@@ -2237,18 +2257,22 @@ die_if_load_installed_log_failed() {
     INSTALLED_LOG_FILE_PATH="$MY_INSTALL_DIR/$1/$2/log/installed.log.txt"
 
     unset installed_datetime
-    unset installed_version
-    unset min_sdk_api_level
-    unset using_ndk_version
-    
+
+    unset installed_pkg_name
+    unset installed_pkg_vers
+
+    unset used_toolchain_name
+    unset used_toolchain_vers
+
+    unset min_platform_version
+
     . "$INSTALLED_LOG_FILE_PATH" || die "$INSTALLED_LOG_FILE_PATH is broken."
 }
 
 __show_installed_log() {
-    echo "installed_datetime: $(format_unix_timestamp $installed_datetime '+%Y/%m/%d %H:%M:%S')"
-    echo "installed_version : $installed_version"
-    echo "min_sdk_api_level : $min_sdk_api_level"
-    echo "using_ndk_version : $using_ndk_version"
+    echo "installed_datetime : $(format_unix_timestamp $installed_datetime '+%Y/%m/%d %H:%M:%S')"
+    echo "installed_pkg_vers : $installed_pkg_vers"
+    echo "used_toolchain     : $used_toolchain_name $used_toolchain_vers"
 }
 
 __config_this_build_variables() {
@@ -2388,13 +2412,12 @@ __config_this_build_variables() {
 
 __printf_this_build_variables() {
     echo
-    echo "INSTALLING_PACKAGE= $1"
-    echo
-    echo "   TIMESTAMP_UNIX = $TIMESTAMP_UNIX"
-    echo
     echo " BUILD_ROUND_NUM  = $BUILD_ROUND_NUM"
     echo
-    echo " BUILD_MACHINE_OS = $BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH"
+    echo "BUILD_MACHINE_OS_TYPE = $BUILD_MACHINE_OS_TYPE"
+    echo "BUILD_MACHINE_OS_ARCH = $BUILD_MACHINE_OS_ARCH"
+    echo "BUILD_MACHINE_OS_NAME = $BUILD_MACHINE_OS_NAME"
+    echo "BUILD_MACHINE_OS_VERS = $BUILD_MACHINE_OS_VERS"
     echo
     echo " BUILD_FOR_TARGET = $BUILD_FOR_TARGET"
     echo " BUILD_FOR_ARCH   = $BUILD_FOR_ARCH"
@@ -2402,14 +2425,14 @@ __printf_this_build_variables() {
     echo
     echo "MIN_SDK_API_LEVEL = $MIN_SDK_API_LEVEL"
     echo
-    echo " ANDROID_NDK_VER  = $ANDROID_NDK_VERSION"
-    echo " ANDROID_NDK_HOME = $ANDROID_NDK_HOME"
-    echo
+    echo "TOOLCHAIN_NAME    = $TOOLCHAIN_NAME"
+    echo "TOOLCHAIN_VERSION = $TOOLCHAIN_VERSION"
+    echo "ANDROID_NDK_HOME  = $ANDROID_NDK_HOME"
+    echo "TOOLCHAIN_BIN_DIR = $TOOLCHAIN_BIN_DIR"
     echo "          SYSROOT = $SYSROOT"
     echo "SYSTEM_INCLUDE_DIR= $SYSTEM_INCLUDE_DIR"
     echo "SYSTEM_LIBRARY_DIR= $SYSTEM_LIBRARY_DIR"
     echo
-    echo "TOOLCHAIN_BIN_DIR = $TOOLCHAIN_BIN_DIR"
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
@@ -2483,6 +2506,8 @@ __printf_this_build_variables() {
     done
 
     echo
+    echo "   TIMESTAMP_UNIX = $TIMESTAMP_UNIX"
+    echo
     echo "      WORKING_DIR = $WORKING_DIR"
     echo "       SOURCE_DIR = $SOURCE_DIR"
     echo "        EMPTY_DIR = $EMPTY_DIR"
@@ -2531,7 +2556,7 @@ configure() {
         done
     fi
 
-    if [ "$STATE_NUM" -eq 9 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
+    if [ "$STATE_NUM" -eq 10 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
         if run "$SOURCE_DIR"/configure \
             --prefix="$NATIVE_INSTALL_DIR" \
             $@ ; then
@@ -2612,7 +2637,7 @@ make() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmake() {
-    if [ "$STATE_NUM" -eq 9 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
+    if [ "$STATE_NUM" -eq 10 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
         run "$CMAKE" \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
@@ -3075,9 +3100,11 @@ check_prerequisites() {
 
     [ -z "$ANDROID_NDK_HOME" ] && die "please set and export ANDROID_NDK_HOME=DIR environment variable, then try again!"
     
-    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH"
-    TOOLCHAIN_BIN_DIR="$TOOLCHAIN_ROOT/bin"
-    SYSROOT="$TOOLCHAIN_ROOT/sysroot"
+    TOOLCHAIN_NAME='android-ndk'
+    TOOLCHAIN_ROOTDIR="$ANDROID_NDK_HOME"
+    TOOLCHAIN_LLVM="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH"
+    TOOLCHAIN_BIN_DIR="$TOOLCHAIN_LLVM/bin"
+    SYSROOT="$TOOLCHAIN_LLVM/sysroot"
 
     ANDROID_NDK_VERSION="$(ndk_version)"
     ANDROID_NDK_VERSION_MAJOR="$(ndk_version_major)"
@@ -3086,6 +3113,8 @@ check_prerequisites() {
     if [ "$ANDROID_NDK_VERSION_MAJOR" -lt 19 ] ; then
         die "your installed android-ndk [$ANDROID_NDK_HOME] version is $ANDROID_NDK_VERSION, please update to r19 or newer."
     fi
+
+    TOOLCHAIN_VERSION=$ANDROID_NDK_VERSION
 
     export PATH="$ANDROID_NDK_HOME:$PATH"
 }
@@ -3251,9 +3280,9 @@ main() {
         --version|version|-V)
             echo "$MY_VERSION"
             ;;
-        version-ndk)
+        toolchain)
             check_prerequisites
-            echo "$ANDROID_NDK_VERSION"
+            echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERSION"
             ;;
         list)
             shift
