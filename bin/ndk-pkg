@@ -1336,10 +1336,10 @@ die_if_require_item_not_met() {
 }
 
 die_from_installation_failed() {
-    if [ -z "$BUILD_FOR_ABI" ] ; then
+    if [ -z "$TARGET_OS_ABI" ] ; then
         die "install $1 failed! you can go to $WORKING_DIR to see see."
     else
-        die "install $1/$BUILD_FOR_ABI failed! you can go to $WORKING_DIR to see see."
+        die "install $1/$TARGET_OS_ABI failed! you can go to $WORKING_DIR to see see."
     fi
 }
 
@@ -1377,7 +1377,7 @@ __install_a_package() {
     unset NATIVE_BUILD_DIR
     unset NATIVE_INSTALL_DIR
     unset BUILD_DIR
-    unset BUILD_FOR_ABI
+    unset TARGET_OS_ABI
     unset CONFIG_XX_UPDATED
 
     __state 2 "load formula"
@@ -1435,20 +1435,20 @@ __install_a_package() {
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
     mkdir "$EMPTY_DIR"
 
-    __state 10 "build for build-machine"
+    __state 10 "build for native"
     if command -v build0 > /dev/null ; then
         NATIVE_BUILD_DIR="$EMPTY_DIR/native"
         NATIVE_INSTALL_DIR="$MY_HOME_DIR/native/$PACKAGE_NAME"
 
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
             if [ "$(cat "$NATIVE_INSTALL_DIR/version.txt")" != "$PACKAGE_VERSION" ] ; then
-                warn " build for build-machine already have been done, but not same version. we will remove and rebuild it."
+                warn " build for native already have been done, but not same version. we will remove and rebuild it."
                 run rm -rf "$NATIVE_INSTALL_DIR"
             fi
         fi
 
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
-            warn " build for build-machine already have been done, skipped."
+            warn " build for native already have been done, skipped."
         else
             [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] || {
                 run mkdir "$NATIVE_BUILD_DIR" || return 1
@@ -1533,6 +1533,7 @@ __install_a_package() {
     fi
 
     __state 12 "calculate dependencies"
+    unset DEPENDENCY_PACKAGE_LIST
     if [ -z "$PACKAGE_DEPENDS" ] ; then
         warn " no dependencies."
     else
@@ -1564,21 +1565,21 @@ __install_a_package_all_builds() {
     PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
 
     unset BUILD_ROUND_NUM
-    unset BUILD_FOR_ABI_LIST
+    unset TARGET_OS_ABI_LIST
 
     for BUILD in $BUILD_LIST
     do
         BUILD_ROUND_NUM=$(expr ${BUILD_ROUND_NUM-0} + 1)
 
-        BUILD_FOR_ABI=$(echo "$BUILD" | cut -d: -f1)
+        TARGET_OS_ABI=$(echo "$BUILD" | cut -d: -f1)
 
-        if [ -z "$BUILD_FOR_ABI_LIST" ] ; then
-            BUILD_FOR_ABI_LIST="$BUILD_FOR_ABI"
+        if [ -z "$TARGET_OS_ABI_LIST" ] ; then
+            TARGET_OS_ABI_LIST="$TARGET_OS_ABI"
         else
-            BUILD_FOR_ABI_LIST=$(printf "%s\n%s" "$BUILD_FOR_ABI_LIST" "$BUILD_FOR_ABI")
+            TARGET_OS_ABI_LIST=$(printf "%s\n%s" "$TARGET_OS_ABI_LIST" "$TARGET_OS_ABI")
         fi
 
-        BUILD_DIR="$EMPTY_DIR/$BUILD_FOR_ABI"
+        BUILD_DIR="$EMPTY_DIR/$TARGET_OS_ABI"
 
         if [ "$DRYRUN" = 'true' ] ; then
             ___dryrun_a_package_one_build "$1" || return 1
@@ -1593,7 +1594,7 @@ __install_a_package_all_builds() {
         fi
     done
 
-    echo "$BUILD_FOR_ABI_LIST" > "$PKG_INSTALL_DIR/manifest.txt"
+    echo "$TARGET_OS_ABI_LIST" > "$PKG_INSTALL_DIR/manifest.txt"
 }
 
 ___dryrun_a_package_one_build() {
@@ -1608,7 +1609,7 @@ ___dryrun_a_package_one_build() {
 }
 
 __install_a_package_one_build() {
-    __state 13 "build for target-machine ${COLOR_GREEN}${BUILD_FOR_ABI}${COLOR_OFF}"
+    __state 13 "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
 
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
         run cd "$SOURCE_DIR" || return 1
@@ -2059,9 +2060,9 @@ patches() {
 
 sdk_api() {
     if [ $# -eq 0 ] ; then
-        echo "$MIN_SDK_API_LEVEL"
+        echo "$TARGET_OS_VERS"
     else
-        PACKAGE_MIN_SDK_API_LEVEL="$1"
+        PACKAGE_TARGET_OS_VERS="$1"
     fi
 }
 
@@ -2094,10 +2095,10 @@ ___load_formula_of_a_package() {
     unset PACKAGE_CXXFLAGS
     unset PACKAGE_LDFLAGS
 
-    unset MIN_SDK_API_LEVEL
-    unset PACKAGE_MIN_SDK_API_LEVEL
+    unset TARGET_OS_VERS
+    unset PACKAGE_TARGET_OS_VERS
 
-    # relative to $WORKING_DIR, which contains configure, CMakeLists.txt, etc.
+    # relative to $WORKING_DIR, which contains configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, etc.
     unset PACKAGE_SOURCE_DIR
     unset PACKAGE_BUILD_IN_SOURCE_DIR
 
@@ -2115,21 +2116,24 @@ ___load_formula_of_a_package() {
     . "$FORMULA_FILE_PATH" || die "$FORMULA_FILE_PATH is broken."
 
     [ -z "$PACKAGE_SUMMARY" ] && die "summary command must be invoked in $FORMULA_FILE_PATH"
-    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage command must be invoked in $FORMULA_FILE_PATH"
-    [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL=$PACKAGE_SRC_GIT
+
+    [ -z "$PACKAGE_WEBPAGE" ] && PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
+    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src_git command must be invoked in $FORMULA_FILE_PATH"
+
+    [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
     [ -z "$PACKAGE_SRC_URL" ] && die "src_url or src_git command must be invoked in $FORMULA_FILE_PATH"
 
-    if [ -z "$PACKAGE_MIN_SDK_API_LEVEL" ] ; then
-        PACKAGE_MIN_SDK_API_LEVEL=$(__list_supported_sdk_api_levels | head -n 1)
+    if [ -z "$PACKAGE_TARGET_OS_VERS" ] ; then
+        PACKAGE_TARGET_OS_VERS=$(__list_supported_sdk_api_levels | head -n 1)
     fi
 
-    if [ -z "$USER_SPECIFIED_MIN_SDK_API_LEVEL" ] ; then
-        MIN_SDK_API_LEVEL=$PACKAGE_MIN_SDK_API_LEVEL
+    if [ -z "$USER_SPECIFIED_TARGET_OS_VERS" ] ; then
+        TARGET_OS_VERS=$PACKAGE_TARGET_OS_VERS
     else
-        if [ "$PACKAGE_MIN_SDK_API_LEVEL" -gt "$USER_SPECIFIED_MIN_SDK_API_LEVEL" ] ; then
-            die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_MIN_SDK_API_LEVEL, but you want is $USER_SPECIFIED_MIN_SDK_API_LEVEL"
+        if [ "$PACKAGE_TARGET_OS_VERS" -gt "$USER_SPECIFIED_TARGET_OS_VERS" ] ; then
+            die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_TARGET_OS_VERS, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
         else
-            MIN_SDK_API_LEVEL=$USER_SPECIFIED_MIN_SDK_API_LEVEL
+            TARGET_OS_VERS=$USER_SPECIFIED_TARGET_OS_VERS
         fi
     fi
 
@@ -2229,9 +2233,9 @@ __json_available_packages() {
         fi
 
         if [ "$I" -eq "$AVAILABLE_PACKAGES_LENGTH" ] ; then
-            printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM"
+            printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
         else
-            printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\"},\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM"
+            printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"},\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
         fi
     done
 }
@@ -2243,10 +2247,10 @@ installed_datetime=$TIMESTAMP_UNIX
 installed_pkg_name=$PACKAGE_NAME
 installed_pkg_vers=$PACKAGE_VERSION
 
+supported_min_vers=$TARGET_OS_NAME-$TARGET_OS_VERS
+
 used_toolchain_name='$TOOLCHAIN_NAME'
 used_toolchain_vers='$TOOLCHAIN_VERSION'
-
-min_platform_version=$PLATFORM_MIN_VERSION
 EOF
 }
 
@@ -2261,10 +2265,10 @@ die_if_load_installed_log_failed() {
     unset installed_pkg_name
     unset installed_pkg_vers
 
+    unset supported_min_vers
+
     unset used_toolchain_name
     unset used_toolchain_vers
-
-    unset min_platform_version
 
     . "$INSTALLED_LOG_FILE_PATH" || die "$INSTALLED_LOG_FILE_PATH is broken."
 }
@@ -2272,14 +2276,24 @@ die_if_load_installed_log_failed() {
 __show_installed_log() {
     echo "installed_datetime : $(format_unix_timestamp $installed_datetime '+%Y/%m/%d %H:%M:%S')"
     echo "installed_pkg_vers : $installed_pkg_vers"
+    echo "supported_min_vers : $supported_min_vers"
     echo "used_toolchain     : $used_toolchain_name $used_toolchain_vers"
 }
 
 __config_this_build_variables() {
-    die_if_package_is_not_available "$1"
+    TARGET_OS_TYPE=android
 
-    BUILD_FOR_ARCH=$(echo_arch_by_abi "$BUILD_FOR_ABI")
-    BUILD_FOR_TARGET=$(echo_target_by_arch "$BUILD_FOR_ARCH")
+    TARGET_OS_ARCH=$(echo_arch_by_abi "$TARGET_OS_ABI")
+
+    TARGET_TRIPLE=$(echo_target_by_arch "$TARGET_OS_ARCH")
+
+    TARGET_OS_NAME=android
+
+    TARGET_TRIPLE2=$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')
+
+
+
+
 
     for tool in $(list_tools_in_the_toolchain)
     do
@@ -2290,13 +2304,11 @@ __config_this_build_variables() {
         fi
     done
 
-    BUILD_FOR_TARGET2=$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')
-
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
-    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$BUILD_FOR_TARGET2/$MIN_SDK_API_LEVEL"
+    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2/$TARGET_OS_VERS"
 
       CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
-    CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$BUILD_FOR_TARGET2"
+    CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
      LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR"
 
     for item in $PACKAGE_CDEFINE
@@ -2315,7 +2327,7 @@ __config_this_build_variables() {
     # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
     # int fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
     # off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
-    if [ $MIN_SDK_API_LEVEL -lt 24 ] ; then
+    if [ $TARGET_OS_VERS -lt 24 ] ; then
         CPPFLAGS="$CPPFLAGS -Dftello=ftell -Dfseeko=fseek"
     fi
 
@@ -2327,7 +2339,7 @@ __config_this_build_variables() {
     do
         PKG=$(printf "$PACKAGE" | tr '-' '_')
         
-        ABI_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE/$BUILD_FOR_ABI"
+        ABI_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE/$TARGET_OS_ABI"
         ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
         ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
         ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
@@ -2356,7 +2368,7 @@ __config_this_build_variables() {
         CXXFLAGS="$CXXFLAGS $PACKAGE_CXXFLAGS"
     fi
 
-    ABI_INSTALL_DIR="$PKG_INSTALL_DIR/$BUILD_FOR_ABI"
+    ABI_INSTALL_DIR="$PKG_INSTALL_DIR/$TARGET_OS_ABI"
     ABI_BINARY__DIR="$ABI_INSTALL_DIR/bin"
     ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
@@ -2378,7 +2390,7 @@ __config_this_build_variables() {
                     }
                 done
 
-                CARGO_TARGET=$(echo "$BUILD_FOR_TARGET" | sed 's/armv7a/armv7/')
+                CARGO_TARGET=$(echo "$TARGET_TRIPLE" | sed 's/armv7a/armv7/')
 
                 # https://doc.rust-lang.org/cargo/reference/environment-variables.html
                 CARGO_TARGET_XXX=$(echo "$CARGO_TARGET" | tr a-z A-Z | tr - _)
@@ -2397,9 +2409,9 @@ __config_this_build_variables() {
                 export GO111MODULE="auto"
                 export GOPROXY=https://goproxy.cn
 
-                export GOOS=android
+                export GOOS="$TARGET_OS_TYPE"
 
-                case $BUILD_FOR_ARCH in
+                case $TARGET_OS_ARCH in
                     armv7a)  export GOARCH=arm   ;;
                     aarch64) export GOARCH=arm64 ;;
                     i686)    export GOARCH=386   ;;
@@ -2414,16 +2426,17 @@ __printf_this_build_variables() {
     echo
     echo " BUILD_ROUND_NUM  = $BUILD_ROUND_NUM"
     echo
-    echo "BUILD_MACHINE_OS_TYPE = $BUILD_MACHINE_OS_TYPE"
-    echo "BUILD_MACHINE_OS_ARCH = $BUILD_MACHINE_OS_ARCH"
-    echo "BUILD_MACHINE_OS_NAME = $BUILD_MACHINE_OS_NAME"
-    echo "BUILD_MACHINE_OS_VERS = $BUILD_MACHINE_OS_VERS"
+    echo " NATIVE_OS_TYPE   = $NATIVE_OS_TYPE"
+    echo " NATIVE_OS_ARCH   = $NATIVE_OS_ARCH"
+    echo " NATIVE_OS_NAME   = $NATIVE_OS_NAME"
+    echo " NATIVE_OS_VERS   = $NATIVE_OS_VERS"
     echo
-    echo " BUILD_FOR_TARGET = $BUILD_FOR_TARGET"
-    echo " BUILD_FOR_ARCH   = $BUILD_FOR_ARCH"
-    echo " BUILD_FOR_ABI    = $BUILD_FOR_ABI"
-    echo
-    echo "MIN_SDK_API_LEVEL = $MIN_SDK_API_LEVEL"
+    echo " TARGET_OS_TYPE   = $TARGET_OS_TYPE"
+    echo " TARGET_OS_ARCH   = $TARGET_OS_ARCH"
+    echo " TARGET_OS_NAME   = $TARGET_OS_NAME"
+    echo " TARGET_OS_VERS   = $TARGET_OS_VERS"
+    echo " TARGET_OS_ABI    = $TARGET_OS_ABI"
+    echo " TARGET_TRIPLE    = $TARGET_TRIPLE"
     echo
     echo "TOOLCHAIN_NAME    = $TOOLCHAIN_NAME"
     echo "TOOLCHAIN_VERSION = $TOOLCHAIN_VERSION"
@@ -2556,7 +2569,7 @@ configure() {
         done
     fi
 
-    if [ "$STATE_NUM" -eq 10 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
+    if [ "$STATE_NUM" -eq 10 ] && [ "$STATE_MESSAGE" = 'build for native' ] ; then
         if run "$SOURCE_DIR"/configure \
             --prefix="$NATIVE_INSTALL_DIR" \
             $@ ; then
@@ -2571,7 +2584,7 @@ configure() {
         fi
     else
         if run "$SOURCE_DIR"/configure \
-            --host="\"$BUILD_FOR_TARGET\"" \
+            --host="\"$TARGET_TRIPLE\"" \
             --prefix="\"$ABI_INSTALL_DIR\"" \
             --disable-option-checking \
             --disable-rpath \
@@ -2637,7 +2650,7 @@ make() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmake() {
-    if [ "$STATE_NUM" -eq 10 ] && [ "$STATE_MESSAGE" = 'build for build-machine' ] ; then
+    if [ "$STATE_NUM" -eq 10 ] && [ "$STATE_MESSAGE" = 'build for native' ] ; then
         run "$CMAKE" \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
@@ -2655,7 +2668,7 @@ cmake() {
     else
         # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
         # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
-        if [ "$BUILD_MACHINE_OS_TYPE" = 'windows' ] ; then
+        if [ "$NATIVE_OS_TYPE" = 'windows' ] ; then
             sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
         fi
 
@@ -2673,9 +2686,9 @@ cmake() {
         -DBUILD_SHARED_LIBS=ON \
         -DBUILD_TESTING=OFF \
         -DANDROID_TOOLCHAIN=clang \
-        -DANDROID_ABI="$BUILD_FOR_ABI" \
+        -DANDROID_ABI="$TARGET_OS_ABI" \
         -DANDROID_ARM_NEON=TRUE \
-        -DANDROID_PLATFORM="$MIN_SDK_API_LEVEL" \
+        -DANDROID_PLATFORM="$TARGET_OS_VERS" \
         -G "\"Unix Makefiles\"" \
         -Wno-dev \
         -S "$SOURCE_DIR" \
@@ -2688,10 +2701,10 @@ cmake() {
 # https://mesonbuild.com/Cross-compilation.html
 # run in a subshell
 meson() {
-    case $BUILD_FOR_ARCH in
+    case $TARGET_OS_ARCH in
         armv7a)
             HOST_MACHINE_CPU_FAMILY='arm'
-            HOST_MACHINE_CPU_NAME="$BUILD_FOR_ARCH"
+            HOST_MACHINE_CPU_NAME="$TARGET_OS_ARCH"
             ;;
         aarch64)
             HOST_MACHINE_CPU_FAMILY='aarch64'
@@ -2699,17 +2712,17 @@ meson() {
             ;;
         i686)
             HOST_MACHINE_CPU_FAMILY='x86'
-            HOST_MACHINE_CPU_NAME="$BUILD_FOR_ARCH"
+            HOST_MACHINE_CPU_NAME="$TARGET_OS_ARCH"
             ;;
         x86_64)
             HOST_MACHINE_CPU_FAMILY='x86_64'
-            HOST_MACHINE_CPU_NAME="$BUILD_FOR_ARCH"
+            HOST_MACHINE_CPU_NAME="$TARGET_OS_ARCH"
             ;;
     esac
 
     cat >> "$BUILD_DIR/cross-file" <<EOF
 [host_machine]
-system = 'android'
+system = '$TARGET_OS_TYPE'
 endian = 'little'
 cpu_family = '$HOST_MACHINE_CPU_FAMILY'
 cpu = '$HOST_MACHINE_CPU_NAME'
@@ -2736,6 +2749,11 @@ EOF
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$BUILD_DIR/cross-file" \
         $@ "$BUILD_DIR" "$SOURCE_DIR" &&
+    {
+        if command -v build_configed > /dev/null ; then
+            build_configed
+        fi
+    } &&
     run ninja -C "$BUILD_DIR" &&
     run ninja -C "$BUILD_DIR" install
 }
@@ -2819,8 +2837,8 @@ ldd() {
     [ -z "$3" ] && die "type is not specified."
     [ -z "$4" ] && die "name is not specified."
 
-    BUILD_FOR_ARCH=$(echo_arch_by_abi "$2")
-    BUILD_FOR_TARGET=$(echo_target_by_arch "$BUILD_FOR_ARCH")
+    TARGET_OS_ARCH=$(echo_arch_by_abi "$2")
+    TARGET_TRIPLE=$(echo_target_by_arch "$TARGET_OS_ARCH")
     READELF="$(echo_path_of_tool_in_the_toolchain readelf)"
 
     ldd_recursion() {
@@ -2956,9 +2974,9 @@ list_flags_used_by_tools_in_the_toolchain() {
 echo_path_of_tool_in_the_toolchain() {
     unset TOOL_FILE_NAME
     case $1 in
-        cc)  TOOL_FILE_NAME="$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang"   ;;
-        cxx) TOOL_FILE_NAME="$BUILD_FOR_TARGET$MIN_SDK_API_LEVEL-clang++" ;;
-        *)   TOOL_FILE_NAME="$(echo $BUILD_FOR_TARGET | sed 's/armv7a/arm/')-$1"
+        cc)  TOOL_FILE_NAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang"   ;;
+        cxx) TOOL_FILE_NAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang++" ;;
+        *)   TOOL_FILE_NAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
              if [ "$1" = 'ld' ] && [ ! -f "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME" ] ; then
                 TOOL_FILE_NAME="$TOOL_FILE_NAME.gold"
              fi
@@ -3051,9 +3069,9 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1" ] &&
     [ -f "$1/source.properties" ] &&
     [ -f "$1/build/cmake/android.toolchain.cmake" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH/bin" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH/sysroot" ]
+    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH/bin" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH/sysroot" ]
 }
 
 check_prerequisites() {
@@ -3102,7 +3120,7 @@ check_prerequisites() {
     
     TOOLCHAIN_NAME='android-ndk'
     TOOLCHAIN_ROOTDIR="$ANDROID_NDK_HOME"
-    TOOLCHAIN_LLVM="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$BUILD_MACHINE_OS_TYPE-$BUILD_MACHINE_OS_ARCH"
+    TOOLCHAIN_LLVM="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH"
     TOOLCHAIN_BIN_DIR="$TOOLCHAIN_LLVM/bin"
     SYSROOT="$TOOLCHAIN_LLVM/sysroot"
 
@@ -3124,7 +3142,7 @@ parse_arguments() {
     unset TARGET_ARCH
 
     # https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element#api-level-table
-    unset USER_SPECIFIED_MIN_SDK_API_LEVEL
+    unset USER_SPECIFIED_TARGET_OS_VERS
 
     unset USER_SPECIFIED_PACKAGE_LIST
 
@@ -3141,7 +3159,7 @@ parse_arguments() {
     do
         case "$1" in
             --min-sdk-api-level=[1-9][0-9])
-                USER_SPECIFIED_MIN_SDK_API_LEVEL=$(getvalue "$1")
+                USER_SPECIFIED_TARGET_OS_VERS=$(getvalue "$1")
                 ;;
             --verbose|-v)
                 VERBOSE=true
@@ -3207,11 +3225,11 @@ init() {
     fi
 
     if command -v uname > /dev/null ; then
-        BUILD_MACHINE_OS_TYPE="$(tolower "$(uname)")"
-        case $BUILD_MACHINE_OS_TYPE in
-            msys*|mingw*|cygwin*) BUILD_MACHINE_OS_TYPE=windows
+        NATIVE_OS_TYPE="$(tolower "$(uname)")"
+        case $NATIVE_OS_TYPE in
+            msys*|mingw*|cygwin*) NATIVE_OS_TYPE=windows
         esac
-        BUILD_MACHINE_OS_ARCH="$(uname -m)"
+        NATIVE_OS_ARCH="$(uname -m)"
     else
         die "command not found: uname. please make sure it in PATH."
     fi
