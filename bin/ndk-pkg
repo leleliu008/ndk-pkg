@@ -1541,11 +1541,6 @@ __install_a_package() {
 #define bcmp(b1,b2,len) memcmp(b1,b2,len)
 #define wait3(status,options,rusage) waitpid(-1,options,rusage)
 EOF
-    # char* nl_langinfo(nl_item __item) __INTRODUCED_IN(26)
-    if [ $TARGET_OS_VERS -lt 26 ] ; then
-        echo '#define nl_langinfo(CODESET) "UTF-8"' >> "$EMPTY_DIR/include.h"
-    fi
-
     # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
     # https://linux.die.net/man/3/ftello
     # int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
