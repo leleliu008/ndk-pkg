@@ -1536,7 +1536,6 @@ __install_a_package() {
     # https://linux.die.net/man/3/bcmp
     # https://linux.die.net/man/2/wait3
     cat > "$EMPTY_DIR/include.h" <<EOF
-#define  index(str,ch) strchr(str,ch)
 #define rindex(str,ch) strrchr(str,ch)
 #define bcmp(b1,b2,len) memcmp(b1,b2,len)
 #define wait3(status,options,rusage) waitpid(-1,options,rusage)
