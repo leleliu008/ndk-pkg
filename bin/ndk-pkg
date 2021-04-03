@@ -908,7 +908,7 @@ __gen_dependency_tree() {
                 -G \
                 --data-urlencode "boxart=1" \
                 --data-urlencode "src=$(cat $DEPENDENCIES__GV)" \
-                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php"
+                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
         fi
     fi
 }
