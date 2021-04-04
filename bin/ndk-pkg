@@ -1546,7 +1546,7 @@ EOF
     # off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
     if [ $TARGET_OS_VERS -lt 24 ] ; then
         echo '#define ftello(f) ftell(f)' >> "$EMPTY_DIR/include.h"
-        echo '#define fseeko(f,offset,whence) fseek(f,offset,whence)' >> "$EMPTY_DIR/include.h"
+        echo '#define fseeko(f,offset,whence) fseek((f),long(offset),(whence))' >> "$EMPTY_DIR/include.h"
     fi
 
     if command -v bat > /dev/null ; then
