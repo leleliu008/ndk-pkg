@@ -1406,6 +1406,7 @@ __install_a_package() {
     __state 7 "unpack sources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
+            PACKAGE_VERSION=$(git -C "$PACKAGE_SRC_PATH" log -1 --pretty=format:%h)
             run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
@@ -1538,7 +1539,7 @@ __install_a_package() {
     cat > "$EMPTY_DIR/include.h" <<EOF
 #define rindex(str,ch) strrchr(str,ch)
 #define bcmp(b1,b2,len) memcmp(b1,b2,len)
-#define wait3(status,options,rusage) waitpid(-1,options,rusage)
+#define wait3(status,options,rusage) waitpid(-1,status,options)
 EOF
     # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
     # https://linux.die.net/man/3/ftello
