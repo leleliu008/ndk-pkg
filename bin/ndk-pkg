@@ -42,6 +42,18 @@ die() {
     exit 1
 }
 
+state() {
+    STATE_NUM=$(expr ${STATE_NUM-0} + 1)
+    STATE_MESSAGE="$@"
+
+    echo "\n${COLOR_PURPLE}=== STATE ${STATE_NUM} : ${STATE_MESSAGE} ${COLOR_OFF}"
+}
+
+run() {
+    info "$*"
+    eval "$*"
+}
+
 list() {
     for item in $@
     do
@@ -136,9 +148,204 @@ getvalue() {
     fi
 }
 
-run() {
-    info "$*"
-    eval "$*"
+__get_os_name_from_uname_a() {
+    if command -v uname > /dev/null ; then
+        unset V
+        V=$(uname -a | cut -d ' ' -f2)
+        case $V in
+            opensuse*) return 1 ;;
+            *-*) echo "$V" | cut -d- -f1 ;;
+            *)   return 1
+        esac
+    else
+        return 1
+    fi
+}
+
+__get_os_version_from_uname_a() {
+    if command -v uname > /dev/null ; then
+        unset V
+        V=$(uname -a | cut -d ' ' -f2)
+        case $V in
+            opensuse*) return 1 ;;
+            *-*) echo "$V" | cut -d- -f2 ;;
+            *)   return 1
+        esac
+    else
+        return 1
+    fi
+}
+
+# https://www.freedesktop.org/software/systemd/man/os-release.html
+__get_os_name_from_etc_os_release() {
+    if [ -f /etc/os-release ] ; then
+        unset F
+        F=$(mktemp) &&
+        cat /etc/os-release > "$F" &&
+        echo 'echo "$ID"'  >> "$F" &&
+        sh "$F"
+    else
+        return 1
+    fi
+}
+
+__get_os_version_from_etc_os_release() {
+    if [ -f /etc/os-release ] ; then
+        unset F
+        F=$(mktemp) &&
+        cat /etc/os-release > "$F" &&
+        echo 'echo "$VERSION_ID"'  >> "$F" && {
+            unset V
+            V=$(sh "$F")
+            if [ -z "$V" ] ; then
+                echo 'rolling'
+            else
+                echo "$V"
+            fi
+        }
+    else
+        return 1
+    fi
+}
+
+# https://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA/lsbrelease.html
+__get_os_name_from_lsb_release() {
+    if command -v lsb_release > /dev/null ; then
+        lsb_release --id | cut -f2
+    else
+        return 1
+    fi
+}
+
+__get_os_version_from_lsb_release() {
+    if command -v lsb_release > /dev/null ; then
+        lsb_release --release | cut -f2
+    else
+        return 1
+    fi
+}
+
+__get_os_name_from_getprop() {
+    if command -v getprop > /dev/null && command -v app_process > /dev/null ; then
+        echo 'android'
+    else
+        return 1
+    fi
+}
+
+__get_os_version_from_getprop() {
+    if command -v getprop > /dev/null ; then
+        getprop ro.build.version.release
+    else
+        return 1
+    fi
+}
+
+__get_os_arch_from_getprop() {
+    if command -v getprop > /dev/null ; then
+        getprop ro.product.cpu.abi
+    else
+        return 1
+    fi
+}
+
+__get_os_arch_from_uname() {
+    if command -v uname > /dev/null ; then
+        uname -m 2> /dev/null
+    else
+        return 1
+    fi
+}
+
+__get_os_arch_from_arch() {
+    if command -v arch > /dev/null ; then
+        arch
+    else
+        return 1
+    fi
+}
+
+os() {
+    if [ $# -eq 0 ] ; then
+        printf "current-machine-os-type : %s\n" "$(os type)"
+        printf "current-machine-os-name : %s\n" "$(os name)"
+        printf "current-machine-os-vers : %s\n" "$(os version)"
+        printf "current-machine-os-arch : %s\n" "$(os arch)"
+    elif [ $# -eq 1 ] ; then
+        case $1 in
+            -h|--help)
+                cat <<'EOF'
+os -h | --help
+os -V | --version
+os kind
+os type
+os arch
+os name
+os version
+EOF
+                ;;
+            -V|--version)
+                printf "%s\n" '2021.03.28.23'
+                ;;
+            kind)
+                case $(uname | tr A-Z a-z) in
+                    msys*)    echo "windows" ;;
+                    mingw32*) echo "windows" ;;
+                    mingw64*) echo "windows" ;;
+                    cygwin*)  echo 'windows' ;;
+                    *)  uname | tr A-Z a-z
+                esac
+                ;;
+            type)
+                case $(uname | tr A-Z a-z) in
+                    msys*)    echo "msys"    ;;
+                    mingw32*) echo "mingw32" ;;
+                    mingw64*) echo "mingw64" ;;
+                    cygwin*)  echo 'cygwin'  ;;
+                    *)  uname | tr A-Z a-z
+                esac
+                ;;
+            name)
+                case $(os kind) in
+                    freebsd) echo 'FreeBSD' ;;
+                    openbsd) echo 'OpenBSD' ;;
+                    netbsd)  echo 'NetBSD'  ;;
+                    darwin)  sw_vers -productName ;;
+                    linux)
+                        __get_os_name_from_uname_a ||
+                        __get_os_name_from_etc_os_release ||
+                        __get_os_name_from_lsb_release
+                        ;;
+                    windows)
+                        systeminfo | grep 'OS Name:' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//' ;;
+                    *)  uname | tr A-Z a-z
+                esac
+                ;;
+            arch)
+                __get_os_arch_from_uname ||
+                __get_os_arch_from_arch  ||
+                __get_os_arch_from_getprop
+                ;;
+            version)
+                case $(os kind) in
+                    freebsd) freebsd-version ;;
+                    openbsd) uname -r ;;
+                    netbsd)  uname -r ;;
+                    darwin)  sw_vers -productVersion ;;
+                    linux)
+                        __get_os_version_from_uname_a ||
+                        __get_os_version_from_etc_os_release ||
+                        __get_os_version_from_lsb_release
+                        ;;
+                    windows)
+                        systeminfo | grep 'OS Version:' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//' | cut -d ' ' -f1 ;;
+                esac
+                ;;
+            *)  echo "$1: not support item."; return 1
+        esac
+    else
+        echo "os command only support one item."; return 1
+    fi
 }
 
 prompt_user_to_install_bat() {
@@ -275,14 +482,18 @@ sha256sum() {
     fi
 }
 
+# $1 FILEPATH
+# $2 expect sha256sum
 is_sha256sum_match() {
     die_if_file_is_not_exist "$1"
     [ -z "$2" ] && die "please specify sha256sum."
     [ "$(sha256sum $1)" = "$2" ]
 }
 
+# $1 FILEPATH
+# $2 expect sha256sum
 die_if_sha256sum_mismatch() {
-    is_sha256sum_match "$1" "$2" || die "sha256sum mismatch."
+    is_sha256sum_match "$1" "$2" || die "sha256sum mismatch.\n    expect : $2\n    actual : $(sha256sum $1)"
 }
 
 __fetch_sources_of_a_package() {
@@ -915,6 +1126,8 @@ __gen_dependency_tree() {
 
 __get_brew_package_name_by_command_name() {
     case $1 in
+          m4) echo 'm4'    ;;
+         gm4) echo 'm4'    ;;
         make) echo 'make'  ;;
        gmake) echo 'gmake' ;;
        cmake) echo 'cmake' ;;
@@ -1292,6 +1505,17 @@ __try_to_install_required_commands_via_package_manager() {
     fi
 }
 
+__parse_require_item() {
+    case $1 in
+        *\<=*) echo "$1" | sed 's/<=/ le /g' ;;
+        *\>=*) echo "$1" | sed 's/>=/ ge /g' ;;
+        *=*)   echo "$1" | sed 's/<=/ eq /g' ;;
+        *\<*)  echo "$1" | sed 's/<=/ lt /g' ;;
+        *\>*)  echo "$1" | sed 's/<=/ gt /g' ;;
+        *)     echo "$1"
+    esac
+}
+
 die_if_require_item_not_met() {
     case $1 in
         *::*)
@@ -1343,34 +1567,13 @@ die_from_installation_failed() {
     fi
 }
 
-__state() {
-    STATE_NUM=$1
-
-    shift
-
-    STATE_MESSAGE="$@"
-
-    echo "\n${COLOR_PURPLE}=== STATE ${STATE_NUM} : ${STATE_MESSAGE} ${COLOR_OFF}"
-}
-
-__parse_require_item() {
-    case $1 in
-        *\<=*) echo "$1" | sed 's/<=/ le /g' ;;
-        *\>=*) echo "$1" | sed 's/>=/ ge /g' ;;
-        *=*)   echo "$1" | sed 's/<=/ eq /g' ;;
-        *\<*)  echo "$1" | sed 's/<=/ lt /g' ;;
-        *\>*)  echo "$1" | sed 's/<=/ gt /g' ;;
-        *)     echo "$1"
-    esac
-}
-
 __install_a_package() {
     # brew install meson
     # Error: The current working directory doesn't exist, cannot proceed.
     # beacuse previous package's working direcotory is deleted.
     cd ~ || return 1
 
-    __state 1 "init variables"
+    state "init variables"
     unset WORKING_DIR
     unset SOURCE_DIR
     unset EMPTY_DIR
@@ -1380,30 +1583,30 @@ __install_a_package() {
     unset TARGET_OS_ABI
     unset CONFIG_XX_UPDATED
 
-    __state 2 "load formula"
+    state "load formula"
     ___load_formula_of_a_package "$1"
 
-    __state 3 "check requirements"
+    state "check requirements"
     for item in $PACKAGE_REQUIRE
     do
         die_if_require_item_not_met $(__parse_require_item "$item")
     done
 
-    __state 4 "list  requirements"
+    state "list  requirements"
     __list_commands_info $PACKAGE_REQUIRE_COMMANDS || return 1
     for item in $PACKAGE_REQUIRE_PYTHON_MODULES
     do
         printf "%-11s %-10s %s\n" "$item" "$(pip show libxml2 | grep 'Version:' | cut -d ' ' -f2)" "$(pip show libxml2 | grep 'Location:' | cut -d ' ' -f2)"
     done
 
-    __state 5 "fetch resources if needed"
+    state "fetch resources if needed"
     __fetch_resources_of_a_package "$1"
 
-    __state 6 "create working directory"
+    state "create working directory"
     info "mktemp -d"
     WORKING_DIR=$(mktemp -d) || die "create working directory failed."
 
-    __state 7 "unpack sources to working directory"
+    state "unpack sources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
             PACKAGE_VERSION=$(git -C "$PACKAGE_SRC_PATH" log -1 --pretty=format:%h)
@@ -1427,16 +1630,16 @@ __install_a_package() {
         SOURCE_DIR="$WORKING_DIR/$PACKAGE_SOURCE_DIR"
     fi
 
-    __state 8 "change to source directory"
+    state "change to source directory"
     run cd "$SOURCE_DIR" || return 1
 
-    __state 9 "list content of source directory"
+    state "list content of source directory"
     run ls -l
 
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
     mkdir "$EMPTY_DIR"
 
-    __state 10 "build for native"
+    state "build for native"
     if command -v build0 > /dev/null ; then
         NATIVE_BUILD_DIR="$EMPTY_DIR/native"
         NATIVE_INSTALL_DIR="$MY_HOME_DIR/native/$PACKAGE_NAME"
@@ -1513,7 +1716,7 @@ __install_a_package() {
         warn " no build0  function defined in formula, skipped."
     fi
 
-    __state 11 "do some preparation works"
+    state "do some preparation works"
     if command -v prepare > /dev/null ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             cd "$SOURCE_DIR" || return 1
@@ -1556,7 +1759,7 @@ EOF
         run cat "$EMPTY_DIR/include.h"
     fi
 
-    __state 12 "calculate dependencies"
+    state "calculate dependencies"
     unset DEPENDENCY_PACKAGE_LIST
     if [ -z "$PACKAGE_DEPENDS" ] ; then
         warn " no dependencies."
@@ -1568,20 +1771,19 @@ EOF
         fi
     fi
 
-    # __state 13
     __install_a_package_all_builds "$1" || return 1
 
     echo
     success "$1 have been installed successfully."
 
-    __state 14 "clean working directory."
+    state "clean working directory."
     if [ "$KEEP_WORKING_DIR" = 'true' ] ; then
         warn "keep  working directory."
     else
         run rm -rf "$WORKING_DIR" || true
     fi
 
-    __state 15 "list installed content."
+    state "list installed content."
     __tree_installed_of_a_package "$1" || true
 }
 
@@ -1633,7 +1835,7 @@ ___dryrun_a_package_one_build() {
 }
 
 __install_a_package_one_build() {
-    __state 13 "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
+    state "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
 
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
         run cd "$SOURCE_DIR" || return 1
@@ -2305,6 +2507,7 @@ __show_installed_log() {
 }
 
 __config_this_build_variables() {
+    TARGET_OS_KIND=linux
     TARGET_OS_TYPE=android
 
     TARGET_OS_ARCH=$(echo_arch_by_abi "$TARGET_OS_ABI")
@@ -2462,15 +2665,18 @@ __printf_this_build_variables() {
     echo
     echo " BUILD_ROUND_NUM  = $BUILD_ROUND_NUM"
     echo
+    echo " NATIVE_OS_KIND   = $NATIVE_OS_KIND"
     echo " NATIVE_OS_TYPE   = $NATIVE_OS_TYPE"
-    echo " NATIVE_OS_ARCH   = $NATIVE_OS_ARCH"
     echo " NATIVE_OS_NAME   = $NATIVE_OS_NAME"
     echo " NATIVE_OS_VERS   = $NATIVE_OS_VERS"
+    echo " NATIVE_OS_ARCH   = $NATIVE_OS_ARCH"
     echo
+    echo " TARGET_OS_KIND   = $TARGET_OS_KIND"
     echo " TARGET_OS_TYPE   = $TARGET_OS_TYPE"
-    echo " TARGET_OS_ARCH   = $TARGET_OS_ARCH"
     echo " TARGET_OS_NAME   = $TARGET_OS_NAME"
     echo " TARGET_OS_VERS   = $TARGET_OS_VERS"
+    echo " TARGET_OS_ARCH   = $TARGET_OS_ARCH"
+    echo
     echo " TARGET_OS_ABI    = $TARGET_OS_ABI"
     echo " TARGET_TRIPLE    = $TARGET_TRIPLE"
     echo
@@ -2616,7 +2822,7 @@ configure() {
         done
     fi
 
-    if [ "$STATE_NUM" -eq 10 ] && [ "$STATE_MESSAGE" = 'build for native' ] ; then
+    if [ "$STATE_MESSAGE" = 'build for native' ] ; then
         if run "$SOURCE_DIR"/configure \
             --prefix="$NATIVE_INSTALL_DIR" \
             $@ ; then
@@ -2697,7 +2903,7 @@ make() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmake() {
-    if [ "$STATE_NUM" -eq 10 ] && [ "$STATE_MESSAGE" = 'build for native' ] ; then
+    if [ [ "$STATE_MESSAGE" = 'build for native' ] ; then
         run "$CMAKE" \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
@@ -2715,7 +2921,7 @@ cmake() {
     else
         # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
         # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
-        if [ "$NATIVE_OS_TYPE" = 'windows' ] ; then
+        if [ "$NATIVE_OS_KIND" = 'windows' ] ; then
             sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
         fi
 
@@ -3116,9 +3322,9 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1" ] &&
     [ -f "$1/source.properties" ] &&
     [ -f "$1/build/cmake/android.toolchain.cmake" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH/bin" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH/sysroot" ]
+    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH/bin" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH/sysroot" ]
 }
 
 check_prerequisites() {
@@ -3167,7 +3373,7 @@ check_prerequisites() {
     
     TOOLCHAIN_NAME='android-ndk'
     TOOLCHAIN_ROOTDIR="$ANDROID_NDK_HOME"
-    TOOLCHAIN_LLVM="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH"
+    TOOLCHAIN_LLVM="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     TOOLCHAIN_BIN_DIR="$TOOLCHAIN_LLVM/bin"
     SYSROOT="$TOOLCHAIN_LLVM/sysroot"
 
@@ -3272,11 +3478,11 @@ init() {
     fi
 
     if command -v uname > /dev/null ; then
-        NATIVE_OS_TYPE="$(tolower "$(uname)")"
-        case $NATIVE_OS_TYPE in
-            msys*|mingw*|cygwin*) NATIVE_OS_TYPE=windows
-        esac
-        NATIVE_OS_ARCH="$(uname -m)"
+        NATIVE_OS_KIND=$(os kind)
+        NATIVE_OS_TYPE=$(os kind)
+        NATIVE_OS_NAME=$(os name)
+        NATIVE_OS_VERS=$(os version)
+        NATIVE_OS_ARCH=$(os arch)
     else
         die "command not found: uname. please make sure it in PATH."
     fi
