@@ -2903,7 +2903,7 @@ make() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmake() {
-    if [ [ "$STATE_MESSAGE" = 'build for native' ] ; then
+    if [ "$STATE_MESSAGE" = 'build for native' ] ; then
         run "$CMAKE" \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
