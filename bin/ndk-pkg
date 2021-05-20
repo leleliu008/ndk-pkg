@@ -2097,7 +2097,7 @@ ___load_formula_of_a_package() {
     PACKAGE_TARGET_OS_VERS=$PACKAGE_SDK_API
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
-    [ "$PACKAGE_BINSRCD" = 1 ] && PACKAGE_BUILD_IN_SOURCE_DIR=1
+    [ "$PACKAGE_BINSRCD" = 'true' ] && PACKAGE_BUILD_IN_SOURCE_DIR='true'
 
     [ -z "$PACKAGE_SUMMARY" ] && die "summary command must be invoked in $FORMULA_FILE_PATH"
 
