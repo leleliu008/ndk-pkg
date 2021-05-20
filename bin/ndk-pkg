@@ -2735,7 +2735,7 @@ __pack_bottle_of_a_package() {
 }
 
 get_direct_dependency_package_list_of_a_package() {
-    grep '^\s*depends\s*".*"' "$MY_FORMULA_DIR/$1.sh" | sed 's/.*depends.*"\(.*\)"/\1/'
+    grep '^\s*package set dep\.pkg\s*".*"' "$MY_FORMULA_DIR/$1.sh" | sed 's/.*package set dep\.pkg.*"\(.*\)"/\1/'
 }
 
 # $1 is first call
