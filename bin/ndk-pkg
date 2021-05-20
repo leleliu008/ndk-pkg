@@ -2099,13 +2099,13 @@ ___load_formula_of_a_package() {
 
     [ "$PACKAGE_BINSRCD" = 'true' ] && PACKAGE_BUILD_IN_SOURCE_DIR='true'
 
-    [ -z "$PACKAGE_SUMMARY" ] && die "summary command must be invoked in $FORMULA_FILE_PATH"
+    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $FORMULA_FILE_PATH"
 
     [ -z "$PACKAGE_WEBPAGE" ] && PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src_git command must be invoked in $FORMULA_FILE_PATH"
+    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $FORMULA_FILE_PATH"
 
     [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_SRC_URL" ] && die "src_url or src_git command must be invoked in $FORMULA_FILE_PATH"
+    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $FORMULA_FILE_PATH"
 
     if [ -z "$PACKAGE_TARGET_OS_VERS" ] ; then
         PACKAGE_TARGET_OS_VERS=$(__list_supported_sdk_api_levels | head -n 1)
@@ -2147,7 +2147,7 @@ ___load_formula_of_a_package() {
             else
                 PACKAGE_SRC_PATH=$(expr substr "$PACKAGE_SRC_URL" 7 ${#PACKAGE_SRC_URL})
             fi
-            [ -d "$PACKAGE_SRC_PATH" ] || die "src_url argument point to dir is not exist."
+            [ -d "$PACKAGE_SRC_PATH" ] || die "src.url point to dir is not exist."
             ;;
         git)
             PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
@@ -2155,12 +2155,12 @@ ___load_formula_of_a_package() {
             ;;
         *)
             if [ -z "$PACKAGE_SRC_SUM" ] ; then
-                die "src_sum command is not invoked in $FORMULA_FILE_PATH"
+                die "src.sum is not configed in $FORMULA_FILE_PATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 if [ -z "$PACKAGE_VERSION" ] ; then
-                    die "version command is not invoked in $FORMULA_FILE_PATH"
+                    die "version is not configed in $FORMULA_FILE_PATH"
                 else
                     case $PACKAGE_VERSION in
                         v*) if command -v cut > /dev/null ; then
@@ -2963,6 +2963,7 @@ __install_a_package() {
     unset BUILD_DIR
     unset TARGET_OS_ABI
     unset CONFIG_XX_UPDATED
+    unset STATE_NUM
 
     state "load formula"
     ___load_formula_of_a_package "$1"
