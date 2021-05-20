@@ -1947,7 +1947,7 @@ package() {
             __PACKAGE_KEY__="$1"
             shift
             __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr - _  | tr . _ | tr a-z A-Z)"
-            eval "PACKAGE_$__PACKAGE_KEY__='$@'" || exit 1
+            eval "PACKAGE_$__PACKAGE_KEY__=\"$@\"" || exit 1
             ;;
         get)
             shift
@@ -1962,7 +1962,7 @@ package() {
             shift
             __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr - _  | tr . _ | tr a-z A-Z)"
             __PACKAGE_VAL__="$(eval echo \$PACKAGE_$__PACKAGE_KEY__)"
-            eval "PACKAGE_$__PACKAGE_KEY__='$__PACKAGE_VAL__ $@'" || exit 1
+            eval "PACKAGE_$__PACKAGE_KEY__=\"$__PACKAGE_VAL__ $@\"" || exit 1
             ;;
         '') die "operation can not be empty." ;;
         *)  die "$1: operation not support "
