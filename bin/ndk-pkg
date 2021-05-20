@@ -2430,7 +2430,7 @@ __list_packages_which_is_not_depended_by_others() {
                 continue
             else
                 ___load_formula_of_a_package "$y"
-                for z in $PACKAGE_DEPENDS
+                for z in $PACKAGE_DEP_PKG
                 do
                     if [ "$x" = "$z" ] ; then
                         BREAK=true
@@ -3154,7 +3154,7 @@ EOF
 
     state "calculate dependencies"
     unset DEPENDENCY_PACKAGE_LIST
-    if [ -z "$PACKAGE_DEPENDS" ] ; then
+    if [ -z "$PACKAGE_DEP_PKG" ] ; then
         warn " no dependencies."
     else
         __gen_dependency_list 'true' "$1" || return 1
@@ -3396,10 +3396,10 @@ __show_infomation_of_a_package() {
     echo "summary : $PACKAGE_SUMMARY"
     echo "webpage : $PACKAGE_WEBPAGE"
 
-    [ -z "$PACKAGE_DEPENDS" ] || {
+    [ -z "$PACKAGE_DEP_PKG" ] || {
         unset DEPENDENCIES
 
-        for dependencyPkgName in $PACKAGE_DEPENDS
+        for dependencyPkgName in $PACKAGE_DEP_PKG
         do
             if [ -z "$DEPENDENCIES" ] ; then
                 DEPENDENCIES="depends : $(mark_is_package_installed_or_not $dependencyPkgName)"
