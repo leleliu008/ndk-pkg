@@ -24,6 +24,8 @@ _commands=(
     'prefix:show the installation direcotory of a formula or the ndk-pkg home.'
     'pack:pack a installed package.'
     'logs:print the logs of a installed package.'
+    'repo:fomula repo mapulation.'
+    'get:get value of the given key of the given package.'
     'is:check something. easy to write script.'
 )
 
@@ -100,6 +102,15 @@ function _ndk_pkg() {
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
                         '2:abi:($(ndk-pkg list abis))'
+                    ;;
+                repo)
+                    _arguments \
+                        '1:action:(list)'
+                    ;;
+                get)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_available_packages' \
+                        '2:key:(summary webpage version license src.git src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem)'
                     ;;
                 install)
                     _arguments \

@@ -96,28 +96,26 @@ shiftn() {
 
 sed_in_place() {
     if command -v gsed > /dev/null ; then
-        gsed -i "$1" "$2"
+        unset SED_ACTION
+        SED_ACTION="$1"
+        shift
+        run gsed -i "\"$SED_ACTION\"" $@
     elif command -v sed  > /dev/null ; then
-        sed -i    "$1" "$2" 2> /dev/null || 
-        sed -i "" "$1" "$2"
+        if sed -i 's/a/b/g' $(mktemp) 2> /dev/null ; then
+            unset SED_ACTION
+            SED_ACTION="$1"
+            shift
+            run sed -i "\"$SED_ACTION\"" $@
+        else
+            unset SED_ACTION
+            SED_ACTION="$1"
+            shift
+            run sed -i '""' "\"$SED_ACTION\"" $@
+        fi
     else
         die "please install sed utility."
     fi
 }
-
-# sed_in_place() {
-#     if command -v gsed > /dev/null ; then
-#         run gsed -i "'$1'" $(shiftn 1 $@)
-#     elif command -v sed  > /dev/null ; then
-#         if sed -i 's/a/b/g' $(mktemp) 2> /dev/null ; then
-#             run sed -i "'$1'" $(shiftn 1 $@)
-#         else
-#             run sed -i '""' "'$1'" $(shiftn 1 $@)
-#         fi
-#     else
-#         die "please install sed utility."
-#     fi
-# }
 
 getvalue() {
     if [ $# -eq 0 ] ; then
@@ -396,15 +394,21 @@ __get_available_fetch_tool() {
 
 __fetch_via_git() {
     if [ -d "$FETCH_OUTPUT_PATH" ] ; then
-        if      git -C "$FETCH_OUTPUT_PATH" rev-parse 2> /dev/null ; then
-            run git -C "$FETCH_OUTPUT_PATH" pull &&
-            run git -C "$FETCH_OUTPUT_PATH" submodule update --recursive
+        run cd  "$FETCH_OUTPUT_PATH" || return 1
+        if      git rev-parse 2> /dev/null ; then
+            run git pull &&
+            run git submodule update --recursive
         else
-            run rm -rf "$FETCH_OUTPUT_PATH" &&
-            run git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+            run cd .. &&
+            run rm -rf "$FETCH_OUTPUT_NAME" &&
+            run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
         fi
     else
-        run git -C "$FETCH_OUTPUT_DIR" clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+        if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR" || return 1
+        fi
+        run cd "$FETCH_OUTPUT_DIR" || return 1
+        run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
     fi
 }
 
@@ -642,7 +646,7 @@ os() {
         printf "current-machine-os-kind : %s\n" "$(os kind)"
         printf "current-machine-os-type : %s\n" "$(os type)"
         printf "current-machine-os-name : %s\n" "$(os name)"
-        printf "current-machine-os-vers : %s\n" "$(os version)"
+        printf "current-machine-os-vers : %s\n" "$(os vers)"
         printf "current-machine-os-arch : %s\n" "$(os arch)"
         printf "current-machine-os-libc : %s\n" "$(os libc)"
     elif [ $# -eq 1 ] ; then
@@ -656,7 +660,7 @@ os type
 os arch
 os libc
 os name
-os version
+os vers
 EOF
                 ;;
             -V|--version) echo '2021.03.28.23' ;;
@@ -723,7 +727,7 @@ EOF
                         return 1
                 esac
                 ;;
-            version)
+            vers)
                 case $(os kind) in
                     freebsd) freebsd-version ;;
                     openbsd) uname -r ;;
@@ -1929,9 +1933,9 @@ regist_dependency() {
 # package set|add license "IJG"
 # package set|add dep-cmd "nasm"
 # package set|add bsystem "cmake"
-# package set|add binsrcd 1
+# package set|add binsrcd 'true'
 #
-# package get     binsrcd
+# package get PACKAGE KEY
 package() {
     unset __PACKAGE_KEY__
 
@@ -1951,9 +1955,9 @@ package() {
             ;;
         get)
             shift
-            __PACKAGE_KEY__="$1"
+            ___load_a_formula "$1"
             shift
-            __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr - _  | tr . _ | tr a-z A-Z)"
+            __PACKAGE_KEY__="$(echo "$1" | tr - _  | tr . _ | tr a-z A-Z)"
             eval echo \$PACKAGE_$__PACKAGE_KEY__ || exit 1
             ;;
         add)
@@ -1968,24 +1972,6 @@ package() {
         *)  die "$1: operation not support "
     esac
 }
-
-# set or get build system.
-#
-# examples:
-# package build --system cmake --where sourced
-#
-# --system:
-# - autogen        package dep.cmd make automake autoconf autoreconf
-# - autotools      package dep.cmd make automake autoconf autoreconf
-# - configure      package dep.cmd make
-# - cmake          package dep.cmd cmake
-# - cmake-make     package dep.cmd cmake make
-# - cmake-ninja    package dep.cmd cmake ninja
-# - meson          package dep.cmd meson ninja
-# - make           package dep.cmd make
-# - ninja          package dep.cmd ninja
-# - cargo          package dep.cmd cargo rustup
-# - go             package dep.cmd go
 
 __parse_require_item() {
     case $1 in
@@ -2040,7 +2026,7 @@ __parse_package_patches() {
 ##############################################################################
 # {{{ operations of formula
 
-___load_formula_of_a_package() {
+___load_a_formula() {
     die_if_package_is_not_available "$1"
 
     unset PACKAGE_NAME
@@ -2090,22 +2076,22 @@ ___load_formula_of_a_package() {
 
     PACKAGE_NAME="$1"
 
-    FORMULA_FILE_PATH="$MY_FORMULA_DIR/$PACKAGE_NAME.sh"
+    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
 
-    . "$FORMULA_FILE_PATH" || die "$FORMULA_FILE_PATH is broken."
+    . "$PACKAGE_FORMULA_PATH" || die "$PACKAGE_FORMULA_PATH is broken."
 
     PACKAGE_TARGET_OS_VERS=$PACKAGE_SDK_API
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
     [ "$PACKAGE_BINSRCD" = 'true' ] && PACKAGE_BUILD_IN_SOURCE_DIR='true'
 
-    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $FORMULA_FILE_PATH"
+    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $PACKAGE_FORMULA_PATH"
 
     [ -z "$PACKAGE_WEBPAGE" ] && PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $FORMULA_FILE_PATH"
+    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $PACKAGE_FORMULA_PATH"
 
     [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $FORMULA_FILE_PATH"
+    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $PACKAGE_FORMULA_PATH"
 
     if [ -z "$PACKAGE_TARGET_OS_VERS" ] ; then
         PACKAGE_TARGET_OS_VERS=$(__list_supported_sdk_api_levels | head -n 1)
@@ -2151,16 +2137,16 @@ ___load_formula_of_a_package() {
             ;;
         git)
             PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
-            PACKAGE_SRC_PATH="$MY_CACHED_DIR/$PACKAGE_SRC_NAME"
+            PACKAGE_SRC_PATH="$MY_CACHED_SOURCE_DIR/$PACKAGE_SRC_NAME"
             ;;
         *)
             if [ -z "$PACKAGE_SRC_SUM" ] ; then
-                die "src.sum is not configed in $FORMULA_FILE_PATH"
+                die "src.sum is not configed in $PACKAGE_FORMULA_PATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
-                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr _ - | sed 's|-stable||' | sed 's|-src||' | sed 's|.orig.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 if [ -z "$PACKAGE_VERSION" ] ; then
-                    die "version is not configed in $FORMULA_FILE_PATH"
+                    die "version is not configed in $PACKAGE_FORMULA_PATH"
                 else
                     case $PACKAGE_VERSION in
                         v*) if command -v cut > /dev/null ; then
@@ -2174,7 +2160,7 @@ ___load_formula_of_a_package() {
                 fi
             fi
             PACKAGE_SRC_NAME="$PACKAGE_NAME-$PACKAGE_VERSION.$PACKAGE_SRC_TYPE"
-            PACKAGE_SRC_PATH="$MY_CACHED_DIR/$PACKAGE_SRC_NAME"
+            PACKAGE_SRC_PATH="$MY_CACHED_SOURCE_DIR/$PACKAGE_SRC_NAME"
     esac
 
     for item in $PACKAGE_BUILD_SYSTEM
@@ -2208,59 +2194,65 @@ ___load_formula_of_a_package() {
 }
 
 ____view_a_formula() {
-    die_if_package_is_not_available "$1"
+    die_if_package_is_not_specified "$1"
+
+    unset PACKAGE_FORMULA_PATH
+    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+
+    [ -z "$PACKAGE_FORMULA_PATH" ] && die "$1 package is not available."
 
     [ -z "$2" ] || warn "view action accept only one argument."
     
     if command -v bat > /dev/null ; then
-        bat "$MY_FORMULA_DIR/$1.sh"
+        bat "$PACKAGE_FORMULA_PATH"
     else
-        cat "$MY_FORMULA_DIR/$1.sh"
+        cat "$PACKAGE_FORMULA_PATH"
         echo
         prompt_user_to_install_bat
     fi    
 }
 
 ____edit_a_formula() {
-    die_if_package_is_not_available "$1"
+    die_if_package_is_not_specified "$1"
+
+    unset PACKAGE_FORMULA_PATH
+    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+
+    [ -z "$PACKAGE_FORMULA_PATH" ] && die "$1 package is not available."
 
     [ -z "$2" ] || warn "edit action accept only one argument."
 
-    [ -z "$EDITOR" ] &&
-    EDITOR=$(command -v nvim) ||
-    EDITOR=$(command -v vim) ||
-    EDITOR=$(command -v vi) ||
-    EDITOR=$(command -v open) ||
-    die "please set EDITOR environment variable."
+    [ -z "$EDITOR" ] && EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open)
+    [ -z "$EDITOR" ] && die "please set EDITOR environment variable."
 
-    "$EDITOR" "$MY_FORMULA_DIR/$1.sh"
+    "$EDITOR" "$PACKAGE_FORMULA_PATH"
 }
 
 __create_a_formula() {
     die_if_package_is_already_exist "$1"
 
-    cat > "$MY_FORMULA_DIR/$1.sh" <<EOF
-summary "Summary of this package"
+    cat > "$MY_FORMULA_REPO_DIR/$1.sh" <<EOF
+package set summary "Summary of this package"
 
-webpage "https://www.xx.com"
+package set webpage "https://www.xx.com"
 
 # the source code download url of this package. the value of src_url must end with one of .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz
-src_url "https://www.xx.com/pkgname-x.y.z.tar.gz"
+package set src.url "https://www.xx.com/pkgname-x.y.z.tar.gz"
 
 # the sha256sum of source code. If the value of src_url end with .git, this function is optional, otherwise, this function must be invoked.
-src_sum "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
+package set src.sum "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
 
 # the version of this package. If this function is not invoked, it will be calculated from src_url.
-#version "x.y.z"
+#package set version "x.y.z"
 
 # the license of this package.
-#license "MIT"
+#package set license "MIT"
 
 # the required commands of this package when installing. If specify multiple values, separate them with spaces.
-#require "a b c"
+#package set dep.cmd "a b c"
 
 # the packages are depended by this package. If specify multiple values, separate them with spaces.
-#depends "a b c"
+#package set dep.pkg "a b c"
 
 prepare() {
     :
@@ -2270,20 +2262,24 @@ prepare() {
 build() {
     :
     #configure
-    #cmake
-    #meson
-    #cargo
-    #go
-    #make
+    #cargow
+    #mesonw
+    #cmakew
+    #makew
 }
 EOF
     ____edit_a_formula "$1"
 }
 
 __delete_a_formula() {
-    die_if_package_is_not_available "$1"
+    die_if_package_is_not_specified "$1"
 
-    if rm "$MY_FORMULA_DIR/$1.sh" ; then
+    unset PACKAGE_FORMULA_PATH
+    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+
+    [ -z "$PACKAGE_FORMULA_PATH" ] && die "$1 package is not available."
+
+    if rm "$PACKAGE_FORMULA_PATH" ; then
         success "delete $1 formula success."
     else
         die "delete $1 formula failed."
@@ -2291,18 +2287,84 @@ __delete_a_formula() {
 }
 
 __rename_a_formula() {
-    die_if_package_is_not_available "$1"
-    die_if_package_is_already_exist "$2"
+    die_if_package_is_not_specified "$1"
+    die_if_package_is_not_specified "$2"
 
-    if mv "$MY_FORMULA_DIR/$1.sh" "$MY_FORMULA_DIR/$2.sh" ; then
+    unset PACKAGE_FORMULA_REPO
+    PACKAGE_FORMULA_REPO="$(__repoof_a_formula $1)"
+
+    if [ -z "$PACKAGE_FORMULA_REPO" ] ; then
+        die "$1 package is not available."
+    fi
+
+    unset PACKAGE_FORMULA_PATH_OLD
+    unset PACKAGE_FORMULA_PATH_NEW
+
+    PACKAGE_FORMULA_PATH_OLD="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.sh"
+    PACKAGE_FORMULA_PATH_NEW="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.sh"
+
+    if [ -f "$PACKAGE_FORMULA_PATH_NEW" ] ; then
+        die "$2 package is already exist."
+    fi
+
+    if mv "$PACKAGE_FORMULA_PATH_OLD" "$PACKAGE_FORMULA_PATH_NEW" ; then
         success "rename formula $1 -> $2 success."
     else
         die "rename formula $1 -> $2 failed."
     fi
 }
 
-__update_formula_repository() {
-    fetch "$MY_FORMULA_REPO_URL" --output-dir="$MY_HOME_DIR" --output-name=formula
+__repoof_a_formula() {
+    die_if_package_is_not_specified "$1"
+
+    for repo in $(____list_formula_repositories | cut -d= -f1)
+    do
+        if [ -e  "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
+            echo "$repo"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+__pathof_a_formula() {
+    die_if_package_is_not_specified "$1"
+
+    for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
+    do
+        if [ -e  "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
+            echo "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+____list_formula_repositories() {
+    if [ -e "$MY_HOME_DIR/repos" ] ; then
+        cat "$MY_HOME_DIR/repos"
+    else
+        install -d "$MY_HOME_DIR"
+        echo "offical=https://github.com/leleliu008/ndk-pkg-formula.git" | tee "$MY_HOME_DIR/repos"
+    fi
+}
+
+__update_formula_repositories() {
+    handle_dependency required command git || return 1
+
+    for repo in $(____list_formula_repositories)
+    do
+        unset MY_FORMULA_REPO_NAME
+        unset MY_FORMULA_REPO_URL_
+
+        MY_FORMULA_REPO_NAME=$(echo "$repo" | cut -d= -f1)
+        MY_FORMULA_REPO_URL_=$(echo "$repo" | cut -d= -f2)
+
+        info "=== Updating repository ${COLOR_GREEN}$MY_FORMULA_REPO_NAME${COLOR_OFF}"
+        fetch "$MY_FORMULA_REPO_URL_" --output-dir="$MY_FORMULA_REPO_DIR" --output-name="$MY_FORMULA_REPO_NAME" || return 1
+    done
 }
 
 # }}}
@@ -2325,7 +2387,7 @@ __fetch_patches_of_a_package() {
     # fetch patches if posible
     while [ -n "$1" ]
     do
-        fetch "$1" --sha256="$2" --output-dir="$MY_PATCH_DIR/$PACKAGE_NAME" --output-name="$(basename $1)"
+        fetch "$1" --sha256="$2" --output-dir="$MY_CACHED_PATCH__DIR/$PACKAGE_NAME" --output-name="$(basename $1)"
         
         if [ -z "$PACKAGE_PATCHES" ] ; then
             PACKAGE_PATCHES="$FETCH_OUTPUT_PATH"
@@ -2340,11 +2402,6 @@ __fetch_patches_of_a_package() {
 __fetch_resources_of_a_package() {
     __fetch_sources_of_a_package
     __fetch_patches_of_a_package $PACKAGE_PATCHES
-}
-
-die_if_file_is_not_executable() {
-    die_if_file_is_not_exist "$1"
-    [ -x "$1" ] || die "$1 is not executable."
 }
 
 die_if_abi_____is_not_specified() {
@@ -2376,7 +2433,7 @@ die_if_package_is_not_available() {
 
 die_if_package_is_already_exist() {
     die_if_package_is_not_specified "$1"
-    [ -f "$MY_FORMULA_DIR/$1.sh" ] && die "$1 package is already exist."
+    [ -n "$(__pathof_a_formula $1)" ] && die "$1 package is already exist."
 }
 
 die_from_package_is_not_installed() {
@@ -2389,34 +2446,34 @@ die_if_package_is_not_installed() {
 
 is_package_available() {
     die_if_package_is_not_specified "$1"
-    [ -f "$MY_FORMULA_DIR/$1.sh" ]
+    [ -n "$(__pathof_a_formula $1)" ]
 }
 
 is_package_installed() {
     die_if_package_is_not_specified "$1"
     
-    [ -d "$MY_INSTALL_DIR/$1" ]              || return 1
-    [ -f "$MY_INSTALL_DIR/$1/manifest.txt" ] || return 1
+    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 1
+    [ -f "$MY_CACHED_LOG_DIR/$1/install.log.txt" ] || return 1
 
-    for ABI in $(cat "$MY_INSTALL_DIR/$1/manifest.txt")
+    for ABI in $(cat "$MY_CACHED_LOG_DIR/$1/install.log.txt")
     do
-        [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                       || return 1
-        [ -d "$MY_INSTALL_DIR/$1/$ABI/log" ]                   || return 1
-        [ -f "$MY_INSTALL_DIR/$1/$ABI/log/installed.log.txt" ] || return 1
+        [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                      || return 1
+        [ -d "$MY_CACHED_LOG_DIR/$1/$ABI" ]                   || return 1
+        [ -f "$MY_CACHED_LOG_DIR/$1/$ABI/installed.log.txt" ] || return 1
     done
 }
 
 is_package__outdated() {
-    ___load_formula_of_a_package "$1"
+    ___load_a_formula "$1"
 
-    [ -d "$MY_INSTALL_DIR/$1" ]              || die_from_package_is_not_installed "$1"
-    [ -f "$MY_INSTALL_DIR/$1/manifest.txt" ] || die_from_package_is_not_installed "$1"
+    [ -d "$MY_INSTALL_DIR/$1" ]                    || die_from_package_is_not_installed "$1"
+    [ -f "$MY_CACHED_LOG_DIR/$1/install.log.txt" ] || die_from_package_is_not_installed "$1"
 
     for ABI in $(__list_abis_of_a_installed_package "$1")
     do
-        [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                       || die_from_package_is_not_installed "$1"
-        [ -d "$MY_INSTALL_DIR/$1/$ABI/log" ]                   || die_from_package_is_not_installed "$1"
-        [ -f "$MY_INSTALL_DIR/$1/$ABI/log/installed.log.txt" ] || die_from_package_is_not_installed "$1"
+        [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                      || die_from_package_is_not_installed "$1"
+        [ -d "$MY_CACHED_LOG_DIR/$1/$ABI" ]                   || die_from_package_is_not_installed "$1"
+        [ -f "$MY_CACHED_LOG_DIR/$1/$ABI/installed.log.txt" ] || die_from_package_is_not_installed "$1"
         die_if_load_installed_log_failed "$1" "$ABI"
         [ "$PACKAGE_VERSION" = "$installed_version" ] && return 1
         [ "$PACKAGE_VERSION" = $(printf "$PACKAGE_VERSION\n$installed_version" | sort --version-sort --reverse | head -n 1) ]
@@ -2440,7 +2497,7 @@ __list_packages_which_is_not_depended_by_others() {
             if [ "$x" = "$y" ] || [ 'test' = "$y" ] ; then
                 continue
             else
-                ___load_formula_of_a_package "$y"
+                ___load_a_formula "$y"
                 for z in $PACKAGE_DEP_PKG
                 do
                     if [ "$x" = "$z" ] ; then
@@ -2484,23 +2541,14 @@ __list_available_packages() {
         *)  die "list available action only accept -q argument."
     esac
 
-    [ -d "$MY_FORMULA_DIR" ] || {
-        if [ "$SILENT" = 'true' ] ; then
-            __update_formula_repository >/dev/null 2>&1
-        else
-            __update_formula_repository
-        fi
-    }
-    
-    if [ "$SILENT" = 'true' ] ; then
-        cd "$MY_FORMULA_DIR" 2>/dev/null || exit 1
-    else
-        cd "$MY_FORMULA_DIR" || exit 1
-    fi
-
-    for item in $(ls *.sh | sed 's/\.sh//g')
+    for repo in $(____list_formula_repositories | cut -d= -f1)
     do
-        echo "$item"
+        if [ "$SILENT" = 'true' ] ; then
+            cd "$MY_FORMULA_REPO_DIR/$repo/formula" 2>/dev/null || return 1
+        else
+            cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
+        fi
+        ls -1 *.sh | sed 's/\.sh//g'
     done
 }
 
@@ -2537,7 +2585,7 @@ __list__outdated_packages() {
 
 __list_abis_of_a_installed_package() {
     die_if_package_is_not_installed "$1"
-    cat "$MY_INSTALL_DIR/$1/manifest.txt"
+    cat "$MY_CACHED_LOG_DIR/$1/install.log.txt"
 }
 
 __tree_installed_of_a_package() {
@@ -2610,13 +2658,10 @@ __cleanup() {
 
 __search_packages() {
     [ -z "$1" ] && die "please specify a keyword."
-    [ -d "$MY_FORMULA_DIR" ] || __update_formula_repository
-    
-    cd "$MY_FORMULA_DIR" || exit 1
 
-    for item in $(ls -1 *.sh | sed 's/\.sh//g')
+    for repo in $(____list_formula_repositories | cut -d= -f1)
     do
-        echo "$item" | grep "$*" || true
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula" && ls -1 *.sh | sed 's/\.sh//g' | grep "$*"
     done
 }
 
@@ -2624,7 +2669,7 @@ __show_webpage_of_a_package() {
     if [ -z "$1" ] ; then
         PACKAGE_WEBPAGE="$MY_HOME_PAGE"
     else
-        ___load_formula_of_a_package "$1"
+        ___load_a_formula "$1"
     fi
     
     echo "$PACKAGE_WEBPAGE"
@@ -2637,8 +2682,7 @@ __show_webpage_of_a_package() {
 __show_depends_of_a_package() {
     die_if_package_is_not_specified "$1"
 
-    EMPTY_DIR=$(mktemp -d) || return 1
-    __gen_dependency_tree 'true' "$1"
+    __gen_dependency_tree "$1"
 
     if [ -f "$DEPENDENCIES_TXT" ] ; then
         cat "$DEPENDENCIES_TXT"
@@ -2676,7 +2720,7 @@ __show_logs_of_a_package() {
         VIEWER=less
     fi
 
-    for item in $(ls "$MY_INSTALL_DIR/$1/$2/log"/*)
+    for item in $(ls "$MY_CACHED_LOG_DIR/$1/$2"/*)
     do
         if [ "$VIEWER" = 'bat' ] ; then
             case $item in
@@ -2699,7 +2743,7 @@ __pack_bottle_of_a_package() {
     ABI="$(__list_abis_of_a_installed_package "$1" | head -n 1)"
     die_if_load_installed_log_failed "$1" "$ABI"
 
-    install -d "$MY_BOTTLE_DIR" || return 1
+    install -d "$MY_CACHED_BINARY_DIR" || return 1
 
     if command -v 7za > /dev/null ; then
         SUFFIX=7z
@@ -2719,7 +2763,7 @@ __pack_bottle_of_a_package() {
         die "please install zip or tar utility."
     fi
 
-    FILE_PATH="$MY_BOTTLE_DIR/$1-$installed_version.bottle.$SUFFIX"
+    FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_version.bin.$SUFFIX"
 
     if [ -f "$FILE_PATH" ] ; then
         rm  "$FILE_PATH" || return 1
@@ -2735,22 +2779,22 @@ __pack_bottle_of_a_package() {
 }
 
 get_direct_dependency_package_list_of_a_package() {
-    grep '^\s*package set dep\.pkg\s*".*"' "$MY_FORMULA_DIR/$1.sh" | sed 's/.*package set dep\.pkg.*"\(.*\)"/\1/'
+    grep '^\s*package set dep\.pkg\s*".*"' $(__pathof_a_formula $1) | sed 's/.*package set dep\.pkg.*"\(.*\)"/\1/'
 }
 
-# $1 is first call
-# $2 packageName
+# $1 packageName, if packageName is not specified, USER_SPECIFIED_PACKAGE_LIST will be used
+# $2 is invoked by myself
 __gen_dependency_list() {
-    if [ "$1" = 'true' ] ; then
+    if [ "$2" != 'true' ] ; then
         unset I
         unset DEPENDENCY_PACKAGE_LIST
     fi
 
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
-    if [ -z "$2" ] ; then
+    if [ -z "$1" ] ; then
         DIRECT_DEPENDENCY_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST"
     else
-        DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_a_package "$2")
+        DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_a_package "$1")
     fi
     
     for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
@@ -2770,34 +2814,44 @@ __gen_dependency_list() {
         
         DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST_TEMP"
 
-        __gen_dependency_list 'false' "$dependencyPkgName"
+        __gen_dependency_list "$dependencyPkgName" true
     done
 }
 
-# $1 is first call
-# $2 packageName
+# $1 packageName
+# $2 is invoked by myself | [output-dir]
 __gen_dependency_tree() {
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
-    DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_a_package "$2")
+    DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_a_package "$1")
 
-    if [ "$1" = 'true' ] ; then
-        unset I
+    case $2 in
+        true) ;;
+        *)
+            unset I
 
-        unset DEPENDENCIES__GV
-        unset DEPENDENCIES_PNG
-        unset DEPENDENCIES_TXT
+            unset DEPENDENCIES__GV
+            unset DEPENDENCIES_PNG
+            unset DEPENDENCIES_TXT
 
-        DEPENDENCIES__GV="$EMPTY_DIR/$2.dependencies.gv"
-        DEPENDENCIES_PNG="$EMPTY_DIR/$2.dependencies.png"
-        DEPENDENCIES_TXT="$EMPTY_DIR/$2.dependencies.txt"
-        
-        if [ -n "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
-            echo "digraph \"$2\" {" > "$DEPENDENCIES__GV"
-        fi
-    fi
+            unset DEPENDENCIES_OUTPUT_DIR
+
+            if [ -z "$2" ] ; then
+                DEPENDENCIES_OUTPUT_DIR=$(mktemp -d) || return 1
+            else
+                DEPENDENCIES_OUTPUT_DIR="$2"
+            fi
+
+            DEPENDENCIES__GV="$DEPENDENCIES_OUTPUT_DIR/$1.dependencies.gv"
+            DEPENDENCIES_PNG="$DEPENDENCIES_OUTPUT_DIR/$1.dependencies.png"
+            DEPENDENCIES_TXT="$DEPENDENCIES_OUTPUT_DIR/$1.dependencies.txt"
+            
+            if [ -n "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
+                echo "digraph \"$1\" {" > "$DEPENDENCIES__GV"
+            fi
+    esac
 
     if [ -f "$DEPENDENCIES__GV" ] ; then
-        print "  \"$2\" -> {" >> "$DEPENDENCIES__GV"
+        print "  \"$1\" -> {" >> "$DEPENDENCIES__GV"
         for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
         do
             print " \"$dependencyPkgName\"" >> "$DEPENDENCIES__GV"
@@ -2809,7 +2863,7 @@ __gen_dependency_tree() {
 
     for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
     do
-        __gen_dependency_tree 'false' "$dependencyPkgName"
+        __gen_dependency_tree "$dependencyPkgName" true
     done
 
     I=$(expr $I - 1)
@@ -2834,35 +2888,6 @@ __gen_dependency_tree() {
                 "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
         fi
     fi
-}
-
-__list_commands_info() {
-    for item in $@
-    do
-        unset COMMAND
-        unset COMMAND_PATH
-        unset COMMAND_VERSION
-
-        COMMAND="$item"
-
-        case $COMMAND in
-            make)       COMMAND_PATH="$MAKE"  ;;
-            cmake)      COMMAND_PATH="$CMAKE" ;;
-            meson)      COMMAND_PATH="$MESON" ;;
-            pkg-config) COMMAND_PATH="$PKG_CONFIG" ;;
-                     *) COMMAND_PATH="$(command -v "$COMMAND")"
-        esac
-
-        if [ -n "$COMMAND_PATH" ] ; then
-            COMMAND_VERSION=$(version_of_command "$COMMAND_PATH")
-        fi
-
-        printf "%-11s %-10s %s\n" "$COMMAND" "$COMMAND_VERSION" "$COMMAND_PATH"
-    done
-
-    unset COMMAND
-    unset COMMAND_PATH
-    unset COMMAND_VERSION
 }
 
 __config_global_installation_variables() {
@@ -2925,7 +2950,7 @@ ____install_packages() {
 
     __config_global_installation_variables
 
-    __gen_dependency_list 'true' '' || return 1
+    __gen_dependency_list || return 1
 
     if [ $(list_length $DEPENDENCY_PACKAGE_LIST) -gt 1 ] ; then
         echo "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
@@ -2957,15 +2982,17 @@ __install_a_package() {
     unset WORKING_DIR
     unset SOURCE_DIR
     unset EMPTY_DIR
+    unset BUILD_DIR
+
     unset NATIVE_BUILD_DIR
     unset NATIVE_INSTALL_DIR
-    unset BUILD_DIR
+
     unset TARGET_OS_ABI
     unset CONFIG_XX_UPDATED
     unset STATE_NUM
 
     state "load formula"
-    ___load_formula_of_a_package "$1"
+    ___load_a_formula "$1"
 
     state "handle required commands"
     for item in $PACKAGE_DEP_CMD
@@ -3117,26 +3144,26 @@ __install_a_package() {
             fi
         fi
     else
-        warn " no build0  function defined in formula, skipped."
+        warn "no build0  function defined in formula, skipped."
     fi
 
     state "do some preparation works"
     if command -v prepare > /dev/null ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
-            cd "$SOURCE_DIR" || return 1
+            run cd "$SOURCE_DIR" || return 1
         fi
         run prepare || return 1
     else
         case $PACKAGE_BUILD_SYSTEM in
             autogen)
-                warn " no prepare function defined in formula."
+                warn "no prepare function defined in formula."
                 run NOCONFIGURE=yes ./autogen.sh    || return 1
                 ;;
             autotools)
-                warn " no prepare function defined in formula."
+                warn "no prepare function defined in formula."
                 run autoreconf -ivf || return 1
                 ;;
-            *)  warn " no prepare function defined in formula, skipped."
+            *)  warn "no prepare function defined in formula, skipped."
         esac
     fi
 
@@ -3158,7 +3185,7 @@ EOF
     fi
 
     if command -v bat > /dev/null ; then
-        run bat --style=plain "$EMPTY_DIR/include.h"
+        run bat --style=plain --paging=never "$EMPTY_DIR/include.h"
     else
         run cat "$EMPTY_DIR/include.h"
     fi
@@ -3166,10 +3193,10 @@ EOF
     state "calculate dependencies"
     unset DEPENDENCY_PACKAGE_LIST
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
-        warn " no dependencies."
+        warn "no dependencies."
     else
-        __gen_dependency_list 'true' "$1" || return 1
-        __gen_dependency_tree 'true' "$1" || return 1
+        __gen_dependency_list "$1"                || return 1
+        __gen_dependency_tree "$1" "$ABI_LOG_DIR" || return 1
         if [ -f "$DEPENDENCIES_TXT" ] ; then
             cat "$DEPENDENCIES_TXT"
         fi
@@ -3177,18 +3204,16 @@ EOF
 
     __install_a_package_all_builds "$1" || return 1
 
-    echo
-    success "$1 have been installed successfully."
-
-    state "clean working directory."
-    if [ "$KEEP_WORKING_DIR" = 'true' ] ; then
-        warn "keep  working directory."
-    else
-        run rm -rf "$WORKING_DIR" || true
-    fi
+    [ "$KEEP_WORKING_DIR" = 'true' ] || {
+        state "clean working directory."
+        run rm -rf "$WORKING_DIR"
+    }
 
     state "list installed content."
-    __tree_installed_of_a_package "$1" || true
+    __tree_installed_of_a_package "$1"
+
+    echo
+    success "$1 have been installed successfully."
 }
 
 __install_a_package_all_builds() {
@@ -3209,48 +3234,47 @@ __install_a_package_all_builds() {
             TARGET_OS_ABI_LIST=$(printf "%s\n%s" "$TARGET_OS_ABI_LIST" "$TARGET_OS_ABI")
         fi
 
-        BUILD_DIR="$EMPTY_DIR/$TARGET_OS_ABI"
+        __config_this_build_variables "$1"
+        __printf_this_build_variables "$1"
 
         if [ "$DRYRUN" = 'true' ] ; then
-            ___dryrun_a_package_one_build "$1" || return 1
+            if [ -z "$SHELL" ] ; then
+                SHELL=$(command -v zsh || command -v bash || command -v sh)
+            fi
+            exec "$SHELL" || return 1
         else
             (
-                install -d "$BUILD_DIR" &&
-                cd "$BUILD_DIR" &&
-                mkfifo pipe &&
-                (tee install.log.txt < pipe &) &&
-                __install_a_package_one_build "$1" > pipe 2>&1
+                install -d "$ABI_LOG_DIR" &&
+                mkfifo "$ABI_LOG_DIR"/pipe &&
+                (tee "$ABI_LOG_DIR"/install.log.txt < "$ABI_LOG_DIR"/pipe &) &&
+                __install_a_package_one_build "$1" > "$ABI_LOG_DIR"/pipe 2>&1
             ) || return 1
         fi
     done
 
-    echo "$TARGET_OS_ABI_LIST" > "$PKG_INSTALL_DIR/manifest.txt"
-}
-
-___dryrun_a_package_one_build() {
-    if [ -z "$SHELL" ] ; then
-        SHELL=$(command -v zsh) ||
-        SHELL=$(command -v bash) ||
-        SHELL=$(command -v sh)
-    fi
-    __config_this_build_variables "$1" &&
-    __printf_this_build_variables "$1" &&
-    exec "$SHELL"
+    echo "$TARGET_OS_ABI_LIST" > "$MY_CACHED_LOG_DIR/$1/install.log.txt"
 }
 
 __install_a_package_one_build() {
     state "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
 
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
-        run cd "$SOURCE_DIR" || return 1
+        if [ "$PWD" != "$SOURCE_DIR" ] ; then
+            run cd "$SOURCE_DIR" || return 1
+        fi
+    else
+        run install -d "$BUILD_DIR" || return 1
+        run cd "$BUILD_DIR" || return 1
     fi
 
-    run __config_this_build_variables "$1" &&
-    run __printf_this_build_variables "$1" &&
-    run rm -rf "$ABI_INSTALL_DIR" && {
-        if command -v build > /dev/null ; then
-            build
-        else
+    if [ -d "$ABI_INSTALL_DIR" ] ; then
+        run rm -rf "$ABI_INSTALL_DIR" || return 1
+    fi
+
+    if command -v build > /dev/null ; then
+        build || return 1
+    else
+        {
             case $PACKAGE_BUILD_SYSTEM in
                 autogen)   configure ;;
                 autotools) configure ;;
@@ -3262,15 +3286,17 @@ __install_a_package_one_build() {
                 cargo)     run cargo install --target "$CARGO_TARGET" -vv --path "$SOURCE_DIR" --root="$ABI_INSTALL_DIR" ;;
                 go)        run go build -v -trimpath ;;
             esac
-        fi
-    } && {
-        [ -d "$ABI_INSTALL_DIR" ] || {
-            error "installed nothing."
-            return 1
-        }
-    } &&
-    run __justfy_pc_files &&
-    run __install_logs "$1"
+        } || return 1
+    fi
+    
+    [ -d "$ABI_INSTALL_DIR" ] || {
+        error "installed nothing."
+        return 1
+    }
+
+    run __justfy_pc_files || return 1
+
+    run __install_logs || return 1
 }
 
 __justfy_pc_files() {
@@ -3289,25 +3315,15 @@ __justfy_pc_files() {
 }
 
 __install_logs() {
-    ABI_LOG_DIR="$ABI_INSTALL_DIR/log"
-
-    install -v -d "$ABI_LOG_DIR" || return 1
-
     install_installed_log
-
-    for item in "$MY_FORMULA_DIR/$1.sh" "$BUILD_DIR/install.log.txt" "$DEPENDENCIES__GV" "$DEPENDENCIES_PNG" "$DEPENDENCIES_TXT"
-    do
-        if [ -f "$item" ] ; then
-            install -v -m 644 "$item" "$ABI_LOG_DIR" || return 1
-        fi
-    done
 
     for item in "$BUILD_DIR" "$SOURCE_DIR"
     do
         for item2 in 'config.log' 'compile_commands.json'
         do
             if [ -f "$item/$item2" ] ; then
-                install -v -m 644 "$item/$item2" "$ABI_LOG_DIR" || return 1
+                echo "-- Installing: $ABI_LOG_DIR/$item2"
+                install -m 644 "$item/$item2" "$ABI_LOG_DIR" || return 1
             fi
         done
     done
@@ -3374,8 +3390,8 @@ __show_infomation_of_packages() {
     unset PACKAGE_LIST
 
     if [ -z "$1" ] ; then
-        [ -d "$MY_FORMULA_DIR" ] || __update_formula_repository
-        cd "$MY_FORMULA_DIR" || exit 1
+        [ -d "$MY_FORMULA_REPO_DIR" ] || __update_formula_repository
+        cd "$MY_FORMULA_REPO_DIR" || exit 1
         PACKAGE_LIST=$(ls *.sh | sed 's/\.sh//g')
     else
         PACKAGE_LIST=$@
@@ -3396,7 +3412,7 @@ __show_infomation_of_packages() {
 }
 
 __show_infomation_of_a_package() {
-    ___load_formula_of_a_package "$1"
+    ___load_a_formula "$1"
 
     echo "name    : $(mark_is_package_installed_or_not $1)"
 
@@ -3489,7 +3505,7 @@ __json_available_packages() {
     do
         I=$(expr ${I-0} + 1)
 
-        ___load_formula_of_a_package "$item"
+        ___load_a_formula "$item"
 
         if [ "$I" -eq 1 ] ; then
             echo "["
@@ -3521,7 +3537,7 @@ die_if_load_installed_log_failed() {
     die_if_package_is_not_installed "$1"
     die_if_abi_____is_not_supported "$2"
 
-    INSTALLED_LOG_FILE_PATH="$MY_INSTALL_DIR/$1/$2/log/installed.log.txt"
+    INSTALLED_LOG_FILE_PATH="$MY_CACHED_LOG_DIR/$1/$2/installed.log.txt"
 
     unset installed_datetime
 
@@ -3632,6 +3648,9 @@ __config_this_build_variables() {
     ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
+
+    ABI_LOG_DIR="$MY_CACHED_LOG_DIR/$PACKAGE_NAME/$TARGET_OS_ABI"
+    BUILD_DIR="$EMPTY_DIR/$TARGET_OS_ABI"
 
     for item in $PACKAGE_BUILD_SYSTEM
     do
@@ -3846,7 +3865,7 @@ configure() {
         do
             for file in $(find "$SOURCE_DIR" -name "$item")
             do
-                CONFIG_XX="$MY_CACHED_DIR/config/$item"
+                CONFIG_XX="$MY_CACHED_SOURCE_DIR/config/$item"
                 if [ ! -f "$CONFIG_XX" ] ; then
                     fetch "$(config_url "$item")" --output-path="$CONFIG_XX" || return 1
                     run chmod a+x "$CONFIG_XX" || return 1
@@ -4272,7 +4291,7 @@ echo_path_of_tool_in_the_toolchain() {
                 TOOL_FILE_NAME="$TOOL_FILE_NAME.gold"
              fi
     esac
-    die_if_file_is_not_executable "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME"
+    die_if_not_executable "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME"
     echo "$TOOL_FILE_NAME"
 }
 
@@ -4490,24 +4509,25 @@ init() {
     MY_VERSION=0.1.0
     MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
 
-    if [ -z "$NDK_PKG_FORMULA_REPO_URL" ] ; then
-        MY_FORMULA_REPO_URL="https://github.com/leleliu008/$MY_NAME-formula.git"
-    else
-        MY_FORMULA_REPO_URL="$NDK_PKG_FORMULA_REPO_URL"
-    fi
-
     if [ -z "$NDK_PKG_HOME_DIR" ] ; then
         MY_HOME_DIR="$HOME/.$MY_NAME"
     else
         MY_HOME_DIR="$NDK_PKG_HOME_DIR"
     fi
 
-    MY_FORMULA_DIR="$MY_HOME_DIR/formula"
-    MY_INSTALL_DIR="$MY_HOME_DIR/pkg"
-    MY_CACHED_DIR="$MY_HOME_DIR/downloads"
-    MY_BOTTLE_DIR="$MY_HOME_DIR/bottles"
-    MY_BACKUP_DIR="$MY_HOME_DIR/backup"
-    MY_PATCH_DIR="$MY_HOME_DIR/patches"
+    MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
+    MY_INSTALL_DIR="$MY_HOME_DIR/install.d"
+    MY_CACHED_DIR="$MY_HOME_DIR/cache.d"
+    MY_CACHED_SOURCE_DIR="$MY_CACHED_DIR/source.d"
+    MY_CACHED_BINARY_DIR="$MY_CACHED_DIR/binary.d"
+    MY_CACHED_BACKUP_DIR="$MY_CACHED_DIR/backup.d"
+    MY_CACHED_PATCH__DIR="$MY_CACHED_DIR/patch.d"
+    MY_CACHED_LOG_DIR="$MY_CACHED_DIR/log.d"
+
+    if [ ! -e "$MY_HOME_DIR/repos" ] ; then
+        install -d "$MY_HOME_DIR"
+        echo "offical=https://github.com/leleliu008/ndk-pkg-formula.git" | tee "$MY_HOME_DIR/repos"
+    fi
 
     if command -v date > /dev/null ; then
         TIMESTAMP_UNIX="$(date +%s)"
@@ -4519,7 +4539,7 @@ init() {
         NATIVE_OS_KIND=$(os kind)
         NATIVE_OS_TYPE=$(os kind)
         NATIVE_OS_NAME=$(os name)
-        NATIVE_OS_VERS=$(os version)
+        NATIVE_OS_VERS=$(os vers)
         NATIVE_OS_ARCH=$(os arch)
     else
         die "command not found: uname. please make sure it in PATH."
@@ -4583,16 +4603,24 @@ main() {
     init
 
     case $1 in
-        --help|help|-h) 
+        --help|-h) 
             help
             ;;
-        --version|version|-V)
+        --version|-V)
             echo "$MY_VERSION"
             ;;
         toolchain)
             check_prerequisites
             echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERSION"
             ;;
+        repo)
+            shift
+            case $1 in
+                list) shift; ____list_formula_repositories ;;
+                *) help 1
+            esac
+            ;;
+        get)  shift; package get "$1" "$2" ;;
         list)
             shift
             case $1 in
@@ -4632,7 +4660,7 @@ main() {
         homepage) shift; __show_webpage_of_a_package    "$@" ;;
         depends)  shift; __show_depends_of_a_package    "$@" ;;
         prefix)   shift; __show_prefix_of_a_package     "$@" ;;
-        fetch)    shift; ___load_formula_of_a_package   "$@" &&
+        fetch)    shift; ___load_a_formula   "$@" &&
                          __fetch_resources_of_a_package "$@" ;;
         logs)     shift; __show_logs_of_a_package       "$@" ;;
         pack)     shift; __pack_bottle_of_a_package     "$@" ;;
