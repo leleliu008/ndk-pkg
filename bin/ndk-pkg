@@ -67,11 +67,11 @@ die_if_not_executable() {
     executable "$1" || die "$1 is not executable."
 }
 
-state() {
-    STATE_NUM=$(expr ${STATE_NUM-0} + 1)
-    STATE_MESSAGE="$@"
-
-    echo "\n${COLOR_PURPLE}=== STATE ${STATE_NUM} : ${STATE_MESSAGE} ${COLOR_OFF}"
+step() {
+    STEP_NUM=$(expr ${STEP_NUM-0} + 1)
+    STEP_MESSAGE="$@"
+    echo
+    echo "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
 }
 
 run() {
@@ -2064,6 +2064,8 @@ ___load_a_formula() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
+    unset PACKAGE_FORMULA_FILEPATH
+
     unset PACKAGE_SDK_API
 
     unset TARGET_OS_VERS
@@ -2076,22 +2078,22 @@ ___load_a_formula() {
 
     PACKAGE_NAME="$1"
 
-    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+    PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    . "$PACKAGE_FORMULA_PATH" || die "$PACKAGE_FORMULA_PATH is broken."
+    . "$PACKAGE_FORMULA_FILEPATH" || die "$PACKAGE_FORMULA_FILEPATH is broken."
 
     PACKAGE_TARGET_OS_VERS=$PACKAGE_SDK_API
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
     [ "$PACKAGE_BINSRCD" = 'true' ] && PACKAGE_BUILD_IN_SOURCE_DIR='true'
 
-    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $PACKAGE_FORMULA_PATH"
+    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
 
     [ -z "$PACKAGE_WEBPAGE" ] && PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $PACKAGE_FORMULA_PATH"
+    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
 
     [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $PACKAGE_FORMULA_PATH"
+    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
 
     if [ -z "$PACKAGE_TARGET_OS_VERS" ] ; then
         PACKAGE_TARGET_OS_VERS=$(__list_supported_sdk_api_levels | head -n 1)
@@ -2141,12 +2143,12 @@ ___load_a_formula() {
             ;;
         *)
             if [ -z "$PACKAGE_SRC_SUM" ] ; then
-                die "src.sum is not configed in $PACKAGE_FORMULA_PATH"
+                die "src.sum is not configed in $PACKAGE_FORMULA_FILEPATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr _ - | sed 's|-stable||' | sed 's|-src||' | sed 's|.orig.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 if [ -z "$PACKAGE_VERSION" ] ; then
-                    die "version is not configed in $PACKAGE_FORMULA_PATH"
+                    die "version is not configed in $PACKAGE_FORMULA_FILEPATH"
                 else
                     case $PACKAGE_VERSION in
                         v*) if command -v cut > /dev/null ; then
@@ -2196,17 +2198,17 @@ ___load_a_formula() {
 ____view_a_formula() {
     die_if_package_is_not_specified "$1"
 
-    unset PACKAGE_FORMULA_PATH
-    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    [ -z "$PACKAGE_FORMULA_PATH" ] && die "$1 package is not available."
+    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && die "$1 package is not available."
 
     [ -z "$2" ] || warn "view action accept only one argument."
     
     if command -v bat > /dev/null ; then
-        bat "$PACKAGE_FORMULA_PATH"
+        bat "$PACKAGE_FORMULA_FILEPATH"
     else
-        cat "$PACKAGE_FORMULA_PATH"
+        cat "$PACKAGE_FORMULA_FILEPATH"
         echo
         prompt_user_to_install_bat
     fi    
@@ -2215,17 +2217,17 @@ ____view_a_formula() {
 ____edit_a_formula() {
     die_if_package_is_not_specified "$1"
 
-    unset PACKAGE_FORMULA_PATH
-    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    [ -z "$PACKAGE_FORMULA_PATH" ] && die "$1 package is not available."
+    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && die "$1 package is not available."
 
     [ -z "$2" ] || warn "edit action accept only one argument."
 
     [ -z "$EDITOR" ] && EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open)
     [ -z "$EDITOR" ] && die "please set EDITOR environment variable."
 
-    "$EDITOR" "$PACKAGE_FORMULA_PATH"
+    "$EDITOR" "$PACKAGE_FORMULA_FILEPATH"
 }
 
 __create_a_formula() {
@@ -2274,12 +2276,12 @@ EOF
 __delete_a_formula() {
     die_if_package_is_not_specified "$1"
 
-    unset PACKAGE_FORMULA_PATH
-    PACKAGE_FORMULA_PATH="$(__pathof_a_formula $1)"
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    [ -z "$PACKAGE_FORMULA_PATH" ] && die "$1 package is not available."
+    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && die "$1 package is not available."
 
-    if rm "$PACKAGE_FORMULA_PATH" ; then
+    if rm "$PACKAGE_FORMULA_FILEPATH" ; then
         success "delete $1 formula success."
     else
         die "delete $1 formula failed."
@@ -2297,17 +2299,17 @@ __rename_a_formula() {
         die "$1 package is not available."
     fi
 
-    unset PACKAGE_FORMULA_PATH_OLD
-    unset PACKAGE_FORMULA_PATH_NEW
+    unset PACKAGE_FORMULA_FILEPATH_OLD
+    unset PACKAGE_FORMULA_FILEPATH_NEW
 
-    PACKAGE_FORMULA_PATH_OLD="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.sh"
-    PACKAGE_FORMULA_PATH_NEW="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.sh"
+    PACKAGE_FORMULA_FILEPATH_OLD="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$1.sh"
+    PACKAGE_FORMULA_FILEPATH_NEW="$MY_FORMULA_REPO_DIR/$PACKAGE_FORMULA_REPO/formula/$2.sh"
 
-    if [ -f "$PACKAGE_FORMULA_PATH_NEW" ] ; then
+    if [ -f "$PACKAGE_FORMULA_FILEPATH_NEW" ] ; then
         die "$2 package is already exist."
     fi
 
-    if mv "$PACKAGE_FORMULA_PATH_OLD" "$PACKAGE_FORMULA_PATH_NEW" ; then
+    if mv "$PACKAGE_FORMULA_FILEPATH_OLD" "$PACKAGE_FORMULA_FILEPATH_NEW" ; then
         success "rename formula $1 -> $2 success."
     else
         die "rename formula $1 -> $2 failed."
@@ -2989,18 +2991,18 @@ __install_a_package() {
 
     unset TARGET_OS_ABI
     unset CONFIG_XX_UPDATED
-    unset STATE_NUM
+    unset STEP_NUM
 
-    state "load formula"
+    step "load formula"
     ___load_a_formula "$1"
 
-    state "handle required commands"
+    step "handle required commands"
     for item in $PACKAGE_DEP_CMD
     do
         handle_dependency $(__parse_require_item "$item")
     done
 
-    state "printf required commands"
+    step "printf required commands"
     __printf_dependency TYPE NAME OP EXPECT ACTUAL LOCATION
     for item in $PACKAGE_DEP_CMD
     do
@@ -3023,14 +3025,14 @@ __install_a_package() {
     MAKE=$(command -v make)
     NINJA=$(command -v ninja)
 
-    state "fetch resources if needed"
+    step "fetch resources if needed"
     __fetch_resources_of_a_package "$1"
 
-    state "create working directory"
+    step "create working directory"
     info "mktemp -d"
     WORKING_DIR=$(mktemp -d) || die "create working directory failed."
 
-    state "unpack sources to working directory"
+    step "unpack sources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
             PACKAGE_VERSION=$(git -C "$PACKAGE_SRC_PATH" log -1 --pretty=format:%h)
@@ -3054,16 +3056,16 @@ __install_a_package() {
         SOURCE_DIR="$WORKING_DIR/$PACKAGE_SOURCED"
     fi
 
-    state "change to source directory"
+    step "change to source directory"
     run cd "$SOURCE_DIR" || return 1
 
-    state "list content of source directory"
+    step "list content of source directory"
     run ls -l
 
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
     mkdir "$EMPTY_DIR"
 
-    state "build for native"
+    step "build for native"
     if command -v build0 > /dev/null ; then
         NATIVE_BUILD_DIR="$EMPTY_DIR/native"
         NATIVE_INSTALL_DIR="$MY_HOME_DIR/native/$PACKAGE_NAME"
@@ -3147,7 +3149,7 @@ __install_a_package() {
         warn "no build0  function defined in formula, skipped."
     fi
 
-    state "do some preparation works"
+    step "do some preparation works"
     if command -v prepare > /dev/null ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             run cd "$SOURCE_DIR" || return 1
@@ -3190,7 +3192,7 @@ EOF
         run cat "$EMPTY_DIR/include.h"
     fi
 
-    state "calculate dependencies"
+    step "calculate dependencies"
     unset DEPENDENCY_PACKAGE_LIST
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
         warn "no dependencies."
@@ -3205,11 +3207,11 @@ EOF
     __install_a_package_all_builds "$1" || return 1
 
     [ "$KEEP_WORKING_DIR" = 'true' ] || {
-        state "clean working directory."
+        step "clean working directory."
         run rm -rf "$WORKING_DIR"
     }
 
-    state "list installed content."
+    step "list installed content."
     __tree_installed_of_a_package "$1"
 
     echo
@@ -3234,17 +3236,14 @@ __install_a_package_all_builds() {
             TARGET_OS_ABI_LIST=$(printf "%s\n%s" "$TARGET_OS_ABI_LIST" "$TARGET_OS_ABI")
         fi
 
-        state "config for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
-        __config_this_build_variables "$1"
-        __printf_this_build_variables "$1"
-
         if [ "$DRYRUN" = 'true' ] ; then
+            __config_this_build_variables "$1"
+            __printf_this_build_variables "$1"
             if [ -z "$SHELL" ] ; then
                 SHELL=$(command -v zsh || command -v bash || command -v sh)
             fi
             exec "$SHELL" || return 1
         else
-            state "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
             (
                 install -d "$ABI_LOG_DIR" &&
                 mkfifo "$ABI_LOG_DIR"/pipe &&
@@ -3258,6 +3257,10 @@ __install_a_package_all_builds() {
 }
 
 __install_a_package_one_build() {
+    step "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
+    __config_this_build_variables "$1"
+    __printf_this_build_variables "$1"
+
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             run cd "$SOURCE_DIR" || return 1
@@ -3878,7 +3881,7 @@ configure() {
         done
     fi
 
-    if [ "$STATE_MESSAGE" = 'build for native' ] ; then
+    if [ "$STEP_MESSAGE" = 'build for native' ] ; then
         if run "$SOURCE_DIR"/configure \
             --prefix="$NATIVE_INSTALL_DIR" \
             $@ ; then
@@ -3960,7 +3963,7 @@ makew() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmakew() {
-    if [ "$STATE_MESSAGE" = 'build for native' ] ; then
+    if [ "$STEP_MESSAGE" = 'build for native' ] ; then
         run "$CMAKE" \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
