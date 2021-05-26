@@ -3234,6 +3234,7 @@ __install_a_package_all_builds() {
             TARGET_OS_ABI_LIST=$(printf "%s\n%s" "$TARGET_OS_ABI_LIST" "$TARGET_OS_ABI")
         fi
 
+        state "config for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
         __config_this_build_variables "$1"
         __printf_this_build_variables "$1"
 
@@ -3243,6 +3244,7 @@ __install_a_package_all_builds() {
             fi
             exec "$SHELL" || return 1
         else
+            state "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
             (
                 install -d "$ABI_LOG_DIR" &&
                 mkfifo "$ABI_LOG_DIR"/pipe &&
@@ -3256,8 +3258,6 @@ __install_a_package_all_builds() {
 }
 
 __install_a_package_one_build() {
-    state "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
-
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             run cd "$SOURCE_DIR" || return 1
