@@ -3063,7 +3063,7 @@ __install_a_package() {
     run ls -l
 
     EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
-    mkdir "$EMPTY_DIR"
+    install -d "$EMPTY_DIR"
 
     step "build for native"
     if command -v build0 > /dev/null ; then
@@ -3197,8 +3197,8 @@ EOF
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
         warn "no dependencies."
     else
-        __gen_dependency_list "$1"                || return 1
-        __gen_dependency_tree "$1" "$ABI_LOG_DIR" || return 1
+        __gen_dependency_list "$1"              || return 1
+        __gen_dependency_tree "$1" "$EMPTY_DIR" || return 1
         if [ -f "$DEPENDENCIES_TXT" ] ; then
             cat "$DEPENDENCIES_TXT"
         fi
@@ -3319,6 +3319,16 @@ __justfy_pc_files() {
 
 __install_logs() {
     install_installed_log
+
+    for item in "$DEPENDENCIES__GV" "$DEPENDENCIES_TXT" "$DEPENDENCIES_PNG"
+    do
+        do
+            if [ -f "$item" ] ; then
+                echo "-- Installing: $ABI_LOG_DIR/$item"
+                install -m 644 "$item" "$ABI_LOG_DIR" || return 1
+            fi
+        done
+    done
 
     for item in "$BUILD_DIR" "$SOURCE_DIR"
     do
