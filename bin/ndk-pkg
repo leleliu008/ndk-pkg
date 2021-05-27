@@ -3245,6 +3245,7 @@ __install_a_package_all_builds() {
             exec "$SHELL" || return 1
         else
             (
+                ABI_LOG_DIR="$MY_CACHED_LOG_DIR/$PACKAGE_NAME/$TARGET_OS_ABI"
                 install -d "$ABI_LOG_DIR" &&
                 mkfifo "$ABI_LOG_DIR"/pipe &&
                 (tee "$ABI_LOG_DIR"/install.log.txt < "$ABI_LOG_DIR"/pipe &) &&
@@ -3322,12 +3323,10 @@ __install_logs() {
 
     for item in "$DEPENDENCIES__GV" "$DEPENDENCIES_TXT" "$DEPENDENCIES_PNG"
     do
-        do
-            if [ -f "$item" ] ; then
-                echo "-- Installing: $ABI_LOG_DIR/$item"
-                install -m 644 "$item" "$ABI_LOG_DIR" || return 1
-            fi
-        done
+        if [ -f "$item" ] ; then
+            echo "-- Installing: $ABI_LOG_DIR/$item"
+            install -m 644 "$item" "$ABI_LOG_DIR" || return 1
+        fi
     done
 
     for item in "$BUILD_DIR" "$SOURCE_DIR"
@@ -3662,7 +3661,6 @@ __config_this_build_variables() {
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 
-    ABI_LOG_DIR="$MY_CACHED_LOG_DIR/$PACKAGE_NAME/$TARGET_OS_ABI"
     BUILD_DIR="$EMPTY_DIR/$TARGET_OS_ABI"
 
     for item in $PACKAGE_BUILD_SYSTEM
