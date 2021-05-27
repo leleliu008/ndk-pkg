@@ -100,7 +100,7 @@ sed_in_place() {
         SED_IN_PLACE_ACTION="$1"
         shift
         # contains ' but not contains \'
-        if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 5C27 ; then
+        if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 5C27 ; then
             run gsed -i "\"$SED_IN_PLACE_ACTION\"" $@
         else
             run gsed -i "'$SED_IN_PLACE_ACTION'" $@
@@ -110,7 +110,7 @@ sed_in_place() {
             unset SED_IN_PLACE_ACTION
             SED_IN_PLACE_ACTION="$1"
             shift
-            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 5C27 ; then
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 5C27 ; then
                 run sed -i "\"$SED_IN_PLACE_ACTION\"" $@
             else
                 run sed -i "'$SED_IN_PLACE_ACTION'" $@
@@ -119,7 +119,7 @@ sed_in_place() {
             unset SED_IN_PLACE_ACTION
             SED_IN_PLACE_ACTION="$1"
             shift
-            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 5C27 ; then
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" " "' | grep -q 27 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 5C27 ; then
                 run sed -i '""' "\"$SED_IN_PLACE_ACTION\"" $@
             else
                 run sed -i '""' "'$SED_IN_PLACE_ACTION'" $@
