@@ -96,21 +96,34 @@ shiftn() {
 
 sed_in_place() {
     if command -v gsed > /dev/null ; then
-        unset SED_ACTION
-        SED_ACTION="$1"
+        unset SED_IN_PLACE_ACTION
+        SED_IN_PLACE_ACTION="$1"
         shift
-        run gsed -i "\"$SED_ACTION\"" $@
+        # contains ' but not contains \'
+        if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 24 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 5C24 ; then
+            run gsed -i "\"$SED_IN_PLACE_ACTION\"" $@
+        else
+            run gsed -i "'$SED_IN_PLACE_ACTION'" $@
+        fi
     elif command -v sed  > /dev/null ; then
         if sed -i 's/a/b/g' $(mktemp) 2> /dev/null ; then
-            unset SED_ACTION
-            SED_ACTION="$1"
+            unset SED_IN_PLACE_ACTION
+            SED_IN_PLACE_ACTION="$1"
             shift
-            run sed -i "\"$SED_ACTION\"" $@
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 24 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 5C24 ; then
+                run sed -i "\"$SED_IN_PLACE_ACTION\"" $@
+            else
+                run sed -i "'$SED_IN_PLACE_ACTION'" $@
+            fi
         else
-            unset SED_ACTION
-            SED_ACTION="$1"
+            unset SED_IN_PLACE_ACTION
+            SED_IN_PLACE_ACTION="$1"
             shift
-            run sed -i '""' "\"$SED_ACTION\"" $@
+            if printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 24 && ! printf "$SED_IN_PLACE_ACTION" | hexdump -v -e '1/1 "%02X" ""' | grep -q 5C24 ; then
+                run sed -i '""' "\"$SED_IN_PLACE_ACTION\"" $@
+            else
+                run sed -i '""' "'$SED_IN_PLACE_ACTION'" $@
+            fi
         fi
     else
         die "please install sed utility."
