@@ -2206,6 +2206,10 @@ ___load_a_formula() {
     fi
 
     package add dep-cmd 'tree'
+
+    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        package add dep-cmd 'gsed'
+    fi
 }
 
 ____view_a_formula() {
