@@ -1440,20 +1440,32 @@ __install_package_via_package_manager() {
     package_exists_in_repo_and_version_matched $@ || return 1
 
     case $1 in
-        pip3) case $NATIVE_OS_KIND in
+        pip3)
+            case $NATIVE_OS_KIND in
                 *bsd|linux) run pip3 install --user -U "$2" ;;
                 *)          run pip3 install        -U "$2"
-              esac
-              ;;
-        pip)  case $NATIVE_OS_KIND in
+            esac
+            ;;
+        pip)
+            case $NATIVE_OS_KIND in
                 *bsd|linux) run pip  install --user -U "$2" ;;
                 *)          run pip  install        -U "$2"
-              esac
-              ;;
+            esac
+            ;;
+        brew)
+            if run brew install "$2" ; then
+                if [ "$(brew info --json=v2 "$2" | grep keg_only | sed 's/ //g' | cut -d: -f2 | sed 's/,//')" = 'true' ] ; then
+                    if [ -d "$(brew --prefix "$2")/bin" ] ; then
+                        export PATH="$(brew --prefix "$2")/bin:$PATH"
+                    fi
+                fi
+            else
+                return 1
+            fi
+            ;;
         pkg)     run $sudo pkg install -y "$2" ;;
         pkgin)   run $sudo pkgin -y install "$2" ;;
         pkg_add) run $sudo pkg_add "$2" ;;
-        brew)    run brew install "$2" ;;
         apt)     run $sudo apt     -y install "$2" ;;
         apt-get) run $sudo apt-get -y install "$2" ;;
         dnf)     run $sudo dnf -y install "$2" ;;
@@ -2672,6 +2684,21 @@ __reinstall_packages() {
 }
 
 __cleanup() {
+    [ -d "$MY_CACHED_DIR" ] || return 0
+    [ -d "$MY_CACHED_SOURCE_DIR" ] || return 0
+    for repo in $(____list_formula_repositories | cut -d= -f1)
+    do
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
+        for item in $(ls)
+        do
+            if [ -f "$item" ] ; then
+                case $item in
+                    *.sh)
+                        ___load_a_formula $(echo "$item" | sed 's/\.sh//g')
+                esac
+            fi
+        done
+    done
     success "Done."
 }
 
@@ -2986,6 +3013,9 @@ ____install_packages() {
                     die "install $INSTALLING_PACKAGE failed! you can go to $WORKING_DIR to see see."
                 else
                     die "install $INSTALLING_PACKAGE/$TARGET_OS_ABI failed! you can go to $WORKING_DIR to see see."
+                    if [ -f "$MY_CACHED_LOG_DIR/$INSTALLING_PACKAGE/$TARGET_OS_ABI/pipe" ] ; then
+                        rm  "$MY_CACHED_LOG_DIR/$INSTALLING_PACKAGE/$TARGET_OS_ABI/pipe"
+                    fi
                 fi
             }
         fi
@@ -3263,6 +3293,7 @@ __install_a_package_all_builds() {
         else
             (
                 ABI_LOG_DIR="$MY_CACHED_LOG_DIR/$PACKAGE_NAME/$TARGET_OS_ABI"
+                rm -rf "$ABI_LOG_DIR" &&
                 install -d "$ABI_LOG_DIR" &&
                 mkfifo "$ABI_LOG_DIR"/pipe &&
                 (tee "$ABI_LOG_DIR"/install.log.txt < "$ABI_LOG_DIR"/pipe &) &&
@@ -4234,71 +4265,6 @@ echo_target_by_arch() {
         armv7a) echo  "armv7a-linux-androideabi" ;;
         *)      echo  "$1-linux-android"         ;;
     esac
-}
-
-sudo() {
-    if [ "$(whoami)" = 'root' ] ; then
-        $@
-    else
-        command sudo $@
-    fi
-}
-
-try_to_install_required_tools_via_package_manager_if_needed() {
-    for item in $@
-    do
-        command -v "$item" > /dev/null && continue
-        try_to_install_required_tools_via_package_manager "$item"
-    done
-}
-
-try_to_install_required_tools_via_package_manager() {
-    for item in brew apt-get dnf yum zypper pacman
-    do
-        case $item in
-            brew)
-                command -v brew > /dev/null && {
-                    brew install $@ &&
-                    return $?
-                }
-                ;;
-            apt-get)
-                command -v apt-get > /dev/null && {
-                    sudo apt-get -y update &&
-                    sudo apt-get -y install $@ &&
-                    return $?
-                }
-                ;;
-            dnf)
-                command -v dnf > /dev/null && {
-                    sudo dnf -y update &&
-                    sudo dnf -y install $@ &&
-                    return $?
-                }
-                ;;
-            yum)
-                command -v yum > /dev/null && {
-                    sudo yum -y update &&
-                    sudo yum -y install $@ &&
-                    return $?
-                }
-                ;;
-            zypper)
-                command -v zypper > /dev/null && {
-                    sudo zypper update -y &&
-                    sudo zypper install -y $@ &&
-                    return $?
-                }
-                ;;
-            pacman)
-                command -v pacman > /dev/null && {
-                    sudo pacman -Syyuu --noconfirm &&
-                    sudo pacman -S     --noconfirm $@ &&
-                    return $?
-                }
-                ;;
-        esac
-    done
 }
 
 list_tools_in_the_toolchain() {
