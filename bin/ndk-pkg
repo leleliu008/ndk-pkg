@@ -1862,15 +1862,15 @@ python_module() {
             __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
 
             case $2 in
-                version)  "$__PIP_COMMAND__" show "$3" | grep 'Version:'  | cut -d ' ' -f2 ;;
-                location) "$__PIP_COMMAND__" show "$3" | grep 'Location:' | cut -d ' ' -f2 ;;
+                version)  "$__PIP_COMMAND__" show "$3" 2> /dev/null | grep 'Version:'  | cut -d ' ' -f2 ;;
+                location) "$__PIP_COMMAND__" show "$3" 2> /dev/null | grep 'Location:' | cut -d ' ' -f2 ;;
                 *) die "python_module get $2: not support."
             esac
             ;;
         install)
             [ -z "$2" ] && die "please specify a python module name."
             if ! python_module is installed "$2" ; then
-                "$__PIP_COMMAND__" install -U "$2" || return 1
+                run "$__PIP_COMMAND__" install -U "$2" || return 1
             fi
             ;;
         *)  die "python_module $1: not support."
