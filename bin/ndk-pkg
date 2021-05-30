@@ -1754,13 +1754,13 @@ __handle_required_dependencies() {
 # {{{ __printf_dependencies
 
 # examples:
-# __printf_dependency required command pkg-config ge 0.18
-# __printf_dependency required command python     ge 3.5
-# __printf_dependency required python  libxml2    ge 2.19
+# __printf_dependency required command   pkg-config ge 0.18
+# __printf_dependency required command   python     ge 3.5
+# __printf_dependency required module.py libxml2    ge 2.19
 #
-# __printf_dependency optional command pkg-config ge 0.18
-# __printf_dependency optional command python     ge 3.5
-# __printf_dependency optional python  libxml2    ge 2.19
+# __printf_dependency optional command   pkg-config ge 0.18
+# __printf_dependency optional command   python     ge 3.5
+# __printf_dependency optional module.py libxml2    ge 2.19
 __printf_dependency() {
     printf "%-10s %-15s %-2s %-10s %-10s %s\n" "$1" "$2" "$3" "$4" "$5" "$6"
 }
@@ -1870,6 +1870,8 @@ python_module() {
         install)
             [ -z "$2" ] && die "please specify a python module name."
             if ! python_module is installed "$2" ; then
+                warn "required python module ${COLOR_GREEN}$2${COLOR_OFF}, but ${COLOR_GREEN}$2${COLOR_OFF} python module not found, try to install it via ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
+                run "$__PIP_COMMAND__" install -U pip  || return 1
                 run "$__PIP_COMMAND__" install -U "$2" || return 1
             fi
             ;;
