@@ -1,7 +1,7 @@
 # Maintainer: fpliu <leleliu008@gmail.com>
 
 pkgname=('ndk-pkg')
-pkgver='0.1.0'
+pkgver='0.2.0'
 pkgrel=1
 pkgdesc="A package manager for Android NDK"
 arch=('any')
@@ -9,7 +9,7 @@ license=('custom')
 url="https://github.com/leleliu008/ndk-pkg"
 makedepends=()
 source=("https://github.com/leleliu008/ndk-pkg/releases/download/v${pkgver}/${pkgname}-${pkgver}.tar.gz")
-sha256sums=('9ca246a8c5832e0d32765371fbcd78a906a2f68e716ba248353969c52906e464')
+sha256sums=('b0b0cc6f5d171a511450c6dfed8ea008b1a1ac928ba716c837cae6fd34bb2707')
 
 build() {
     true
