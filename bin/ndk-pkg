@@ -4571,7 +4571,7 @@ parse_arguments() {
 init() {
     # MY represents this software's
     MY_NAME=ndk-pkg
-    MY_VERSION=0.2.0
+    MY_VERSION=0.1.0
     MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
 
     if [ -z "$NDK_PKG_HOME_DIR" ] ; then
