@@ -38,8 +38,12 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         ndk-pkg --version
         ndk-pkg version
         
-*   update the [ndk-pkg-formula repository](https://github.com/leleliu008/ndk-pkg-formula)
+*   integrate `zsh-completion` script
+
+        ndk-pkg integrate zsh
         
+*   update the [ndk-pkg-formula repository](https://github.com/leleliu008/ndk-pkg-formula)
+
         ndk-pkg update
         
 *   search packages can be installed

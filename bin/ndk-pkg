@@ -3241,7 +3241,7 @@ __install_a_package() {
             echo "        EMPTY_DIR = $EMPTY_DIR"
             echo " NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR"
             echo " NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR"
-            echo "              PWD = $PWD"
+            echo "                PWD = $PWD"
             echo
 
             run build0 || return 1
@@ -4208,6 +4208,25 @@ to_meson_array() {
     echo "$RESULT"
 }
 
+__integrate_zsh_completions() {
+    set -e
+    if [ -e /usr/local/share/zsh/site-functions/_ndk-pkg ] ; then
+        success "already integrated at /usr/local/share/zsh/site-functions/_ndk-pkg"
+        return 0
+    else
+        unset WORKING_DIR
+        WORKING_DIR=$(mktemp -d) || return 1
+        fetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/zsh-completion/_ndk-pkg' --output-dir="$WORKING_DIR" --output-name='_ndk-pkg'
+        chmod 755 "$WORKING_DIR/_ndk-pkg"
+        install -d /usr/local/share/zsh/site-functions
+        if [ -w /usr/local/share/zsh/site-functions ] ; then
+            mv "$WORKING_DIR/_ndk-pkg" /usr/local/share/zsh/site-functions
+        else
+            sudo mv "$WORKING_DIR/_ndk-pkg" /usr/local/share/zsh/site-functions
+        fi
+        success "successfully integrated at /usr/local/share/zsh/site-functions/_ndk-pkg"
+    fi
+}
 ########################################################################
 
 include_stub_getdtablesize() {
@@ -4620,6 +4639,8 @@ Usage: $MY_NAME <ACTION> [ARGUMENT...]
 ACTION:
     help    | --help    | -h    --show help information.
     version | --version | -V    --print version of $MY_NAME and Android NDK.
+
+    integrate zsh               --integrate zsh-completion script.
     
     list supported-abis              --list the supported abis.
     list supported-sdk-api-levels    --list the supported android-sdk api-levels.
@@ -4722,6 +4743,13 @@ main() {
 
         json_available_packages) __json_available_packages ;;
 
+        integrate)
+            shift;
+            case $1 in
+                zsh) __integrate_zsh_completions ;;
+                *)   die "ndk-pkg integrate $1: not support."
+            esac
+            ;;
         homepage) shift; __show_webpage_of_a_package    "$@" ;;
         depends)  shift; __show_depends_of_a_package    "$@" ;;
         prefix)   shift; __show_prefix_of_a_package     "$@" ;;

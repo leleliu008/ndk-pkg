@@ -20,6 +20,7 @@ _commands=(
     'upgrade:upgrade the outdated packages.'
     'fetch:download formula resources of a package to the cache.'
     'homepage:visit the homepage of a formula or the ndk-pkg project.'
+    'integrate:integrate zsh completions.'
     'depends:show the depends of a package.'
     'prefix:show the installation direcotory of a formula or the ndk-pkg home.'
     'pack:pack a installed package.'
@@ -91,6 +92,9 @@ function _ndk_pkg() {
                                     _arguments ':package-name:_ndk_pkg_available_packages'
                             esac
                     esac
+                    ;;
+                integrate)
+                    _arguments ':what:(zsh)'
                     ;;
                 info)
                     _arguments '*:package-name:_ndk_pkg_available_packages' ;;
