@@ -162,7 +162,7 @@ main() {
 
     run makepkg
 
-    run git add PKGBUILD
+    run git add PKGBUILD README.md install.sh
     run git commit -m "'publish new version $RELEASE_VERSION'"
     run git push origin master
 
@@ -172,8 +172,8 @@ main() {
     run cd homebrew-fpliu
     sed_in_place '/url      /d' Formula/ndk-pkg.rb
     sed_in_place '/sha256   /d' Formula/ndk-pkg.rb
-    sed_in_place "/homepage/a   sha256   \"$RELEASE_FILE_SHA256SUM\"" Formula/ndk-pkg.rb
-    sed_in_place "/homepage/a   url      \"https://github.com/leleliu008/ndk-pkg/releases/download/v$RELEASE_VERSION/ndk-pkg-$RELEASE_VERSION.tar.gz\"" Formula/ndk-pkg.rb
+    sed_in_place "/homepage/a \  sha256   \"$RELEASE_FILE_SHA256SUM\"" Formula/ndk-pkg.rb
+    sed_in_place "/homepage/a \  url      \"https://github.com/leleliu008/ndk-pkg/releases/download/v$RELEASE_VERSION/ndk-pkg-$RELEASE_VERSION.tar.gz\"" Formula/ndk-pkg.rb
     run git add Formula/ndk-pkg.rb
     run git commit -m "'publish new version ndk-pkg-$RELEASE_VERSION'"
     run git push origin master
