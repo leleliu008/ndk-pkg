@@ -3,12 +3,10 @@
 _commands=(
     '-h:print the help infomation of ndk-pkg command.'
     '--help:print the help infomation of ndk-pkg command.'
-    'help:print the help infomation of ndk-pkg command.'
     '-V:print the version of ndk-pkg and NDK.'
     '--version:print the version of ndk-pkg and NDK.'
-    'version:print the version of ndk-pkg and NDK.'
     'search:search packages can be installed.'
-    'list:list the supported abis, the supported sdk-api-levels, available, installed and outdated packages.'
+    'ls:list the supported abis, the supported sdk-api-levels, available, installed and outdated packages.'
     'tree:list contents of a installed package directory in a tree-like format.'
     'info:print the basic infomation of packages.'
     'formula:view,edit the formula of a package.'
@@ -21,11 +19,11 @@ _commands=(
     'fetch:download formula resources of a package to the cache.'
     'homepage:visit the homepage of a formula or the ndk-pkg project.'
     'integrate:integrate zsh completions.'
+    'toolchain:show android-ndk toolchain info.'
     'depends:show the depends of a package.'
     'prefix:show the installation direcotory of a formula or the ndk-pkg home.'
     'pack:pack a installed package.'
     'logs:print the logs of a installed package.'
-    'repo:fomula repo mapulation.'
     'get:get value of the given key of the given package.'
     'is:check something. easy to write script.'
 )
@@ -49,19 +47,19 @@ function _ndk_pkg_commands() {
 
 function _ndk_pkg_available_packages() {
     local -a _available_packages
-    _available_packages=($(ndk-pkg list available -q))
+    _available_packages=($(ndk-pkg ls available -q))
     _describe 'available-packages' _available_packages
 }
 
 function _ndk_pkg_installed_packages() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg list installed))
+    _installed_packages=($(ndk-pkg ls installed))
     _describe 'installed-packages' _installed_packages
 }
 
 function _ndk_pkg_outdated_packages() {
     local -a _outdated_packages
-    _outdated_packages=($(ndk-pkg list outdated))
+    _outdated_packages=($(ndk-pkg ls outdated))
     _describe 'outdated-packages' _outdated_packages
 }
 
@@ -76,20 +74,30 @@ function _ndk_pkg() {
     case $state in
         option)
             case $words[1] in
-                list)
+                ls)
                     _arguments \
                         ':list:_ndk_pkg_list' \
                         '-q[quiet mode. do not report error log]'
                     ;;
                 formula)
                     _arguments \
-                        ':action:(create delete rename view edit list)' \
+                        ':action:(create delete rename view edit list repo)' \
                         '*:: :->action'
                     case $state in
                         action)
                             case $words[1] in
                                 delete|rename|view|edit)
                                     _arguments ':package-name:_ndk_pkg_available_packages'
+                                    ;;
+                                repo)
+                                    _arguments '1:action:(list add del)' '*:: :->repo-subcommand'
+                                    case $state in
+                                        repo-subcommand)
+                                            case $words[1] in
+                                                del) _arguments '1:repo-name:($(ndk-pkg formula repo list | cut -d= -f1))' ;;
+                                            esac
+                                    esac
+                                    ;;
                             esac
                     esac
                     ;;
@@ -105,11 +113,7 @@ function _ndk_pkg() {
                 logs)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:abi:($(ndk-pkg list abis))'
-                    ;;
-                repo)
-                    _arguments \
-                        '1:action:(list)'
+                        '2:abi:($(ndk-pkg ls abis))'
                     ;;
                 get)
                     _arguments \
@@ -119,7 +123,7 @@ function _ndk_pkg() {
                 install)
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
-                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg list sdk-api-levels))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls sdk-api-levels))' \
                         '--dry-run[dry-run]' \
                         '--keep-working-dir[do not delete working-dir even if installed success]' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
@@ -128,14 +132,14 @@ function _ndk_pkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
-                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg list sdk-api-levels))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls sdk-api-levels))' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;
                 upgrade)
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
-                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg list sdk-api-levels))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls sdk-api-levels))' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
                     ;;

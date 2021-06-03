@@ -30,14 +30,16 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         
         ndk-pkg -h
         ndk-pkg --help
-        ndk-pkg help
         
 *   print the version of `ndk-pkg` and [Android NDK](https://developer.android.google.cn/ndk)
         
         ndk-pkg -V
         ndk-pkg --version
-        ndk-pkg version
         
+*   show `android-ndk` toolchain info
+
+        ndk-pkg toolchain
+
 *   integrate `zsh-completion` script
 
         ndk-pkg integrate zsh
@@ -70,15 +72,27 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         ndk-pkg reinstall curl bzip2 --min-sdk-api-level=21 -v
         
 *   uninstall packages
-        
+
         ndk-pkg uninstall curl
         ndk-pkg uninstall curl bzip2
         
 *   upgrade the outdated packages
-        
+
         ndk-pkg upgrade curl
         ndk-pkg upgrade curl bzip2 --min-sdk-api-level=21 -v
         
+*   list add avaliable formula repos
+
+        ndk-pkg formula repo list
+
+*   add a new formula repo
+
+        ndk-pkg formula repo add my_repo https://github.com/leleliu008/ndk-pkg-formula.git
+
+*   delete a existing formula repo
+
+        ndk-pkg formula repo del my_repo
+
 *   view the formula of a package
         
         ndk-pkg formula view curl

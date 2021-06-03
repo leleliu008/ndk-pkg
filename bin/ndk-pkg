@@ -2313,9 +2313,16 @@ ____edit_a_formula() {
 }
 
 __create_a_formula() {
-    die_if_package_is_already_exist "$1"
+    die_if_package_is_not_specified "$1"
 
-    cat > "$MY_FORMULA_REPO_DIR/$1.sh" <<EOF
+    unset REPO_NAME
+    REPO_NAME=offical
+
+    if [ -e "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh" ] ; then
+        die "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh formula already exists."
+    fi
+
+    cat > "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh" <<EOF
 package set summary "Summary of this package"
 
 package set webpage "https://www.xx.com"
@@ -2395,6 +2402,62 @@ __rename_a_formula() {
         success "rename formula $1 -> $2 success."
     else
         die "rename formula $1 -> $2 failed."
+    fi
+}
+
+__list_formulas() {
+    for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
+    do
+        if [ -d  "$MY_FORMULA_REPO_DIR/$repo/formula" ] ; then
+            ls "$MY_FORMULA_REPO_DIR/$repo/formula"/*.sh
+        fi
+    done
+}
+
+# __add_a_formula_repo NAME URL
+__add_a_formula_repo() {
+    [ -z "$1" ] && die "please specify a repo name."
+    [ -z "$2" ] && die "please specify a repo url."
+
+    case $2 in
+        *.git)
+            case $2 in
+                http://*|https://*|git@*) ;;
+                *)  die "$2: not a valid git url."
+            esac
+            ;;
+        *)  die "$2: repo url must end with .git"
+    esac
+
+    for repoName in $(____list_formula_repositories | cut -d= -f1)
+    do
+        if [ "$repoName" = "$1" ] ; then
+            die "$1 formula repo already exists."
+        fi
+    done
+
+    echo "$1=$2" >> "$MY_HOME_DIR/repos"
+}
+
+# __del_a_formula_repo NAME
+__del_a_formula_repo() {
+    [ -z "$1" ] && die "please specify a repo name."
+
+    if [ "$1" = 'offical' ] ; then
+        die "offical formula repo can not be deleted."
+    fi
+
+    unset REPO_EXISTS
+    for repoName in $(____list_formula_repositories | cut -d= -f1)
+    do
+        if [ "$repoName" = "$1" ] ; then
+            REPO_EXISTS=true
+        fi
+    done
+    if [ "$REPO_EXISTS" = 'true' ] ; then
+        sed_in_place "/^$1=/d" "$MY_HOME_DIR/repos"
+    else
+        die "$1 formula repo not exists."
     fi
 }
 
@@ -2515,11 +2578,6 @@ die_if_package_is_not_available() {
     is_package_available "$1" || die "$1 is not available."
 }
 
-die_if_package_is_already_exist() {
-    die_if_package_is_not_specified "$1"
-    [ -n "$(__pathof_a_formula $1)" ] && die "$1 package is already exist."
-}
-
 die_from_package_is_not_installed() {
     die "$1 is not installed."
 }
@@ -2559,8 +2617,7 @@ is_package__outdated() {
         [ -d "$MY_CACHED_LOG_DIR/$1/$ABI" ]                   || die_from_package_is_not_installed "$1"
         [ -f "$MY_CACHED_LOG_DIR/$1/$ABI/installed.log.txt" ] || die_from_package_is_not_installed "$1"
         die_if_load_installed_log_failed "$1" "$ABI"
-        [ "$PACKAGE_VERSION" = "$installed_version" ] && return 1
-        [ "$PACKAGE_VERSION" = $(printf "$PACKAGE_VERSION\n$installed_version" | sort --version-sort --reverse | head -n 1) ]
+        version_match "$PACKAGE_VERSION" gt "$installed_pkg_vers"
     done
 }
 
@@ -2862,7 +2919,7 @@ __pack_bottle_of_a_package() {
         die "please install zip or tar utility."
     fi
 
-    FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_version.bin.$SUFFIX"
+    FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers.bin.$SUFFIX"
 
     if [ -f "$FILE_PATH" ] ; then
         rm  "$FILE_PATH" || return 1
@@ -3521,7 +3578,7 @@ __show_infomation_of_packages() {
     unset PACKAGE_LIST
 
     if [ -z "$1" ] ; then
-        [ -d "$MY_FORMULA_REPO_DIR" ] || __update_formula_repository
+        [ -d "$MY_FORMULA_REPO_DIR" ] || __update_formula_repositories
         cd "$MY_FORMULA_REPO_DIR" || exit 1
         PACKAGE_LIST=$(ls *.sh | sed 's/\.sh//g')
     else
@@ -4637,48 +4694,55 @@ $MY_NAME is a package manager for Android NDK to build C/C++ project.
 Usage: $MY_NAME <ACTION> [ARGUMENT...]
 
 ACTION:
-    help    | --help    | -h    --show help information.
-    version | --version | -V    --print version of $MY_NAME and Android NDK.
+    --help    | -h                --show help information.
+    --version | -V                --print version of $MY_NAME and Android NDK.
 
-    integrate zsh               --integrate zsh-completion script.
-    
-    list supported-abis              --list the supported abis.
-    list supported-sdk-api-levels    --list the supported android-sdk api-levels.
-    
-    list available         --list the available packages.
-    list installed         --list the installed packages.
-    list outdated          --list the outdated packages.
+    integrate zsh                 --integrate zsh-completion script.
 
-    is available PACKAGE  --is PACKAGE available?
-    is installed PACKAGE  --is PACKAGE installed?
-    is outdated  PACKAGE  --is PACKAGE outdated?
-
-    get PACKAGE KEY       --get value of KEY
+    toolchain                     --show android-ndk toolchain info.
     
-    search KEYWORD        --search packages.
+    ls abis                       --list the supported abis.
+    ls archs                      --list the supported archs.
+    ls sdk-api-levels             --list the supported android-sdk api-levels.
     
-    formula create PACKAGE   --create a new formula.
-    formula delete PACKAGE   --delete a exist formula.
-    formula rename P1 P2     --rename a exist formula to new name.
-    formula view PACKAGE     --view the formula of a package.
-    formula edit PACKAGE     --edit the formula of a package.
-    formula list             --equipment to list available
+    ls available                  --list the available packages.
+    ls installed                  --list the installed packages.
+    ls outdated                   --list the outdated  packages.
 
-    tree PACKAGE          --list contents of a installed package directory in a tree-like format.
-    pack PACKAGE          --pack a installed package.
-    logs PACKAGE ABI      --print the logs of a installed package.
-    info PACKAGE...       --print the information of packages.
-    fetch PACKAGE         --download formula resources of a package to the cache.
-    prefix PACKAGE        --show the installation direcotory of a formula or the $MY_NAME home.
-    homepage PACKAGE      --visit the homepage of a formula or the $MY_NAME project.
+    is available PACKAGE          --is PACKAGE available?
+    is installed PACKAGE          --is PACKAGE installed?
+    is outdated  PACKAGE          --is PACKAGE outdated?
+
+    get PACKAGE KEY               --get value of KEY of a package.
+    
+    search KEYWORD                --search available packages.
+    
+    formula create PACKAGE        --create a new formula.
+    formula delete PACKAGE        --delete a exist formula.
+    formula rename P1 P2          --rename a exist formula to new name.
+    formula view PACKAGE          --view the formula of a package.
+    formula edit PACKAGE          --edit the formula of a package.
+    formula list                  --list all formulas.
+    formula repo [list]           --list formula repos.
+    formula repo add  NAME URL    --add a new formula repo.
+    formula repo del  NAME        --delete a exist formula repo.
+
+    tree PACKAGE                  --list contents of a installed package directory in a tree-like format.
+    pack PACKAGE                  --pack a installed package.
+    logs PACKAGE ABI              --print the logs of a installed package.
+    info PACKAGE...               --print the information of packages.
+    fetch PACKAGE                 --download formula resources of a package to the cache.
+    prefix [PACKAGE]              --show the installation direcotory of a formula or the $MY_NAME home.
+    depends PACKAGE               --show the depends of a package.
+    homepage [PACKAGE]            --visit the homepage of a formula or the $MY_NAME project.
 
     install   PACKAGE... [--min-sdk-api-level=21 -v -x --dry-run]     --install packages.
     reinstall PACKAGE... [--min-sdk-api-level=21 -v -x --dry-run]     --reinstall packages.
     upgrade   PACKAGE... [--min-sdk-api-level=21 -v -x --dry-run]     --upgrade packages.
-    uninstall PACKAGE...   --uninstall packages.
+    uninstall PACKAGE...          --uninstall packages.
     
-    cleanup          --cleanup the unused cache.
-    update           --update the formula repository.
+    cleanup                       --cleanup the unused cache.
+    update                        --update the formula repositories.
 EOF
     if [ -z "$1" ] ; then
         exit
@@ -4701,16 +4765,8 @@ main() {
             check_prerequisites
             echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERSION"
             ;;
-        repo)
-            shift
-            case $1 in
-                list) shift; ____list_formula_repositories ;;
-                *) help 1
-            esac
-            ;;
         get)  shift; package get "$1" "$2" ;;
-        list)
-            shift
+        ls)   shift;
             case $1 in
                 available) shift; __list_available_packages ;;
                 installed) shift; __list_installed_packages ;;
@@ -4723,6 +4779,14 @@ main() {
                 *) help 1
             esac
             ;;
+        is) shift
+            case $1 in
+                available) shift; is_package_available "$@" ;;
+                installed) shift; is_package_installed "$@" ;;
+                outdated)  shift; is_package__outdated "$@" ;;
+                *) help 1
+            esac
+            ;;
         search)  shift; __search_packages "$*" ;;
         formula) shift
             case $1 in
@@ -4731,11 +4795,19 @@ main() {
                 rename) shift; __rename_a_formula "$@" ;;
                 view)   shift; ____view_a_formula "$@" ;;
                 edit)   shift; ____edit_a_formula "$@" ;;
-                list)   shift; __list_available_packages ;;
+                list)   shift; __list_formulas ;;
+                repo)   shift;
+                        case $1 in
+                            list) shift; ____list_formula_repositories ;;
+                            add)  shift; __add_a_formula_repo $@ ;;
+                            del)  shift; __del_a_formula_repo $@ ;;
+                            *) help 1
+                        esac
+                        ;;
                    *)   help 1
             esac
             ;;
-        update)  __update_formula_repository ;;
+        update)  __update_formula_repositories ;;
         cleanup) __cleanup ;;
 
         install)   ____install_packages "$@" ;;
@@ -4761,15 +4833,7 @@ main() {
         pack)     shift; __pack_bottle_of_a_package     "$@" ;;
         tree)     shift; __tree_installed_of_a_package  "$@" ;;
         info)     shift; __show_infomation_of_packages  "$@" ;;
-        is)
-            shift
-            case $1 in
-                available) shift; is_package_available "$@" ;;
-                installed) shift; is_package_installed "$@" ;;
-                outdated)  shift; is_package__outdated "$@" ;;
-                *) help 1
-            esac
-            ;;
+
         ldd) shift; ldd "$@" ;;
         *) help 1
     esac
