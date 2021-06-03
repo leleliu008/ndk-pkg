@@ -4652,6 +4652,8 @@ ACTION:
     is available PACKAGE  --is PACKAGE available?
     is installed PACKAGE  --is PACKAGE installed?
     is outdated  PACKAGE  --is PACKAGE outdated?
+
+    get PACKAGE KEY       --get value of KEY
     
     search KEYWORD        --search packages.
     

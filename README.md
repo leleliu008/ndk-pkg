@@ -132,6 +132,15 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         
         ndk-pkg is outdated curl
         
+*   get the value of key of a package.
+
+        ndk-pkg get curl version
+        ndk-pkg get curl summary
+        ndk-pkg get curl webpage
+        ndk-pkg get curl src.git
+
+    more keys please read [README.md](https://github.com/leleliu008/ndk-pkg-formula/blob/master/README.md)
+
 *   list contents of a installed package directory in a tree-like format.
         
         ndk-pkg tree curl
