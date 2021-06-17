@@ -31,12 +31,12 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         ndk-pkg -h
         ndk-pkg --help
         
-*   print the version of `ndk-pkg` and [Android NDK](https://developer.android.google.cn/ndk)
+*   print the version of `ndk-pkg`
         
         ndk-pkg -V
         ndk-pkg --version
         
-*   show `android-ndk` toolchain info
+*   show [Android NDK](https://developer.android.google.cn/ndk) toolchain info
 
         ndk-pkg toolchain
 
