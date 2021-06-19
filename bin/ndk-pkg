@@ -2224,7 +2224,7 @@ ___load_a_formula() {
                 die "src.sum is not configed in $PACKAGE_FORMULA_FILEPATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
-                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr _ - | sed 's|-stable||' | sed 's|-src||' | sed 's|.orig.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr _ - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 if [ -z "$PACKAGE_VERSION" ] ; then
                     die "version is not configed in $PACKAGE_FORMULA_FILEPATH"
                 else
@@ -3236,13 +3236,13 @@ __install_a_package() {
 
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
             if [ "$(cat "$NATIVE_INSTALL_DIR/version.txt")" != "$PACKAGE_VERSION" ] ; then
-                warn " build for native already have been done, but not same version. we will remove and rebuild it."
+                warn "build for native already have been done, but not same version. we will remove and rebuild it."
                 run rm -rf "$NATIVE_INSTALL_DIR"
             fi
         fi
 
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
-            warn " build for native already have been done, skipped."
+            warn "build for native already have been done, skipped."
         else
             [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] || {
                 run mkdir "$NATIVE_BUILD_DIR" || return 1
