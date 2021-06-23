@@ -2275,6 +2275,8 @@ ___load_a_formula() {
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         package add dep-cmd 'gsed'
     fi
+
+    package add dep-cmd 'find'
 }
 
 ____view_a_formula() {
@@ -3798,6 +3800,9 @@ __config_this_build_variables() {
     unset PKG_CONFIG_LIBDIR
     unset PKG_CONFIG_PATH
 
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
+    unset CMAKE_PREFIX_PATH
+
     for PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
         PKG=$(printf "$PACKAGE" | tr '-' '_')
@@ -3818,6 +3823,24 @@ __config_this_build_variables() {
             PKG_CONFIG_PATH="$ABI_PKGCONF_DIR"
         else
             PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
+        fi
+
+        if [ -z "$CMAKE_PREFIX_PATH" ] ; then
+            CMAKE_PREFIX_PATH="$ABI_LIBRARY_DIR"
+        else
+            CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH;$ABI_LIBRARY_DIR"
+        fi
+
+        if [ -d "$ABI_LIBRARY_DIR/cmake" ] ; then
+            for cmake_config_dir in $(find "$ABI_LIBRARY_DIR/cmake" -depth 1 -type d)
+            do
+                if [ -z "$CMAKE_PREFIX_PATH" ] ; then
+                    CMAKE_PREFIX_PATH="$cmake_config_dir"
+                else
+                    CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH;$cmake_config_dir"
+                fi
+            done
+            unset cmake_config_dir
         fi
     done
 
@@ -4174,8 +4197,8 @@ cmakew() {
         -DCMAKE_VERBOSE_MAKEFILE=ON \
         -DCMAKE_COLOR_MAKEFILE=ON \
         -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-        -DCMAKE_PREFIX_PATH="$MY_INSTALL_DIR" \
-        -DCMAKE_FIND_ROOT_PATH="$MY_INSTALL_DIR" \
+        -DCMAKE_PREFIX_PATH="'$CMAKE_PREFIX_PATH'" \
+        -DCMAKE_FIND_ROOT_PATH="'$CMAKE_PREFIX_PATH'" \
         -DCMAKE_INSTALL_PREFIX="$ABI_INSTALL_DIR" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
