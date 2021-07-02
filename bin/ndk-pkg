@@ -4154,9 +4154,25 @@ configure() {
 # make wrapper
 makew() {
     if [ "$DEBUG" = 'true' ] ; then
-        run "$MAKE -w --debug $*"
+        if [ "$MULTI_PROCESS" = 'true' ] ; then
+            if [ "$JOBS_VAR" = 'true' ] ; then
+                run "$MAKE -w JOBS=$NPROC --debug $*"
+            else
+                run "$MAKE -w -j$NPROC --debug $*"
+            fi
+        else
+            run "$MAKE -w --debug $*"
+        fi
     else
-        run "$MAKE -w $*"
+        if [ "$MULTI_PROCESS" = 'true' ] ; then
+            if [ "$JOBS_VAR" = 'true' ] ; then
+                run "$MAKE -w JOBS=$NPROC --debug $*"
+            else
+                run "$MAKE -w -j$NPROC --debug $*"
+            fi
+        else
+            run "$MAKE -w $*"
+        fi
     fi
 }
 
@@ -4708,6 +4724,7 @@ init() {
     else
         die "command not found: uname. please make sure it in PATH."
     fi
+    NPROC=$(nproc)
 }
 
 help() {
