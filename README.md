@@ -61,10 +61,12 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
 *   install packages
         
         ndk-pkg install curl
-        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v
-        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v -x
-        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v -x --dry-run
-        ndk-pkg install curl bzip2 --min-sdk-api-level=21 -v -x --keep-working-dir
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run --keep-working-dir
         
 *   reinstall packages
         

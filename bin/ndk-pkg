@@ -197,6 +197,14 @@ nproc() {
     fi
 }
 
+is_integer () {
+    case "${1#[+-]}" in
+        (*[!0123456789]*) return 1 ;;
+        ('')              return 1 ;;
+        (*)               return 0 ;;
+    esac
+}
+
 format_unix_timestamp() {
    date -jf "%s" "$1" "$2" 2> /dev/null ||
    date -d      "@$1" "$2"
@@ -2000,8 +2008,9 @@ regist_dependency() {
 # package set|add dep.cmd "nasm"
 # package set|add dep.pkg "libxx"
 # package set|add bsystem "cmake"
-# package set|add binsrcd 'true'
-# package set|add sdk.api '23'
+# package set     binsrcd 'true'
+# package set     sourced 'src'
+# package set     sdk.api '23'
 #
 # package get PACKAGE KEY
 package() {
@@ -3297,6 +3306,9 @@ __install_a_package() {
             done
 
             echo
+            echo "            NPROC = $NPROC"
+            echo "            NJOBS = $NJOBS"
+            echo
             echo "      WORKING_DIR = $WORKING_DIR"
             echo "       SOURCE_DIR = $SOURCE_DIR"
             echo "        EMPTY_DIR = $EMPTY_DIR"
@@ -4055,6 +4067,8 @@ __printf_this_build_variables() {
     echo "  ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR"
     echo "  ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR"
     echo
+    echo "            NPROC = $NPROC"
+    echo "            NJOBS = $NJOBS"
 
     if [ "$VERBOSE" = 'true' ] ; then
         echo
@@ -4156,9 +4170,9 @@ configure() {
 # make wrapper
 makew() {
     if [ "$DEBUG" = 'true' ] ; then
-        run "$MAKE -w --debug $*"
+        run "$MAKE -w -j$NJOBS --debug $*"
     else
-        run "$MAKE -w $*"
+        run "$MAKE -w -j$NJOBS $*"
     fi
 }
 
@@ -4626,6 +4640,9 @@ parse_arguments() {
     unset XTRACE
     unset VERBOSE
 
+    unset NPROC
+    unset NJOBS
+
     unset WORKING_DIR
     unset KEEP_WORKING_DIR
     
@@ -4650,6 +4667,10 @@ parse_arguments() {
             --keep-working-dir)
                 KEEP_WORKING_DIR=true
                 ;;
+            --jobs=*)
+                NJOBS=$(getvalue "$1")
+                is_integer "$NJOBS" || die "--jobs=INTEGER argument's value must be a integer."
+                ;;
             [a-z]*)
                 if [ "$1" = 'all' ] ; then
                     USER_SPECIFIED_PACKAGE_LIST="$(__list_available_packages)"
@@ -4665,6 +4686,9 @@ parse_arguments() {
         esac
         shift
     done
+
+    NPROC=$(nproc)
+    [ -z "$NJOBS" ] && NJOBS=$NPROC
 
     BUILD_LIST="$(__list_supported_abis)"
 }
@@ -4761,9 +4785,9 @@ ACTION:
     depends PACKAGE               --show the depends of a package.
     homepage [PACKAGE]            --visit the homepage of a formula or the $MY_NAME project.
 
-    install   PACKAGE... [--min-sdk-api-level=21 -v -x --dry-run]     --install packages.
-    reinstall PACKAGE... [--min-sdk-api-level=21 -v -x --dry-run]     --reinstall packages.
-    upgrade   PACKAGE... [--min-sdk-api-level=21 -v -x --dry-run]     --upgrade packages.
+    install   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --install packages.
+    reinstall PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --reinstall packages.
+    upgrade   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --upgrade packages.
     uninstall PACKAGE...          --uninstall packages.
     
     cleanup                       --cleanup the unused cache.
