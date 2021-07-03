@@ -1993,13 +1993,15 @@ regist_dependency() {
 # examples:
 # package set|add summary "JPEG image codec that aids compression and decompression"
 # package set|add webpage "https://www.libjpeg-turbo.org"
-# package set|add src-git "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
-# package set|add src-url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.0.6.tar.gz"
-# package set|add src-sum "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
+# package set|add src.git "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
+# package set|add src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.0.6.tar.gz"
+# package set|add src.sum "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
 # package set|add license "IJG"
-# package set|add dep-cmd "nasm"
+# package set|add dep.cmd "nasm"
+# package set|add dep.pkg "libxx"
 # package set|add bsystem "cmake"
 # package set|add binsrcd 'true'
+# package set|add sdk.api '23'
 #
 # package get PACKAGE KEY
 package() {
@@ -2079,15 +2081,15 @@ __parse_package_patches() {
     while [ -n "$1" ]
     do
         case $1 in
-            *.diff)    PATCH_CONTENT_TYPE=patch  ; package add dep-cmd patch     ;;
-            *.patch)   PATCH_CONTENT_TYPE=patch  ; package add dep-cmd patch     ;;
-            *.zip)     PATCH_CONTENT_TYPE=zip    ; package add dep-cmd patch unzip     ;;
-            *.tar.xz)  PATCH_CONTENT_TYPE=tar.xz ; package add dep-cmd patch tar xz    ;;
-            *.tar.gz)  PATCH_CONTENT_TYPE=tar.gz ; package add dep-cmd patch tar gzip  ;;
-            *.tar.lz)  PATCH_CONTENT_TYPE=tar.lz ; package add dep-cmd patch tar lzip  ;;
-            *.tar.bz2) PATCH_CONTENT_TYPE=tar.bz2; package add dep-cmd patch tar bzip2 ;;
-            *.tgz)     PATCH_CONTENT_TYPE=tar.gz ; package add dep-cmd patch tar gzip  ;;
-            *.txz)     PATCH_CONTENT_TYPE=tar.xz ; package add dep-cmd patch tar xz    ;;
+            *.diff)    PATCH_CONTENT_TYPE=patch  ; package add dep.cmd patch           ;;
+            *.patch)   PATCH_CONTENT_TYPE=patch  ; package add dep.cmd patch           ;;
+            *.zip)     PATCH_CONTENT_TYPE=zip    ; package add dep.cmd patch unzip     ;;
+            *.tar.xz)  PATCH_CONTENT_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
+            *.tar.gz)  PATCH_CONTENT_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
+            *.tar.lz)  PATCH_CONTENT_TYPE=tar.lz ; package add dep.cmd patch tar lzip  ;;
+            *.tar.bz2) PATCH_CONTENT_TYPE=tar.bz2; package add dep.cmd patch tar bzip2 ;;
+            *.tgz)     PATCH_CONTENT_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
+            *.txz)     PATCH_CONTENT_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
             *)  die "$1 : extension isn't recognized. the supported extensions are .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
         esac
 
@@ -2189,18 +2191,18 @@ ___load_a_formula() {
 
     case $PACKAGE_SRC_URL in
         dir://*)   PACKAGE_SRC_TYPE=dir ;;
-        *.git)     PACKAGE_SRC_TYPE=git    ; package add dep-cmd git ;;
-        *.zip)     PACKAGE_SRC_TYPE=zip    ; package add dep-cmd curl unzip ;;
-        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ; package add dep-cmd curl tar xz ;;
-        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ; package add dep-cmd curl tar gzip ;;
-        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ; package add dep-cmd curl tar lzip ;;
-        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2; package add dep-cmd curl tar bzip2 ;;
-        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ; package add dep-cmd curl tar gzip ;;
-        *.txz)     PACKAGE_SRC_TYPE=tar.xz ; package add dep-cmd curl tar xz ;;
-        *.c)       PACKAGE_SRC_TYPE=c      ; package add dep-cmd curl ;;
-        *.cc)      PACKAGE_SRC_TYPE=cxx    ; package add dep-cmd curl ;;
-        *.cxx)     PACKAGE_SRC_TYPE=cxx    ; package add dep-cmd curl ;;
-        *.cpp)     PACKAGE_SRC_TYPE=cxx    ; package add dep-cmd curl ;;
+        *.git)     PACKAGE_SRC_TYPE=git    ; package add dep.cmd git ;;
+        *.zip)     PACKAGE_SRC_TYPE=zip    ; package add dep.cmd curl unzip ;;
+        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ; package add dep.cmd curl tar xz ;;
+        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ; package add dep.cmd curl tar gzip ;;
+        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ; package add dep.cmd curl tar lzip ;;
+        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2; package add dep.cmd curl tar bzip2 ;;
+        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ; package add dep.cmd curl tar gzip ;;
+        *.txz)     PACKAGE_SRC_TYPE=tar.xz ; package add dep.cmd curl tar xz ;;
+        *.c)       PACKAGE_SRC_TYPE=c      ; package add dep.cmd curl ;;
+        *.cc)      PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
+        *.cxx)     PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
+        *.cpp)     PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
         *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
@@ -2246,18 +2248,18 @@ ___load_a_formula() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            autogen)     package add dep-cmd perl m4 autoconf automake make ;;
-            autotools)   package add dep-cmd perl m4 autoconf automake make ;;
-            configure)   package add dep-cmd make ;;
-            ndk-build)   package add dep-cmd make ;;
-            cmake)       package add dep-cmd cmake make  ;;
-            cmake-make)  package add dep-cmd cmake make  ;;
-            cmake-ninja) package add dep-cmd cmake ninja ;;
-            meson)       package add dep-cmd meson ninja ;;
-            make)        package add dep-cmd make  ;;
-            ninja)       package add dep-cmd ninja ;;
-            cargo)       package add dep-cmd cargo rustup ;;
-            go)          package add dep-cmd go ;;
+            autogen)     package add dep.cmd perl m4 autoconf automake make ;;
+            autotools)   package add dep.cmd perl m4 autoconf automake make ;;
+            configure)   package add dep.cmd make ;;
+            ndk-build)   package add dep.cmd make ;;
+            cmake)       package add dep.cmd cmake make  ;;
+            cmake-make)  package add dep.cmd cmake make  ;;
+            cmake-ninja) package add dep.cmd cmake ninja ;;
+            meson)       package add dep.cmd meson ninja ;;
+            make)        package add dep.cmd make  ;;
+            ninja)       package add dep.cmd ninja ;;
+            cargo)       package add dep.cmd cargo rustup ;;
+            go)          package add dep.cmd go ;;
         esac
     done
 
@@ -2270,13 +2272,13 @@ ___load_a_formula() {
         PACKAGE_BUILD_IN_SOURCE_DIR='true'
     fi
 
-    package add dep-cmd 'tree'
+    package add dep.cmd 'tree'
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        package add dep-cmd 'gsed'
+        package add dep.cmd 'gsed'
     fi
 
-    package add dep-cmd 'find'
+    package add dep.cmd 'find'
 }
 
 ____view_a_formula() {
@@ -2549,7 +2551,7 @@ __fetch_patches_of_a_package() {
 }
 
 __fetch_resources_of_a_package() {
-    __fetch_sources_of_a_package
+    __fetch_sources_of_a_package &&
     __fetch_patches_of_a_package $PACKAGE_PATCHES
 }
 
@@ -3192,7 +3194,7 @@ __install_a_package() {
     NINJA=$(command -v ninja)
 
     step "fetch resources if needed"
-    __fetch_resources_of_a_package "$1"
+    __fetch_resources_of_a_package "$1" || return 1
 
     step "create working directory"
     info "mktemp -d"
@@ -3201,7 +3203,7 @@ __install_a_package() {
     step "unpack sources to working directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
-            PACKAGE_VERSION=$(git -C "$PACKAGE_SRC_PATH" log -1 --pretty=format:%h)
+            PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h) || return 1
             run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
