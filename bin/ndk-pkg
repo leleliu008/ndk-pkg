@@ -2139,6 +2139,9 @@ ___load_a_formula() {
     # if build in source dir, otherwise in build dir
     unset PACKAGE_BUILD_IN_SOURCE_DIR
 
+    # if build in parallel
+    unset PACKAGE_BUILD_IN_PARALLEL
+
     # dependency commands
     unset PACKAGE_DEP_CMD
 
@@ -2274,6 +2277,10 @@ ___load_a_formula() {
 
     if [ -n "$PACKAGE_PATCHES" ] ; then
         __parse_package_patches $PACKAGE_PATCHES
+    fi
+
+    if [ "$PACKAGE_BUILD_IN_PARALLEL" = 'false' ] ; then
+        NJOBS=1
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
@@ -3816,6 +3823,8 @@ __config_this_build_variables() {
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
     unset CMAKE_PREFIX_PATH
+    unset CMAKE_INCLUDE_PATH
+    unset CMAKE_LIBRARY_PATH
 
     for PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
@@ -3839,10 +3848,16 @@ __config_this_build_variables() {
             PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
         fi
 
-        if [ -z "$CMAKE_PREFIX_PATH" ] ; then
-            CMAKE_PREFIX_PATH="$ABI_LIBRARY_DIR"
+        if [ -z "$CMAKE_INCLUDE_PATH" ] ; then
+            CMAKE_INCLUDE_PATH="$ABI_LIBRARY_DIR"
         else
-            CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH;$ABI_LIBRARY_DIR"
+            CMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH;$ABI_INCLUDE_DIR"
+        fi
+
+        if [ -z "$CMAKE_LIBRARY_PATH" ] ; then
+            CMAKE_LIBRARY_PATH="$ABI_LIBRARY_DIR"
+        else
+            CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH;$ABI_LIBRARY_DIR"
         fi
 
         if [ -d "$ABI_LIBRARY_DIR/cmake" ] ; then
@@ -4215,6 +4230,8 @@ cmakew() {
         -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
         -DCMAKE_PREFIX_PATH="'$CMAKE_PREFIX_PATH'" \
         -DCMAKE_FIND_ROOT_PATH="'$CMAKE_PREFIX_PATH'" \
+        -DCMAKE_INCLUDE_PATH="'$CMAKE_INCLUDE_PATH'" \
+        -DCMAKE_LIBRARY_PATH="'$CMAKE_LIBRARY_PATH'" \
         -DCMAKE_INSTALL_PREFIX="$ABI_INSTALL_DIR" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
