@@ -1361,6 +1361,8 @@ get_brew_package_name_by_command_name() {
       ps2pdf) echo "ghostscript" ;;
      rst2man.py|rst2html.py)
               echo "docutils" ;;
+    grpc_cpp_plugin)
+                echo "grpc" ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -2174,18 +2176,9 @@ ___load_a_formula() {
 
     . "$PACKAGE_FORMULA_FILEPATH" || die "$PACKAGE_FORMULA_FILEPATH is broken."
 
-    PACKAGE_TARGET_OS_VERS=$PACKAGE_SDK_API
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
-
-    [ "$PACKAGE_BINSRCD" = 'true' ] && PACKAGE_BUILD_IN_SOURCE_DIR='true'
-
-    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
-
-    [ -z "$PACKAGE_WEBPAGE" ] && PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
-
-    [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
+    PACKAGE_BUILD_IN_SOURCE_DIR=$PACKAGE_BINSRCD
+    PACKAGE_TARGET_OS_VERS=$PACKAGE_SDK_API
 
     if [ -z "$PACKAGE_TARGET_OS_VERS" ] ; then
         PACKAGE_TARGET_OS_VERS=$(__list_supported_sdk_api_levels | head -n 1)
@@ -2200,6 +2193,14 @@ ___load_a_formula() {
             TARGET_OS_VERS=$USER_SPECIFIED_TARGET_OS_VERS
         fi
     fi
+
+    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
+
+    [ -z "$PACKAGE_WEBPAGE" ] && PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
+    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
+
+    [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
+    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
 
     case $PACKAGE_SRC_URL in
         dir://*)   PACKAGE_SRC_TYPE=dir ;;
@@ -2514,7 +2515,7 @@ ____list_formula_repositories() {
         cat "$MY_HOME_DIR/repos"
     else
         install -d "$MY_HOME_DIR"
-        echo "offical=https://github.com/leleliu008/ndk-pkg-formula.git" | tee "$MY_HOME_DIR/repos"
+        echo "offical=$MY_OFFICAL_FORMULA_REPO_URL" | tee "$MY_HOME_DIR/repos"
     fi
 }
 
@@ -3822,6 +3823,7 @@ __config_this_build_variables() {
     unset PKG_CONFIG_PATH
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
+    unset CMAKE_FIND_ROOT_PATH
     unset CMAKE_PREFIX_PATH
     unset CMAKE_INCLUDE_PATH
     unset CMAKE_LIBRARY_PATH
@@ -3848,17 +3850,23 @@ __config_this_build_variables() {
             PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
         fi
 
-        if [ -z "$CMAKE_INCLUDE_PATH" ] ; then
-            CMAKE_INCLUDE_PATH="$ABI_LIBRARY_DIR"
+        if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
+            CMAKE_FIND_ROOT_PATH="$MY_INSTALL_DIR/$PACKAGE"
         else
-            CMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH;$ABI_INCLUDE_DIR"
+            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$MY_INSTALL_DIR/$PACKAGE"
         fi
 
-        if [ -z "$CMAKE_LIBRARY_PATH" ] ; then
-            CMAKE_LIBRARY_PATH="$ABI_LIBRARY_DIR"
-        else
-            CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH;$ABI_LIBRARY_DIR"
-        fi
+        # if [ -z "$CMAKE_INCLUDE_PATH" ] ; then
+        #     CMAKE_INCLUDE_PATH="$ABI_LIBRARY_DIR"
+        # else
+        #     CMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH:$ABI_INCLUDE_DIR"
+        # fi
+
+        # if [ -z "$CMAKE_LIBRARY_PATH" ] ; then
+        #     CMAKE_LIBRARY_PATH="$ABI_LIBRARY_DIR"
+        # else
+        #     CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH:$ABI_LIBRARY_DIR"
+        # fi
 
         if [ -d "$ABI_LIBRARY_DIR/cmake" ] ; then
             for cmake_config_dir in $(find "$ABI_LIBRARY_DIR/cmake" -depth 1 -type d)
@@ -3872,6 +3880,9 @@ __config_this_build_variables() {
             unset cmake_config_dir
         fi
     done
+
+    # export CMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH"
+    # export CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH"
 
     if [ "$VERBOSE" = 'true' ] ; then
         CFLAGS="$CFLAGS -v"
@@ -4185,7 +4196,7 @@ configure() {
 # make wrapper
 makew() {
     if [ "$DEBUG" = 'true' ] ; then
-        run "$MAKE -w -j$NJOBS --debug $*"
+        run "$MAKE -w -j$NJOBS --debug V=1 $*"
     else
         run "$MAKE -w -j$NJOBS $*"
     fi
@@ -4228,11 +4239,9 @@ cmakew() {
         -DCMAKE_VERBOSE_MAKEFILE=ON \
         -DCMAKE_COLOR_MAKEFILE=ON \
         -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-        -DCMAKE_PREFIX_PATH="'$CMAKE_PREFIX_PATH'" \
-        -DCMAKE_FIND_ROOT_PATH="'$CMAKE_PREFIX_PATH'" \
-        -DCMAKE_INCLUDE_PATH="'$CMAKE_INCLUDE_PATH'" \
-        -DCMAKE_LIBRARY_PATH="'$CMAKE_LIBRARY_PATH'" \
         -DCMAKE_INSTALL_PREFIX="$ABI_INSTALL_DIR" \
+        -DCMAKE_PREFIX_PATH="'$CMAKE_PREFIX_PATH'" \
+        -DCMAKE_FIND_ROOT_PATH="'$CMAKE_FIND_ROOT_PATH'" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
         -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
@@ -4655,6 +4664,7 @@ parse_arguments() {
 
     unset DRYRUN
     unset XTRACE
+    unset DEBUG
     unset VERBOSE
 
     unset NPROC
@@ -4664,7 +4674,7 @@ parse_arguments() {
     unset KEEP_WORKING_DIR
     
     shift
-    
+
     while test -n "$1"
     do
         case "$1" in
@@ -4677,6 +4687,9 @@ parse_arguments() {
             --xtrace|-x)
                 XTRACE=true
                 set -x
+                ;;
+            --debug|-d)
+                DEBUG=true
                 ;;
             --dry-run)
                 DRYRUN=true
@@ -4715,6 +4728,7 @@ init() {
     MY_NAME=ndk-pkg
     MY_VERSION=0.1.0
     MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
+    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/zpkg-formula-repository.git"
 
     if [ -z "$NDK_PKG_HOME_DIR" ] ; then
         MY_HOME_DIR="$HOME/.$MY_NAME"
@@ -4733,7 +4747,7 @@ init() {
 
     if [ ! -e "$MY_HOME_DIR/repos" ] ; then
         install -d "$MY_HOME_DIR"
-        echo "offical=https://github.com/leleliu008/ndk-pkg-formula.git" | tee "$MY_HOME_DIR/repos"
+        echo "offical=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
     fi
 
     if command -v date > /dev/null ; then
