@@ -2556,7 +2556,7 @@ __fetch_patches_of_a_package() {
     while [ -n "$1" ]
     do
         fetch "$1" --sha256="$2" --output-dir="$MY_CACHED_PATCH__DIR/$PACKAGE_NAME" --output-name="$(basename $1)"
-        
+
         if [ -z "$PACKAGE_PATCHES" ] ; then
             PACKAGE_PATCHES="$FETCH_OUTPUT_PATH"
         else
@@ -2864,15 +2864,12 @@ __show_depends_of_a_package() {
     if [ -f "$DEPENDENCIES_TXT" ] ; then
         cat "$DEPENDENCIES_TXT"
     elif [ -f "$DEPENDENCIES_PNG" ] ; then
-        if command -v open > /dev/null ; then
-            open "$DEPENDENCIES_PNG"
-        elif command -v feh > /dev/null ; then
-            feh "$DEPENDENCIES_PNG"
-        elif command -v eog > /dev/null ; then
-            eog "$DEPENDENCIES_PNG"
-        elif command -v lsix > /dev/null ; then
-            lsix "$DEPENDENCIES_PNG"
-        fi
+        for item in open feh eog lsix
+        do
+            if command -v $item > /dev/null ; then
+                $item "$DEPENDENCIES_PNG" && return 0
+            fi
+        done
     elif [ -f "$DEPENDENCIES__GV" ] ; then
         cat "$DEPENDENCIES__GV"
     fi
@@ -3113,7 +3110,7 @@ __config_global_installation_variables() {
         done
     fi
 
-    if [ "$VERBOSE" = 'true' ] ; then
+    if [ "$DEBUG" = 'true' ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
 }
@@ -4095,6 +4092,7 @@ __printf_this_build_variables() {
     echo
     echo "            NPROC = $NPROC"
     echo "            NJOBS = $NJOBS"
+    echo
 
     if [ "$VERBOSE" = 'true' ] ; then
         echo
@@ -4349,6 +4347,7 @@ __integrate_zsh_completions() {
         success "successfully integrated at /usr/local/share/zsh/site-functions/_ndk-pkg"
     fi
 }
+
 ########################################################################
 
 include_stub_getdtablesize() {
@@ -4728,7 +4727,7 @@ init() {
     MY_NAME=ndk-pkg
     MY_VERSION=0.1.0
     MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
-    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/zpkg-formula-repository.git"
+    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ndk-pkg-formula.git"
 
     if [ -z "$NDK_PKG_HOME_DIR" ] ; then
         MY_HOME_DIR="$HOME/.$MY_NAME"
@@ -4775,7 +4774,7 @@ Usage: $MY_NAME <ACTION> [ARGUMENT...]
 
 ACTION:
     --help    | -h                --show help information.
-    --version | -V                --print version of $MY_NAME and Android NDK.
+    --version | -V                --print version of $MY_NAME.
 
     integrate zsh                 --integrate zsh-completion script.
 
