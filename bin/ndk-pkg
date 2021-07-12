@@ -2162,9 +2162,6 @@ ___load_a_formula() {
 
     unset PACKAGE_SDK_API
 
-    unset TARGET_OS_VERS
-    unset PACKAGE_TARGET_OS_VERS
-
     unset -f build0
     unset -f prepare
     unset -f build
@@ -2178,21 +2175,6 @@ ___load_a_formula() {
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
     PACKAGE_BUILD_IN_SOURCE_DIR=$PACKAGE_BINSRCD
-    PACKAGE_TARGET_OS_VERS=$PACKAGE_SDK_API
-
-    if [ -z "$PACKAGE_TARGET_OS_VERS" ] ; then
-        PACKAGE_TARGET_OS_VERS=$(__list_supported_sdk_api_levels | head -n 1)
-    fi
-
-    if [ -z "$USER_SPECIFIED_TARGET_OS_VERS" ] ; then
-        TARGET_OS_VERS=$PACKAGE_TARGET_OS_VERS
-    else
-        if [ "$PACKAGE_TARGET_OS_VERS" -gt "$USER_SPECIFIED_TARGET_OS_VERS" ] ; then
-            die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_TARGET_OS_VERS, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
-        else
-            TARGET_OS_VERS=$USER_SPECIFIED_TARGET_OS_VERS
-        fi
-    fi
 
     [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
 
@@ -2646,6 +2628,18 @@ __list_packages_which_is_not_depended_by_others() {
     unset BREAK
     unset NDEPENDED_PACKAGES
     unset AVAILABLE_PACKAGES
+    unset GROUP_SIZE
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --group-size=*)
+                GROUP_SIZE=$(getvalue "$1")
+                is_integer "$GROUP_SIZE" || die "--group-size=INTEGER" ;;
+        esac
+    done
+
+    [ -z "$GROUP_SIZE" ] && die "please sepecify --group-size=INTEGER argument."
 
     AVAILABLE_PACKAGES=$(__list_available_packages)
 
@@ -2677,7 +2671,7 @@ __list_packages_which_is_not_depended_by_others() {
             else
                 NDEPENDED_PACKAGES="$NDEPENDED_PACKAGES $x"
             fi
-            if [ "$(list_length $NDEPENDED_PACKAGES)" -eq 20 ] ; then
+            if [ "$(list_length $NDEPENDED_PACKAGES)" -eq "$GROUP_SIZE" ] ; then
                 echo "$NDEPENDED_PACKAGES" | tr ' ' ,
                 echo
                 unset NDEPENDED_PACKAGES
@@ -3354,27 +3348,11 @@ __install_a_package() {
         esac
     fi
 
-    # https://linux.die.net/man/3/index
-    # https://linux.die.net/man/3/bcmp
-    # https://linux.die.net/man/2/wait3
-    cat > "$EMPTY_DIR/include.h" <<EOF
-#define rindex(str,ch) strrchr(str,ch)
-#define bcmp(b1,b2,len) memcmp(b1,b2,len)
-#define wait3(status,options,rusage) waitpid(-1,status,options)
-EOF
-    # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
-    # https://linux.die.net/man/3/ftello
-    # int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
-    # off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
-    if [ $TARGET_OS_VERS -lt 24 ] ; then
-        echo '#define ftello(f) ftell(f)' >> "$EMPTY_DIR/include.h"
-        echo '#define fseeko fseek' >> "$EMPTY_DIR/include.h"
-    fi
-
+    step "show common include.h"
     if command -v bat > /dev/null ; then
-        run bat --style=plain --paging=never "$EMPTY_DIR/include.h"
+        run bat --style=plain --paging=never "$COMMON_INCLUDE_H_FILEPATH"
     else
-        run cat "$EMPTY_DIR/include.h"
+        run cat "$COMMON_INCLUDE_H_FILEPATH"
     fi
 
     step "calculate dependencies"
@@ -3771,12 +3749,11 @@ __show_installed_log() {
 __config_this_build_variables() {
     TARGET_OS_KIND=linux
     TARGET_OS_TYPE=android
-
-    TARGET_OS_ARCH=$(echo_arch_by_abi "$TARGET_OS_ABI")
-
-    TARGET_TRIPLE=$(echo_target_by_arch "$TARGET_OS_ARCH")
-
+    TARGET_OS_ARCH=$(print_target_arch_by_abi "$TARGET_OS_ABI")
     TARGET_OS_NAME=android
+    TARGET_OS_VERS=$(pick_target_os_version "$PACKAGE_SDK_API" "$USER_SPECIFIED_TARGET_OS_VERS") || die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_SDK_API, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
+
+    TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
 
     TARGET_TRIPLE2=$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')
 
@@ -3789,7 +3766,7 @@ __config_this_build_variables() {
         if [ "$tool" = 'cpp' ] ; then
             CPP="$CC -E"
         else
-            eval $(echo "$tool" | tr a-z A-Z)=$(echo_path_of_tool_in_the_toolchain "$tool")
+            eval $(echo "$tool" | tr a-z A-Z)=$(print_path_of_tool_in_the_toolchain "$tool")
         fi
     done
 
@@ -3805,7 +3782,7 @@ __config_this_build_variables() {
         CPPFLAGS="$CPPFLAGS -D$item"
     done
 
-    CPPFLAGS="$CPPFLAGS -include $EMPTY_DIR/include.h"
+    CPPFLAGS="$CPPFLAGS -include $COMMON_INCLUDE_H_FILEPATH"
 
     if [ -n "$PACKAGE_CCFLAGS" ] ; then
         CFLAGS="$CFLAGS $PACKAGE_CCFLAGS"
@@ -4417,9 +4394,9 @@ ldd() {
     [ -z "$3" ] && die "type is not specified."
     [ -z "$4" ] && die "name is not specified."
 
-    TARGET_OS_ARCH=$(echo_arch_by_abi "$2")
-    TARGET_TRIPLE=$(echo_target_by_arch "$TARGET_OS_ARCH")
-    READELF="$(echo_path_of_tool_in_the_toolchain readelf)"
+    TARGET_OS_ARCH=$(print_target_arch_by_abi "$2")
+    TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
+    READELF="$(print_path_of_tool_in_the_toolchain readelf)"
 
     ldd_recursion() {
         die_if_package_is_not_installed "$1"
@@ -4456,11 +4433,11 @@ __list_supported_archs() {
 __list_supported_targets() {
     for ARCH in $(__list_supported_archs)
     do
-        echo_target_by_arch "$ARCH"
+        print_target_triple_by_arch "$ARCH"
     done
 }
 
-echo_arch_by_abi() {
+print_target_arch_by_abi() {
     case $1 in
         '')          die  "abi is not specified." ;;
         armeabi-v7a) echo armv7a  ;;
@@ -4470,7 +4447,7 @@ echo_arch_by_abi() {
     esac
 }
 
-echo_target_by_arch() {
+print_target_triple_by_arch() {
     case $1 in
         '')     die   "arch is not specified."   ;;
         armv7a) echo  "armv7a-linux-androideabi" ;;
@@ -4486,7 +4463,7 @@ list_flags_used_by_tools_in_the_toolchain() {
     list CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
 }
 
-echo_path_of_tool_in_the_toolchain() {
+print_path_of_tool_in_the_toolchain() {
     unset TOOL_FILE_NAME
     case $1 in
         cc)  TOOL_FILE_NAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang"   ;;
@@ -4498,6 +4475,26 @@ echo_path_of_tool_in_the_toolchain() {
     esac
     die_if_not_executable "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME"
     echo "$TOOL_FILE_NAME"
+}
+
+# $1: target_os_version configed in formula
+# $2: target_os_version sepecified by user
+# return 0: succees
+# return 1: $1 > $2
+pick_target_os_version() {
+    if [ -z "$1" ] ; then
+        pick_target_os_version $(__list_supported_sdk_api_levels | head -n 1) $2
+    else
+        if [ -z "$2" ] ; then
+            echo "$1"
+        else
+            if [ "$1" -gt "$2" ] ; then
+                return 1
+            else
+                echo "$2"
+            fi
+        fi
+    fi
 }
 
 ndk_version() {
@@ -4720,6 +4717,30 @@ parse_arguments() {
     [ -z "$NJOBS" ] && NJOBS=$NPROC
 
     BUILD_LIST="$(__list_supported_abis)"
+
+    unset COMMON_INCLUDE_H_FILEPATH
+    COMMON_INCLUDE_H_FILEPATH="$MY_HOME_DIR/include.h"
+    if [ ! -f "$COMMON_INCLUDE_H_FILEPATH" ] ; then
+        cat > "$COMMON_INCLUDE_H_FILEPATH" <<EOF
+// https://linux.die.net/man/3/index
+#define rindex(str,ch) strrchr(str,ch)
+
+// https://linux.die.net/man/3/bcmp
+#define bcmp(b1,b2,len) memcmp(b1,b2,len)
+
+// https://linux.die.net/man/2/wait3
+#define wait3(status,options,rusage) waitpid(-1,status,options)
+
+// https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
+// https://linux.die.net/man/3/ftello
+// int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
+// off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
+#if __ANDROID_API__ < 24
+    #define ftello(f) ftell(f)
+    #define fseeko    fseek
+#endif
+EOF
+    fi
 }
 
 init() {
@@ -4727,7 +4748,7 @@ init() {
     MY_NAME=ndk-pkg
     MY_VERSION=0.1.0
     MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
-    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ndk-pkg-formula.git"
+    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ndk-pkg-formula-repository.git"
 
     if [ -z "$NDK_PKG_HOME_DIR" ] ; then
         MY_HOME_DIR="$HOME/.$MY_NAME"

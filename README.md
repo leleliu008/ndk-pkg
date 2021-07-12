@@ -15,15 +15,12 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh)"
 ```
 
-## zsh-completion for ndk-pkg
-I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg` then type `TAB` key, it will auto complete the rest for you.
-
-**Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
-
-
-## Give a Star!
-𝙄𝙛 𝙮𝙤𝙪 ❤𝙩𝙝𝙞𝙨 𝙥𝙧𝙤𝙟𝙚𝙘𝙩, 𝙥𝙡𝙚𝙖𝙨𝙚 𝙜𝙞𝙫𝙚 𝙞𝙩 𝙖 𝙨𝙩𝙖𝙧 <span style='color:red;font-size:1.2em'>★</span> . 𝙏𝙝𝙖𝙣𝙠𝙨!
-
+## Install ipkg via cURL
+```bash
+curl -LO https://raw.githubusercontent.com/leleliu008/ipkg/master/bin/ipkg
+chmod a+x ipkg
+mv ipkg /usr/local/bin/
+```
 
 ## ndk-pkg command usage
 *   print the help infomation of `ndk-pkg` command
@@ -44,7 +41,12 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
 
         ndk-pkg integrate zsh
         
-*   update the [ndk-pkg-formula repository](https://github.com/leleliu008/ndk-pkg-formula)
+    I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg` then type `TAB` key, it will auto complete the rest for you.
+
+    **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
+
+
+*   update the [ndk-pkg-formula-repository](https://github.com/leleliu008/ndk-pkg-formula-repository)
 
         ndk-pkg update
         
@@ -83,13 +85,13 @@ I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg
         ndk-pkg upgrade curl
         ndk-pkg upgrade curl bzip2 --min-sdk-api-level=21 -v
         
-*   list add avaliable formula repos
+*   list the avaliable formula repos
 
         ndk-pkg formula repo list
 
 *   add a new formula repo
 
-        ndk-pkg formula repo add my_repo https://github.com/leleliu008/ndk-pkg-formula.git
+        ndk-pkg formula repo add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository.git
 
 *   delete a existing formula repo
 
