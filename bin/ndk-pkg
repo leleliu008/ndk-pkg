@@ -2746,16 +2746,8 @@ __list_abis_of_a_installed_package() {
 
 __tree_installed_of_a_package() {
     die_if_package_is_not_installed "$1"
-
-    PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
-
-    shift
-
-    if command -v tree > /dev/null ; then
-        run tree $@ --dirsfirst "$PKG_INSTALL_DIR"
-    else
-        warn "please install tree utility."
-    fi
+    handle_dependency required command tree
+    run tree $(shiftn 1 $@) --dirsfirst "$MY_INSTALL_DIR/$1"
 }
 
 __uninstall_packages() {
@@ -2777,7 +2769,7 @@ __uninstall_a_package() {
 
 ____upgrade_packages() {
     check_prerequisites
-    parse_arguments "$@"
+    parse_arguments $@
 
     [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
     [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && return 0
@@ -2787,7 +2779,7 @@ ____upgrade_packages() {
 
 __reinstall_packages() {
     check_prerequisites
-    parse_arguments "$@"
+    parse_arguments $@
 
     die_if_package_list_is_not_specified "$USER_SPECIFIED_PACKAGE_LIST"
 
@@ -3112,7 +3104,7 @@ __config_global_installation_variables() {
 ____install_packages() {
     check_prerequisites
 
-    parse_arguments "$@"
+    parse_arguments $@
 
     die_if_package_list_is_not_specified "$USER_SPECIFIED_PACKAGE_LIST"
 
