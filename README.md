@@ -157,7 +157,7 @@ mv ipkg /usr/local/bin/
         ndk-pkg get curl webpage
         ndk-pkg get curl src.git
 
-    more keys please read [README.md](https://github.com/leleliu008/ndk-pkg-formula/blob/master/README.md)
+    more keys please read [README.md](https://github.com/leleliu008/ndk-pkg-formula-repository/blob/master/README.md)
 
 *   list contents of a installed package directory in a tree-like format.
         
