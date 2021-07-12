@@ -15,11 +15,11 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh)"
 ```
 
-## Install ipkg via cURL
+## Install ndk-pkg via cURL
 ```bash
-curl -LO https://raw.githubusercontent.com/leleliu008/ipkg/master/bin/ipkg
-chmod a+x ipkg
-mv ipkg /usr/local/bin/
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
+chmod a+x ndk-pkg
+mv ndk-pkg /usr/local/bin/
 ```
 
 ## ndk-pkg command usage
