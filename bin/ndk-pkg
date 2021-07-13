@@ -3160,6 +3160,9 @@ __install_a_package() {
     step "load formula"
     ___load_a_formula "$1"
 
+    unset TARGET_OS_VERS
+    TARGET_OS_VERS=$(pick_target_os_version "$PACKAGE_SDK_API" "$USER_SPECIFIED_TARGET_OS_VERS") || die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_SDK_API, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
+
     step "handle required commands"
     for item in $PACKAGE_DEP_CMD
     do
@@ -3743,7 +3746,7 @@ __config_this_build_variables() {
     TARGET_OS_TYPE=android
     TARGET_OS_ARCH=$(print_target_arch_by_abi "$TARGET_OS_ABI")
     TARGET_OS_NAME=android
-    TARGET_OS_VERS=$(pick_target_os_version "$PACKAGE_SDK_API" "$USER_SPECIFIED_TARGET_OS_VERS") || die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_SDK_API, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
+
 
     TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
 
