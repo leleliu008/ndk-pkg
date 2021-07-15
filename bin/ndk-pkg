@@ -3446,7 +3446,7 @@ __install_a_package_one_build() {
                 meson)     mesonw ;;
                 ninja)     ninja clean && ninja && ninja install ;;
                 make)      makew clean && makew && makew install ;;
-                cargo)     run cargo install --target "$CARGO_TARGET" -vv --path "$SOURCE_DIR" --root="$ABI_INSTALL_DIR" ;;
+                cargo)     cargow install ;;
                 go)        run go build -v -trimpath ;;
             esac
         } || return 1
@@ -3911,6 +3911,17 @@ __config_this_build_variables() {
                 export TARGET_CXXFLAGS="$CXXFLAGS $CPPFLAGS $LDFLAGS"
 
                 export TARGET_AR="$AR"
+
+                for item in $PACKAGE_DEP_PKG
+                do
+                    case $item in
+                        openssl)
+                            unset OPENSSL_DIR
+                            # https://docs.rs/openssl/0.10.35/openssl/
+                            export OPENSSL_DIR="$openssl_INSTALL_DIR"
+                            ;;
+                    esac
+                done
                 ;;
                go)
                 # https://golang.org/doc/install/source#environment
@@ -4071,6 +4082,71 @@ __printf_this_build_variables() {
         run export -p
         echo
     fi
+}
+
+cargow() {
+    case $1 in
+        build)
+            # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
+            # https://doc.rust-lang.org/cargo/commands/cargo-build.html
+            unset CARGO_BUILD_ARGS
+            unset CARGO_BUILD_ARG_TARGET
+            unset CARGO_BUILD_ARG_RELEASE
+            unset CARGO_BUILD_ARG_VV
+            for arg in $@
+            do
+                case $arg in
+                    --target)  CARGO_BUILD_ARG_TARGET=set  ;;
+                    --release) CARGO_BUILD_ARG_RELEASE=set ;;
+                    --vv)      CARGO_BUILD_ARG_VV=set      ;;
+                esac
+            done
+            CARGO_BUILD_ARGS="$@"
+            if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
+            fi
+            if [ -z "$CARGO_BUILD_ARG_RELEASE" ] ; then
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --release"
+            fi
+            if [ -z "$CARGO_BUILD_ARG_TARGET" ] ; then
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --target $CARGO_TARGET"
+            fi
+            run cargo clean && run cargo $CARGO_BUILD_ARGS
+            ;;
+        install)
+            # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
+            # https://doc.rust-lang.org/cargo/commands/cargo-install.html
+            unset CARGO_INSTALL_ARGS
+            unset CARGO_INSTALL_ARG_TARGET
+            unset CARGO_INSTALL_ARG_PATH
+            unset CARGO_INSTALL_ARG_ROOT
+            unset CARGO_INSTALL_ARG_VV
+            for arg in $@
+            do
+                case $arg in
+                    --target) CARGO_INSTALL_ARG_TARGET=set ;;
+                    --path)   CARGO_INSTALL_ARG_PATH=set   ;;
+                    --root)   CARGO_INSTALL_ARG_ROOT=set   ;;
+                    --vv)     CARGO_INSTALL_ARG_VV=set     ;;
+                esac
+            done
+            CARGO_INSTALL_ARGS="$@"
+            if [ -z "$CARGO_INSTALL_ARG_VV" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
+            fi
+            if [ -z "$CARGO_INSTALL_ARG_TARGET" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --target $CARGO_TARGET"
+            fi
+            if [ -z "$CARGO_INSTALL_ARG_PATH" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $SOURCE_DIR"
+            fi
+            if [ -z "$CARGO_INSTALL_ARG_ROOT" ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --root=$ABI_INSTALL_DIR"
+            fi
+            run cargo clean && run cargo $CARGO_INSTALL_ARGS
+            ;;
+        *) cargo $@
+    esac
 }
 
 config_url() {
@@ -4382,6 +4458,7 @@ list_all_installed_libs() {
 }
 
 ldd() {
+    set -x
     check_prerequisites
 
     die_if_package_is_not_installed "$1"
@@ -4392,6 +4469,7 @@ ldd() {
     TARGET_OS_ARCH=$(print_target_arch_by_abi "$2")
     TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
     READELF="$(print_path_of_tool_in_the_toolchain readelf)"
+    export PATH="$TOOLCHAIN_BIN_DIR:$PATH"
 
     ldd_recursion() {
         die_if_package_is_not_installed "$1"

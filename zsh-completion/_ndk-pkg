@@ -26,6 +26,7 @@ _commands=(
     'logs:print the logs of a installed package.'
     'get:get value of the given key of the given package.'
     'is:check something. easy to write script.'
+    'ldd:list dynamic dependencies.'
 )
 
 _list=(
@@ -156,6 +157,13 @@ function _ndk_pkg() {
                         '1: :(available installed outdated)' \
                         '2:package-name:_ndk_pkg_available_packages'
                     ;;
+                ldd)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:abi:($(ndk-pkg ls abis))' \
+                        '3:type:(bin lib)'
+                    ;;
+
                 *);;
             esac
             ;;
