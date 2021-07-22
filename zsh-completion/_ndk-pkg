@@ -27,6 +27,7 @@ _commands=(
     'get:get value of the given key of the given package.'
     'is:check something. easy to write script.'
     'ldd:list dynamic dependencies.'
+    'gen-github-workflows:generate github workflows.'
 )
 
 _list=(
@@ -77,7 +78,7 @@ function _ndk_pkg() {
             case $words[1] in
                 ls)
                     _arguments \
-                        ':list:_ndk_pkg_list' \
+                        '1:ls-sub-command:_ndk_pkg_list' \
                         '-q[quiet mode. do not report error log]'
                     ;;
                 formula)
@@ -163,7 +164,11 @@ function _ndk_pkg() {
                         '2:abi:($(ndk-pkg ls abis))' \
                         '3:type:(bin lib)'
                     ;;
-
+                gen-github-workflows)
+                    _arguments \
+                        '--group-size=-[set the group size]:group-size:(50 40 30 20)' \
+                        '--output-dir=-[set the output dir]:output-dir:{_files -/}'
+                    ;;
                 *);;
             esac
             ;;

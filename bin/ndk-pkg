@@ -2517,6 +2517,31 @@ __update_formula_repositories() {
     done
 }
 
+__update_self() {
+    set -e
+
+    unset CURRENT_NDK_PKG_PATH
+    CURRENT_NDK_PKG_PATH=$(command -v ndk-pkg)
+    if [ -z "$CURRENT_NDK_PKG_PATH" ] ; then
+        die "Couldn't find ndk-pkg in PATH."
+    fi
+
+    CURRENT_NDK_PKG_REALPATH=$(realpath $CURRENT_NDK_PKG_PATH)
+
+    unset FETCH_NDK_PKG_OUTPUT_PATH
+    FETCH_NDK_PKG_OUTPUT_PATH="$MY_HOME_DIR/ndk-pkg"
+
+    fetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg' --output-path="$FETCH_NDK_PKG_OUTPUT_PATH"
+
+    chmod a+x "$FETCH_NDK_PKG_OUTPUT_PATH"
+
+    if [ -w "$CURRENT_NDK_PKG_REALPATH" ] ; then
+        run cp "$MY_HOME_DIR/ndk-pkg" "$CURRENT_NDK_PKG_REALPATH"
+    else
+        run sudo cp "$MY_HOME_DIR/ndk-pkg" "$CURRENT_NDK_PKG_REALPATH"
+    fi
+}
+
 # }}}
 ##############################################################################
 
@@ -2624,22 +2649,31 @@ is_package__outdated() {
     done
 }
 
-__list_packages_which_is_not_depended_by_others() {
+__gen_github_workflows() {
     unset BREAK
     unset NDEPENDED_PACKAGES
     unset AVAILABLE_PACKAGES
     unset GROUP_SIZE
+    unset OUTPUT_DIR
+    unset I
 
     while [ -n "$1" ]
     do
         case $1 in
             --group-size=*)
                 GROUP_SIZE=$(getvalue "$1")
-                is_integer "$GROUP_SIZE" || die "--group-size=INTEGER" ;;
+                is_integer "$GROUP_SIZE" || die "--group-size=INTEGER"
+                ;;
+            --output-dir=*)
+                OUTPUT_DIR=$(getvalue "$1")
+                [ -z "$OUTPUT_DIR" ] && die "--output-dir=DIR DIR must be not empty."
+                [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
         esac
+        shift
     done
 
     [ -z "$GROUP_SIZE" ] && die "please sepecify --group-size=INTEGER argument."
+    [ -z "$OUTPUT_DIR" ] && die "please sepecify --output-dir=DIR argument."
 
     AVAILABLE_PACKAGES=$(__list_available_packages)
 
@@ -2653,8 +2687,7 @@ __list_packages_which_is_not_depended_by_others() {
             if [ "$x" = "$y" ] || [ 'test' = "$y" ] ; then
                 continue
             else
-                ___load_a_formula "$y"
-                for z in $PACKAGE_DEP_PKG
+                for z in $(get_direct_dependency_package_list_of_a_package "$y")
                 do
                     if [ "$x" = "$z" ] ; then
                         BREAK=true
@@ -2672,14 +2705,30 @@ __list_packages_which_is_not_depended_by_others() {
                 NDEPENDED_PACKAGES="$NDEPENDED_PACKAGES $x"
             fi
             if [ "$(list_length $NDEPENDED_PACKAGES)" -eq "$GROUP_SIZE" ] ; then
-                echo "$NDEPENDED_PACKAGES" | tr ' ' ,
-                echo
+                unset OUTPUT_FILEPATH
+
+                I=$(expr ${I-0} + 1)
+                OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
+                NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
+
+                run cp "$MY_HOME_DIR/github-workflow-template" "$OUTPUT_FILEPATH"
+                sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
+                sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
+
                 unset NDEPENDED_PACKAGES
             fi
         fi
     done
     if [ -n "$NDEPENDED_PACKAGES" ] ; then
-        echo "$NDEPENDED_PACKAGES" | tr ' ' ,
+        unset OUTPUT_FILEPATH
+
+        I=$(expr ${I-0} + 1)
+        OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
+        NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
+
+        run cp "$MY_HOME_DIR/github-workflow-template" "$OUTPUT_FILEPATH"
+        sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
+        sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
     fi
 }
 
@@ -4491,6 +4540,17 @@ ldd() {
     ldd_recursion "$1" "$2" "$3" "$4" 0
 }
 
+list_dynamic_library_names_of_a_package() {
+    die_if_package_is_not_specified "$1"
+    die_if_package_is_not_installed "$1"
+
+    ABI=$(__list_supported_abis | head -n 1)
+    ABI_LIBRARY_DIR="$MY_INSTALL_DIR/$1/$ABI/lib"
+    if [ -d  "$ABI_LIBRARY_DIR" ] ; then
+        find "$ABI_LIBRARY_DIR" -name "*.so*" -a -depth 1 -a \( -type f -o -type l \) -exec basename {} \;
+    fi
+}
+
 __list_supported_sdk_api_levels() {
     list 21 22 23 24 25 26 27 28 29
 }
@@ -4938,13 +4998,16 @@ main() {
             check_prerequisites
             echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERSION"
             ;;
-        get)  shift; package get "$1" "$2" ;;
-        ls)   shift;
+        get)
+            shift
+            package get "$1" "$2"
+            ;;
+        ls|list)
+            shift;
             case $1 in
                 available) shift; __list_available_packages ;;
                 installed) shift; __list_installed_packages ;;
                 outdated)  shift; __list__outdated_packages ;;
-                notdepended) shift; __list_packages_which_is_not_depended_by_others ;;
                 archs)     shift; __list_supported_archs ;;
                 abis)      shift; __list_supported_abis ;;
                 sdk-api-levels)
@@ -5008,6 +5071,10 @@ main() {
         info)     shift; __show_infomation_of_packages  "$@" ;;
 
         ldd) shift; ldd "$@" ;;
+        list-dynamic-library-names)
+            shift; list_dynamic_library_names_of_a_package $@ ;;
+        gen-github-workflows)
+            shift; __gen_github_workflows $@ ;;
         *) help 1
     esac
 }
