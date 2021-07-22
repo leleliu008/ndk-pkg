@@ -2517,31 +2517,6 @@ __update_formula_repositories() {
     done
 }
 
-__update_self() {
-    set -e
-
-    unset CURRENT_NDK_PKG_PATH
-    CURRENT_NDK_PKG_PATH=$(command -v ndk-pkg)
-    if [ -z "$CURRENT_NDK_PKG_PATH" ] ; then
-        die "Couldn't find ndk-pkg in PATH."
-    fi
-
-    CURRENT_NDK_PKG_REALPATH=$(realpath $CURRENT_NDK_PKG_PATH)
-
-    unset FETCH_NDK_PKG_OUTPUT_PATH
-    FETCH_NDK_PKG_OUTPUT_PATH="$MY_HOME_DIR/ndk-pkg"
-
-    fetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg' --output-path="$FETCH_NDK_PKG_OUTPUT_PATH"
-
-    chmod a+x "$FETCH_NDK_PKG_OUTPUT_PATH"
-
-    if [ -w "$CURRENT_NDK_PKG_REALPATH" ] ; then
-        run cp "$MY_HOME_DIR/ndk-pkg" "$CURRENT_NDK_PKG_REALPATH"
-    else
-        run sudo cp "$MY_HOME_DIR/ndk-pkg" "$CURRENT_NDK_PKG_REALPATH"
-    fi
-}
-
 # }}}
 ##############################################################################
 
@@ -2816,16 +2791,6 @@ __uninstall_a_package() {
     run rm -rf "$MY_INSTALL_DIR/$1"
 }
 
-____upgrade_packages() {
-    check_prerequisites
-    parse_arguments $@
-
-    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
-    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && return 0
-
-    __reinstall_packages
-}
-
 __reinstall_packages() {
     check_prerequisites
     parse_arguments $@
@@ -2847,6 +2812,37 @@ __reinstall_packages() {
         __install_a_package "$packageName" &&
         rm -rf "$MY_BACKUP_DIR/$packageName"
     done
+}
+
+__upgrade_packages() {
+    check_prerequisites
+    parse_arguments $@
+
+    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
+    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && return 0
+
+    __reinstall_packages
+}
+
+__upgrade_self() {
+    set -e
+
+    unset FETCH_SELF_OUTPUT_PATH
+    FETCH_SELF_OUTPUT_PATH="$MY_HOME_DIR/self"
+
+    fetch "$MY_UPGRAGE_URL" --output-path="$FETCH_SELF_OUTPUT_PATH"
+
+    run chmod a+x "$FETCH_SELF_OUTPUT_PATH"
+
+    __upgrade_self_exit() {
+        if [ -w "$CURRENT_SCRIPT_FILEPATH" ] ; then
+            run      cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_FILEPATH"
+        else
+            run sudo cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_FILEPATH"
+        fi
+    }
+
+    trap __upgrade_self_exit EXIT
 }
 
 __cleanup() {
@@ -3150,7 +3146,7 @@ __config_global_installation_variables() {
     fi
 }
 
-____install_packages() {
+__install_packages() {
     check_prerequisites
 
     parse_arguments $@
@@ -3618,28 +3614,55 @@ install_pc_file() {
 }
 
 __show_infomation_of_packages() {
+    unset OUTPUT_FORMAT
     unset PACKAGE_LIST
 
-    if [ -z "$1" ] ; then
-        [ -d "$MY_FORMULA_REPO_DIR" ] || __update_formula_repositories
-        cd "$MY_FORMULA_REPO_DIR" || exit 1
-        PACKAGE_LIST=$(ls *.sh | sed 's/\.sh//g')
-    else
-        PACKAGE_LIST=$@
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --json) OUTPUT_FORMAT=json ;;
+            *)      die_if_package_is_not_available $1; PACKAGE_LIST="$PACKAGE_LIST $1"
+        esac
+        shift
+    done
+
+    if [ -z "$PACKAGE_LIST" ] ; then
+        PACKAGE_LIST=$(__list_available_packages) || return 1
     fi
 
-    unset FIRST
-    unset PACKAGE
+    unset I
+    unset PACKAGE_LIST_LENGTH
+    PACKAGE_LIST_LENGTH=$(list_length $PACKAGE_LIST)
 
-    for PACKAGE in $PACKAGE_LIST
-    do
-        if [ "${FIRST-true}" = 'true' ] ; then
-            FIRST=false
-        else
-            echo "============================================================"
-        fi
-        __show_infomation_of_a_package "$PACKAGE"
-    done
+    if [ "$OUTPUT_FORMAT" = 'json' ] ; then
+        for PACKAGE in $PACKAGE_LIST
+        do
+            ___load_a_formula "$PACKAGE"
+
+            I=$(expr ${I-0} + 1)
+
+            if [ "$I" -eq 1 ] ; then
+                echo "["
+            fi
+
+            if [ "$I" -eq "$PACKAGE_LIST_LENGTH" ] ; then
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
+            else
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"},\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
+            fi
+        done
+    else
+        for PACKAGE in $PACKAGE_LIST
+        do
+            I=$(expr ${I-0} + 1)
+
+            if [ "$I" -gt 1 ] ; then
+                echo "============================================================"
+            fi
+
+            __show_infomation_of_a_package "$PACKAGE"
+        done
+    fi
 }
 
 __show_infomation_of_a_package() {
@@ -3720,34 +3743,6 @@ mark_is_package_installed_or_not() {
     else
         echo "${COLOR_RED}$1${COLOR_OFF}"
     fi
-}
-
-__json_available_packages() {
-    unset PACKAGE
-    unset STR
-    unset I
-    unset AVAILABLE_PACKAGES
-    unset AVAILABLE_PACKAGES_LENGTH
-
-    AVAILABLE_PACKAGES=$(__list_available_packages)
-    AVAILABLE_PACKAGES_LENGTH=$(list_length $AVAILABLE_PACKAGES)
-
-    for item in $AVAILABLE_PACKAGES
-    do
-        I=$(expr ${I-0} + 1)
-
-        ___load_a_formula "$item"
-
-        if [ "$I" -eq 1 ] ; then
-            echo "["
-        fi
-
-        if [ "$I" -eq "$AVAILABLE_PACKAGES_LENGTH" ] ; then
-            printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
-        else
-            printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"},\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
-        fi
-    done
 }
 
 install_installed_log() {
@@ -4882,6 +4877,7 @@ init() {
     MY_VERSION=0.1.0
     MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
     MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ndk-pkg-formula-repository.git"
+    MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg'
 
     if [ -z "$NDK_PKG_HOME_DIR" ] ; then
         MY_HOME_DIR="$HOME/.$MY_NAME"
@@ -5046,12 +5042,12 @@ main() {
         update)  __update_formula_repositories ;;
         cleanup) __cleanup ;;
 
-        install)   ____install_packages "$@" ;;
+        install)     __install_packages "$@" ;;
         reinstall) __reinstall_packages "$@" ;;
         uninstall) __uninstall_packages "$@" ;;
-        upgrade)   ____upgrade_packages "$@" ;;
+        upgrade)     __upgrade_packages "$@" ;;
 
-        json_available_packages) __json_available_packages ;;
+        upgrade-self)__upgrade_self ;;
 
         integrate)
             shift;
@@ -5078,5 +5074,8 @@ main() {
         *) help 1
     esac
 }
+
+unset CURRENT_SCRIPT_FILEPATH
+CURRENT_SCRIPT_FILEPATH="$(realpath "$0")"
 
 main "$@"

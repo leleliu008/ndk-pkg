@@ -16,6 +16,7 @@ _commands=(
     'cleanup:cleanup the unused cache.'
     'update:update the formula repository.'
     'upgrade:upgrade the outdated packages.'
+    'upgrade-self:upgrade self.'
     'fetch:download formula resources of a package to the cache.'
     'homepage:visit the homepage of a formula or the ndk-pkg project.'
     'integrate:integrate zsh completions.'
@@ -107,7 +108,10 @@ function _ndk_pkg() {
                     _arguments ':what:(zsh)'
                     ;;
                 info)
-                    _arguments '*:package-name:_ndk_pkg_available_packages' ;;
+                    _arguments \
+                        '*:package-name:_ndk_pkg_available_packages' \
+                        '--json[output format is json]'
+                        ;;
                 fetch|homepage|depends)
                     _arguments ':package-name:_ndk_pkg_available_packages' ;;
                 prefix|pack|tree)
