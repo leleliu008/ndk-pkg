@@ -464,11 +464,7 @@ __fetch_archive_via_tools() {
         axel)  run axel -o "$FETCH_OUTPUT_PATH" "\"$FETCH_URL\"" ;;
     esac
 
-    if [ $? -eq 0 ] ; then
-        success "Fetched to $FETCH_OUTPUT_PATH success."
-    else
-        die "Fetched to $FETCH_OUTPUT_PATH failed."
-    fi
+    [ $? -eq 0 ] || return 1
 
     if [ -n "$FETCH_SHA256" ] ; then
         die_if_sha256sum_mismatch "$FETCH_OUTPUT_PATH" "$FETCH_SHA256"
@@ -4999,7 +4995,7 @@ main() {
             package get "$1" "$2"
             ;;
         ls|list)
-            shift;
+            shift
             case $1 in
                 available) shift; __list_available_packages ;;
                 installed) shift; __list_installed_packages ;;
