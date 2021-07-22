@@ -46,10 +46,12 @@ mv ndk-pkg /usr/local/bin/
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
 
 
-*   update the [ndk-pkg-formula-repository](https://github.com/leleliu008/ndk-pkg-formula-repository)
+*   update the formula repositories
 
         ndk-pkg update
         
+    **Note:** this software supports multi formula repositories. Offical formula repository is [ndk-pkg-formula-repository](https://github.com/leleliu008/ndk-pkg-formula-repository)
+
 *   search packages can be installed
         
         ndk-pkg search curl
@@ -59,6 +61,8 @@ mv ndk-pkg /usr/local/bin/
         
         ndk-pkg info curl
         ndk-pkg info curl openssl
+        ndk-pkg info curl openssl --json
+        ndk-pkg info curl openssl --json | jq .
         
 *   install packages
         
@@ -196,4 +200,8 @@ mv ndk-pkg /usr/local/bin/
 *   cleanup the unused cache
         
         ndk-pkg cleanup
+        
+*   upgrade this software
+        
+        ndk-pkg upgrade-self
         
