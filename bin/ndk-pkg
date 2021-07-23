@@ -3228,13 +3228,13 @@ __install_a_package() {
     unset PKG_CONFIG
     unset MESON
     unset CMAKE
-    unset  MAKE
+    unset GMAKE
     unset NINJA
 
     PKG_CONFIG=$(command -v pkg-config)
     MESON=$(command -v meson)
     CMAKE=$(command -v cmake)
-    MAKE=$(command -v make)
+    GMAKE=$(command -v gmake || command -v make)
     NINJA=$(command -v ninja)
 
     step "fetch resources if needed"
@@ -3303,7 +3303,7 @@ __install_a_package() {
             echo "       PKG_CONFIG = $PKG_CONFIG"
             echo "            MESON = $MESON"
             echo "            CMAKE = $CMAKE"
-            echo "             MAKE = $MAKE"
+            echo "            GMAKE = $GMAKE"
             echo "            NINJA = $NINJA"
 
             for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
@@ -4282,9 +4282,9 @@ configure() {
 # make wrapper
 makew() {
     if [ "$DEBUG" = 'true' ] ; then
-        run "$MAKE -w -j$NJOBS --debug V=1 $*"
+        run "$GMAKE -w -j$NJOBS --debug V=1 $*"
     else
-        run "$MAKE -w -j$NJOBS $*"
+        run "$GMAKE -w -j$NJOBS $*"
     fi
 }
 
@@ -4968,6 +4968,7 @@ ACTION:
     
     cleanup                       --cleanup the unused cache.
     update                        --update the formula repositories.
+    upgrade-self                  --upgrade this software.
 EOF
     if [ -z "$1" ] ; then
         exit
