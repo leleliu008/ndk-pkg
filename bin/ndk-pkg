@@ -2682,6 +2682,7 @@ __gen_github_workflows() {
                 OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
                 NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
 
+                echo
                 run cp "$MY_HOME_DIR/github-workflow-template" "$OUTPUT_FILEPATH"
                 sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
                 sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
