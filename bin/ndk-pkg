@@ -1618,7 +1618,7 @@ __install_command_via_fetch_prebuild_binary() {
         fi
     fi
 
-    run fetch "$PREBUILD_BINARY_FETCH_URL" --output-dir="$PREBUILD_BINARY_INSTALL_DIR" --output-name="$PREBUILD_BINARY_FILENAME" || return 1
+    fetch "$PREBUILD_BINARY_FETCH_URL" --output-dir="$PREBUILD_BINARY_INSTALL_DIR" --output-name="$PREBUILD_BINARY_FILENAME" || return 1
 
     case $PREBUILD_BINARY_FILENAME_SUFFIX in
         .zip)
@@ -1687,15 +1687,14 @@ __install_command_via_pip() {
 }
 
 # examples:
-# pkg-config ge 0.18
-# python3    ge 3.5
-# make
+# __install_command python3 ge 3.5
+# __install_command make
 __install_command() {
     command_exists_in_filesystem_and_version_matched $@ && return 0
-
-    __install_command_via_pip $@ && return 0
-    __install_command_via_available_package_manager $@ && return 0
-    __install_command_via_fetch_prebuild_binary $@
+    __install_command_via_pip $@                        && return 0
+    __install_command_via_available_package_manager $@  && return 0
+    __install_command_via_fetch_prebuild_binary $@      && return 0
+    return 1
 }
 
 # examples:
@@ -1730,6 +1729,7 @@ handle_dependency() {
                             return 0
                         fi
                     done
+                    return 1
                     ;;
                 *)  __install_command $@
             esac
