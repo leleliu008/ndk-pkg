@@ -839,6 +839,7 @@ version_of_command() {
          node) "$1" --version 2> /dev/null | head -n 1 | cut -d 'v' -f2 ;;
           zsh) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          bash) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
+       base64) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
             *) "$1" --version 2> /dev/null | head -n 1
     esac
 }
