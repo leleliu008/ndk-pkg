@@ -1364,6 +1364,8 @@ get_brew_package_name_by_command_name() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    python|python3)
+                echo 'python@3.9' ;;
         *)      echo "$1"
     esac
 }
