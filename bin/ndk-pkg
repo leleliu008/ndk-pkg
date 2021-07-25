@@ -1496,9 +1496,8 @@ __install_command_via_package_manager() {
 }
 
 # examples:
-# pkg-config ge 0.18
-# python3    ge 3.5
-# make
+# __install_command_via_available_package_manager python3 ge 3.5
+# __install_command_via_available_package_manager make
 __install_command_via_available_package_manager() {
     command_exists_in_filesystem_and_version_matched $@ && return 0
  
@@ -3132,7 +3131,7 @@ __config_global_installation_variables() {
     export PATH="$TOOLCHAIN_BIN_DIR:$PATH"
 
     if [ -d "$MY_HOME_DIR/native" ] ; then
-        for item in $(find "$MY_HOME_DIR/native" -d 2 -type d -name bin)
+        for item in $(find "$MY_HOME_DIR/native" -depth 2 -type d -name bin)
         do
             export PATH="$item:$PATH"
         done
