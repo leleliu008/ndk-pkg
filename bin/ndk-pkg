@@ -3131,7 +3131,7 @@ __config_global_installation_variables() {
     export PATH="$TOOLCHAIN_BIN_DIR:$PATH"
 
     if [ -d "$MY_HOME_DIR/native" ] ; then
-        for item in $(find "$MY_HOME_DIR/native" -depth 2 -type d -name bin)
+        for item in $(find "$MY_HOME_DIR/native" -maxdepth 1 -type d -name bin)
         do
             export PATH="$item:$PATH"
         done
@@ -3878,7 +3878,7 @@ __config_this_build_variables() {
         # fi
 
         if [ -d "$ABI_LIBRARY_DIR/cmake" ] ; then
-            for cmake_config_dir in $(find "$ABI_LIBRARY_DIR/cmake" -depth 1 -type d)
+            for cmake_config_dir in $(find "$ABI_LIBRARY_DIR/cmake" -maxdepth 0 -type d)
             do
                 if [ -z "$CMAKE_PREFIX_PATH" ] ; then
                     CMAKE_PREFIX_PATH="$cmake_config_dir"
@@ -4538,7 +4538,7 @@ list_dynamic_library_names_of_a_package() {
     ABI=$(__list_supported_abis | head -n 1)
     ABI_LIBRARY_DIR="$MY_INSTALL_DIR/$1/$ABI/lib"
     if [ -d  "$ABI_LIBRARY_DIR" ] ; then
-        find "$ABI_LIBRARY_DIR" -name "*.so*" -a -depth 1 -a \( -type f -o -type l \) -exec basename {} \;
+        find "$ABI_LIBRARY_DIR" -name "*.so*" -a -maxdepth 0 -a \( -type f -o -type l \) -exec basename {} \;
     fi
 }
 
