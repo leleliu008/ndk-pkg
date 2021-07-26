@@ -1685,7 +1685,7 @@ __install_command_via_run_install_script() {
             __RUSTUP_INSTALL_SCRIPT_DIR__=$(mktemp -d) || return 1
             fetch 'https://sh.rustup.rs' --output-dir="$__RUSTUP_INSTALL_SCRIPT_DIR__" --output-name='rustup-init' || return 1
 
-            run "$__RUSTUP_INSTALL_SCRIPT_RUN_SHELL__ $__RUSTUP_INSTALL_SCRIPT_DIR__/rustup-init -- -y" || return 1
+            run "$__RUSTUP_INSTALL_SCRIPT_RUN_SHELL__ $__RUSTUP_INSTALL_SCRIPT_DIR__/rustup-init -y" || return 1
 
             export CARGO_HOME=$HOME/.cargo
             export PATH="$CARGO_HOME/bin:$PATH"
