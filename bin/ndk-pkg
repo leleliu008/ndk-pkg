@@ -1665,6 +1665,35 @@ __get_prebuild_binary_fetch_url_by_command_name() {
     esac
 }
 
+__install_command_via_run_install_script() {
+    case $1 in
+        rustup)
+            # https://www.rust-lang.org/tools/install
+
+            unset __RUSTUP_INSTALL_SCRIPT_RUN_SHELL__
+            __RUSTUP_INSTALL_SCRIPT_RUN_SHELL__=$(command -v bash || command -v zsh || command -v dash)
+            if [ -z "$__RUSTUP_INSTALL_SCRIPT_RUN_SHELL__" ] ; then
+                handle_dependency required command bash || return 1
+            fi
+            __RUSTUP_INSTALL_SCRIPT_RUN_SHELL__=$(command -v bash)
+            if [ -z "$__RUSTUP_INSTALL_SCRIPT_RUN_SHELL__" ] ; then
+                warn "install bash failed."
+                return 1
+            fi
+
+            unset __RUSTUP_INSTALL_SCRIPT_DIR__
+            __RUSTUP_INSTALL_SCRIPT_DIR__=$(mktemp -d) || return 1
+            fetch 'https://sh.rustup.rs' --output-dir="$__RUSTUP_INSTALL_SCRIPT_DIR__" --output-name='rustup-init' || return 1
+
+            run "yes | $__RUSTUP_INSTALL_SCRIPT_RUN_SHELL__ $__RUSTUP_INSTALL_SCRIPT_DIR__/rustup-init" || return 1
+
+            export CARGO_HOME=$HOME/.cargo
+            export PATH="$CARGO_HOME/bin:$PATH"
+            ;;
+        *)  return 1
+    esac
+}
+
 __install_command_via_pip() {
     [ -z "$(get_pip3_package_name_by_command_name "$1")" ] && return 1
 
@@ -1693,6 +1722,8 @@ __install_command_via_pip() {
 # __install_command make
 __install_command() {
     command_exists_in_filesystem_and_version_matched $@ && return 0
+
+    __install_command_via_run_install_script $@         && return 0
     __install_command_via_pip $@                        && return 0
     __install_command_via_available_package_manager $@  && return 0
     __install_command_via_fetch_prebuild_binary $@      && return 0
@@ -2251,7 +2282,7 @@ ___load_a_formula() {
             meson)       package add dep.cmd meson ninja ;;
             make)        package add dep.cmd make  ;;
             ninja)       package add dep.cmd ninja ;;
-            cargo)       package add dep.cmd cargo rustup ;;
+            cargo)       package add dep.cmd rustup cargo ;;
             go)          package add dep.cmd go ;;
         esac
     done
