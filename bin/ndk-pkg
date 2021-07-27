@@ -2857,8 +2857,11 @@ __upgrade_packages() {
 __upgrade_self() {
     set -e
 
+    unset FETCH_SELF_OUTPUT_DIR
+    FETCH_SELF_OUTPUT_DIR=$(mktemp -d)
+
     unset FETCH_SELF_OUTPUT_PATH
-    FETCH_SELF_OUTPUT_PATH="$MY_HOME_DIR/self"
+    FETCH_SELF_OUTPUT_PATH="$FETCH_SELF_OUTPUT_DIR/self"
 
     fetch "$MY_UPGRAGE_URL" --output-path="$FETCH_SELF_OUTPUT_PATH"
 
