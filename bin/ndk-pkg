@@ -4,6 +4,14 @@
 # https://clang.llvm.org/docs/CrossCompilation.html
 
 
+if command -v realpath > /dev/null ; then
+    unset CURRENT_SCRIPT_FILEPATH
+    CURRENT_SCRIPT_FILEPATH=$(realpath $0) || exit 1
+else
+    printf "%b\n" "${COLOR_RED}[✘] command not found: realpath${COLOR_OFF}"
+    exit 1
+fi
+
 COLOR_RED='\033[0;31m'          # Red
 COLOR_GREEN='\033[0;32m'        # Green
 COLOR_YELLOW='\033[0;33m'       # Yellow
@@ -539,6 +547,35 @@ fetch() {
 
 # }}}
 ##############################################################################
+# {{{ __upgrade_self
+
+# __upgrade_self <UPGRAGE_URL>
+__upgrade_self() {
+    set -e
+
+    unset FETCH_SELF_OUTPUT_DIR
+    FETCH_SELF_OUTPUT_DIR=$(mktemp -d)
+
+    unset FETCH_SELF_OUTPUT_PATH
+    FETCH_SELF_OUTPUT_PATH="$FETCH_SELF_OUTPUT_DIR/self"
+
+    fetch "$1" --output-path="$FETCH_SELF_OUTPUT_PATH"
+
+    run chmod a+x "$FETCH_SELF_OUTPUT_PATH"
+
+    __upgrade_self_exit() {
+        if [ -w "$CURRENT_SCRIPT_FILEPATH" ] ; then
+            run      cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_FILEPATH"
+        else
+            run sudo cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_FILEPATH"
+        fi
+    }
+
+    trap __upgrade_self_exit EXIT
+}
+
+# }}}
+##############################################################################
 # {{{ os
 
 __get_os_name_from_uname_a() {
@@ -769,6 +806,16 @@ EOF
 # }}}
 ##############################################################################
 # {{{ version
+
+version_of_python_module() {
+    unset PIP_COMMAND
+    PIP_COMMAND=$(command -v pip3 || command -v pip)
+    if [ -z "$PIP_COMMAND" ] ; then
+        die "can't found pip command."
+    else
+        "$PIP_COMMAND" show $1 | grep 'Version:' | cut -d ' ' -f2
+    fi
+}
 
 # retrive the version of a command from it's name or path
 version_of_command() {
@@ -1680,6 +1727,8 @@ __install_command_via_run_install_script() {
                 warn "install bash failed."
                 return 1
             fi
+
+            print "🔥  ${COLOR_YELLOW}required command${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}${COLOR_YELLOW}, but${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command not found, try to install it via running install script.${COLOR_OFF}\n"
 
             unset __RUSTUP_INSTALL_SCRIPT_DIR__
             __RUSTUP_INSTALL_SCRIPT_DIR__=$(mktemp -d) || return 1
@@ -2852,30 +2901,6 @@ __upgrade_packages() {
     [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && return 0
 
     __reinstall_packages
-}
-
-__upgrade_self() {
-    set -e
-
-    unset FETCH_SELF_OUTPUT_DIR
-    FETCH_SELF_OUTPUT_DIR=$(mktemp -d)
-
-    unset FETCH_SELF_OUTPUT_PATH
-    FETCH_SELF_OUTPUT_PATH="$FETCH_SELF_OUTPUT_DIR/self"
-
-    fetch "$MY_UPGRAGE_URL" --output-path="$FETCH_SELF_OUTPUT_PATH"
-
-    run chmod a+x "$FETCH_SELF_OUTPUT_PATH"
-
-    __upgrade_self_exit() {
-        if [ -w "$CURRENT_SCRIPT_FILEPATH" ] ; then
-            run      cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_FILEPATH"
-        else
-            run sudo cp "$FETCH_SELF_OUTPUT_PATH" "$CURRENT_SCRIPT_FILEPATH"
-        fi
-    }
-
-    trap __upgrade_self_exit EXIT
 }
 
 __cleanup() {
@@ -5081,7 +5106,7 @@ main() {
         uninstall) __uninstall_packages "$@" ;;
         upgrade)     __upgrade_packages "$@" ;;
 
-        upgrade-self)__upgrade_self ;;
+        upgrade-self)__upgrade_self "$MY_UPGRAGE_URL" ;;
 
         integrate)
             shift;
@@ -5108,8 +5133,5 @@ main() {
         *) help 1
     esac
 }
-
-unset CURRENT_SCRIPT_FILEPATH
-CURRENT_SCRIPT_FILEPATH="$(realpath "$0")"
 
 main "$@"
