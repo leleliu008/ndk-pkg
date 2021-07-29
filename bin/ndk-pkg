@@ -553,10 +553,17 @@ fetch() {
 __upgrade_self() {
     set -e
 
-    handle_dependency required command realpath
-
     unset CURRENT_SCRIPT_REALPATH
-    CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH)
+
+    # https://unix.stackexchange.com/questions/136494/whats-the-difference-between-realpath-and-readlink-f#:~:text=GNU%20coreutils%20introduced%20a%20realpath,in%20common%20with%20GNU%20readlink%20.
+    if command -v realpath > /dev/null ; then
+        CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH)
+    elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
+        CURRENT_SCRIPT_REALPATH=$(readlink -f $CURRENT_SCRIPT_FILEPATH)
+    else
+        handle_dependency required command realpath || return 1
+        CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH) || return 1
+    fi
 
     unset FETCH_SELF_OUTPUT_DIR
     FETCH_SELF_OUTPUT_DIR=$(mktemp -d)
@@ -1257,6 +1264,7 @@ get_xbps_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1281,6 +1289,7 @@ get_apk_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1307,6 +1316,7 @@ get_zypper_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1333,6 +1343,7 @@ get_dnf_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1357,6 +1368,7 @@ get_yum_package_name_by_command_name() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     sphinx-build) echo "python-sphinx" ;;
@@ -1383,6 +1395,7 @@ get_apt_package_name_by_command_name() {
         diff) echo 'diffutils';;
         xz)   echo 'xz-utils' ;;
      objcopy) echo 'binutils' ;;
+    realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
