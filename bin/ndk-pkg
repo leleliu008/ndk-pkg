@@ -588,6 +588,60 @@ __upgrade_self() {
 
 # }}}
 ##############################################################################
+# {{{ __integrate_zsh_completions
+
+# __integrate_zsh_completions <ZSH_COMPLETIONS_SCRIPT_URL>
+__integrate_zsh_completions() {
+    set -e
+
+    ZSH_COMPLETIONS_SCRIPT_FILENAME="_$CURRENT_SCRIPT_FILENAME"
+    ZSH_COMPLETIONS_SCRIPT_OUT_DIR='/usr/local/share/zsh/site-functions'
+    ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="$ZSH_COMPLETIONS_SCRIPT_OUT_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+
+    step "create working directory"
+    info "mktemp -d"
+    WORKING_DIR=$(mktemp -d)
+
+    step "change to working directory"
+    run cd $WORKING_DIR
+
+    step "fetch zsh-completion script"
+    fetch "$1" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+
+    if [ ! -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
+        step "create fixed zsh site-functions dir"
+        run install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR"
+    fi
+
+    # if file exists and is a symbolic link
+    if [ -L "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
+        # https://unix.stackexchange.com/questions/136494/whats-the-difference-between-realpath-and-readlink-f#:~:text=GNU%20coreutils%20introduced%20a%20realpath,in%20common%20with%20GNU%20readlink%20.
+        if command -v realpath > /dev/null ; then
+            ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(realpath $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
+        elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
+            ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(readlink -f $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
+        else
+            handle_dependency required command realpath
+            ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(realpath $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
+        fi
+    fi
+
+    step "install zsh-compilation script"
+    if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
+        run      install -m 755 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+    else
+        run sudo install -m 755 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+    fi
+
+    step "delete the working directory"
+    run rm -rf $WORKING_DIR
+
+    echo
+    warn "you need to run command ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
+}
+
+# }}}
+##############################################################################
 # {{{ os
 
 __get_os_name_from_uname_a() {
@@ -4587,25 +4641,6 @@ to_meson_array() {
     echo "$RESULT"
 }
 
-__integrate_zsh_completions() {
-    set -e
-    if [ -e /usr/local/share/zsh/site-functions/_ndk-pkg ] ; then
-        success "already integrated at /usr/local/share/zsh/site-functions/_ndk-pkg"
-        return 0
-    else
-        unset WORKING_DIR
-        WORKING_DIR=$(mktemp -d) || return 1
-        fetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/zsh-completion/_ndk-pkg' --output-dir="$WORKING_DIR" --output-name='_ndk-pkg'
-        chmod 755 "$WORKING_DIR/_ndk-pkg"
-        install -d /usr/local/share/zsh/site-functions
-        if [ -w /usr/local/share/zsh/site-functions ] ; then
-            mv "$WORKING_DIR/_ndk-pkg" /usr/local/share/zsh/site-functions
-        else
-            sudo mv "$WORKING_DIR/_ndk-pkg" /usr/local/share/zsh/site-functions
-        fi
-        success "successfully integrated at /usr/local/share/zsh/site-functions/_ndk-pkg"
-    fi
-}
 
 ########################################################################
 
@@ -5045,6 +5080,7 @@ init() {
     MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
     MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ndk-pkg-formula-repository.git"
     MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg'
+    MY_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/zsh-completion/_ndk-pkg'
 
     if [ -z "$NDK_PKG_HOME_DIR" ] ; then
         MY_HOME_DIR="$HOME/.$MY_NAME"
@@ -5220,7 +5256,7 @@ main() {
         integrate)
             shift;
             case $1 in
-                zsh) __integrate_zsh_completions ;;
+                zsh) __integrate_zsh_completions "$MY_ZSH_COMPLETION_SCRIPT_URL" ;;
                 *)   die "ndk-pkg integrate $1: not support."
             esac
             ;;
