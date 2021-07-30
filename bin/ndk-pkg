@@ -1639,7 +1639,6 @@ __install_command_via_fetch_prebuild_binary() {
     unset PREBUILD_BINARY_FETCH_URL
     PREBUILD_BINARY_FETCH_URL=$(__get_prebuild_binary_fetch_url_by_command_name "$1")
     if [ -z "$PREBUILD_BINARY_FETCH_URL" ] ; then
-        warn "no fetch url for $@"
         return 1
     fi
 
@@ -1700,37 +1699,71 @@ __install_command_via_fetch_prebuild_binary() {
     if [ -d "$PREBUILD_BINARY_INSTALL_DIR/bin" ] ; then
         export PATH="$PREBUILD_BINARY_INSTALL_DIR/bin:$PATH"
     fi
+
+    case $1 in
+        autoconf)
+            for xx in $(grep '/root/.zpkg/install.d/autoconf' -rl "$PREBUILD_BINARY_INSTALL_DIR")
+            do
+                sed_in_place "s|/root/.zpkg/install.d/autoconf|$PREBUILD_BINARY_INSTALL_DIR|" "$xx"
+            done
+            ;;
+    esac
 }
 
 # examples:
-# pkg-config ge 0.18
-# python3    ge 3.5
-# make
+# __get_prebuild_binary_fetch_url_by_command_name python3 ge 3.5
+# __get_prebuild_binary_fetch_url_by_command_name cmake
 __get_prebuild_binary_fetch_url_by_command_name() {
-    case $1 in
-        python3|python)
-            case $NATIVE_OS_KIND in
-                linux)
-                    if [ "$NATIVE_OS_LIBC" = 'glibc' ] && [ "$NATIVE_OS_ARCH" = 'x86_64' ] ; then
-                        # https://github.com/leleliu008/python-prebuild
-                        echo "https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz"
-                    fi
-            esac
-            ;;
-        cmake)
-            case $NATIVE_OS_KIND in
-                linux)
-                    if [ "$NATIVE_OS_LIBC" = 'glibc' ] ; then
-                        # https://cmake.org/download
-                        echo "https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz"
-                    fi
-                    ;;
-                darwin)
-                    if ! command_exists_in_filesystem brew ; then
-                        echo "https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz"
-                    fi
-            esac
-    esac
+    # https://github.com/leleliu008/python-prebuild
+    # https://cmake.org/download
+{
+    cat <<EOF
+python    |glibc|linux |x86_64|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
+python3   |glibc|linux |x86_64|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
+git       |glibc|linux |x86_64|https://github.com/leleliu008/git-prebuild/releases/download/2.30.2/git-2.30.2-x86_64-linux-glibc.tar.xz
+autoconf  |glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
+autoreconf|glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
+cmake     |glibc|linux |x86_64|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
+cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
+EOF
+} | while read LINE
+    do
+        LINE=$(echo "$LINE" | sed 's/[[:space:]]//g')
+
+        unset __PB_COMMAND__
+        unset __PB_OS_LIBC__
+        unset __PB_OS_KIND__
+        unset __PB_OS_ARCH__
+        unset __PB_URL__
+
+        __PB_COMMAND__=$(echo "$LINE" | cut -d '|' -f1)
+
+        if [ "$__PB_COMMAND__" != "$1" ] ; then
+            continue
+        fi
+
+        __PB_OS_LIBC__=$(echo "$LINE" | cut -d '|' -f2)
+
+        if [ -n "$__PB_OS_LIBC__" ] && [ "$__PB_OS_LIBC__" != "$NATIVE_OS_LIBC" ] ; then
+            continue
+        fi
+
+        __PB_OS_KIND__=$(echo "$LINE" | cut -d '|' -f3)
+
+        if [ "$__PB_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
+            continue
+        fi
+
+        __PB_OS_ARCH__=$(echo "$LINE" | cut -d '|' -f4)
+
+        if [ -n "$__PB_OS_ARCH__" ] && [ "$__PB_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
+            continue
+        fi
+
+        __PB_URL__=$(echo "$LINE" | cut -d '|' -f5)
+
+        echo "$__PB_URL__"
+    done
 }
 
 __install_command_via_run_install_script() {
@@ -2868,7 +2901,7 @@ __list_abis_of_a_installed_package() {
     cat "$MY_CACHED_LOG_DIR/$1/install.log.txt"
 }
 
-__tree_installed_of_a_package() {
+__tree_a_installed_package() {
     die_if_package_is_not_installed "$1"
     handle_dependency required command tree
     run tree $(shiftn 1 $@) --dirsfirst "$MY_INSTALL_DIR/$1"
@@ -2985,7 +3018,9 @@ __show_depends_of_a_package() {
     fi
 }
 
-__show_prefix_of_a_package() {
+# if $1 is    specified, show prefix of a package.
+# if $1 isn't specified, show this software's home direcotory.
+__show_prefix() {
     if [ -z "$1" ] ; then
         echo "$MY_HOME_DIR"
     else
@@ -3023,43 +3058,96 @@ __show_logs_of_a_package() {
     fi
 }
 
-__pack_bottle_of_a_package() {
+# examples:
+# __pack_a_installed_package autoconf
+# __pack_a_installed_package autoconf --type=tar.xz
+__pack_a_installed_package() {
+    set -e
+
     ABI="$(__list_abis_of_a_installed_package "$1" | head -n 1)"
     die_if_load_installed_log_failed "$1" "$ABI"
 
-    install -d "$MY_CACHED_BINARY_DIR" || return 1
+    unset PACKED_FILE_SUFFIX
 
-    if command -v 7za > /dev/null ; then
-        SUFFIX=7z
-    elif command -v zip > /dev/null ; then
-        SUFFIX=zip
-    elif command -v tar > /dev/null ; then
-        if command -v gzip > /dev/null ; then
-            SUFFIX=tar.gz
-        elif command -v xz > /dev/null ; then
-            SUFFIX=tar.xz
-        elif command -v bzip2 > /dev/null ; then
-            SUFFIX=tar.bz2
+    for arg in $@
+    do
+        case $arg in
+            --type=*)
+                PACKED_FILE_SUFFIX=$(getvalue $arg)
+                [ -z "$PACKED_FILE_SUFFIX" ] && die "--type=VALUE : VALUE must not be empty."
+                ;;
+        esac
+    done
+
+    if [ -z "$PACKED_FILE_SUFFIX" ] ; then
+        if command -v 7za > /dev/null ; then
+            PACKED_FILE_SUFFIX=7z
+        elif command -v zip > /dev/null ; then
+            PACKED_FILE_SUFFIX=zip
+        elif command -v tar > /dev/null ; then
+            if command -v xz > /dev/null ; then
+                PACKED_FILE_SUFFIX=tar.xz
+            elif command -v bzip2 > /dev/null ; then
+                PACKED_FILE_SUFFIX=tar.bz2
+            elif command -v gzip > /dev/null ; then
+                PACKED_FILE_SUFFIX=tar.gz
+            else
+                handle_dependency required command xz
+                PACKED_FILE_SUFFIX=tar.xz
+            fi
         else
-            die "please install gzip or xz or bzip2 utility."
+            handle_dependency required command zip
+            PACKED_FILE_SUFFIX=tar.xz
         fi
     else
-        die "please install zip or tar utility."
+        case $PACKED_FILE_SUFFIX in
+            7z)      handle_dependency required command 7za ;;
+            zip)     handle_dependency required command zip ;;
+            tar.gz)  handle_dependency required command tar gzip ;;
+            tar.xz)  handle_dependency required command tar xz ;;
+            tar.bz2) handle_dependency required command tar bzip2 ;;
+            *) die "$PACKED_FILE_SUFFIX : not supported packed type (7z zip tar.gz tar.xz tar.bz2)."
+        esac
     fi
 
-    FILE_PATH="$MY_CACHED_BINARY_DIR/$1-$installed_pkg_vers.bin.$SUFFIX"
+    unset PACKED_DIR_NAME
+    PACKED_DIR_NAME="$1-$installed_pkg_vers.bin"
 
-    if [ -f "$FILE_PATH" ] ; then
-        rm  "$FILE_PATH" || return 1
-    fi
+    unset PACKED_FILE_NAME
+    PACKED_FILE_NAME="$PACKED_DIR_NAME.$PACKED_FILE_SUFFIX"
 
-    case $SUFFIX in
-        7z)  run 7za a -t7z -r "$FILE_PATH" "$MY_INSTALL_DIR/$1" ;;
-        zip) run cd "$MY_INSTALL_DIR" && run zip -9 -r "$FILE_PATH" "$1" ;;
-        tar.gz)  run tar zvcf "$FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
-        tar.xz)  run tar Jvcf "$FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
-        tar.bz2) run tar jvcf "$FILE_PATH" -C "$MY_INSTALL_DIR" "$1" ;;
+    step "create working directory"
+    info "mktemp -d"
+    WORKING_DIR=$(mktemp -d)
+
+    step "change to working directory"
+    run cd $WORKING_DIR
+
+    step "make link refer to installed package root dir"
+    run ln -s "$MY_INSTALL_DIR/$1" "$PACKED_DIR_NAME"
+
+    step "packing"
+    case $PACKED_FILE_SUFFIX in
+        7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
+        zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
+        tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
+        tar.xz)  run tar Jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
+        tar.bz2) run tar jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
     esac
+
+    if [ ! -d "$MY_CACHED_BINARY_DIR" ] ; then
+        step "create cached binary dir"
+        run install -d "$MY_CACHED_BINARY_DIR"
+    fi
+
+    step "copy packed file to cached binary dir"
+    run cp "$PACKED_FILE_NAME" "$MY_CACHED_BINARY_DIR/"
+
+    step "show disk usage statistics"
+    run du -sh "$PACKED_FILE_NAME"
+
+    step "delete working directory"
+    run rm -rf $WORKING_DIR
 }
 
 get_direct_dependency_package_list_of_a_package() {
@@ -3494,7 +3582,7 @@ __install_a_package() {
     }
 
     step "list installed content."
-    __tree_installed_of_a_package "$1"
+    __tree_a_installed_package "$1"
 
     echo
     success "$1 have been installed successfully."
@@ -5138,12 +5226,12 @@ main() {
             ;;
         homepage) shift; __show_webpage_of_a_package    "$@" ;;
         depends)  shift; __show_depends_of_a_package    "$@" ;;
-        prefix)   shift; __show_prefix_of_a_package     "$@" ;;
-        fetch)    shift; ___load_a_formula   "$@" &&
+        prefix)   shift; __show_prefix     "$@" ;;
+        fetch)    shift; ___load_a_formula "$@" &&
                          __fetch_resources_of_a_package "$@" ;;
         logs)     shift; __show_logs_of_a_package       "$@" ;;
-        pack)     shift; __pack_bottle_of_a_package     "$@" ;;
-        tree)     shift; __tree_installed_of_a_package  "$@" ;;
+        pack)     shift; __pack_a_installed_package     "$@" ;;
+        tree)     shift; __tree_a_installed_package     "$@" ;;
         info)     shift; __show_infomation_of_packages  "$@" ;;
 
         ldd) shift; ldd "$@" ;;
