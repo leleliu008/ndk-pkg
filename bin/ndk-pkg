@@ -570,7 +570,6 @@ __upgrade_self() {
         CURRENT_SCRIPT_REALPATH="$CURRENT_SCRIPT_FILEPATH"
     fi
 
-    step "create working directory"
     info "mktemp -d"
     WORKING_DIR=$(mktemp -d)
 
@@ -603,7 +602,6 @@ __integrate_zsh_completions() {
     ZSH_COMPLETIONS_SCRIPT_OUT_DIR='/usr/local/share/zsh/site-functions'
     ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="$ZSH_COMPLETIONS_SCRIPT_OUT_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
-    step "create working directory"
     info "mktemp -d"
     WORKING_DIR=$(mktemp -d)
 
