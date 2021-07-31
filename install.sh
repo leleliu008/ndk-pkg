@@ -2198,7 +2198,7 @@ main() {
     set -e
 
     unset INSTALLED_NDK_PKG
-    INSTALLED_NDK_PKG=$(command -v ndk-pkg)
+    INSTALLED_NDK_PKG=$(command -v ndk-pkg) || true
 
     if [ -n "$INSTALLED_NDK_PKG" ] ; then
         die "ndk-pkg is already installed at $INSTALLED_NDK_PKG."
