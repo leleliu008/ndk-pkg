@@ -205,6 +205,14 @@ nproc() {
     fi
 }
 
+own() {
+    if command -v awk > /dev/null ; then
+        ls -ld "$1" | awk '{print $3":"$4}'
+    else
+        ls -ld "$1" | cut -d ' ' -f4,6 | tr ' ' ':'
+    fi
+}
+
 is_integer () {
     case "${1#[+-]}" in
         (*[!0123456789]*) return 1 ;;
