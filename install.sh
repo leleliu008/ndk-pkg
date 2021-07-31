@@ -2197,8 +2197,13 @@ regist_dependency() {
 main() {
     set -e
 
-    type -a ndk-pkg 2>/dev/null && die "ndk-pkg is already installed."
-    
+    unset INSTALLED_NDK_PKG
+    INSTALLED_NDK_PKG=$(command -v ndk-pkg)
+
+    if [ -n "$INSTALLED_NDK_PKG" ] ; then
+        die "ndk-pkg is already installed at $INSTALLED_NDK_PKG."
+    fi
+
     VERSION='0.1.0'
     FILE_NAME="ndk-pkg-${VERSION}.tar.gz"
     URL="https://github.com/leleliu008/ndk-pkg/releases/download/v${VERSION}/${FILE_NAME}"
