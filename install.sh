@@ -1718,6 +1718,10 @@ __install_command_via_fetch_prebuild_binary() {
     PREBUILD_BINARY_FILENAME_SUFFIX=$(get_suffix_from_filename "$PREBUILD_BINARY_FILENAME")
     PREBUILD_BINARY_FILENAME_PREFIX=$(basename "$PREBUILD_BINARY_FILENAME" "$PREBUILD_BINARY_FILENAME_SUFFIX")
 
+    if [ -z "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
+        PREBUILD_BINARY_INSTALL_PREFIX_DIR='/opt'
+    fi
+
     unset PREBUILD_BINARY_INSTALL_DIR
     PREBUILD_BINARY_INSTALL_DIR="$PREBUILD_BINARY_INSTALL_PREFIX_DIR/$PREBUILD_BINARY_FILENAME_PREFIX"
 
@@ -1734,7 +1738,7 @@ __install_command_via_fetch_prebuild_binary() {
             fi
         else
             if [ -r "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] && [ -w "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] && [ -x "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
-                install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+                     install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
             else
                 sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
             fi
@@ -1914,14 +1918,14 @@ handle_dependency() {
                     for command in $(echo "$1" | tr ':' ' ')
                     do
                         if command_exists_in_filesystem_and_version_matched "$command" $2 $3 ; then
-                            map_set "$MAP_REQUIRED_DEPENDENCIES" "$1" "$command"
+                            map_set MAP_REQUIRED_DEPENDENCIES "$1" "$command"
                             return 0
                         fi
                     done
                     for command in $(echo "$1" | tr ':' ' ')
                     do
                         if __install_command "$command" $2 $3 ; then
-                            map_set "$MAP_REQUIRED_DEPENDENCIES" "$1" "$command"
+                            map_set MAP_REQUIRED_DEPENDENCIES "$1" "$command"
                             return 0
                         fi
                     done
@@ -1981,7 +1985,7 @@ printf_dependency() {
             case $3 in
                 *:*)
                     if [ "$1" = 'required' ] ; then
-                        REQUIRED_ITEM="$(map_get "MAP_REQUIRED_DEPENDENCIES" "$3")"
+                        REQUIRED_ITEM="$(map_get MAP_REQUIRED_DEPENDENCIES "$3")"
                         __printf_dependency "$2" "$REQUIRED_ITEM" "$4" "$5" "$(version_of_command $REQUIRED_ITEM)" "$(command -v $REQUIRED_ITEM)"
                     else
                         for item in $(echo "$3" | tr ':' ' ')
