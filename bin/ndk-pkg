@@ -4184,7 +4184,7 @@ __config_this_build_variables() {
 
                 export TARGET_AR="$AR"
 
-                for item in $PACKAGE_DEP_PKG
+                for item in $DEPENDENCY_PACKAGE_LIST
                 do
                     case $item in
                         openssl)
