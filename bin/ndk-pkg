@@ -36,15 +36,15 @@ success() {
 }
 
 warn() {
-    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}"
+    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}" >&2
 }
 
 error() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
 }
 
 die() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
     exit 1
 }
 
@@ -2297,7 +2297,7 @@ __parse_package_patches() {
             *.tar.bz2) PATCH_CONTENT_TYPE=tar.bz2; package add dep.cmd patch tar bzip2 ;;
             *.tgz)     PATCH_CONTENT_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
             *.txz)     PATCH_CONTENT_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
-            *)  die "$1 : extension isn't recognized. the supported extensions are .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+            *)  die "unrecognized extension : $1. the supported extensions are .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
         esac
 
         [ ${#2} -eq 64 ] || die "$2 is not sha256sum. the length of sha256sum must be 64."
@@ -2394,7 +2394,7 @@ ___load_a_formula() {
         *.cc)      PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
         *.cxx)     PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
         *.cpp)     PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
-        *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+        *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
     case $PACKAGE_SRC_TYPE in
@@ -2757,7 +2757,7 @@ die_if_abi_____is_not_specified() {
 die_if_abi_____is_not_supported() {
     die_if_abi_____is_not_specified "$1"
     
-    for ABI in $(__list_supported_abis)
+    for ABI in $(__list_supported_target_abis)
     do
         [ "$ABI" = "$1" ] && return 0
     done
@@ -2905,27 +2905,10 @@ __gen_github_workflows() {
 }
 
 __list_available_packages() {
-    unset SILENT
-
-    case $# in
-        0)  ;;
-        1)  if [ "$1" = '-q' ] ; then
-                SILENT=true
-            else
-                die "list available action only accept -q argument."
-            fi
-            ;;
-        *)  die "list available action only accept -q argument."
-    esac
-
     for repo in $(____list_formula_repositories | cut -d= -f1)
     do
-        if [ "$SILENT" = 'true' ] ; then
-            cd "$MY_FORMULA_REPO_DIR/$repo/formula" 2>/dev/null || return 1
-        else
-            cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
-        fi
-        ls -1 *.sh | sed 's/\.sh//g'
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
+        ls -1 *.sh | sed 's/\.sh//g' || return 1
     done
 }
 
@@ -3082,8 +3065,8 @@ __show_depends_of_a_package() {
     fi
 }
 
-# if $1 is    specified, show prefix of a package.
-# if $1 isn't specified, show this software's home direcotory.
+# if $1 is     specified, show prefix of a package.
+# if $1 is not specified, show this software's home direcotory.
 __show_prefix() {
     if [ -z "$1" ] ; then
         echo "$MY_HOME_DIR"
@@ -3491,7 +3474,7 @@ __install_a_package() {
         *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
             run tar xf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
             ;;
-        *)  die "$PACKAGE_SRC_URL : extension isn't recognized. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+        *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
     if [ -z "$PACKAGE_SOURCED" ] ; then
@@ -4147,7 +4130,7 @@ __config_this_build_variables() {
     do
         case $item in
             cargo)
-                for supportedTarget in $(__list_supported_targets)
+                for supportedTarget in $(__list_supported_target_triples)
                 do
                     supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
                     for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
@@ -4748,27 +4731,27 @@ list_dynamic_library_names_of_a_package() {
     die_if_package_is_not_specified "$1"
     die_if_package_is_not_installed "$1"
 
-    ABI=$(__list_supported_abis | head -n 1)
+    ABI=$(__list_supported_target_abis | head -n 1)
     ABI_LIBRARY_DIR="$MY_INSTALL_DIR/$1/$ABI/lib"
     if [ -d  "$ABI_LIBRARY_DIR" ] ; then
         find "$ABI_LIBRARY_DIR" -name "*.so*" -a -maxdepth 0 -a \( -type f -o -type l \) -exec basename {} \;
     fi
 }
 
-__list_supported_sdk_api_levels() {
+__list_supported_target_sdk_api_levels() {
     list 21 22 23 24 25 26 27 28 29
 }
 
-__list_supported_abis() {
-    list armeabi-v7a arm64-v8a x86 x86_64
-}
-
-__list_supported_archs() {
+__list_supported_target_archs() {
     list armv7a aarch64 i686 x86_64
 }
 
-__list_supported_targets() {
-    for ARCH in $(__list_supported_archs)
+__list_supported_target_abis() {
+    list armeabi-v7a arm64-v8a x86 x86_64
+}
+
+__list_supported_target_triples() {
+    for ARCH in $(__list_supported_target_archs)
     do
         print_target_triple_by_arch "$ARCH"
     done
@@ -4820,7 +4803,7 @@ print_path_of_tool_in_the_toolchain() {
 # return 1: $1 > $2
 pick_target_os_version() {
     if [ -z "$1" ] ; then
-        pick_target_os_version $(__list_supported_sdk_api_levels | head -n 1) $2
+        pick_target_os_version $(__list_supported_target_sdk_api_levels | head -n 1) $2
     else
         if [ -z "$2" ] ; then
             echo "$1"
@@ -5053,7 +5036,7 @@ parse_arguments() {
     NPROC=$(nproc)
     [ -z "$NJOBS" ] && NJOBS=$NPROC
 
-    BUILD_LIST="$(__list_supported_abis)"
+    BUILD_LIST="$(__list_supported_target_abis)"
 
     unset COMMON_INCLUDE_H_FILEPATH
     COMMON_INCLUDE_H_FILEPATH="$MY_HOME_DIR/include.h"
@@ -5136,13 +5119,20 @@ ACTION:
     --help    | -h                --show help information.
     --version | -V                --print version of $MY_NAME.
 
+    toolchain                     --show android-ndk toolchain info.
+
     integrate zsh                 --integrate zsh-completion script.
 
-    toolchain                     --show android-ndk toolchain info.
-    
-    ls abis                       --list the supported abis.
-    ls archs                      --list the supported archs.
-    ls sdk-api-levels             --list the supported android-sdk api-levels.
+    upgrade-self                  --upgrade this software.
+
+    update                        --update the formula repositories.
+
+    cleanup                       --cleanup the unused cache.
+
+    target levels                 --list the supported target os's api-levels.
+    target triples                --list the supported target triples.
+    target archs                  --list the supported target archs.
+    target abis                   --list the supported target abis.
     
     ls available                  --list the available packages.
     ls installed                  --list the installed packages.
@@ -5178,11 +5168,7 @@ ACTION:
     install   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --install packages.
     reinstall PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --reinstall packages.
     upgrade   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --upgrade packages.
-    uninstall PACKAGE...          --uninstall packages.
-    
-    cleanup                       --cleanup the unused cache.
-    update                        --update the formula repositories.
-    upgrade-self                  --upgrade this software.
+    uninstall PACKAGE...                                                                          --uninstall packages.
 EOF
     if [ -z "$1" ] ; then
         exit
@@ -5209,16 +5195,22 @@ main() {
             shift
             package get "$1" "$2"
             ;;
+        target)
+            shift
+            case $1 in
+                levels)  shift; __list_supported_target_sdk_api_levels ;;
+                triples) shift; __list_supported_target_triples ;;
+                archs)   shift; __list_supported_target_archs ;;
+                abis)    shift; __list_supported_target_abis ;;
+                *) help 1
+            esac
+            ;;
         ls|list)
             shift
             case $1 in
                 available) shift; __list_available_packages ;;
                 installed) shift; __list_installed_packages ;;
                 outdated)  shift; __list__outdated_packages ;;
-                archs)     shift; __list_supported_archs ;;
-                abis)      shift; __list_supported_abis ;;
-                sdk-api-levels)
-                           shift; __list_supported_sdk_api_levels ;;
                 *) help 1
             esac
             ;;

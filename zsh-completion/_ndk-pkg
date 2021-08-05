@@ -6,7 +6,8 @@ _commands=(
     '-V:print the version of ndk-pkg and NDK.'
     '--version:print the version of ndk-pkg and NDK.'
     'search:search packages can be installed.'
-    'ls:list the supported abis, the supported sdk-api-levels, available, installed and outdated packages.'
+    'target:list the supported target abis, archs, triples, api-levels.'
+    'ls:list the available, installed and outdated packages.'
     'tree:list contents of a installed package directory in a tree-like format.'
     'info:print the basic infomation of packages.'
     'formula:view,edit the formula of a package.'
@@ -31,18 +32,18 @@ _commands=(
     'gen-github-workflows:generate github workflows.'
 )
 
+_target=(
+    'abis:list the supported target abis.'
+    'archs:list the supported target archs.'
+    'levels:list the supported android-sdk api-levels.'
+    'triples:list the supported target triples.'
+)
+
 _list=(
-    'abis:list the supported abis.'
-    'archs:list the supported archs.'
-    'sdk-api-levels:list the supported android-sdk api-levels.'
     'available:list the available packages.'
     'installed:list the installed packages.'
     'outdated:list the installed packages which can be upgraded.'
 )
-
-function _ndk_pkg_list() {
-    _describe 'list' _list
-}
 
 function _ndk_pkg_commands() {
     _describe 'command' _commands
@@ -50,19 +51,19 @@ function _ndk_pkg_commands() {
 
 function _ndk_pkg_available_packages() {
     local -a _available_packages
-    _available_packages=($(ndk-pkg ls available -q))
+    _available_packages=($(ndk-pkg ls available 2>/dev/null))
     _describe 'available-packages' _available_packages
 }
 
 function _ndk_pkg_installed_packages() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg ls installed))
+    _installed_packages=($(ndk-pkg ls installed 2>/dev/null))
     _describe 'installed-packages' _installed_packages
 }
 
 function _ndk_pkg_outdated_packages() {
     local -a _outdated_packages
-    _outdated_packages=($(ndk-pkg ls outdated))
+    _outdated_packages=($(ndk-pkg ls outdated 2>/dev/null))
     _describe 'outdated-packages' _outdated_packages
 }
 
@@ -77,11 +78,8 @@ function _ndk_pkg() {
     case $state in
         option)
             case $words[1] in
-                ls)
-                    _arguments \
-                        '1:ls-sub-command:_ndk_pkg_list' \
-                        '-q[quiet mode. do not report error log]'
-                    ;;
+                target) _arguments '1: :{_describe 'target' _target}' ;;
+                ls)     _arguments '1: :{_describe 'list'   _list}'   ;;
                 formula)
                     _arguments \
                         ':action:(create delete rename view edit list repo)' \
@@ -119,7 +117,7 @@ function _ndk_pkg() {
                 logs)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:abi:($(ndk-pkg ls abis))'
+                        '2:abi:($(ndk-pkg target abis))'
                     ;;
                 get)
                     _arguments \
@@ -129,7 +127,7 @@ function _ndk_pkg() {
                 install)
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
-                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls sdk-api-levels))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
                         '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-working-dir[do not delete working-dir even if installed success]' \
@@ -140,7 +138,7 @@ function _ndk_pkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
-                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls sdk-api-levels))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
                         '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
                         '(--debug -d)'{--debug,-d}'[debug]' \
@@ -149,7 +147,7 @@ function _ndk_pkg() {
                 upgrade)
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
-                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls sdk-api-levels))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
                         '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
                         '(--debug -d)'{--debug,-d}'[debug]' \
@@ -165,7 +163,7 @@ function _ndk_pkg() {
                 ldd)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:abi:($(ndk-pkg ls abis))' \
+                        '2:abi:($(ndk-pkg target abis))' \
                         '3:type:(bin lib)'
                     ;;
                 gen-github-workflows)
