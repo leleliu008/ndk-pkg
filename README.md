@@ -46,6 +46,10 @@ mv ndk-pkg /usr/local/bin/
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
 
 
+*   upgrade this software
+
+        ndk-pkg upgrade-self
+
 *   update the formula repositories
 
         ndk-pkg update
@@ -121,18 +125,25 @@ mv ndk-pkg /usr/local/bin/
         
         ndk-pkg formula rename curl curl7
         
-*   list the supported abis
+*   list the supported target abis
         
-        ndk-pkg list abis
+        ndk-pkg target abis
+
+*   list the supported target archs
         
+        ndk-pkg target archs
+
+*   list the supported target triples
+        
+        ndk-pkg target triples
+
 *   list the supported sdk api-levels
         
-        ndk-pkg list sdk-api-levels
+        ndk-pkg target levels
         
 *   list the available packages
         
         ndk-pkg list available
-        ndk-pkg list available -q
         
 *   list the installed packages
         
@@ -200,8 +211,4 @@ mv ndk-pkg /usr/local/bin/
 *   cleanup the unused cache
         
         ndk-pkg cleanup
-        
-*   upgrade this software
-        
-        ndk-pkg upgrade-self
         
