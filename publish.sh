@@ -24,15 +24,15 @@ success() {
 }
 
 warn() {
-    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}"
+    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}" >&2
 }
 
 error() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
 }
 
 die() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}"
+    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
     exit 1
 }
 
