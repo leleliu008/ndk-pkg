@@ -2837,7 +2837,14 @@ __gen_github_workflows() {
                 ;;
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
-                [ -z "$OUTPUT_DIR" ] && die "--output-dir=DIR DIR must be not empty."
+                case "$OUTPUT_DIR" in
+                    '') die "--output-dir=DIR, DIR must be not empty." ;;
+                    /*) ;;
+                    \~|\~/) OUTPUT_DIR="${HOME}" ;;
+                    \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | awk '{print(substr($0, 2))}')" ;;
+                    .|./)   OUTPUT_DIR="${PWD}" ;;
+                    *)      OUTPUT_DIR="${PWD}/$OUTPUT_DIR" ;;
+                esac
                 [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
         esac
         shift
