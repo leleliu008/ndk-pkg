@@ -2197,22 +2197,24 @@ regist_dependency() {
 main() {
     set -e
 
-    unset INSTALLED_NDK_PKG
-    INSTALLED_NDK_PKG=$(command -v ndk-pkg) || true
+    INSTALL_BIN_FILENAME=ndk-pkg
 
-    if [ -n "$INSTALLED_NDK_PKG" ] ; then
-        die "ndk-pkg is already installed at $INSTALLED_NDK_PKG."
-    fi
+    die_if_already_installed() {
+        [ -z "$1" ] || die "$INSTALL_BIN_FILENAME is already installed at $1."
+    }
+
+    die_if_already_installed $(command -v $INSTALL_BIN_FILENAME || true)
 
     VERSION='0.1.0'
-    FILE_NAME="ndk-pkg-${VERSION}.tar.gz"
-    URL="https://github.com/leleliu008/ndk-pkg/releases/download/v${VERSION}/${FILE_NAME}"
+    FILE_NAME="$INSTALL_BIN_FILENAME-${VERSION}.tar.gz"
+    URL="https://github.com/leleliu008/$INSTALL_BIN_FILENAME/releases/download/v${VERSION}/${FILE_NAME}"
 
     INSTALL_BIN_DIR='/usr/local/bin'
-    INSTALL_BIN_FILEPATH="$INSTALL_BIN_DIR/ndk-pkg"
+    INSTALL_BIN_FILEPATH="$INSTALL_BIN_DIR/$INSTALL_BIN_FILENAME"
 
     INSTALL_ZSH_COMPLETION_DIR='/usr/local/share/zsh/site-functions'
-    INSTALL_ZSH_COMPLETION_FILEPATH="$INSTALL_ZSH_COMPLETION_DIR/_ndk-pkg"
+    INSTALL_ZSH_COMPLETION_FILENAME="_$INSTALL_BIN_FILENAME"
+    INSTALL_ZSH_COMPLETION_FILEPATH="$INSTALL_ZSH_COMPLETION_DIR/$INSTALL_ZSH_COMPLETION_FILENAME"
 
     INSTALL_SUCCESS=false
 
@@ -2261,9 +2263,9 @@ main() {
     fi
 
     if [ -w "$INSTALL_BIN_DIR" ] ; then
-        run      install -m 555 bin/ndk-pkg "$INSTALL_BIN_FILEPATH"
+        run      install -m 555 "bin/$INSTALL_BIN_FILENAME" "$INSTALL_BIN_FILEPATH"
     else
-        run sudo install -m 555 bin/ndk-pkg "$INSTALL_BIN_FILEPATH"
+        run sudo install -m 555 "bin/$INSTALL_BIN_FILENAME" "$INSTALL_BIN_FILEPATH"
     fi
 
     if [ ! -d "$INSTALL_ZSH_COMPLETION_DIR" ] ; then
@@ -2271,16 +2273,16 @@ main() {
     fi
 
     if [ -w "$INSTALL_ZSH_COMPLETION_DIR" ] ; then
-        run      install -m 644 zsh-completion/_ndk-pkg "$INSTALL_ZSH_COMPLETION_FILEPATH"
+        run      install -m 644 "zsh-completion/$INSTALL_ZSH_COMPLETION_FILENAME" "$INSTALL_ZSH_COMPLETION_FILEPATH"
     else
-        run sudo install -m 644 zsh-completion/_ndk-pkg "$INSTALL_ZSH_COMPLETION_FILEPATH"
+        run sudo install -m 644 "zsh-completion/$INSTALL_ZSH_COMPLETION_FILENAME" "$INSTALL_ZSH_COMPLETION_FILEPATH"
     fi
 
     INSTALL_SUCCESS=true
 
     echo
     success "Installed Success.\n"
-    print "${COLOR_PURPLE}Note${COLOR_OFF} : ${COLOR_GREEN}$INSTALL_ZSH_COMPLETION_FILEPATH${COLOR_OFF} is a zsh-completion script for ${COLOR_PURPLE}ndk-pkg${COLOR_OFF}. In zsh, when you've typed ${COLOR_PURPLE}ndk-pkg${COLOR_OFF} then type ${COLOR_PURPLE}TAB${COLOR_OFF} key, it will auto complete the rest for you. to apply this feature, you may need to run the command ${COLOR_PURPLE}autoload -U compinit && compinit${COLOR_OFF}\n"
+    print "${COLOR_PURPLE}Note${COLOR_OFF} : ${COLOR_GREEN}$INSTALL_ZSH_COMPLETION_FILEPATH${COLOR_OFF} is a zsh-completion script for ${COLOR_PURPLE}$INSTALL_BIN_FILENAME${COLOR_OFF}. In zsh, when you've typed ${COLOR_PURPLE}$INSTALL_BIN_FILENAME${COLOR_OFF} then type ${COLOR_PURPLE}TAB${COLOR_OFF} key, it will auto complete the rest for you. to apply this feature, you may need to run the command ${COLOR_PURPLE}autoload -U compinit && compinit${COLOR_OFF}\n"
 }
 
 main
