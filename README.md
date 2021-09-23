@@ -42,7 +42,7 @@ mv ndk-pkg /usr/local/bin/
         ndk-pkg integrate zsh
         ndk-pkg integrate zsh -x
         ndk-pkg integrate zsh --china
-        ndk-pkg integrate zsh -china -x
+        ndk-pkg integrate zsh --china -x
         
     I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg` then type `TAB` key, it will auto complete the rest for you.
 

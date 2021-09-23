@@ -562,7 +562,7 @@ fetch() {
             if [ -z "$FETCH_TOOL" ] ; then
                 handle_dependency required exe curl
                 FETCH_TOOL=curl
-            fi 
+            fi
 
             case $FETCH_TOOL in
                 curl)
