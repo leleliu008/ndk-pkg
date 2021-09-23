@@ -102,18 +102,31 @@ function _ndk_pkg() {
                             esac
                     esac
                     ;;
+                upgrade-self)
+                    _arguments \
+                        '-x[trace execution of commands]' \
+                        '--china[use china mirror url]'
+                        ;;
                 integrate)
-                    _arguments ':what:(zsh)'
+                    _arguments \
+                        '1:what:(zsh)' \
+                        '-x[trace execution of commands]' \
+                        '--china[use china mirror url]'
                     ;;
                 info)
                     _arguments \
                         '*:package-name:_ndk_pkg_available_packages' \
                         '--json[output format is json]'
                         ;;
-                fetch|homepage|depends)
+                fetch|depends)
                     _arguments ':package-name:_ndk_pkg_available_packages' ;;
                 prefix|pack|tree)
                     _arguments ':package-name:_ndk_pkg_installed_packages' ;;
+                homepage)
+                    _arguments \
+                        '1:action:(show open)' \
+                        '2:package-name:_ndk_pkg_available_packages'
+                    ;;
                 logs)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \

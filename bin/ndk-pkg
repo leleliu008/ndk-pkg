@@ -12,6 +12,7 @@ CURRENT_SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd) || exit 1
 CURRENT_SCRIPT_FILENAME=$(basename "$0")
 CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 
+
 COLOR_RED='\033[0;31m'          # Red
 COLOR_GREEN='\033[0;32m'        # Green
 COLOR_YELLOW='\033[0;33m'       # Yellow
@@ -51,7 +52,15 @@ die() {
 # check if file exists
 # $1 FILEPATH
 file_exists() {
-    [ -n "$1" ] && [ -e "$1" ]
+    if [ -z "$1" ] ; then
+        die "file_exists() please specify a filepath."
+    else
+        if [ -e "$1" ] ; then
+            return 0
+        else
+            warn "file_exists() file not exist: $1"
+        fi
+    fi
 }
 
 # check if command exists in filesystem
@@ -64,7 +73,15 @@ command_exists_in_filesystem() {
 }
 
 executable() {
-    file_exists "$1" && [ -x "$1" ]
+    if file_exists "$1" ; then
+        if [ -x "$1" ] ; then
+            return 0
+        else
+            return 1
+        fi
+    else
+        return 1
+    fi
 }
 
 die_if_file_is_not_exist() {
@@ -287,7 +304,10 @@ sha256sum() {
 # $2 expect sha256sum
 file_exists_and_sha256sum_matched() {
     die_if_file_is_not_exist "$1"
-    [ -z "$2" ] && die "please specify expected sha256sum."
+    if [ -z "$2" ] ; then
+        die "please specify expected sha256sum."
+    fi
+
     [ "$(sha256sum $1)" = "$2" ]
 }
 
@@ -303,16 +323,13 @@ die_if_sha256sum_mismatch() {
 
 # $1 map_name
 __map_name_ref() {
-    die_if_map_name_is_not_specified "$1"
     printf "map_%s\n" "$(printf '%s' "$1" | md5sum)"
 }
 
 # $1 map_name
 # $2 key
 __map_key_ref() {
-    die_if_map_name_is_not_specified   "$1"
-    die_if_map_key__is_not_specified   "$2"
-    printf "%s_%s\n" "$(__map_name_ref "$1")" "$(printf '%s' "$2" | md5sum)"
+    printf "%s_key_%s\n" "$(__map_name_ref "$1")" "$(printf '%s' "$2" | md5sum)"
 }
 
 # $1 map_name
@@ -322,16 +339,17 @@ map_contains() {
     die_if_map_key__is_not_specified "$2"
     for item in $(eval echo \$$(__map_name_ref "$1"))
     do
-        [ "$item" = "$2" ] && return 0
+        if [ "$item" = "$2" ] ; then
+            return 0
+        fi
     done
+    return 1
 }
 
 # $1 map_name
 # $2 key
 # $3 value
 map_set() {
-    die_if_map_name_is_not_specified "$1"
-    die_if_map_key__is_not_specified "$2"
     if ! map_contains "$1" "$2" ; then
         unset __MAP_NAME_REF__
         __MAP_NAME_REF__="$(__map_name_ref "$1")"
@@ -406,86 +424,21 @@ map_size() {
 
 # $1 map_name
 die_if_map_name_is_not_specified() {
-    [ -z "$1" ] && die "please specify a map name."
+    if [ -z "$1" ] ; then
+        die "please specify a map name."
+    fi
 }
 
 # $1 key
 die_if_map_key__is_not_specified() {
-    [ -z "$1" ] && die "please specify a map key."
+    if [ -z "$1" ] ; then
+        die "please specify a map key."
+    fi
 }
 
 # }}}
 ##############################################################################
 # {{{ fetch
-
-__get_available_fetch_tool() {
-    for tool in curl wget http lynx aria2c axel
-    do
-        if command_exists_in_filesystem "$tool" ; then
-            echo "$tool"
-            return 0
-        fi
-    done
-    return 1
-}
-
-__fetch_via_git() {
-    if [ -d "$FETCH_OUTPUT_PATH" ] ; then
-        run cd  "$FETCH_OUTPUT_PATH" || return 1
-        if      git rev-parse 2> /dev/null ; then
-            run git pull &&
-            run git submodule update --recursive
-        else
-            run cd .. &&
-            run rm -rf "$FETCH_OUTPUT_NAME" &&
-            run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
-        fi
-    else
-        if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
-            run install -d "$FETCH_OUTPUT_DIR" || return 1
-        fi
-        run cd "$FETCH_OUTPUT_DIR" || return 1
-        run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
-    fi
-}
-
-__fetch_archive_via_tools() {
-    if [ -f "$FETCH_OUTPUT_PATH" ] ; then
-        if [ -n "$FETCH_SHA256" ] ; then
-            if file_exists_and_sha256sum_matched "$FETCH_OUTPUT_PATH" "$FETCH_SHA256" ; then
-                success "$FETCH_OUTPUT_PATH already have been downloaded."
-                return 0
-            fi
-        fi
-        rm -f "$FETCH_OUTPUT_PATH"
-    fi
-
-    AVAILABLE_FETCH_TOOL=$(__get_available_fetch_tool)
-
-    if [ -z "$AVAILABLE_FETCH_TOOL" ] ; then
-        handle_dependency required command curl || return 1
-        if command_exists_in_filesystem curl ; then
-            AVAILABLE_FETCH_TOOL=curl
-        else
-            return 1
-        fi
-    fi
-
-    case $AVAILABLE_FETCH_TOOL in
-        curl)  run curl --fail --retry 20 --retry-delay 30 --location -o "$FETCH_OUTPUT_PATH" "'$FETCH_URL'" ;;
-        wget)  run wget --timeout=60 -O "$FETCH_OUTPUT_PATH" "'$FETCH_URL'" ;;
-        http)  run http --timeout=60 -o "$FETCH_OUTPUT_PATH" "'$FETCH_URL'" ;;
-        lynx)  run lynx -source "$FETCH_URL" > "\"$FETCH_OUTPUT_PATH\"" ;;
-        aria2c)run aria2c -d "$FETCH_OUTPUT_DIR" -o "$FETCH_OUTPUT_NAME" "'$FETCH_URL'" ;;
-        axel)  run axel -o "$FETCH_OUTPUT_PATH" "'$FETCH_URL'" ;;
-    esac
-
-    [ $? -eq 0 ] || return 1
-
-    if [ -n "$FETCH_SHA256" ] ; then
-        die_if_sha256sum_mismatch "$FETCH_OUTPUT_PATH" "$FETCH_SHA256"
-    fi
-}
 
 # fetch <URL> [--sha256=SHA256] <--output-path=PATH>
 # fetch <URL> [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
@@ -497,9 +450,10 @@ fetch() {
     unset FETCH_OUTPUT_DIR
     unset FETCH_OUTPUT_NAME
     unset FETCH_OUTPUT_PATH
+    unset FETCH_PIPE_TO_CMD
 
     if [ -z "$1" ] ; then
-        die "please specify a fetch url."
+        die "fetch() please specify a url."
     else
         FETCH_URL="$1"
     fi
@@ -515,51 +469,208 @@ fetch() {
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    die "--output-dir argument's value must be not empty."
+                    die "fetch() --output-dir argument's value must be not empty."
                 fi
                 ;;
             --output-name=*)
                 FETCH_OUTPUT_NAME=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                    die "--output-name argument's value must be not empty."
+                    die "fetch() --output-name argument's value must be not empty."
                 fi
                 ;;
             --output-path=*)
                 FETCH_OUTPUT_PATH=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-                    die "--output-path argument's value must be not empty."
+                    die "fetch() --output-path argument's value must be not empty."
+                fi
+                ;;
+            --pipe=*)
+                FETCH_PIPE_TO_CMD=$(getvalue "$1")
+                if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                    die "fetch() --pipe=CMD argument's value must be not empty."
                 fi
         esac
         shift
     done
 
     if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-        [ -z "$FETCH_OUTPUT_DIR" ]  && FETCH_OUTPUT_DIR="$PWD"
-        [ -z "$FETCH_OUTPUT_NAME" ] && FETCH_OUTPUT_NAME=$(basename "$FETCH_URL")
-
-        FETCH_OUTPUT_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME"
+        if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_NAME" ] ; then
+            FETCH_OUTPUT_PATH='-'
+        else
+            if [ -z "$FETCH_OUTPUT_DIR" ] ; then
+                FETCH_OUTPUT_DIR="$PWD"
+            fi
+            if [ -z "$FETCH_OUTPUT_NAME" ] ; then
+                FETCH_OUTPUT_NAME=$(basename "$FETCH_URL")
+            fi
+            FETCH_OUTPUT_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME"
+            if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
+                run install -d "$FETCH_OUTPUT_DIR"
+            fi
+        fi
+    elif [ "$FETCH_OUTPUT_PATH" = '-' ] ; then
+        unset FETCH_OUTPUT_DIR
+        unset FETCH_OUTPUT_NAME
     else
         FETCH_OUTPUT_DIR="$(dirname $FETCH_OUTPUT_PATH)"
         FETCH_OUTPUT_NAME="$(basename $FETCH_OUTPUT_PATH)"
-    fi
-
-    if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
-        run install -d "$FETCH_OUTPUT_DIR"
+        if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR"
+        fi
     fi
 
     case $FETCH_URL in
-        *.git) __fetch_via_git ;;
-        *)     __fetch_archive_via_tools ;;
+        *.git)
+            if [ -d "$FETCH_OUTPUT_PATH" ] ; then
+                run cd  "$FETCH_OUTPUT_PATH" || return 1
+                if      git rev-parse 2> /dev/null ; then
+                    run git pull &&
+                    run git submodule update --recursive
+                else
+                    run cd .. &&
+                    run rm -rf "$FETCH_OUTPUT_NAME" &&
+                    run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+                fi
+            else
+                if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
+                    run install -d "$FETCH_OUTPUT_DIR" || return 1
+                fi
+                run cd "$FETCH_OUTPUT_DIR" || return 1
+                run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+            fi
+            ;;
+        *)
+            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -f "$FETCH_OUTPUT_PATH" ] ; then
+                if [ -n "$FETCH_SHA256" ] ; then
+                    if file_exists_and_sha256sum_matched "$FETCH_OUTPUT_PATH" "$FETCH_SHA256" ; then
+                        success "$FETCH_OUTPUT_PATH already have been downloaded."
+                        return 0
+                    fi
+                fi
+                rm -f "$FETCH_OUTPUT_PATH"
+            fi
+
+            for FETCH_TOOL in curl wget http lynx aria2c axel
+            do
+                if command -v "$FETCH_TOOL" > /dev/null ; then
+                    break
+                else
+                    unset FETCH_TOOL
+                fi
+            done
+
+            if [ -z "$FETCH_TOOL" ] ; then
+                handle_dependency required exe curl
+                FETCH_TOOL=curl
+            fi 
+
+            case $FETCH_TOOL in
+                curl)
+                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                        run "curl --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    else
+                        run "curl --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                    fi
+                    ;;
+                wget)
+                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                        run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    else
+                        run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                    fi
+                    ;;
+                http)
+                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                        run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    else
+                        run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                    fi
+                    ;;
+                lynx)
+                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                        run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'"
+                    else
+                        run "lynx -source '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                    fi
+                    ;;
+                aria2c)
+                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                        run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'"
+                    else
+                        run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                    fi
+                    ;;
+                axel)
+                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                        run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
+                    else
+                        run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                    fi
+                    ;;
+                *)  die "fetch() unimplementation: $FETCH_TOOL"
+                    ;;
+            esac
+
+            [ $? -eq 0 ] || return 1
+
+            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -n "$FETCH_SHA256" ] ; then
+                die_if_sha256sum_mismatch "$FETCH_OUTPUT_PATH" "$FETCH_SHA256"
+            fi
     esac
+}
+
+# }}}
+##############################################################################
+# {{{ get_china_mirror_url
+
+contains_china_argument() {
+    for arg in $@
+    do
+        case $arg in
+            --china) return 0
+        esac
+    done
+    return 1
+}
+
+# get_china_mirror_url <ORIGIN_URL> [--china]
+get_china_mirror_url() {
+    if [ -z "$1" ] ; then
+        die "get_china_mirror_url() please specify a url."
+    fi
+
+    if contains_china_argument $@ ; then
+        case $1 in
+            *githubusercontent.com*)
+                printf "%s" "$1" | sed 's@githubusercontent.com@githubusercontents.com@'
+                ;;
+            *github.com*)
+                printf "%s" "$1" | sed 's@github.com@github.com.cnpm.org@'
+                ;;
+        esac
+    else
+        printf "%s" "$1"
+    fi
 }
 
 # }}}
 ##############################################################################
 # {{{ __upgrade_self
 
-# __upgrade_self <UPGRAGE_URL>
+# __upgrade_self <UPGRAGE_URL> [-x | --china]
 __upgrade_self() {
     set -e
+
+    if [ -z "$1" ] ; then
+        die "__upgrade_self() please specify a url."
+    fi
+
+    for arg in $@
+    do
+        case $arg in
+            -x) set -x ;;
+        esac
+    done
 
     unset CURRENT_SCRIPT_REALPATH
 
@@ -571,7 +682,7 @@ __upgrade_self() {
         elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
             CURRENT_SCRIPT_REALPATH=$(readlink -f $CURRENT_SCRIPT_FILEPATH)
         else
-            handle_dependency required command realpath
+            handle_dependency required exe realpath
             CURRENT_SCRIPT_REALPATH=$(realpath $CURRENT_SCRIPT_FILEPATH)
         fi
     else
@@ -583,13 +694,13 @@ __upgrade_self() {
 
     run cd $WORKING_DIR
 
-    fetch "$1" --output-path="$WORKING_DIR/self"
+    fetch "$(get_china_mirror_url $@)" --output-path="$WORKING_DIR/self"
 
     __upgrade_self_exit() {
         if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
-            run      install -m 555 self "$CURRENT_SCRIPT_REALPATH"
+            run      install -m 755 self "$CURRENT_SCRIPT_REALPATH"
         else
-            run sudo install -m 555 self "$CURRENT_SCRIPT_REALPATH"
+            run sudo install -m 755 self "$CURRENT_SCRIPT_REALPATH"
         fi
 
         run rm -rf $WORKING_DIR
@@ -602,23 +713,27 @@ __upgrade_self() {
 ##############################################################################
 # {{{ __integrate_zsh_completions
 
-# __integrate_zsh_completions <ZSH_COMPLETIONS_SCRIPT_URL>
+# __integrate_zsh_completions <ZSH_COMPLETIONS_SCRIPT_URL> [-x | --china]
 __integrate_zsh_completions() {
     set -e
 
+    if [ -z "$1" ] ; then
+        die "__integrate_zsh_completions() please specify a url."
+    fi
+
+    for arg in $@
+    do
+        case $arg in
+            -x) set -x ;;
+        esac
+    done
+
     ZSH_COMPLETIONS_SCRIPT_FILENAME="_$CURRENT_SCRIPT_FILENAME"
-    ZSH_COMPLETIONS_SCRIPT_OUT_DIR='/usr/local/share/zsh/site-functions'
-    ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="$ZSH_COMPLETIONS_SCRIPT_OUT_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
-    info "mktemp -d"
-    WORKING_DIR=$(mktemp -d)
-
-    run cd $WORKING_DIR
-
-    fetch "$1" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
-
-    if [ ! -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
-        run install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR"
+    if [ "$(uname)" = Linux ] && command -v termux-info > /dev/null && [ "$HOME" = '/data/data/com.termux/files/home' ] ; then
+        ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="/data/data/com.termux/files/usr/share/zsh/site-functions/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    else
+        ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="/usr/local/share/zsh/site-functions/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
     fi
 
     # if file exists and is a symbolic link
@@ -629,21 +744,35 @@ __integrate_zsh_completions() {
         elif command -v readlink > /dev/null && readlink -f xx > /dev/null 2>&1 ; then
             ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(readlink -f $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
         else
-            handle_dependency required command realpath
+            handle_dependency required exe realpath
             ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH=$(realpath $ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH)
         fi
     fi
 
-    if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
-        run      install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+    info "mktemp -d"
+    WORKING_DIR=$(mktemp -d)
+
+    run cd $WORKING_DIR
+
+    fetch "$(get_china_mirror_url $@)" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+
+    if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
+        if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
+            run      install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+        else
+            run sudo install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+        fi
     else
-        run sudo install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+        ZSH_COMPLETIONS_SCRIPT_OUT_DIR="$(dirname "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH")"
+        if [ ! -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
+            run install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR"
+        fi
+        run install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
     fi
 
     run rm -rf $WORKING_DIR
 
-    echo
-    warn "you need to run command ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
+    echo "\n${COLOR_YELLOW}Note: you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
 }
 
 # }}}
@@ -767,12 +896,110 @@ __get_os_arch_from_arch() {
     fi
 }
 
+__get_os_type_from_uname() {
+    case $1 in
+        msys*)    echo "windows" ;;
+        mingw32*) echo "windows" ;;
+        mingw64*) echo "windows" ;;
+        cygwin*)  echo 'windows' ;;
+        *)        echo "$1"
+    esac
+}
+
+__get_os_name_from_os_type() {
+    case $1 in
+        freebsd) echo 'FreeBSD' ;;
+        openbsd) echo 'OpenBSD' ;;
+        netbsd)  echo 'NetBSD'  ;;
+        darwin)  sw_vers -productName ;;
+        linux)
+            if [ "$(uname -o 2>/dev/null)" = Android ] ; then
+                echo Android
+            else
+                __get_os_name_from_uname_a ||
+                __get_os_name_from_etc_os_release ||
+                __get_os_name_from_lsb_release
+            fi
+            ;;
+        windows)
+            systeminfo | grep 'OS Name:' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//'
+            ;;
+        *) echo "$1"
+    esac
+}
+
+__get_os_version_from_os_type() {
+    case $1 in
+        freebsd) freebsd-version ;;
+        openbsd) uname -r ;;
+        netbsd)  uname -r ;;
+        darwin)  sw_vers -productVersion ;;
+        linux)
+            __get_os_version_from_uname_a ||
+            __get_os_version_from_etc_os_release ||
+            __get_os_version_from_lsb_release ||
+            __get_os_version_from_getprop
+            ;;
+        windows)
+            systeminfo | grep 'OS Version:' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//' | cut -d ' ' -f1
+            ;;
+    esac
+}
+
+__get_os_sub_system() {
+    case $(uname | tr A-Z a-z) in
+        msys*)    echo "msys"    ;;
+        mingw32*) echo "mingw32" ;;
+        mingw64*) echo "mingw64" ;;
+        cygwin*)  echo 'cygwin'  ;;
+        *)
+            if [ "$(uname -o 2>/dev/null)" = Android ] ; then
+                if [ -n "$TERMUX_VERSION" ] ; then
+                    echo termux
+                fi
+            fi
+    esac
+}
+
+__get_os_arch() {
+    __get_os_arch_from_uname ||
+    __get_os_arch_from_arch
+}
+
+__get_os_libc_from_os_type() {
+    case $1 in
+        linux)
+            if [ "$(uname -o 2>/dev/null)" = Android ] ; then
+                echo bionic
+                return 0
+            fi
+            # https://pubs.opengroup.org/onlinepubs/7908799/xcu/getconf.html
+            if command -v getconf > /dev/null ; then
+                if getconf GNU_LIBC_VERSION > /dev/null 2>&1 ; then
+                    echo glibc
+                    return 0
+                fi
+            fi
+            if command -v ldd > /dev/null ; then
+                if ldd --version 2>&1 | head -n 1 | grep -q GLIBC ; then
+                    echo glibc
+                    return 0
+                fi
+                if ldd --version 2>&1 | head -n 1 | grep -q musl ; then
+                    echo musl
+                    return 0
+                fi
+            fi
+            return 1
+    esac
+}
+
 os() {
     if [ $# -eq 0 ] ; then
-        printf "current-machine-os-kind : %s\n" "$(os kind)"
         printf "current-machine-os-type : %s\n" "$(os type)"
         printf "current-machine-os-name : %s\n" "$(os name)"
         printf "current-machine-os-vers : %s\n" "$(os vers)"
+        printf "current-machine-os-subs : %s\n" "$(os subs)"
         printf "current-machine-os-arch : %s\n" "$(os arch)"
         printf "current-machine-os-libc : %s\n" "$(os libc)"
     elif [ $# -eq 1 ] ; then
@@ -781,97 +1008,39 @@ os() {
                 cat <<'EOF'
 os -h | --help
 os -V | --version
-os kind
 os type
-os arch
-os libc
 os name
 os vers
+os subs
+os arch
+os libc
 EOF
                 ;;
-            -V|--version) echo '2021.03.28.23' ;;
-            kind)
-                case $(uname | tr A-Z a-z) in
-                    msys*)    echo "windows" ;;
-                    mingw32*) echo "windows" ;;
-                    mingw64*) echo "windows" ;;
-                    cygwin*)  echo 'windows' ;;
-                    *)  uname | tr A-Z a-z
-                esac
+            -V|--version)
+                printf "%s\n" '2021.09.19.22'
                 ;;
-
             type)
-                case $(uname | tr A-Z a-z) in
-                    msys*)    echo "msys"    ;;
-                    mingw32*) echo "mingw32" ;;
-                    mingw64*) echo "mingw64" ;;
-                    cygwin*)  echo 'cygwin'  ;;
-                    *)  uname | tr A-Z a-z
-                esac
+                __get_os_type_from_uname $(uname | tr A-Z a-z)
                 ;;
             name)
-                case $(os kind) in
-                    freebsd) echo 'FreeBSD' ;;
-                    openbsd) echo 'OpenBSD' ;;
-                    netbsd)  echo 'NetBSD'  ;;
-                    darwin)  sw_vers -productName ;;
-                    linux)
-                        __get_os_name_from_uname_a ||
-                        __get_os_name_from_etc_os_release ||
-                        __get_os_name_from_lsb_release
-                        ;;
-                    windows)
-                        systeminfo | grep 'OS Name:' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//' ;;
-                    *)  uname | tr A-Z a-z
-                esac
-                ;;
-            arch)
-                __get_os_arch_from_uname ||
-                __get_os_arch_from_arch  ||
-                __get_os_arch_from_getprop
-                ;;
-            libc)
-                case $(os kind) in
-                    linux)
-                        # https://pubs.opengroup.org/onlinepubs/7908799/xcu/getconf.html
-                        if command -v getconf > /dev/null ; then
-                            if getconf GNU_LIBC_VERSION > /dev/null 2>&1 ; then
-                                echo glibc
-                                return 0
-                            fi
-                        fi
-                        if command -v ldd > /dev/null ; then
-                            if ldd --version 2>&1 | head -n 1 | grep -q GLIBC ; then
-                                echo glibc
-                                return 0
-                            fi
-                            if ldd --version 2>&1 | head -n 1 | grep -q musl ; then
-                                echo musl
-                                return 0
-                            fi
-                        fi
-                        return 1
-                esac
+                __get_os_name_from_os_type $(os type)
                 ;;
             vers)
-                case $(os kind) in
-                    freebsd) freebsd-version ;;
-                    openbsd) uname -r ;;
-                    netbsd)  uname -r ;;
-                    darwin)  sw_vers -productVersion ;;
-                    linux)
-                        __get_os_version_from_uname_a ||
-                        __get_os_version_from_etc_os_release ||
-                        __get_os_version_from_lsb_release
-                        ;;
-                    windows)
-                        systeminfo | grep 'OS Version:' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//' | cut -d ' ' -f1 ;;
-                esac
+                __get_os_version_from_os_type $(os type)
                 ;;
-            *)  echo "$1: not support item."; return 1
+            subs)
+                __get_os_sub_system
+                ;;
+            arch)
+                __get_os_arch
+                ;;
+            libc)
+                __get_os_libc_from_os_type $(os type)
+                ;;
+            *)  echo "unrecognized argument: $1" >&2; return 1
         esac
     else
-        echo "os command only support one item."; return 1
+        echo "os command only support one argument." >&2; return 1
     fi
 }
 
@@ -1022,19 +1191,27 @@ version_match() {
         eq)  [ "$1"  = "$3" ] ;;
         ne)  [ "$1" != "$3" ] ;;
         le)
-            [ "$1" = "$3" ] && return 0
+            if [ "$1" = "$3" ] ; then
+                return 0
+            fi
             [ "$1" = "$(version_sort "$1" "$3" | head -n 1)" ]
             ;;
         ge)
-            [ "$1" = "$3" ] && return 0
+            if [ "$1" = "$3" ] ; then
+                return 0
+            fi
             [ "$1" = "$(version_sort "$1" "$3" | tail -n 1)" ]
             ;;
         lt)
-            [ "$1" = "$3" ] && return 1
+            if [ "$1" = "$3" ] ; then
+                return 1
+            fi
             [ "$1" = "$(version_sort "$1" "$3" | head -n 1)" ]
             ;;
         gt)
-            [ "$1" = "$3" ] && return 1
+            if [ "$1" = "$3" ] ; then
+                return 1
+            fi
             [ "$1" = "$(version_sort "$1" "$3" | tail -n 1)" ]
             ;;
         *)  die "version_compare: $2: not supported operator."
@@ -1133,15 +1310,17 @@ version_of_package() {
 
 # }}}
 ##############################################################################
-# {{{ get_XX_package_name_by_command_name
+# {{{ get_package_name_by_command_name_from_package_manager_XX
 
 # https://cygwin.com/packages/package_list.html
-get_choco_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_choco() {
     case $1 in
-      cc|gcc) echo 'gcc-g++' ;;
-       gmake) echo 'make' ;;
-         gm4) echo 'm4'    ;;
-        gsed) echo 'gnu-sed'  ;;
+          go) echo 'golang' ;;
+      cc|gcc|c++|g++)
+              echo 'gcc-g++';;
+       gmake) echo 'make'   ;;
+         gm4) echo 'm4'     ;;
+        gsed) echo 'gnu-sed';;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
@@ -1157,13 +1336,15 @@ get_choco_package_name_by_command_name() {
     esac
 }
 
-get_pkg_add_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_add_pkg() {
     case $1 in
+          go) echo 'golang';;
           cc) echo 'gcc'   ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
         make) echo 'gmake' ;;
         perl) echo 'perl5' ;;
-       gperf) echo 'gperf' ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1189,9 +1370,12 @@ get_pkg_add_package_name_by_command_name() {
     esac
 }
 
-get_pkgin_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_pkgin() {
     case $1 in
+          go) echo 'golang';;
           cc) echo 'gcc'   ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
         make) echo 'gmake' ;;
         perl) echo 'perl5' ;;
@@ -1214,9 +1398,12 @@ get_pkgin_package_name_by_command_name() {
     esac
 }
 
-get_pkg_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_pkg() {
     case $1 in
+          go) echo 'golang';;
           cc) echo 'gcc'   ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
         make) echo 'gmake' ;;
         perl) echo 'perl5' ;;
@@ -1237,9 +1424,11 @@ get_pkg_package_name_by_command_name() {
     esac
 }
 
-get_emerge_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_emerge() {
     case $1 in
-          cc) echo 'gcc' ;;
+          cc) echo 'gcc'   ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
@@ -1263,10 +1452,12 @@ get_emerge_package_name_by_command_name() {
     esac
 }
 
-__get_pacman_package_name_by_command_name() {
+__get_package_name_by_command_name_from_package_manager_pacman() {
     case $1 in
-          cc) echo 'gcc'      ;;
-         gm4) echo 'm4'       ;;
+          cc) echo 'gcc'   ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
+         gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1304,22 +1495,23 @@ __mingw_w64_x86_64() {
     fi
 }
 
-get_pacman_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_pacman() {
     if [ "$1" = 'make' ] || [ "$1" = 'gmake' ] ; then
         echo make
     fi
     case $NATIVE_OS_TYPE in
-        mingw32) __mingw_w64_i686   $(__get_pacman_package_name_by_command_name "$1") ;;
-        mingw64) __mingw_w64_x86_64 $(__get_pacman_package_name_by_command_name "$1") ;;
-        *) __get_pacman_package_name_by_command_name "$1"
+        mingw32) __mingw_w64_i686   $(__get_package_name_by_command_name_from_package_manager_pacman "$1") ;;
+        mingw64) __mingw_w64_x86_64 $(__get_package_name_by_command_name_from_package_manager_pacman "$1") ;;
+        *) __get_package_name_by_command_name_from_package_manager_pacman "$1"
     esac
 }
 
-get_xbps_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_xbps() {
     case $1 in
-      cc|gcc) echo 'gcc' ;;
+          cc) echo 'gcc'   ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
-       gperf) echo 'gperf' ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1327,9 +1519,9 @@ get_xbps_package_name_by_command_name() {
     realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-      rst2man|rst2html)
-              echo "python3-docutils" ;;
     pip|pip3) echo "python3-pip" ;;
+    rst2man|rst2html)
+              echo "python3-docutils" ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1340,11 +1532,12 @@ get_xbps_package_name_by_command_name() {
     esac
 }
 
-get_apk_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_apk() {
     case $1 in
       cc|gcc) echo 'gcc libc-dev' ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
-       gperf) echo 'gperf' ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1352,11 +1545,11 @@ get_apk_package_name_by_command_name() {
     realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-      rst2man|rst2html)
+    pip3|pip) echo 'py3-pip' ;;
+    rst2man|rst2html)
               echo "py3-docutils" ;;
     sphinx-build)
               echo "sphinx"  ;;
-    pip3|pip) echo 'py3-pip' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1367,11 +1560,12 @@ get_apk_package_name_by_command_name() {
     esac
 }
 
-get_zypper_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_zypper() {
     case $1 in
-      cc|gcc) echo 'gcc' ;;
+          cc) echo 'gcc'   ;;
+         c++) echo 'gcc-g++';;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
-       gperf) echo 'gperf' ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1394,11 +1588,13 @@ get_zypper_package_name_by_command_name() {
     esac
 }
 
-get_dnf_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_dnf() {
     case $1 in
-      cc|gcc) echo 'gcc' ;;
+          go) echo 'golang';;
+          cc) echo 'gcc'   ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
-       gperf) echo 'gperf' ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1419,11 +1615,13 @@ get_dnf_package_name_by_command_name() {
     esac
 }
 
-get_yum_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_yum() {
     case $1 in
-      cc|gcc) echo 'gcc' ;;
+          go) echo 'golang';;
+          cc) echo 'gcc'   ;;
+         c++) echo 'gcc-g++';;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
-       gperf) echo 'gperf' ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1441,15 +1639,17 @@ get_yum_package_name_by_command_name() {
     esac
 }
 
-get_apt_get_package_name_by_command_name() {
-    get_apt_package_name_by_command_name $@
+get_package_name_by_command_name_from_package_manager_apt_get() {
+    get_package_name_by_command_name_from_package_manager_apt $@
 }
 
-get_apt_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_apt() {
     case $1 in
-      cc|gcc) echo 'gcc' ;;
+          go) echo 'golang';;
+          cc) echo 'gcc'   ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
-       gperf) echo 'gperf' ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1458,11 +1658,11 @@ get_apt_package_name_by_command_name() {
     realpath) echo 'coreutils';;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-      rst2man|rst2html)
+    pip3|pip) echo "python3-pip" ;;
+    rst2man|rst2html)
               echo "python3-docutils" ;;
     sphinx-build)
               echo "python3-sphinx" ;;
-    pip3|pip) echo "python3-pip" ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1472,11 +1672,12 @@ get_apt_package_name_by_command_name() {
     esac
 }
 
-get_brew_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_brew() {
     case $1 in
-      cc|gcc) echo 'gcc' ;;
+          cc) echo 'gcc'   ;;
+         c++) echo 'g++'   ;;
+     clang++) echo 'clang' ;;
          gm4) echo 'm4'    ;;
-       gperf) echo 'gperf' ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
         diff) echo 'diffutils';;
@@ -1499,11 +1700,11 @@ get_brew_package_name_by_command_name() {
     esac
 }
 
-get_pip3_package_name_by_command_name() {
-    get_pip_package_name_by_command_name $@
+get_package_name_by_command_name_from_package_manager_pip3() {
+    get_package_name_by_command_name_from_package_manager_pip $@
 }
 
-get_pip_package_name_by_command_name() {
+get_package_name_by_command_name_from_package_manager_pip() {
     case $1 in
         sphinx-build) echo "sphinx"   ;;
         rst2man.py)   echo "docutils" ;;
@@ -1563,19 +1764,21 @@ __get_available_package_manager_list() {
 # __install_package_via_package_manager apt make ge 3.80
 # __install_package_via_package_manager apt make
 __install_package_via_package_manager() {
-    [ -z "$2" ] && return 1
+    if [ -z "$2" ] ; then
+        return 1
+    fi
 
     package_exists_in_repo_and_version_matched $@ || return 1
 
     case $1 in
         pip3)
-            case $NATIVE_OS_KIND in
+            case $NATIVE_OS_TYPE in
                 *bsd|linux) run pip3 install --user -U "$2" ;;
                 *)          run pip3 install        -U "$2"
             esac
             ;;
         pip)
-            case $NATIVE_OS_KIND in
+            case $NATIVE_OS_TYPE in
                 *bsd|linux) run pip  install --user -U "$2" ;;
                 *)          run pip  install        -U "$2"
             esac
@@ -1615,13 +1818,15 @@ __install_package_via_package_manager() {
 # __install_command_via_package_manager apt make
 __install_command_via_package_manager() {
     unset __PACKAGE_NAME__
-    __PACKAGE_NAME__="$(eval get_$(echo "$1" | tr - _)_package_name_by_command_name $2)"
+    __PACKAGE_NAME__="$(eval get_package_name_by_command_name_from_package_manager_$(echo "$1" | tr - _) $2)"
 
-    [ -z "$__PACKAGE_NAME__" ] && return 1
+    if [ -z "$__PACKAGE_NAME__" ] ; then
+        return 1
+    fi
 
     package_exists_in_repo_and_version_matched "$1" "$__PACKAGE_NAME__" $3 $4 || return 1
 
-    print "🔥  ${COLOR_YELLOW}required command${COLOR_OFF} ${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF}${COLOR_YELLOW}, but${COLOR_OFF} ${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}command not found, try to install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}\n"
+    print "🔥  ${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}\n"
 
     __install_package_via_package_manager "$1" "$__PACKAGE_NAME__" $3 $4
 }
@@ -1630,7 +1835,9 @@ __install_command_via_package_manager() {
 # __install_command_via_available_package_manager python3 ge 3.5
 # __install_command_via_available_package_manager make
 __install_command_via_available_package_manager() {
-    command_exists_in_filesystem_and_version_matched $@ && return 0
+    if command_exists_in_filesystem_and_version_matched $@ ; then
+        return 0
+    fi
  
     if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
         AVAILABLE_PACKAGE_MANAGER_LIST=$(__get_available_package_manager_list)
@@ -1643,7 +1850,9 @@ __install_command_via_available_package_manager() {
     fi
     for pm in $AVAILABLE_PACKAGE_MANAGER_LIST
     do
-        __install_command_via_package_manager "$pm" $@ && return 0
+        if __install_command_via_package_manager "$pm" $@ ; then
+            return 0
+        fi
     done
     return 1
 }
@@ -1651,31 +1860,31 @@ __install_command_via_available_package_manager() {
 handle_dependency_from_url() {
     case $1 in
         *.zip)
-            handle_dependency required command unzip
+            handle_dependency required exe unzip
             ;;
         *.tar.xz)
-            handle_dependency required command tar
-            handle_dependency required command xz
+            handle_dependency required exe tar
+            handle_dependency required exe xz
             ;;
         *.tar.gz)
-            handle_dependency required command tar
-            handle_dependency required command gzip
+            handle_dependency required exe tar
+            handle_dependency required exe gzip
             ;;
         *.tar.lz)
-            handle_dependency required command tar
-            handle_dependency required command lzip
+            handle_dependency required exe tar
+            handle_dependency required exe lzip
             ;;
         *.tar.bz2)
-            handle_dependency required command tar
-            handle_dependency required command bzip2
+            handle_dependency required exe tar
+            handle_dependency required exe bzip2
             ;;
         *.tgz)
-            handle_dependency required command tar
-            handle_dependency required command gzip
+            handle_dependency required exe tar
+            handle_dependency required exe gzip
             ;;
         *.txz)
-            handle_dependency required command tar
-            handle_dependency required command xz
+            handle_dependency required exe tar
+            handle_dependency required exe xz
     esac
 }
 
@@ -1704,7 +1913,7 @@ __install_command_via_fetch_prebuild_binary() {
 
     handle_dependency_from_url "$PREBUILD_BINARY_FETCH_URL"
 
-    print "🔥  ${COLOR_YELLOW}required command${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}${COLOR_YELLOW}, but${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command not found, try to install it via${COLOR_OFF} ${COLOR_GREEN}fetch prebuild binary${COLOR_OFF}\n"
+    print "🔥  ${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}fetch prebuild binary${COLOR_OFF}\n"
 
     unset PREBUILD_BINARY_FETCH_URL
     PREBUILD_BINARY_FETCH_URL=$(__get_prebuild_binary_fetch_url_by_command_name "$1")
@@ -1796,7 +2005,7 @@ EOF
 
         unset __PB_COMMAND__
         unset __PB_OS_LIBC__
-        unset __PB_OS_KIND__
+        unset __PB_OS_TYPE__
         unset __PB_OS_ARCH__
         unset __PB_URL__
 
@@ -1812,9 +2021,9 @@ EOF
             continue
         fi
 
-        __PB_OS_KIND__=$(echo "$LINE" | cut -d '|' -f3)
+        __PB_OS_TYPE__=$(echo "$LINE" | cut -d '|' -f3)
 
-        if [ "$__PB_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
+        if [ "$__PB_OS_TYPE__" != "$NATIVE_OS_TYPE" ] ; then
             continue
         fi
 
@@ -1834,37 +2043,36 @@ __install_command_via_run_install_script() {
     case $1 in
         rustup)
             # https://www.rust-lang.org/tools/install
+            print "🔥  ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running shell script.${COLOR_OFF}\n"
 
-            unset __RUSTUP_INSTALL_SCRIPT_RUN_SHELL__
-            __RUSTUP_INSTALL_SCRIPT_RUN_SHELL__=$(command -v bash || command -v zsh || command -v dash)
-            if [ -z "$__RUSTUP_INSTALL_SCRIPT_RUN_SHELL__" ] ; then
-                handle_dependency required command bash || return 1
-            fi
-            __RUSTUP_INSTALL_SCRIPT_RUN_SHELL__=$(command -v bash)
-            if [ -z "$__RUSTUP_INSTALL_SCRIPT_RUN_SHELL__" ] ; then
-                warn "install bash failed."
-                return 1
-            fi
+            handle_dependency required exe bash:zsh
 
-            print "🔥  ${COLOR_YELLOW}required command${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}${COLOR_YELLOW}, but${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command not found, try to install it via running install script.${COLOR_OFF}\n"
-
-            unset __RUSTUP_INSTALL_SCRIPT_DIR__
-            __RUSTUP_INSTALL_SCRIPT_DIR__=$(mktemp -d) || return 1
-            fetch 'https://sh.rustup.rs' --output-dir="$__RUSTUP_INSTALL_SCRIPT_DIR__" --output-name='rustup-init' || return 1
-
-            run "$__RUSTUP_INSTALL_SCRIPT_RUN_SHELL__ $__RUSTUP_INSTALL_SCRIPT_DIR__/rustup-init -y" || return 1
+            fetch 'https://sh.rustup.rs' --pipe="$(command -v bash || command -v zsh || command -v dash || command -v ash || echo sh)"
 
             export CARGO_HOME=$HOME/.cargo
             export PATH="$CARGO_HOME/bin:$PATH"
+            ;;
+        nvm)
+            # https://github.com/nvm-sh/nvm
+            print "🔥  ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running bash shell script.${COLOR_OFF}\n"
+
+            handle_dependency required exe bash:zsh
+
+	        fetch "$(github_user_content_base_url)/nvm-sh/nvm/master/install.sh" --pipe="$(command -v bash || command -v zsh || echo bash)"
+
+	        export NVM_DIR="${HOME}/.nvm"
+	        . "${HOME}/.nvm/nvm.sh"
             ;;
         *)  return 1
     esac
 }
 
 __install_command_via_pip() {
-    [ -z "$(get_pip3_package_name_by_command_name "$1")" ] && return 1
+    if [ -z "$(get_package_name_by_command_name_from_package_manager_pip3 "$1")" ] ; then
+        return 1
+    fi
 
-    handle_dependency required command pip3:pip
+    handle_dependency required exe pip3:pip
 
     (
         unset __PIP_COMMAND__
@@ -1876,9 +2084,9 @@ __install_command_via_pip() {
     )
 
     if   command_exists_in_filesystem pip3 ; then
-        __install_package_via_package_manager pip3 "$(get_pip3_package_name_by_command_name "$1")"
+        __install_package_via_package_manager pip3 "$(get_package_name_by_command_name_from_package_manager_pip3 "$1")"
     elif command_exists_in_filesystem pip ; then
-        __install_package_via_package_manager pip  "$(get_pip3_package_name_by_command_name "$1")"
+        __install_package_via_package_manager pip  "$(get_package_name_by_command_name_from_package_manager_pip "$1")"
     else
         return 1
     fi
@@ -1888,30 +2096,44 @@ __install_command_via_pip() {
 # __install_command python3 ge 3.5
 # __install_command make
 __install_command() {
-    command_exists_in_filesystem_and_version_matched $@ && return 0
+    if command_exists_in_filesystem_and_version_matched $@ ; then
+        return 0
+    fi
 
-    __install_command_via_run_install_script $@         && return 0
-    __install_command_via_pip $@                        && return 0
-    __install_command_via_available_package_manager $@  && return 0
-    __install_command_via_fetch_prebuild_binary $@      && return 0
+    if __install_command_via_run_install_script $@ ; then
+        return 0
+    fi
+
+    if __install_command_via_pip $@ ; then
+        return 0
+    fi
+
+    if __install_command_via_available_package_manager $@ ; then
+        return 0
+    fi
+
+    if __install_command_via_fetch_prebuild_binary $@ ; then
+        return 0
+    fi
+
     return 1
 }
 
 # examples:
-# handle_dependency required command   pkg-config ge 0.18
-# handle_dependency required command   python     ge 3.5
-# handle_dependency required module.py libxml2    ge 2.19
+# handle_dependency required exe   pkg-config ge 0.18
+# handle_dependency required exe   python     ge 3.5
+# handle_dependency required py    libxml2    ge 2.19
 #
-# handle_dependency optional command   pkg-config ge 0.18
-# handle_dependency optional command   python     ge 3.5
-# handle_dependency optional module.py libxml2    ge 2.19
+# handle_dependency optional exe   pkg-config ge 0.18
+# handle_dependency optional exe   python     ge 3.5
+# handle_dependency optional py    libxml2    ge 2.19
 handle_dependency() {
     [ "$1" = 'required' ] || return 0
 
     shift
 
     case $1 in
-        command)
+        exe)
             shift
             case $1 in
                 *:*)
@@ -1934,15 +2156,15 @@ handle_dependency() {
                 *)  __install_command $@
             esac
             ;;
-        module.py)
+        py)
             shift
             python_module install "$1"
             ;;
-        module.pl)
+        pm)
             shift
             perl_module install "$1"
             ;;
-        *) die "$1 not support."
+        *) die "handle_dependency() unrecognized argument:$1"
     esac
 }
 
@@ -1960,28 +2182,28 @@ __handle_required_dependencies() {
 # {{{ __printf_dependencies
 
 # examples:
-# __printf_dependency required command   pkg-config ge 0.18
-# __printf_dependency required command   python     ge 3.5
-# __printf_dependency required module.py libxml2    ge 2.19
+# __printf_dependency required exe   pkg-config ge 0.18
+# __printf_dependency required exe   python     ge 3.5
+# __printf_dependency required py    libxml2    ge 2.19
 #
-# __printf_dependency optional command   pkg-config ge 0.18
-# __printf_dependency optional command   python     ge 3.5
-# __printf_dependency optional module.py libxml2    ge 2.19
+# __printf_dependency optional exe   pkg-config ge 0.18
+# __printf_dependency optional exe   python     ge 3.5
+# __printf_dependency optional py    libxml2    ge 2.19
 __printf_dependency() {
     printf "%-10s %-15s %-2s %-10s %-10s %s\n" "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
 # examples:
-# printf_dependency required command   pkg-config ge 0.18
-# printf_dependency required command   python     ge 3.5
-# printf_dependency required module.py libxml2    ge 2.19
+# printf_dependency required exe   pkg-config ge 0.18
+# printf_dependency required exe   python     ge 3.5
+# printf_dependency required py    libxml2    ge 2.19
 #
-# printf_dependency optional command   pkg-config ge 0.18
-# printf_dependency optional command   python     ge 3.5
-# printf_dependency optional module.py libxml2    ge 2.19
+# printf_dependency optional exe   pkg-config ge 0.18
+# printf_dependency optional exe   python     ge 3.5
+# printf_dependency optional py    libxml2    ge 2.19
 printf_dependency() {
     case $2 in
-        command)
+        exe)
             case $3 in
                 *:*)
                     if [ "$1" = 'required' ] ; then
@@ -1997,13 +2219,13 @@ printf_dependency() {
                 *)  __printf_dependency "$2" "$3" "$4" "$5" "$(version_of_command $3)" "$(command -v $3)"
             esac
             ;;
-        module.py)
+        py)
             __printf_dependency "$2" "$3" "$4" "$5" "$(python_module get version "$item")" "$(python_module get location "$item")"
             ;;
-        module.pl)
+        pm)
             __printf_dependency "$2" "$3" "$4" "$5" "$(perl_module get version "$item")" "$(perl_module get location "$item")"
             ;;
-        *)  die "$2: type not support."
+        *)  die "printf_dependency() unrecognized argument: $2"
     esac
 }
 
@@ -2047,8 +2269,8 @@ python_module() {
         is)
             [ $# -eq 3 ] || die "[python_module is] command accept 2 arguments."
 
-            handle_dependency required command python3:python3.9:python3.8:python3.7:python3.6:python3.5:python
-            handle_dependency required command pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip
+            handle_dependency required exe python3:python3.9:python3.8:python3.7:python3.6:python3.5:python
+            handle_dependency required exe pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip
 
             __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || echo python)
             __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
@@ -2061,8 +2283,8 @@ python_module() {
         get)
             [ $# -eq 3 ] || die "[python_module get] command accept 2 arguments."
 
-            handle_dependency required command python3:python3.9:python3.8:python3.7:python3.6:python3.5:python
-            handle_dependency required command pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip
+            handle_dependency required exe python3:python3.9:python3.8:python3.7:python3.6:python3.5:python
+            handle_dependency required exe pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip
 
             __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || echo python)
             __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
@@ -2074,9 +2296,11 @@ python_module() {
             esac
             ;;
         install)
-            [ -z "$2" ] && die "please specify a python module name."
+            if [ -z "$2" ] ; then
+                die "please specify a python module name."
+            fi
             if ! python_module is installed "$2" ; then
-                warn "required python module ${COLOR_GREEN}$2${COLOR_OFF}, but ${COLOR_GREEN}$2${COLOR_OFF} python module not found, try to install it via ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
+                print "🔥  ${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}\n"
                 run "$__PIP_COMMAND__" install -U pip  || return 1
                 run "$__PIP_COMMAND__" install -U "$2" || return 1
             fi
@@ -2098,7 +2322,7 @@ perl_module() {
     case $1 in
         is)
             [ $# -eq 4 ] || die "perl_module command accept 4 arguments."
-            handle_dependency required command perl
+            handle_dependency required exe perl
             case $2 in
                 installed)  perl -M"$3" -le 'print "installed"' > /dev/null 2>&1 ;;
                 *) die "perl_module is $2: not support."
@@ -2108,7 +2332,7 @@ perl_module() {
             ;;
         install)
             if ! perl_module is installed "$3" ; then
-                handle_dependency required command cpan:cpanm
+                handle_dependency required exe cpan:cpanm
                 if   command_exists_in_filesystem cpan  ; then
                     cpan -i "$3"
                 elif command_exists_in_filesystem cpanm ; then
@@ -2146,16 +2370,16 @@ __decode_dependency() {
 ##############################################################################
 # {{{ regist dependency
 
-# regist dependency
+# regist dependency required|optional exe|lib|dev|py|pm|pip|npm|gem|pub|cargo|go NAME
 #
 # required this is a required dependency
 # optional this is a optional dependency
 #
-# command  this dependency is a command
-# python   this dependency is a python  module
-# python2  this dependency is a python2 module
-# python3  this dependency is a python3 module
-# perl     this dependency is a perl module
+# exe  this dependency is a command
+# py   this dependency is a python  module
+# py2  this dependency is a python2 module
+# py3  this dependency is a python3 module
+# pm   this dependency is a perl module
 #
 # gt VERSION
 # ge VERSION
@@ -2165,13 +2389,13 @@ __decode_dependency() {
 # ne VERSION
 #
 # examples:
-# regist_dependency required command pkg-config ge 0.18
-# regist_dependency required command python     ge 3.5
-# regist_dependency required python  libxml2    ge 2.19
+# regist_dependency required exe pkg-config ge 0.18
+# regist_dependency required exe python     ge 3.5
+# regist_dependency required py  libxml2    ge 2.19
 #
-# regist_dependency optional command pkg-config ge 0.18
-# regist_dependency optional command python     ge 3.5
-# regist_dependency optional python  libxml2    ge 2.19
+# regist_dependency optional exe pkg-config ge 0.18
+# regist_dependency optional exe python     ge 3.5
+# regist_dependency optional py  libxml2    ge 2.19
 regist_dependency() {
     case $1 in
         required)
@@ -2250,40 +2474,45 @@ package() {
 
 __parse_require_command_item() {
     case $1 in
-        *\<=*) echo "required command $1" | sed 's/<=/ le /g' ;;
-        *\>=*) echo "required command $1" | sed 's/>=/ ge /g' ;;
-        *=*)   echo "required command $1" | sed 's/<=/ eq /g' ;;
-        *\<*)  echo "required command $1" | sed 's/<=/ lt /g' ;;
-        *\>*)  echo "required command $1" | sed 's/<=/ gt /g' ;;
-        *)     echo "required command $1"
+        *\<=*) echo "required exe $1" | sed 's/<=/ le /g' ;;
+        *\>=*) echo "required exe $1" | sed 's/>=/ ge /g' ;;
+        *=*)   echo "required exe $1" | sed 's/<=/ eq /g' ;;
+        *\<*)  echo "required exe $1" | sed 's/<=/ lt /g' ;;
+        *\>*)  echo "required exe $1" | sed 's/<=/ gt /g' ;;
+        *)     echo "required exe $1"
     esac
 }
 
 __parse_require_python_module_item() {
     case $1 in
-        *\<=*) echo "required module.py $1" | sed 's/<=/ le /g' ;;
-        *\>=*) echo "required module.py $1" | sed 's/>=/ ge /g' ;;
-        *=*)   echo "required module.py $1" | sed 's/<=/ eq /g' ;;
-        *\<*)  echo "required module.py $1" | sed 's/<=/ lt /g' ;;
-        *\>*)  echo "required module.py $1" | sed 's/<=/ gt /g' ;;
-        *)     echo "required module.py $1"
+        *\<=*) echo "required py $1" | sed 's/<=/ le /g' ;;
+        *\>=*) echo "required py $1" | sed 's/>=/ ge /g' ;;
+        *=*)   echo "required py $1" | sed 's/<=/ eq /g' ;;
+        *\<*)  echo "required py $1" | sed 's/<=/ lt /g' ;;
+        *\>*)  echo "required py $1" | sed 's/<=/ gt /g' ;;
+        *)     echo "required py $1"
     esac
 }
 
 __parse_require_perl_module_item() {
     case $1 in
-        *\<=*) echo "required module.pl $1" | sed 's/<=/ le /g' ;;
-        *\>=*) echo "required module.pl $1" | sed 's/>=/ ge /g' ;;
-        *=*)   echo "required module.pl $1" | sed 's/<=/ eq /g' ;;
-        *\<*)  echo "required module.pl $1" | sed 's/<=/ lt /g' ;;
-        *\>*)  echo "required module.pl $1" | sed 's/<=/ gt /g' ;;
-        *)     echo "required module.pl $1"
+        *\<=*) echo "required pm $1" | sed 's/<=/ le /g' ;;
+        *\>=*) echo "required pm $1" | sed 's/>=/ ge /g' ;;
+        *=*)   echo "required pm $1" | sed 's/<=/ eq /g' ;;
+        *\<*)  echo "required pm $1" | sed 's/<=/ lt /g' ;;
+        *\>*)  echo "required pm $1" | sed 's/<=/ gt /g' ;;
+        *)     echo "required pm $1"
     esac
 }
 
 __parse_package_patches() {
-    [ $# -lt 2 ]             && die "the number of arguments of patches command at least 2."
-    [ $(expr $# % 2) -eq 1 ] && die "the number of arguments of patches command must be even integer."
+    if [ $# -lt 2 ] ; then
+        die "the number of arguments of patches command at least 2."
+    fi
+
+    if [ $(expr $# % 2) -eq 1 ] ; then
+        die "the number of arguments of patches command must be even integer."
+    fi
 
     while [ -n "$1" ]
     do
@@ -2372,13 +2601,25 @@ ___load_a_formula() {
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
     PACKAGE_BUILD_IN_SOURCE_DIR=$PACKAGE_BINSRCD
 
-    [ -z "$PACKAGE_SUMMARY" ] && die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
+    if [ -z "$PACKAGE_SUMMARY" ] ; then
+        die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
+    fi
 
-    [ -z "$PACKAGE_WEBPAGE" ] && PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_WEBPAGE" ] && die "webpage or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
+    if [ -z "$PACKAGE_WEBPAGE" ] ; then
+        PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
+    fi
 
-    [ -z "$PACKAGE_SRC_URL" ] && PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
-    [ -z "$PACKAGE_SRC_URL" ] && die "src.url or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
+    if [ -z "$PACKAGE_WEBPAGE" ] ; then
+        die "webpage or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
+    fi
+
+    if [ -z "$PACKAGE_SRC_URL" ] ; then
+        PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
+    fi
+
+    if [ -z "$PACKAGE_SRC_URL" ] ; then
+        die "src.url or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
+    fi
 
     case $PACKAGE_SRC_URL in
         dir://*)   PACKAGE_SRC_TYPE=dir ;;
@@ -2469,7 +2710,7 @@ ___load_a_formula() {
 
     package add dep.cmd 'tree'
 
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+    if [ "$NATIVE_OS_TYPE" = 'darwin' ] ; then
         package add dep.cmd 'gsed'
     fi
 
@@ -2482,7 +2723,9 @@ ____view_a_formula() {
     unset PACKAGE_FORMULA_FILEPATH
     PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && die "$1 package is not available."
+    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
+        die "$1 package is not available."
+    fi
 
     [ -z "$2" ] || warn "view action accept only one argument."
     
@@ -2501,12 +2744,15 @@ ____edit_a_formula() {
     unset PACKAGE_FORMULA_FILEPATH
     PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && die "$1 package is not available."
+    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
+        die "$1 package is not available."
+    fi
 
     [ -z "$2" ] || warn "edit action accept only one argument."
 
-    [ -z "$EDITOR" ] && EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open)
-    [ -z "$EDITOR" ] && die "please set EDITOR environment variable."
+    if [ -z "$EDITOR" ] ; then
+        EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open) || die "please set EDITOR environment variable."
+    fi
 
     "$EDITOR" "$PACKAGE_FORMULA_FILEPATH"
 }
@@ -2567,13 +2813,11 @@ __delete_a_formula() {
     unset PACKAGE_FORMULA_FILEPATH
     PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
-    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && die "$1 package is not available."
-
-    if rm "$PACKAGE_FORMULA_FILEPATH" ; then
-        success "delete $1 formula success."
-    else
-        die "delete $1 formula failed."
+    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
+        die "$1 package is not available."
     fi
+
+    run rm "$PACKAGE_FORMULA_FILEPATH"
 }
 
 __rename_a_formula() {
@@ -2615,8 +2859,13 @@ __list_formulas() {
 
 # __add_a_formula_repo NAME URL
 __add_a_formula_repo() {
-    [ -z "$1" ] && die "please specify a repo name."
-    [ -z "$2" ] && die "please specify a repo url."
+    if [ -z "$1" ] ; then
+        die "please specify a repo name."
+    fi
+
+    if [ -z "$2" ] ; then
+        die "please specify a repo url."
+    fi
 
     case $2 in
         *.git)
@@ -2640,7 +2889,9 @@ __add_a_formula_repo() {
 
 # __del_a_formula_repo NAME
 __del_a_formula_repo() {
-    [ -z "$1" ] && die "please specify a repo name."
+    if [ -z "$1" ] ; then
+        die "please specify a repo name."
+    fi
 
     if [ "$1" = 'offical' ] ; then
         die "offical formula repo can not be deleted."
@@ -2698,7 +2949,9 @@ ____list_formula_repositories() {
 }
 
 __update_formula_repositories() {
-    handle_dependency required command git || return 1
+    set -e
+
+    handle_dependency required exe git
 
     for repo in $(____list_formula_repositories)
     do
@@ -2709,7 +2962,7 @@ __update_formula_repositories() {
         MY_FORMULA_REPO_URL_=$(echo "$repo" | cut -d= -f2)
 
         info "=== Updating repository ${COLOR_GREEN}$MY_FORMULA_REPO_NAME${COLOR_OFF}"
-        fetch "$MY_FORMULA_REPO_URL_" --output-dir="$MY_FORMULA_REPO_DIR" --output-name="$MY_FORMULA_REPO_NAME" || return 1
+        fetch "$MY_FORMULA_REPO_URL_" --output-dir="$MY_FORMULA_REPO_DIR" --output-name="$MY_FORMULA_REPO_NAME"
     done
 }
 
@@ -2717,7 +2970,7 @@ __update_formula_repositories() {
 ##############################################################################
 
 prompt_user_to_install_bat() {
-    warn "if you want to have a better experience, I strongly recommend you install ${COLOR_RED}bat${COLOR_OFF} on your os. For more details, see ${COLOR_RED}https://github.com/sharkdp/bat${COLOR_OFF}"
+    echo "${COLOR_YELLOW}Note: if you want to have a better experience, I strongly recommend you install${COLOR_OFF} ${COLOR_GREEN}bat${COLOR_OFF} ${COLOR_YELLOW}on your os. For more details, please visit website${COLOR_OFF} ${COLOR_GREEN}https://github.com/sharkdp/bat${COLOR_OFF}"
 }
 
 __fetch_sources_of_a_package() {
@@ -2751,7 +3004,9 @@ __fetch_resources_of_a_package() {
 }
 
 die_if_abi_____is_not_specified() {
-    [ -z "$1" ] && die "please specify a abi."
+    if [ -z "$1" ] ; then
+        die "please specify a abi."
+    fi
 }
 
 die_if_abi_____is_not_supported() {
@@ -2759,18 +3014,24 @@ die_if_abi_____is_not_supported() {
     
     for ABI in $(__list_supported_target_abis)
     do
-        [ "$ABI" = "$1" ] && return 0
+        if [ "$ABI" = "$1" ] ; then
+            return 0
+        fi
     done
 
-    die "$1 abi is not supported."
+    die "unsupported abi: $1"
 }
 
 die_if_package_is_not_specified() {
-    [ -z "$1" ] && die "please specify a package name."
+    if [ -z "$1" ] ; then
+        die "please specify a package name."
+    fi
 }
 
 die_if_package_list_is_not_specified() {
-    [ -z "$1" ] && die "please specify at least one package name."
+    if [ -z "$1" ] ; then
+        die "please specify at least one package name."
+    fi
 }
 
 die_if_package_is_not_available() {
@@ -2850,8 +3111,13 @@ __gen_github_workflows() {
         shift
     done
 
-    [ -z "$GROUP_SIZE" ] && die "please sepecify --group-size=INTEGER argument."
-    [ -z "$OUTPUT_DIR" ] && die "please sepecify --output-dir=DIR argument."
+    if [ -z "$GROUP_SIZE" ] ; then
+        die "please sepecify --group-size=INTEGER argument."
+    fi
+
+    if [ -z "$OUTPUT_DIR" ] ; then
+        die "please sepecify --output-dir=DIR argument."
+    fi
 
     AVAILABLE_PACKAGES=$(__list_available_packages)
 
@@ -2957,7 +3223,7 @@ __list_abis_of_a_installed_package() {
 
 __tree_a_installed_package() {
     die_if_package_is_not_installed "$1"
-    handle_dependency required command tree
+    handle_dependency required exe tree
     run tree $(shiftn 1 $@) --dirsfirst "$MY_INSTALL_DIR/$1"
 }
 
@@ -3005,8 +3271,13 @@ __upgrade_packages() {
     check_prerequisites
     parse_arguments $@
 
-    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
-    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && return 0
+    if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
+        USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
+    fi
+
+    if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
+        return 0
+    fi
 
     __reinstall_packages
 }
@@ -3031,7 +3302,9 @@ __cleanup() {
 }
 
 __search_packages() {
-    [ -z "$1" ] && die "please specify a keyword."
+    if [ -z "$1" ] ; then
+        die "please specify a keyword."
+    fi
 
     for repo in $(____list_formula_repositories | cut -d= -f1)
     do
@@ -3046,10 +3319,24 @@ __show_webpage_of_a_package() {
         ___load_a_formula "$1"
     fi
     
-    echo "$PACKAGE_WEBPAGE"
+    shift
 
+    echo "$PACKAGE_WEBPAGE"
+}
+
+__open_webpage_of_a_package() {
+    if [ -z "$1" ] ; then
+        PACKAGE_WEBPAGE="$MY_HOME_PAGE"
+    else
+        ___load_a_formula "$1"
+    fi
+    
     if command -v open > /dev/null ; then
-        open "$PACKAGE_WEBPAGE"
+        run "open '$PACKAGE_WEBPAGE'"
+    elif command -v termux-open-url > /dev/null ; then
+        run "termux-open-url '$PACKAGE_WEBPAGE'"
+    else
+        warn "I don't konw how to open"
     fi
 }
 
@@ -3063,8 +3350,8 @@ __show_depends_of_a_package() {
     elif [ -f "$DEPENDENCIES_PNG" ] ; then
         for item in open feh eog lsix
         do
-            if command -v $item > /dev/null ; then
-                $item "$DEPENDENCIES_PNG" && return 0
+            if command -v $item > /dev/null && $item "$DEPENDENCIES_PNG" ; then
+                return 0
             fi
         done
     elif [ -f "$DEPENDENCIES__GV" ] ; then
@@ -3128,7 +3415,9 @@ __pack_a_installed_package() {
         case $arg in
             --type=*)
                 PACKED_FILE_SUFFIX=$(getvalue $arg)
-                [ -z "$PACKED_FILE_SUFFIX" ] && die "--type=VALUE : VALUE must not be empty."
+                if [ -z "$PACKED_FILE_SUFFIX" ] ; then
+                    die "--type=VALUE : VALUE must be not empty."
+                fi
                 ;;
         esac
     done
@@ -3146,20 +3435,29 @@ __pack_a_installed_package() {
             elif command -v gzip > /dev/null ; then
                 PACKED_FILE_SUFFIX=tar.gz
             else
-                handle_dependency required command xz
+                handle_dependency required exe xz
                 PACKED_FILE_SUFFIX=tar.xz
             fi
         else
-            handle_dependency required command zip
+            handle_dependency required exe zip
             PACKED_FILE_SUFFIX=tar.xz
         fi
     else
         case $PACKED_FILE_SUFFIX in
-            7z)      handle_dependency required command 7za ;;
-            zip)     handle_dependency required command zip ;;
-            tar.gz)  handle_dependency required command tar gzip ;;
-            tar.xz)  handle_dependency required command tar xz ;;
-            tar.bz2) handle_dependency required command tar bzip2 ;;
+            7z) handle_dependency required exe 7za ;;
+            zip)handle_dependency required exe zip ;;
+            tar.gz)
+                handle_dependency required exe tar
+                handle_dependency required exe gzip
+                ;;
+            tar.xz)
+                handle_dependency required exe tar
+                handle_dependency required exe xz
+                ;;
+            tar.bz2)
+                handle_dependency required exe tar 
+                handle_dependency required exe bzip2 
+                ;;
             *) die "$PACKED_FILE_SUFFIX : not supported packed type (7z zip tar.gz tar.xz tar.bz2)."
         esac
     fi
@@ -3782,7 +4080,9 @@ install_incs() {
         X1=$(echo "$1" | cut -d: -f1)
         X2=$(echo "$1" | cut -d: -f2)
 
-        [ "$X1" = "$X2" ] && unset X2
+        if [ "$X1" = "$X2" ] ; then
+            unset X2
+        fi
 
         install -v -d         "$ABI_INCLUDE_DIR/$X2" || return 1
         install -v -m 644 $X1 "$ABI_INCLUDE_DIR/$X2" || return 1
@@ -4004,10 +4304,9 @@ __show_installed_log() {
 }
 
 __config_this_build_variables() {
-    TARGET_OS_KIND=linux
     TARGET_OS_TYPE=android
-    TARGET_OS_ARCH=$(print_target_arch_by_abi "$TARGET_OS_ABI")
     TARGET_OS_NAME=android
+    TARGET_OS_ARCH=$(print_target_arch_by_abi "$TARGET_OS_ABI")
 
 
     TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
@@ -4142,7 +4441,9 @@ __config_this_build_variables() {
                     supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
                     for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
                     do
-                        [ "$supportedTarget" = "$installedTarget" ] && break
+                        if [ "$supportedTarget" = "$installedTarget" ] ; then
+                            break
+                        fi
                     done
                     [ "$supportedTarget" = "$installedTarget" ] || {
                         rustup target add "$supportedTarget" || return 1
@@ -4213,13 +4514,12 @@ __printf_this_build_variables() {
     echo
     echo " BUILD_ROUND_NUM  = $BUILD_ROUND_NUM"
     echo
-    echo " NATIVE_OS_KIND   = $NATIVE_OS_KIND"
     echo " NATIVE_OS_TYPE   = $NATIVE_OS_TYPE"
     echo " NATIVE_OS_NAME   = $NATIVE_OS_NAME"
     echo " NATIVE_OS_VERS   = $NATIVE_OS_VERS"
+    echo " NATIVE_OS_SUBS   = $NATIVE_OS_SUBS"
     echo " NATIVE_OS_ARCH   = $NATIVE_OS_ARCH"
     echo
-    echo " TARGET_OS_KIND   = $TARGET_OS_KIND"
     echo " TARGET_OS_TYPE   = $TARGET_OS_TYPE"
     echo " TARGET_OS_NAME   = $TARGET_OS_NAME"
     echo " TARGET_OS_VERS   = $TARGET_OS_VERS"
@@ -4538,7 +4838,7 @@ cmakew() {
     else
         # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
         # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
-        if [ "$NATIVE_OS_KIND" = 'windows' ] ; then
+        if [ "$NATIVE_OS_TYPE" = 'windows' ] ; then
             sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
         fi
 
@@ -4706,8 +5006,14 @@ ldd() {
 
     die_if_package_is_not_installed "$1"
     die_if_abi_____is_not_supported "$2"
-    [ -z "$3" ] && die "type is not specified."
-    [ -z "$4" ] && die "name is not specified."
+
+    if [ -z "$3" ] ; then
+        die "type is not specified."
+    fi
+
+    if [ -z "$4" ] ; then
+        die "name is not specified."
+    fi
 
     TARGET_OS_ARCH=$(print_target_arch_by_abi "$2")
     TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
@@ -4717,8 +5023,12 @@ ldd() {
     ldd_recursion() {
         die_if_package_is_not_installed "$1"
         die_if_abi_____is_not_supported "$2"
-        [ -z "$3" ] && die "type is not specified."
-        [ -z "$4" ] && die "name is not specified."
+        if [ -z "$3" ] ; then
+            die "type is not specified."
+        fi
+        if [ -z "$4" ] ; then
+            die "name is not specified."
+        fi
 
         FILE_PATH="$MY_INSTALL_DIR/$1/$2/$3/$4"
         [ -f "$FILE_PATH" ] || die "$FILE_PATH not exist."
@@ -4908,9 +5218,9 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1" ] &&
     [ -f "$1/source.properties" ] &&
     [ -f "$1/build/cmake/android.toolchain.cmake" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH/bin" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH/sysroot" ]
+    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH/bin" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH/sysroot" ]
 }
 
 check_prerequisites() {
@@ -4955,11 +5265,13 @@ check_prerequisites() {
 
     echo
 
-    [ -z "$ANDROID_NDK_HOME" ] && die "please set and export ANDROID_NDK_HOME=DIR environment variable, then try again!"
+    if [ -z "$ANDROID_NDK_HOME" ] ; then
+        die "please set and export ANDROID_NDK_HOME=DIR environment variable, then try again!"
+    fi
     
     TOOLCHAIN_NAME='android-ndk'
     TOOLCHAIN_ROOTDIR="$ANDROID_NDK_HOME"
-    TOOLCHAIN_LLVM="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    TOOLCHAIN_LLVM="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH"
     TOOLCHAIN_BIN_DIR="$TOOLCHAIN_LLVM/bin"
     SYSROOT="$TOOLCHAIN_LLVM/sysroot"
 
@@ -5041,7 +5353,10 @@ parse_arguments() {
     done
 
     NPROC=$(nproc)
-    [ -z "$NJOBS" ] && NJOBS=$NPROC
+
+    if [ -z "$NJOBS" ] ; then
+        NJOBS=$NPROC
+    fi
 
     BUILD_LIST="$(__list_supported_target_abis)"
 
@@ -5072,15 +5387,14 @@ EOF
 
 init() {
     # MY represents this software's
-    MY_NAME=ndk-pkg
     MY_VERSION=0.1.0
-    MY_HOME_PAGE="https://github.com/leleliu008/$MY_NAME"
+    MY_HOME_PAGE="https://github.com/leleliu008/ndk-pkg"
     MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ndk-pkg-formula-repository.git"
     MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg'
     MY_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/zsh-completion/_ndk-pkg'
 
     if [ -z "$NDK_PKG_HOME_DIR" ] ; then
-        MY_HOME_DIR="$HOME/.$MY_NAME"
+        MY_HOME_DIR="$HOME/.ndk-pkg"
     else
         MY_HOME_DIR="$NDK_PKG_HOME_DIR"
     fi
@@ -5106,10 +5420,10 @@ init() {
     fi
 
     if command -v uname > /dev/null ; then
-        NATIVE_OS_KIND=$(os kind)
-        NATIVE_OS_TYPE=$(os kind)
+        NATIVE_OS_TYPE=$(os type)
         NATIVE_OS_NAME=$(os name)
         NATIVE_OS_VERS=$(os vers)
+        NATIVE_OS_SUBS=$(os subs)
         NATIVE_OS_ARCH=$(os arch)
     else
         die "command not found: uname. please make sure it in PATH."
@@ -5118,19 +5432,19 @@ init() {
 
 help() {
     cat << EOF
-$MY_NAME is a package manager for Android NDK to build C/C++ project.
+$CURRENT_SCRIPT_FILENAME is a package manager for Android NDK to build C/C++ project.
 
-Usage: $MY_NAME <ACTION> [ARGUMENT...]
+Usage: $CURRENT_SCRIPT_FILENAME <ACTION> [ARGUMENT...]
 
 ACTION:
-    --help    | -h                --show help information.
-    --version | -V                --print version of $MY_NAME.
+    --help    | -h                --show the help information.
+    --version | -V                --print the version of this software.
 
     toolchain                     --show android-ndk toolchain info.
 
-    integrate zsh                 --integrate zsh-completion script.
+    integrate zsh [-x | --china]        --download a zsh-completion script file to a approprivate location.
 
-    upgrade-self                  --upgrade this software.
+    upgrade-self  [-x | --china]        --upgrade this software.
 
     update                        --update the formula repositories.
 
@@ -5168,9 +5482,11 @@ ACTION:
     logs PACKAGE ABI              --print the logs of a installed package.
     info PACKAGE...               --print the information of packages.
     fetch PACKAGE                 --download formula resources of a package to the cache.
-    prefix [PACKAGE]              --show the installation direcotory of a formula or the $MY_NAME home.
+    prefix [PACKAGE]              --show the installation direcotory of a formula or the home directory of this software.
     depends PACKAGE               --show the depends of a package.
-    homepage [PACKAGE]            --visit the homepage of a formula or the $MY_NAME project.
+
+    homepage show [PACKAGE]            --print the homepage of a given formula or this project.
+    homepage open [PACKAGE]            --open the homepage of a given formula or this projectin web browser.
 
     install   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --install packages.
     reinstall PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --reinstall packages.
@@ -5257,16 +5573,30 @@ main() {
         uninstall) __uninstall_packages "$@" ;;
         upgrade)     __upgrade_packages "$@" ;;
 
-        upgrade-self)__upgrade_self "$MY_UPGRAGE_URL" ;;
-
+        upgrade-self)
+            shift
+            __upgrade_self "$MY_UPGRAGE_URL" $@
+            ;;
         integrate)
-            shift;
+            shift
             case $1 in
-                zsh) __integrate_zsh_completions "$MY_ZSH_COMPLETION_SCRIPT_URL" ;;
-                *)   die "ndk-pkg integrate $1: not support."
+                zsh)
+                    shift
+                    __integrate_zsh_completions "$MY_ZSH_COMPLETION_SCRIPT_URL" $@
+                    ;;
+                *)  die "ndk-pkg integrate $1: not support."
             esac
             ;;
-        homepage) shift; __show_webpage_of_a_package    "$@" ;;
+        homepage)
+            shift
+            case $1 in
+                show)
+                    shift; __show_webpage_of_a_package $@ ;;
+                open)
+                    shift; __open_webpage_of_a_package $@ ;;
+                *)  die "unsupported action: $1"
+            esac
+            ;;
         depends)  shift; __show_depends_of_a_package    "$@" ;;
         prefix)   shift; __show_prefix     "$@" ;;
         fetch)    shift; ___load_a_formula "$@" &&

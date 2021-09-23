@@ -40,6 +40,9 @@ mv ndk-pkg /usr/local/bin/
 *   integrate `zsh-completion` script
 
         ndk-pkg integrate zsh
+        ndk-pkg integrate zsh -x
+        ndk-pkg integrate zsh --china
+        ndk-pkg integrate zsh -china -x
         
     I have provide a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg` then type `TAB` key, it will auto complete the rest for you.
 
@@ -49,6 +52,9 @@ mv ndk-pkg /usr/local/bin/
 *   upgrade this software
 
         ndk-pkg upgrade-self
+        ndk-pkg upgrade-self -x
+        ndk-pkg upgrade-self --china
+        ndk-pkg upgrade-self --china -x
 
 *   update the formula repositories
 
@@ -194,10 +200,15 @@ mv ndk-pkg /usr/local/bin/
         
         ndk-pkg pack curl
         
-*   visit the homepage of a formula or the `ndk-pkg` project
+*   show the homepage of a given formula or this project
         
-        ndk-pkg homepage
-        ndk-pkg homepage curl
+        ndk-pkg homepage show
+        ndk-pkg homepage show curl
+        
+*   open the homepage of a given formula or this project
+        
+        ndk-pkg homepage open
+        ndk-pkg homepage open curl
         
 *   show the installation direcotory of a formula or the ndk-pkg home
         
