@@ -619,6 +619,20 @@ fetch() {
     esac
 }
 
+install_ca_certificates_on_netbsd() {
+    # https://www.cambus.net/installing-ca-certificates-on-netbsd/
+    if [ "$(uname)" = NetBSD ] ; then
+        if command -v pkgin > /dev/null ; then
+            if [ "$(whoami)" = root ] ; then
+                run      pkgin -y install mozilla-rootcerts || return 1
+            else
+                run sudo pkgin -y install mozilla-rootcerts || return 1
+            fi
+            run mozilla-rootcerts install
+        fi
+    fi
+}
+
 # }}}
 ##############################################################################
 # {{{ get_china_mirror_url
@@ -1265,17 +1279,17 @@ command_exists_in_filesystem_and_version_matched() {
 # le  less than or equal
 #
 # examples:
-# package_exists_and_version_matched apt automake eq 1.16.0
-# package_exists_and_version_matched apt automake lt 1.16.0
-# package_exists_and_version_matched apt automake gt 1.16.0
-# package_exists_and_version_matched apt automake le 1.16.0
-# package_exists_and_version_matched apt automake ge 1.16.0
-# package_exists_and_version_matched apt automake
-package_exists_in_repo_and_version_matched() {
-    if package_exists_in_repo "$1" "$2" ; then
+# is_package_available_and_version_matched_in_package_manager apt automake eq 1.16.0
+# is_package_available_and_version_matched_in_package_manager apt automake lt 1.16.0
+# is_package_available_and_version_matched_in_package_manager apt automake gt 1.16.0
+# is_package_available_and_version_matched_in_package_manager apt automake le 1.16.0
+# is_package_available_and_version_matched_in_package_manager apt automake ge 1.16.0
+# is_package_available_and_version_matched_in_package_manager apt automake
+is_package_available_and_version_matched_in_package_manager() {
+    if is_package_available_in_package_manager "$1" "$2" ; then
         if [ $# -eq 4 ] ; then
             case $1 in
-                apt|yum|dnf) version_match "$(version_of_package "$1" "$2")" "$3" "$4" ;;
+                pkg|apt|apk|yum|dnf) version_match "$(get_package_version_by_package_name_in_package_manager "$1" "$2")" "$3" "$4" ;;
                 *)       return 0 ;;
             esac
         fi
@@ -1284,25 +1298,29 @@ package_exists_in_repo_and_version_matched() {
     fi
 }
 
-# check if the give package is in the give repo
+# check if the given package is in the given package manager's repo
 #
 # examples:
-# package_exists_in_repo apt automake
-package_exists_in_repo() {
+# is_package_available_in_package_manager apt automake
+is_package_available_in_package_manager() {
     case $1 in
+        pkg) pkg show "$2" > /dev/null 2>&1 ;;
         apt) apt show "$2" > /dev/null 2>&1 ;;
+        apk) apk info "$2" > /dev/null 2>&1 ;;
         yum) yum info "$2" > /dev/null 2>&1 ;;
         dnf) dnf info "$2" > /dev/null 2>&1 ;;
     esac
 }
 
-# get the version of the give package in the give repo
+# get the version of the given package in the given package manager's repo
 #
 # examples:
-# version_of_package apt automake
-version_of_package() {
+# get_package_version_by_package_name_in_package_manager apt automake
+get_package_version_by_package_name_in_package_manager() {
     case $1 in
+        pkg) pkg show "$2" 2> /dev/null | grep 'Version: '      | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
         apt) apt show "$2" 2> /dev/null | grep 'Version: '      | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
+        apk) apk info "$2" 2> /dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
         yum) yum info "$2" 2> /dev/null | grep 'Version     :'  | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
         dnf) dnf info "$2" 2> /dev/null | grep 'Version      :' | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
     esac
@@ -1310,10 +1328,10 @@ version_of_package() {
 
 # }}}
 ##############################################################################
-# {{{ get_package_name_by_command_name_from_package_manager_XX
+# {{{ get_package_name_by_command_name_in_package_manager_XX
 
 # https://cygwin.com/packages/package_list.html
-get_package_name_by_command_name_from_package_manager_choco() {
+get_package_name_by_command_name_in_package_manager_choco() {
     case $1 in
           go) echo 'golang' ;;
       cc|gcc|c++|g++)
@@ -1336,7 +1354,7 @@ get_package_name_by_command_name_from_package_manager_choco() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_add_pkg() {
+get_package_name_by_command_name_in_package_manager_pkg_add() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1370,9 +1388,8 @@ get_package_name_by_command_name_from_package_manager_add_pkg() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_pkgin() {
+get_package_name_by_command_name_in_package_manager_pkgin() {
     case $1 in
-          go) echo 'golang';;
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
@@ -1398,7 +1415,7 @@ get_package_name_by_command_name_from_package_manager_pkgin() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_pkg() {
+get_package_name_by_command_name_in_package_manager_pkg() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1424,7 +1441,7 @@ get_package_name_by_command_name_from_package_manager_pkg() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_emerge() {
+get_package_name_by_command_name_in_package_manager_emerge() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1452,7 +1469,7 @@ get_package_name_by_command_name_from_package_manager_emerge() {
     esac
 }
 
-__get_package_name_by_command_name_from_package_manager_pacman() {
+__get_package_name_by_command_name_in_package_manager_pacman() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1495,18 +1512,18 @@ __mingw_w64_x86_64() {
     fi
 }
 
-get_package_name_by_command_name_from_package_manager_pacman() {
+get_package_name_by_command_name_in_package_manager_pacman() {
     if [ "$1" = 'make' ] || [ "$1" = 'gmake' ] ; then
         echo make
     fi
     case $NATIVE_OS_TYPE in
-        mingw32) __mingw_w64_i686   $(__get_package_name_by_command_name_from_package_manager_pacman "$1") ;;
-        mingw64) __mingw_w64_x86_64 $(__get_package_name_by_command_name_from_package_manager_pacman "$1") ;;
-        *) __get_package_name_by_command_name_from_package_manager_pacman "$1"
+        mingw32) __mingw_w64_i686   $(__get_package_name_by_command_name_in_package_manager_pacman "$1") ;;
+        mingw64) __mingw_w64_x86_64 $(__get_package_name_by_command_name_in_package_manager_pacman "$1") ;;
+        *) __get_package_name_by_command_name_in_package_manager_pacman "$1"
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_xbps() {
+get_package_name_by_command_name_in_package_manager_xbps() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1532,7 +1549,7 @@ get_package_name_by_command_name_from_package_manager_xbps() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_apk() {
+get_package_name_by_command_name_in_package_manager_apk() {
     case $1 in
       cc|gcc) echo 'gcc libc-dev' ;;
          c++) echo 'g++'   ;;
@@ -1560,7 +1577,7 @@ get_package_name_by_command_name_from_package_manager_apk() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_zypper() {
+get_package_name_by_command_name_in_package_manager_zypper() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'gcc-g++';;
@@ -1588,7 +1605,7 @@ get_package_name_by_command_name_from_package_manager_zypper() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_dnf() {
+get_package_name_by_command_name_in_package_manager_dnf() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1615,7 +1632,7 @@ get_package_name_by_command_name_from_package_manager_dnf() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_yum() {
+get_package_name_by_command_name_in_package_manager_yum() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1639,11 +1656,11 @@ get_package_name_by_command_name_from_package_manager_yum() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_apt_get() {
-    get_package_name_by_command_name_from_package_manager_apt $@
+get_package_name_by_command_name_in_package_manager_apt_get() {
+    get_package_name_by_command_name_in_package_manager_apt $@
 }
 
-get_package_name_by_command_name_from_package_manager_apt() {
+get_package_name_by_command_name_in_package_manager_apt() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1668,11 +1685,18 @@ get_package_name_by_command_name_from_package_manager_apt() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+        ninja)
+            if [ "$NATIVE_OS_SUBS" = termux ] ; then
+                echo ninja
+            else
+                echo ninja-build
+            fi
+            ;;
         *)      echo "$1"
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_brew() {
+get_package_name_by_command_name_in_package_manager_brew() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1700,11 +1724,11 @@ get_package_name_by_command_name_from_package_manager_brew() {
     esac
 }
 
-get_package_name_by_command_name_from_package_manager_pip3() {
-    get_package_name_by_command_name_from_package_manager_pip $@
+get_package_name_by_command_name_in_package_manager_pip3() {
+    get_package_name_by_command_name_in_package_manager_pip $@
 }
 
-get_package_name_by_command_name_from_package_manager_pip() {
+get_package_name_by_command_name_in_package_manager_pip() {
     case $1 in
         sphinx-build) echo "sphinx"   ;;
         rst2man.py)   echo "docutils" ;;
@@ -1768,7 +1792,7 @@ __install_package_via_package_manager() {
         return 1
     fi
 
-    package_exists_in_repo_and_version_matched $@ || return 1
+    is_package_available_and_version_matched_in_package_manager $@ || return 1
 
     case $1 in
         pip3)
@@ -1818,13 +1842,13 @@ __install_package_via_package_manager() {
 # __install_command_via_package_manager apt make
 __install_command_via_package_manager() {
     unset __PACKAGE_NAME__
-    __PACKAGE_NAME__="$(eval get_package_name_by_command_name_from_package_manager_$(echo "$1" | tr - _) $2)"
+    __PACKAGE_NAME__="$(eval get_package_name_by_command_name_in_package_manager_$(echo "$1" | tr - _) $2)"
 
     if [ -z "$__PACKAGE_NAME__" ] ; then
         return 1
     fi
 
-    package_exists_in_repo_and_version_matched "$1" "$__PACKAGE_NAME__" $3 $4 || return 1
+    is_package_available_and_version_matched_in_package_manager "$1" "$__PACKAGE_NAME__" $3 $4 || return 1
 
     print "🔥  ${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}\n"
 
@@ -2001,7 +2025,7 @@ cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/downloa
 EOF
 } | while read LINE
     do
-        LINE=$(echo "$LINE" | sed 's/[[:space:]]//g')
+        LINE=$(printf '%s' "$LINE" | sed 's/[[:space:]]//g')
 
         unset __PB_COMMAND__
         unset __PB_OS_LIBC__
@@ -2009,31 +2033,31 @@ EOF
         unset __PB_OS_ARCH__
         unset __PB_URL__
 
-        __PB_COMMAND__=$(echo "$LINE" | cut -d '|' -f1)
+        __PB_COMMAND__=$(printf '%s' "$LINE" | cut -d '|' -f1)
 
         if [ "$__PB_COMMAND__" != "$1" ] ; then
             continue
         fi
 
-        __PB_OS_LIBC__=$(echo "$LINE" | cut -d '|' -f2)
+        __PB_OS_LIBC__=$(printf '%s' "$LINE" | cut -d '|' -f2)
 
         if [ -n "$__PB_OS_LIBC__" ] && [ "$__PB_OS_LIBC__" != "$NATIVE_OS_LIBC" ] ; then
             continue
         fi
 
-        __PB_OS_TYPE__=$(echo "$LINE" | cut -d '|' -f3)
+        __PB_OS_TYPE__=$(printf '%s' "$LINE" | cut -d '|' -f3)
 
         if [ "$__PB_OS_TYPE__" != "$NATIVE_OS_TYPE" ] ; then
             continue
         fi
 
-        __PB_OS_ARCH__=$(echo "$LINE" | cut -d '|' -f4)
+        __PB_OS_ARCH__=$(printf '%s' "$LINE" | cut -d '|' -f4)
 
         if [ -n "$__PB_OS_ARCH__" ] && [ "$__PB_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
             continue
         fi
 
-        __PB_URL__=$(echo "$LINE" | cut -d '|' -f5)
+        __PB_URL__=$(printf '%s' "$LINE" | cut -d '|' -f5)
 
         echo "$__PB_URL__"
     done
@@ -2068,7 +2092,7 @@ __install_command_via_run_install_script() {
 }
 
 __install_command_via_pip() {
-    if [ -z "$(get_package_name_by_command_name_from_package_manager_pip3 "$1")" ] ; then
+    if [ -z "$(get_package_name_by_command_name_in_package_manager_pip3 "$1")" ] ; then
         return 1
     fi
 
@@ -2084,9 +2108,9 @@ __install_command_via_pip() {
     )
 
     if   command_exists_in_filesystem pip3 ; then
-        __install_package_via_package_manager pip3 "$(get_package_name_by_command_name_from_package_manager_pip3 "$1")"
+        __install_package_via_package_manager pip3 "$(get_package_name_by_command_name_in_package_manager_pip3 "$1")"
     elif command_exists_in_filesystem pip ; then
-        __install_package_via_package_manager pip  "$(get_package_name_by_command_name_from_package_manager_pip "$1")"
+        __install_package_via_package_manager pip  "$(get_package_name_by_command_name_in_package_manager_pip "$1")"
     else
         return 1
     fi
@@ -2116,6 +2140,7 @@ __install_command() {
         return 0
     fi
 
+    print "🔥  ${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but I found no way to install it.${COLOR_OFF}\n"
     return 1
 }
 
@@ -2596,6 +2621,10 @@ ___load_a_formula() {
 
     PACKAGE_FORMULA_FILEPATH="$(__pathof_a_formula $1)"
 
+    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
+        die "$1 package's formula is not found."
+    fi
+
     . "$PACKAGE_FORMULA_FILEPATH" || die "$PACKAGE_FORMULA_FILEPATH is broken."
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
@@ -2935,8 +2964,6 @@ __pathof_a_formula() {
             return 0
         fi
     done
-
-    return 1
 }
 
 ____list_formula_repositories() {
@@ -3046,9 +3073,34 @@ die_if_package_is_not_installed() {
     is_package_installed "$1" || die_from_package_is_not_installed "$1"
 }
 
+# check if the given package is available
+# if the version condition is given, check if the condition is matched
+#
+# condition operator:
+# eq  equal
+# ne  not equal
+# gt  greater than
+# lt  less than
+# ge  greater than or equal
+# le  less than or equal
+#
+# examples:
+# is_package_available automake eq 1.16.0
+# is_package_available automake lt 1.16.0
+# is_package_available automake gt 1.16.0
+# is_package_available automake le 1.16.0
+# is_package_available automake ge 1.16.0
+# is_package_available automake
 is_package_available() {
-    die_if_package_is_not_specified "$1"
-    [ -n "$(__pathof_a_formula $1)" ]
+    case $# in
+        0)  die_if_package_is_not_specified ;;
+        1)  [ -n "$(__pathof_a_formula $1)" ] ;;
+        3)  ___load_a_formula "$1"
+            shift
+            version_match $PACKAGE_VERSION $@
+            ;;
+        *)  die "is available command only accept 1 or 3 argument."
+    esac
 }
 
 is_package_installed() {
@@ -4131,25 +4183,26 @@ install_pc_file() {
     cat >         "$ABI_PKGCONF_DIR/$1.pc"
 }
 
-__show_infomation_of_packages() {
+__show_infomation_of_all_available_packages() {
+    shift
+
     unset OUTPUT_FORMAT
-    unset PACKAGE_LIST
 
     while [ -n "$1" ]
     do
         case $1 in
             --json) OUTPUT_FORMAT=json ;;
-            *)      die_if_package_is_not_available $1; PACKAGE_LIST="$PACKAGE_LIST $1"
+            *)      die "unrecognized argument: $1"
         esac
         shift
     done
 
-    if [ -z "$PACKAGE_LIST" ] ; then
-        PACKAGE_LIST=$(__list_available_packages) || return 1
-    fi
 
     unset I
+    unset PACKAGE_LIST
     unset PACKAGE_LIST_LENGTH
+
+    PACKAGE_LIST=$(__list_available_packages) || return 1
     PACKAGE_LIST_LENGTH=$(list_length $PACKAGE_LIST)
 
     if [ "$OUTPUT_FORMAT" = 'json' ] ; then
@@ -4183,7 +4236,18 @@ __show_infomation_of_packages() {
     fi
 }
 
+# examples:
+# __show_infomation_of_a_package curl
+# __show_infomation_of_a_package curl version
+# __show_infomation_of_a_package curl webpage
 __show_infomation_of_a_package() {
+    case $# in
+        0)  die_if_package_is_not_specified ;;
+        1)  ;;
+        2)  package get "$1" "$2"; return $? ;;
+        *)  die "too many arguments."
+    esac
+
     ___load_a_formula "$1"
 
     echo "name    : $(mark_is_package_installed_or_not $1)"
@@ -5459,12 +5523,10 @@ ACTION:
     ls installed                  --list the installed packages.
     ls outdated                   --list the outdated  packages.
 
-    is available PACKAGE          --is PACKAGE available?
+    is available PACKAGE [eq|ne|ge|gt|le|lt VERSION]          --is PACKAGE available?
     is installed PACKAGE          --is PACKAGE installed?
     is outdated  PACKAGE          --is PACKAGE outdated?
 
-    get PACKAGE KEY               --get value of KEY of a package.
-    
     search KEYWORD                --search available packages.
     
     formula create PACKAGE        --create a new formula.
@@ -5478,11 +5540,17 @@ ACTION:
     formula repo del  NAME        --delete a exist formula repo.
 
     tree PACKAGE                  --list contents of a installed package directory in a tree-like format.
+
     pack PACKAGE                  --pack a installed package.
+
     logs PACKAGE ABI              --print the logs of a installed package.
-    info PACKAGE...               --print the information of packages.
+
+    info PACKAGE [KEY|--format=json]        --print the information of packages.
+
     fetch PACKAGE                 --download formula resources of a package to the cache.
+
     prefix [PACKAGE]              --show the installation direcotory of a formula or the home directory of this software.
+
     depends PACKAGE               --show the depends of a package.
 
     homepage show [PACKAGE]            --print the homepage of a given formula or this project.
@@ -5514,10 +5582,6 @@ main() {
             check_prerequisites
             echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERSION"
             ;;
-        get)
-            shift
-            package get "$1" "$2"
-            ;;
         target)
             shift
             case $1 in
@@ -5539,9 +5603,9 @@ main() {
             ;;
         is) shift
             case $1 in
-                available) shift; is_package_available "$@" ;;
-                installed) shift; is_package_installed "$@" ;;
-                outdated)  shift; is_package__outdated "$@" ;;
+                available) shift; is_package_available $@ ;;
+                installed) shift; is_package_installed $@ ;;
+                outdated)  shift; is_package__outdated $@ ;;
                 *) help 1
             esac
             ;;
@@ -5568,14 +5632,17 @@ main() {
         update)  __update_formula_repositories ;;
         cleanup) __cleanup ;;
 
-        install)     __install_packages "$@" ;;
-        reinstall) __reinstall_packages "$@" ;;
-        uninstall) __uninstall_packages "$@" ;;
-        upgrade)     __upgrade_packages "$@" ;;
-
-        upgrade-self)
+        install)     __install_packages $@ ;;
+        reinstall) __reinstall_packages $@ ;;
+        uninstall) __uninstall_packages $@ ;;
+        upgrade)
             shift
-            __upgrade_self "$MY_UPGRAGE_URL" $@
+            case $1 in
+                @self)
+                    shift
+                    __upgrade_self "$MY_UPGRAGE_URL" $@ ;;
+                *)  __upgrade_packages $@ ;;
+                esac
             ;;
         integrate)
             shift
@@ -5604,8 +5671,13 @@ main() {
         logs)     shift; __show_logs_of_a_package       "$@" ;;
         pack)     shift; __pack_a_installed_package     "$@" ;;
         tree)     shift; __tree_a_installed_package     "$@" ;;
-        info)     shift; __show_infomation_of_packages  "$@" ;;
-
+        info)
+            shift
+            case $1 in
+                @all) __show_infomation_of_all_available_packages $@ ;;
+                *)    __show_infomation_of_a_package $@ ;;
+            esac
+            ;;
         ldd) shift; ldd "$@" ;;
         list-dynamic-library-names)
             shift; list_dynamic_library_names_of_a_package $@ ;;

@@ -49,13 +49,6 @@ mv ndk-pkg /usr/local/bin/
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
 
 
-*   upgrade this software
-
-        ndk-pkg upgrade-self
-        ndk-pkg upgrade-self -x
-        ndk-pkg upgrade-self --china
-        ndk-pkg upgrade-self --china -x
-
 *   update the formula repositories
 
         ndk-pkg update
@@ -67,13 +60,20 @@ mv ndk-pkg /usr/local/bin/
         ndk-pkg search curl
         ndk-pkg search lib
         
-*   print the basic infomation of packages
+*   print the infomation of a package or all available packages
         
         ndk-pkg info curl
-        ndk-pkg info curl openssl
-        ndk-pkg info curl openssl --json
-        ndk-pkg info curl openssl --json | jq .
+        ndk-pkg info curl version
+        ndk-pkg info curl summary
+        ndk-pkg info curl webpage
+        ndk-pkg info curl src.git
+        ndk-pkg info @all
+        ndk-pkg info @all --json
+        ndk-pkg info @all --json | jq .
         
+
+    more keys please read [README.md](https://github.com/leleliu008/ndk-pkg-formula-repository/blob/master/README.md)
+
 *   install packages
         
         ndk-pkg install curl
@@ -99,6 +99,14 @@ mv ndk-pkg /usr/local/bin/
         ndk-pkg upgrade curl
         ndk-pkg upgrade curl bzip2 --min-sdk-api-level=21 -v
         
+*   upgrade this software
+
+        ndk-pkg upgrade @self
+        ndk-pkg upgrade @self -x
+        ndk-pkg upgrade @self --china
+        ndk-pkg upgrade @self --china -x
+        
+
 *   list the avaliable formula repos
 
         ndk-pkg formula repo list
@@ -162,6 +170,12 @@ mv ndk-pkg /usr/local/bin/
 *   is the specified package available ?
         
         ndk-pkg is available curl
+        ndk-pkg is available curl ge 7.50.0
+        ndk-pkg is available curl gt 7.50.0
+        ndk-pkg is available curl le 7.50.0
+        ndk-pkg is available curl lt 7.50.0
+        ndk-pkg is available curl eq 7.50.0
+        ndk-pkg is available curl ne 7.50.0
         
 *   is the specified package installed ?
         
@@ -171,15 +185,6 @@ mv ndk-pkg /usr/local/bin/
         
         ndk-pkg is outdated curl
         
-*   get the value of key of a package.
-
-        ndk-pkg get curl version
-        ndk-pkg get curl summary
-        ndk-pkg get curl webpage
-        ndk-pkg get curl src.git
-
-    more keys please read [README.md](https://github.com/leleliu008/ndk-pkg-formula-repository/blob/master/README.md)
-
 *   list contents of a installed package directory in a tree-like format.
         
         ndk-pkg tree curl
