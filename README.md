@@ -33,9 +33,9 @@ mv ndk-pkg /usr/local/bin/
         ndk-pkg -V
         ndk-pkg --version
         
-*   show [Android NDK](https://developer.android.google.cn/ndk) toolchain info
+*   show current machine os and [Android NDK](https://developer.android.google.cn/ndk) toolchain info
 
-        ndk-pkg toolchain
+        ndk-pkg env
 
 *   integrate `zsh-completion` script
 
@@ -157,15 +157,15 @@ mv ndk-pkg /usr/local/bin/
         
 *   list the available packages
         
-        ndk-pkg list available
+        ndk-pkg ls available
         
 *   list the installed packages
         
-        ndk-pkg list installed
+        ndk-pkg ls installed
         
 *   list the outdated packages
         
-        ndk-pkg list outdated
+        ndk-pkg ls outdated
         
 *   is the specified package available ?
         
@@ -205,12 +205,12 @@ mv ndk-pkg /usr/local/bin/
         
         ndk-pkg pack curl
         
-*   show the homepage of a given formula or this project
+*   show the homepage of the given formula or this project
         
         ndk-pkg homepage show
         ndk-pkg homepage show curl
         
-*   open the homepage of a given formula or this project
+*   open the homepage of the given formula or this project
         
         ndk-pkg homepage open
         ndk-pkg homepage open curl

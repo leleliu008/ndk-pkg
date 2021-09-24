@@ -20,7 +20,7 @@ _commands=(
     'fetch:download formula resources of a package to the cache.'
     'homepage:visit the homepage of a formula or the ndk-pkg project.'
     'integrate:integrate zsh completions.'
-    'toolchain:show android-ndk toolchain info.'
+    'env:show current machine os and android-ndk toolchain info.'
     'depends:show the depends of a package.'
     'prefix:show the installation direcotory of a formula or the ndk-pkg home.'
     'pack:pack a installed package.'

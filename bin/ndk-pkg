@@ -5292,7 +5292,7 @@ check_prerequisites() {
 
     if [ -n "$ANDROID_NDK_HOME" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_HOME" ; then
-            echo "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, this direcotory used as the android ndk home."
+            echo "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, which is used as the android ndk home."
         else
             echo "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, but it is not a valid android ndk home directory."
             unset ANDROID_NDK_HOME
@@ -5301,7 +5301,7 @@ check_prerequisites() {
 
     if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_NDK_ROOT" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_ROOT" ; then
-            echo "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, this direcotory used as the android ndk home."
+            echo "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
         else
             echo "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, but it is not a valid android ndk home directory."
@@ -5311,7 +5311,7 @@ check_prerequisites() {
     # https://developer.android.com/studio/command-line/variables
     if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_HOME" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_HOME/ndk-bundle" ; then
-            echo "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} used as the android ndk home."
+            echo "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
         else
             echo "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} direcotory is not exist."
@@ -5320,7 +5320,7 @@ check_prerequisites() {
 
     if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_SDK_ROOT" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_SDK_ROOT/ndk-bundle" ; then
-            echo "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} used as the android ndk home."
+            echo "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk-bundle"
         else
             echo "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} direcotory is not exist."
@@ -5578,8 +5578,13 @@ main() {
         --version|-V)
             echo "$MY_VERSION"
             ;;
-        toolchain)
+        env)
+            echo "ndk-pkg ($MY_VERSION) is a package manager for Android NDK to build C/C++/Rust/Go project."
+            echo
+            os
+
             check_prerequisites
+
             echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERSION"
             ;;
         target)
