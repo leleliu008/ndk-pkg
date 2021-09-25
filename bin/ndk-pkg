@@ -469,25 +469,25 @@ fetch() {
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    die "fetch() --output-dir argument's value must be not empty."
+                    die "fetch() --output-dir argument's value must not be empty."
                 fi
                 ;;
             --output-name=*)
                 FETCH_OUTPUT_NAME=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                    die "fetch() --output-name argument's value must be not empty."
+                    die "fetch() --output-name argument's value must not be empty."
                 fi
                 ;;
             --output-path=*)
                 FETCH_OUTPUT_PATH=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-                    die "fetch() --output-path argument's value must be not empty."
+                    die "fetch() --output-path argument's value must not be empty."
                 fi
                 ;;
             --pipe=*)
                 FETCH_PIPE_TO_CMD=$(getvalue "$1")
                 if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
-                    die "fetch() --pipe=CMD argument's value must be not empty."
+                    die "fetch() --pipe=CMD argument's value must not be empty."
                 fi
         esac
         shift
@@ -3151,7 +3151,7 @@ __gen_github_workflows() {
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
                 case "$OUTPUT_DIR" in
-                    '') die "--output-dir=DIR, DIR must be not empty." ;;
+                    '') die "--output-dir=DIR, DIR must not be empty." ;;
                     /*) ;;
                     \~|\~/) OUTPUT_DIR="${HOME}" ;;
                     \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | awk '{print(substr($0, 2))}')" ;;
@@ -3370,8 +3370,6 @@ __show_webpage_of_a_package() {
     else
         ___load_a_formula "$1"
     fi
-    
-    shift
 
     echo "$PACKAGE_WEBPAGE"
 }
@@ -3468,7 +3466,7 @@ __pack_a_installed_package() {
             --type=*)
                 PACKED_FILE_SUFFIX=$(getvalue $arg)
                 if [ -z "$PACKED_FILE_SUFFIX" ] ; then
-                    die "--type=VALUE : VALUE must be not empty."
+                    die "--type=VALUE : VALUE must not be empty."
                 fi
                 ;;
         esac
