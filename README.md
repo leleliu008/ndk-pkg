@@ -76,7 +76,7 @@ autoload -U compinit && compinit
         ndk-pkg info @all --json | jq .
         
 
-    For more keys, please see [README.md](https://github.com/leleliu008/ndk-pkg-formula-repository/blob/master/README.md)
+    For more keys, please see [README.md](https://github.com/leleliu008/ndk-pkg-formula-repository/blob/master/README.md#the-function-must-be-invoked-on-top-of-the-formula)
 
 *   install packages
         
