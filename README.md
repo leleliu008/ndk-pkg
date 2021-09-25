@@ -1,7 +1,7 @@
 # ndk-pkg
 a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build C/C++/Rust/Go project.
 
-## Install via package manager
+## Install ndk-pkg via package manager
 
 |OS|PackageManager|Installation Instructions|
 |-|-|-|
@@ -10,7 +10,7 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 |`ArchLinux`<br>`ArcoLinux`<br>`Manjaro Linux`<br>`Windows/msys2`|[pacman](http://blog.fpliu.com/it/software/pacman)|`curl -LO https://github.com/leleliu008/ndk-pkg/releases/download/v0.1.0/ndk-pkg-0.1.0-1-any.pkg.tar.gz`<br>`pacman -Syyu --noconfirm`<br>`pacman -U ndk-pkg-0.1.0-1-any.pkg.tar.gz`|
 |`Windows/WSL`|[LinuxBrew](http://blog.fpliu.com/it/software/LinuxBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
 
-## Install using shell script
+## Install ndk-pkg via running shell script
 ```
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh)"
 ```
@@ -20,6 +20,10 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
 mv ndk-pkg /usr/local/bin/
+
+# following instrutions is optional, these instructions only worked in zsh
+ndk-pkg integrate zsh
+autoload -U compinit && compinit
 ```
 
 ## ndk-pkg command usage
