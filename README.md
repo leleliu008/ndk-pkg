@@ -21,7 +21,7 @@ curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
 mv ndk-pkg /usr/local/bin/
 
-# following instrutions is optional, these instructions only worked in zsh
+# following instrutions is optional, and these instructions only worked in zsh
 ndk-pkg integrate zsh
 autoload -U compinit && compinit
 ```
