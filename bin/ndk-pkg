@@ -5257,6 +5257,89 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_TYPE-$NATIVE_OS_ARCH/sysroot" ]
 }
 
+get_android_ndk_download_config() {
+{
+    # https://developer.android.google.cn/ndk/downloads
+    cat <<EOF
+linux  |x86_64 |e3eacf80016b91d4cd2c8ca9f34eebd32df912bb799c859cc5450b6b19277b4f|https://dl.google.com/android/repository/android-ndk-r23-linux.zip
+linux  |aarch64|1a0b22ee995e1667312ada8faef9c5115bdcd93397353d7485b57b0547ca703b|https://github.com/Lzhiyong/termux-ndk/releases/download/android-ndk/android-ndk-r23.tar.xz
+darwin |x86_64 |437278103a3db12632c05b1be5c41bbb8522791a67e415cc54411a65366f499d|https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip
+windows|x86_64 |40325b5bfdb7f6de016ea3efee0468a7d306eda55a6f80966a501645ba01fbfa|https://dl.google.com/android/repository/android-ndk-r23-windows.zip
+EOF
+} | while read LINE
+    do
+        LINE=$(printf '%s' "$LINE" | sed 's/[[:space:]]//g')
+
+        unset __XX_OS_TYPE__
+        unset __XX_OS_ARCH__
+
+        __XX_OS_TYPE__=$(printf '%s' "$LINE" | cut -d '|' -f1)
+
+        if [ "$__XX_OS_TYPE__" != "$NATIVE_OS_TYPE" ] ; then
+            continue
+        fi
+
+        __XX_OS_ARCH__=$(printf '%s' "$LINE" | cut -d '|' -f2)
+
+        if [ -n "$__XX_OS_ARCH__" ] && [ "$__XX_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
+            continue
+        fi
+
+        printf '%s' "$LINE"
+
+        break
+    done
+}
+
+install_android_ndk() {
+    set -e
+
+    for arg in $@
+    do
+        case $arg in
+            -x) set -x ;;
+        esac
+    done
+
+    unset ANDROID_NDK_URL
+    unset ANDROID_NDK_SHA256
+
+    unset LINE
+    LINE=$(get_android_ndk_download_config)
+
+    ANDROID_NDK_SHA256=$(printf '%s' "$LINE" | cut -d '|' -f3)
+
+    ANDROID_NDK_URL=$(printf '%s' "$LINE" | cut -d '|' -f4)
+
+    fetch "$ANDROID_NDK_URL" --sha256="$ANDROID_NDK_SHA256" --output-dir="$MY_HOME_DIR"
+
+    case $ANDROID_NDK_URL in
+        *.zip)
+            handle_dependency required exe unzip
+            run unzip "$FETCH_OUTPUT_PATH"
+            ;;
+        *.tar.xz)
+            handle_dependency required exe tar
+            handle_dependency required exe xz
+            run tar xf "$FETCH_OUTPUT_PATH"
+            ;;
+    esac
+
+    unset ANDROID_NDK_VERSION_CODE
+    ANDROID_NDK_VERSION_CODE=$(printf '%s' "$FETCH_OUTPUT_NAME" | cut -d-  -f3)
+
+    export ANDROID_NDK_HOME="$FETCH_OUTPUT_PATH/android-ndk-$ANDROID_NDK_VERSION_CODE"
+
+    run command -v ndk-build
+
+    run ndk-build --help
+
+    # https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions#adding-a-system-path
+    if [ -n "$GITHUB_PATH" ] && [ -e "$GITHUB_PATH" ] ; then
+        printf '%s\n' "$ANDROID_NDK_HOME" >> "$GITHUB_PATH"
+    fi
+}
+
 check_prerequisites() {
     echo
 
@@ -5667,6 +5750,11 @@ main() {
             shift; list_dynamic_library_names_of_the_given_package $@ ;;
         gen-github-workflows)
             shift; __gen_github_workflows $@ ;;
+
+        install-android-ndk)
+            shift
+            install_android_ndk $@
+            ;;
 
         *) help 1
     esac
