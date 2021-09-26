@@ -5293,7 +5293,7 @@ EOF
 }
 
 install_android_ndk() {
-    set -ex
+    set -e
 
     for arg in $@
     do
@@ -5333,8 +5333,6 @@ install_android_ndk() {
     export PATH="$ANDROID_NDK_HOME:$PATH"
 
     run ls -l "$ANDROID_NDK_HOME"
-
-    [ -f "$ANDROID_NDK_HOME/ndk-build" ]
 
     # https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions
     if [ -n "$GITHUB_ENV" ] && [ -e "$GITHUB_ENV" ] ; then
