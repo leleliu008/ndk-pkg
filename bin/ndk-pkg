@@ -5329,6 +5329,7 @@ install_android_ndk() {
     ANDROID_NDK_VERSION_CODE=$(printf '%s' "$FETCH_OUTPUT_NAME" | cut -d- -f3 | cut -d. -f1)
 
     export ANDROID_NDK_HOME="$FETCH_OUTPUT_DIR/android-ndk-$ANDROID_NDK_VERSION_CODE"
+    export PATH="$ANDROID_NDK_HOME:$PATH"
 
     run ls -l "$ANDROID_NDK_HOME"
 
