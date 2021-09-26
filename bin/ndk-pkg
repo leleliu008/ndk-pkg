@@ -5330,6 +5330,12 @@ install_android_ndk() {
 
     export ANDROID_NDK_HOME="$FETCH_OUTPUT_DIR/android-ndk-$ANDROID_NDK_VERSION_CODE"
 
+    run ls -l "$ANDROID_NDK_HOME"
+
+    if [ ! -x "$ANDROID_NDK_HOME/ndk-build" ] ; then
+        run chmod +x "$ANDROID_NDK_HOME/ndk-build"
+    fi
+
     run command -v ndk-build
 
     run ndk-build --help
