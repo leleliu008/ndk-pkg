@@ -5333,13 +5333,7 @@ install_android_ndk() {
 
     run ls -l "$ANDROID_NDK_HOME"
 
-    if [ ! -x "$ANDROID_NDK_HOME/ndk-build" ] ; then
-        run chmod a+x "$ANDROID_NDK_HOME/ndk-build"
-    fi
-
-    run command -v ndk-build
-
-    run ndk-build --help
+    [ -f "$ANDROID_NDK_HOME/ndk-build" ]
 
     # https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions#adding-a-system-path
     if [ -n "$GITHUB_PATH" ] && [ -e "$GITHUB_PATH" ] ; then
