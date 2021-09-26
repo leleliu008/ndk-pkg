@@ -5335,7 +5335,10 @@ install_android_ndk() {
 
     [ -f "$ANDROID_NDK_HOME/ndk-build" ]
 
-    # https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions#adding-a-system-path
+    # https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions
+    if [ -n "$GITHUB_ENV" ] && [ -e "$GITHUB_ENV" ] ; then
+        printf 'ANDROID_NDK_HOME=%s\n' "$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
+    fi
     if [ -n "$GITHUB_PATH" ] && [ -e "$GITHUB_PATH" ] ; then
         printf '%s\n' "$ANDROID_NDK_HOME" >> "$GITHUB_PATH"
     fi
