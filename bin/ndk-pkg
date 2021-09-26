@@ -52,15 +52,7 @@ die() {
 # check if file exists
 # $1 FILEPATH
 file_exists() {
-    if [ -z "$1" ] ; then
-        die "file_exists() please specify a filepath."
-    else
-        if [ -e "$1" ] ; then
-            return 0
-        else
-            warn "file_exists() file not exist: $1"
-        fi
-    fi
+    [ -n "$1" ] && [ -e "$1" ]
 }
 
 # check if command exists in filesystem
@@ -73,19 +65,11 @@ command_exists_in_filesystem() {
 }
 
 executable() {
-    if file_exists "$1" ; then
-        if [ -x "$1" ] ; then
-            return 0
-        else
-            return 1
-        fi
-    else
-        return 1
-    fi
+    file_exists "$1" && [ -x "$1" ]
 }
 
 die_if_file_is_not_exist() {
-    file_exists "$1" || die "$1 is not exists."
+    file_exists "$1" || die "$1 is not exist."
 }
 
 die_if_not_executable() {
@@ -3038,7 +3022,7 @@ die_if_abi_____is_not_specified() {
 
 die_if_abi_____is_not_supported() {
     die_if_abi_____is_not_specified "$1"
-    
+
     for ABI in $(__list_supported_target_abis)
     do
         if [ "$ABI" = "$1" ] ; then
@@ -3050,27 +3034,15 @@ die_if_abi_____is_not_supported() {
 }
 
 die_if_package_is_not_specified() {
-    if [ -z "$1" ] ; then
-        die "please specify a package name."
-    fi
-}
-
-die_if_package_list_is_not_specified() {
-    if [ -z "$1" ] ; then
-        die "please specify at least one package name."
-    fi
+    [ -n "$1" ] || die "no package is specified."
 }
 
 die_if_package_is_not_available() {
     is_package_available "$1" || die "$1 is not available."
 }
 
-die_from_package_is_not_installed() {
-    die "$1 is not installed."
-}
-
 die_if_package_is_not_installed() {
-    is_package_installed "$1" || die_from_package_is_not_installed "$1"
+    is_package_installed "$1" || die "$1 is not installed."
 }
 
 # check if the given package is available
@@ -3105,30 +3077,29 @@ is_package_available() {
 
 is_package_installed() {
     die_if_package_is_not_specified "$1"
-    
-    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 1
-    [ -f "$MY_CACHED_LOG_DIR/$1/install.log.txt" ] || return 1
 
-    for ABI in $(cat "$MY_CACHED_LOG_DIR/$1/install.log.txt")
+    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 1
+    [ -f "$MY_CACHED_LOG_DIR/$1/installed-metadata" ] || return 1
+
+    for ABI in $(sed -n "/INSTALLED_ABIS=/p" "$MY_CACHED_LOG_DIR/$1/installed-metadata" | sed "s/INSTALLED_ABIS='\(.*\)'/\1/")
     do
         [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                      || return 1
         [ -d "$MY_CACHED_LOG_DIR/$1/$ABI" ]                   || return 1
-        [ -f "$MY_CACHED_LOG_DIR/$1/$ABI/installed.log.txt" ] || return 1
+        [ -f "$MY_CACHED_LOG_DIR/$1/$ABI/installed-metadata" ] || return 1
     done
 }
 
 is_package__outdated() {
     ___load_a_formula "$1"
 
-    [ -d "$MY_INSTALL_DIR/$1" ]                    || die_from_package_is_not_installed "$1"
-    [ -f "$MY_CACHED_LOG_DIR/$1/install.log.txt" ] || die_from_package_is_not_installed "$1"
+    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 1
+    [ -f "$MY_CACHED_LOG_DIR/$1/installed-metadata" ] || return 1
 
-    for ABI in $(__list_abis_of_a_installed_package "$1")
+    for ABI in $(sed -n "/INSTALLED_ABIS=/p" "$MY_CACHED_LOG_DIR/$1/installed-metadata" | sed "s/INSTALLED_ABIS='\(.*\)'/\1/")
     do
-        [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                      || die_from_package_is_not_installed "$1"
-        [ -d "$MY_CACHED_LOG_DIR/$1/$ABI" ]                   || die_from_package_is_not_installed "$1"
-        [ -f "$MY_CACHED_LOG_DIR/$1/$ABI/installed.log.txt" ] || die_from_package_is_not_installed "$1"
-        die_if_load_installed_log_failed "$1" "$ABI"
+        [ -d "$MY_INSTALL_DIR/$1/$ABI" ]                      || return 1
+        [ -d "$MY_CACHED_LOG_DIR/$1/$ABI" ]                   || return 1
+        [ -f "$MY_CACHED_LOG_DIR/$1/$ABI/installed-metadata" ] || return 1
         version_match "$PACKAGE_VERSION" gt "$installed_pkg_vers"
     done
 }
@@ -3268,11 +3239,6 @@ __list__outdated_packages() {
     done
 }
 
-__list_abis_of_a_installed_package() {
-    die_if_package_is_not_installed "$1"
-    cat "$MY_CACHED_LOG_DIR/$1/install.log.txt"
-}
-
 __tree_a_installed_package() {
     die_if_package_is_not_installed "$1"
     handle_dependency required exe tree
@@ -3282,7 +3248,7 @@ __tree_a_installed_package() {
 __uninstall_packages() {
     shift
 
-    die_if_package_list_is_not_specified "$1"
+    die_if_package_is_not_specified "$1"
     
     for packageName in $@
     do
@@ -3300,7 +3266,7 @@ __reinstall_packages() {
     check_prerequisites
     parse_arguments $@
 
-    die_if_package_list_is_not_specified "$USER_SPECIFIED_PACKAGE_LIST"
+    die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
 
     for packageName in $USER_SPECIFIED_PACKAGE_LIST
     do
@@ -3420,7 +3386,7 @@ __show_prefix() {
     fi
 }
 
-__show_logs_of_a_package() {
+__show_logs_of_a_installed_package() {
     die_if_package_is_not_installed "$1"
     die_if_abi_____is_not_supported "$2"
 
@@ -3435,7 +3401,7 @@ __show_logs_of_a_package() {
         if [ "$VIEWER" = 'bat' ] ; then
             case $item in
                 *.png) ;;
-                *.sh|*/installed.log.txt)
+                *.sh|*/installed-metadata)
                     bat -l bash "$item" ;;
                 *)  bat "$item"
             esac
@@ -3455,8 +3421,9 @@ __show_logs_of_a_package() {
 __pack_a_installed_package() {
     set -e
 
-    ABI="$(__list_abis_of_a_installed_package "$1" | head -n 1)"
-    die_if_load_installed_log_failed "$1" "$ABI"
+    load_installed_metadata "$1"
+
+    shift
 
     unset PACKED_FILE_SUFFIX
 
@@ -3469,6 +3436,7 @@ __pack_a_installed_package() {
                     die "--type=VALUE : VALUE must not be empty."
                 fi
                 ;;
+            *)  die "unrecognized argument: $arg"
         esac
     done
 
@@ -3508,14 +3476,14 @@ __pack_a_installed_package() {
                 handle_dependency required exe tar 
                 handle_dependency required exe bzip2 
                 ;;
-            *) die "$PACKED_FILE_SUFFIX : not supported packed type (7z zip tar.gz tar.xz tar.bz2)."
+            *) die "unsupported type: $PACKED_FILE_SUFFIX, the supported types are 7z zip tar.gz tar.xz tar.bz2."
         esac
     fi
 
     unset PACKED_DIR_NAME
-    PACKED_DIR_NAME="$1-$installed_pkg_vers.bin"
-
     unset PACKED_FILE_NAME
+
+    PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS.bin"
     PACKED_FILE_NAME="$PACKED_DIR_NAME.$PACKED_FILE_SUFFIX"
 
     step "create working directory"
@@ -3720,7 +3688,7 @@ __install_packages() {
 
     parse_arguments $@
 
-    die_if_package_list_is_not_specified "$USER_SPECIFIED_PACKAGE_LIST"
+    die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
 
     __config_global_installation_variables
 
@@ -3818,7 +3786,7 @@ __install_a_package() {
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
             PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h) || return 1
-            run cp -r "$PACKAGE_SRC_PATH/*" "$WORKING_DIR" || return 1
+            run cp -r "$PACKAGE_SRC_PATH/." "$WORKING_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
             run cp    "$PACKAGE_SRC_PATH"   "$WORKING_DIR" || return 1
@@ -3975,6 +3943,10 @@ __install_a_package() {
 
     __install_a_package_all_builds "$1" || return 1
 
+    step "install installed metadata"
+    install_installed_metadata "$MY_CACHED_LOG_DIR/$1"
+    echo "INSTALLED_ABIS='$TARGET_OS_ABI_LIST'" >> "$MY_CACHED_LOG_DIR/$1/installed-metadata"
+
     [ "$KEEP_WORKING_DIR" = 'true' ] || {
         step "clean working directory."
         run rm -rf "$WORKING_DIR"
@@ -4002,7 +3974,7 @@ __install_a_package_all_builds() {
         if [ -z "$TARGET_OS_ABI_LIST" ] ; then
             TARGET_OS_ABI_LIST="$TARGET_OS_ABI"
         else
-            TARGET_OS_ABI_LIST=$(printf "%s\n%s" "$TARGET_OS_ABI_LIST" "$TARGET_OS_ABI")
+            TARGET_OS_ABI_LIST=$(printf "%s %s" "$TARGET_OS_ABI_LIST" "$TARGET_OS_ABI")
         fi
 
         if [ "$DRYRUN" = 'true' ] ; then
@@ -4023,8 +3995,6 @@ __install_a_package_all_builds() {
             ) || return 1
         fi
     done
-
-    echo "$TARGET_OS_ABI_LIST" > "$MY_CACHED_LOG_DIR/$1/install.log.txt"
 }
 
 __install_a_package_one_build() {
@@ -4100,7 +4070,7 @@ __justfy_pc_files() {
 }
 
 __install_logs() {
-    install_installed_log
+    install_installed_metadata "$ABI_LOG_DIR"
 
     for item in "$DEPENDENCIES__GV" "$DEPENDENCIES_TXT" "$DEPENDENCIES_PNG"
     do
@@ -4194,7 +4164,6 @@ __show_infomation_of_all_available_packages() {
         esac
         shift
     done
-
 
     unset I
     unset PACKAGE_LIST
@@ -4291,30 +4260,32 @@ __show_infomation_of_a_package() {
             fi
     esac
 
-    if is_package_installed "$1" ; then
-        echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$MY_INSTALL_DIR/$1" | awk '{print $2, $1}')"
+    is_package_installed "$1" || return 0
 
-        unset I
-        unset ABI
-        unset ABI_LIST
-        unset ABI_LIST_LENGTH
+    load_installed_metadata "$1"
 
-        ABI_LIST=$(__list_abis_of_a_installed_package "$1")
-        ABI_LIST_LENGTH=$(list_length $ABI_LIST)
+    echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$MY_INSTALL_DIR/$1" | awk '{print $2, $1}')"
 
-        for ABI in $ABI_LIST
-        do
-            I=$(expr ${I-0} + 1)
-            if [ "$I" -eq "$ABI_LIST_LENGTH" ] ; then
-                echo "              └── $(printf "%-12s" "$ABI") $(du -sh "$MY_INSTALL_DIR/$1/$ABI" | awk '{print $1}')"
-            else
-                echo "              ├── $(printf "%-12s" "$ABI") $(du -sh "$MY_INSTALL_DIR/$1/$ABI" | awk '{print $1}')"
-            fi
-        done
+    unset I
+    unset ABI
+    unset INSTALLED_ABIS_LENGTH
 
-        die_if_load_installed_log_failed "$1" "$ABI"
-        __show_installed_log "$1" "$ABI"
-    fi
+    INSTALLED_ABIS_LENGTH=$(list_length $INSTALLED_ABIS)
+
+    for ABI in $INSTALLED_ABIS
+    do
+        I=$(expr ${I-0} + 1)
+        if [ "$I" -eq "$INSTALLED_ABIS_LENGTH" ] ; then
+            echo "              └── $(printf "%-12s" "$ABI") $(du -sh "$MY_INSTALL_DIR/$1/$ABI" | awk '{print $1}')"
+        else
+            echo "              ├── $(printf "%-12s" "$ABI") $(du -sh "$MY_INSTALL_DIR/$1/$ABI" | awk '{print $1}')"
+        fi
+    done
+
+    echo "installed datetime    : $(format_unix_timestamp $INSTALLED_DATETIME '+%Y/%m/%d %H:%M:%S')"
+    echo "installed pkg version : $INSTALLED_PKG_VERS"
+    echo "build with toolchain  : $BUILD_WITH_TOOLCHAIN_NAME $BUILD_WITH_TOOLCHAIN_VERS"
+    echo "build with api-level  : $BUILD_WITH_API_LEVEL"
 }
 
 mark_is_package_installed_or_not() {
@@ -4325,44 +4296,45 @@ mark_is_package_installed_or_not() {
     fi
 }
 
-install_installed_log() {
-    cat > "$ABI_LOG_DIR/installed.log.txt" <<EOF
-installed_datetime=$TIMESTAMP_UNIX
+# install_installed_metadata DIR
+install_installed_metadata() {
+    [ -z "$1" ] && die "install_installed_metadata() please specify a dir path."
 
-installed_pkg_name=$PACKAGE_NAME
-installed_pkg_vers=$PACKAGE_VERSION
+    [ -d "$1" ] || die "install_installed_metadata() $1 is not a directory."
 
-supported_min_vers=$TARGET_OS_NAME-$TARGET_OS_VERS
+    echo "-- Installing: $1/installed-metadata"
 
-used_toolchain_name='$TOOLCHAIN_NAME'
-used_toolchain_vers='$TOOLCHAIN_VERSION'
+    cat > "$1/installed-metadata" <<EOF
+INSTALLED_DATETIME='$TIMESTAMP_UNIX'
+
+INSTALLED_PKG_NAME='$PACKAGE_NAME'
+INSTALLED_PKG_VERS='$PACKAGE_VERSION'
+
+BUILD_WITH_TOOLCHAIN_NAME='$TOOLCHAIN_NAME'
+BUILD_WITH_TOOLCHAIN_VERS='$TOOLCHAIN_VERSION'
+
+BUILD_WITH_API_LEVEL='$TARGET_OS_VERS'
 EOF
 }
 
-die_if_load_installed_log_failed() {
+# load_installed_metadata PKG
+load_installed_metadata() {
     die_if_package_is_not_installed "$1"
-    die_if_abi_____is_not_supported "$2"
 
-    INSTALLED_LOG_FILE_PATH="$MY_CACHED_LOG_DIR/$1/$2/installed.log.txt"
+    INSTALLED_METADATA_FILEPATH="$MY_CACHED_LOG_DIR/$1/installed-metadata"
 
-    unset installed_datetime
+    unset INSTALLED_DATETIME
+    unset INSTALLED_PKG_NAME
+    unset INSTALLED_PKG_VERS
 
-    unset installed_pkg_name
-    unset installed_pkg_vers
+    unset INSTALLED_ABIS
 
-    unset supported_min_vers
+    unset BUILD_WITH_TOOLCHAIN_NAME
+    unset BUILD_WITH_TOOLCHAIN_VERS
 
-    unset used_toolchain_name
-    unset used_toolchain_vers
+    unset BUILD_WITH_API_LEVEL
 
-    . "$INSTALLED_LOG_FILE_PATH" || die "$INSTALLED_LOG_FILE_PATH is broken."
-}
-
-__show_installed_log() {
-    echo "installed_datetime : $(format_unix_timestamp $installed_datetime '+%Y/%m/%d %H:%M:%S')"
-    echo "installed_pkg_vers : $installed_pkg_vers"
-    echo "supported_min_vers : $supported_min_vers"
-    echo "used_toolchain     : $used_toolchain_name $used_toolchain_vers"
+    . "$INSTALLED_METADATA_FILEPATH" || die "$INSTALLED_METADATA_FILEPATH is broken."
 }
 
 __config_this_build_variables() {
@@ -5499,14 +5471,13 @@ $CURRENT_SCRIPT_FILENAME is a package manager for Android NDK to build C/C++ pro
 Usage: $CURRENT_SCRIPT_FILENAME <ACTION> [ARGUMENT...]
 
 ACTION:
-    --help    | -h                --show the help information.
+    --help    | -h                --show the help information of this software.
+
     --version | -V                --print the version of this software.
 
-    toolchain                     --show android-ndk toolchain info.
+    env                           --show current machine os and android-ndk toolchain info.
 
     integrate zsh [-x | --china]        --download a zsh-completion script file to a approprivate location.
-
-    upgrade-self  [-x | --china]        --upgrade this software.
 
     update                        --update the formula repositories.
 
@@ -5522,7 +5493,9 @@ ACTION:
     ls outdated                   --list the outdated  packages.
 
     is available PACKAGE [eq|ne|ge|gt|le|lt VERSION]          --is PACKAGE available?
+
     is installed PACKAGE          --is PACKAGE installed?
+
     is outdated  PACKAGE          --is PACKAGE outdated?
 
     search KEYWORD                --search available packages.
@@ -5537,13 +5510,14 @@ ACTION:
     formula repo add  NAME URL    --add a new formula repo.
     formula repo del  NAME        --delete a exist formula repo.
 
-    tree PACKAGE                  --list contents of a installed package directory in a tree-like format.
+    tree PACKAGE [-L N]           --list contents of a installed package directory in a tree-like format.
 
     pack PACKAGE                  --pack a installed package.
 
     logs PACKAGE ABI              --print the logs of a installed package.
 
-    info PACKAGE [KEY|--format=json]        --print the information of packages.
+    info PACKAGE [KEY]            --print the information of the given package.
+    info @all [--json]            --print the information of all the available packages.
 
     fetch PACKAGE                 --download formula resources of a package to the cache.
 
@@ -5555,9 +5529,14 @@ ACTION:
     homepage open [PACKAGE]            --open the homepage of a given formula or this projectin web browser.
 
     install   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --install packages.
+
     reinstall PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --reinstall packages.
+
     upgrade   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --upgrade packages.
-    uninstall PACKAGE...                                                                          --uninstall packages.
+
+    upgrade @self  [-x | --china]   --upgrade this software.
+
+    uninstall PACKAGE...          --uninstall packages.
 EOF
     if [ -z "$1" ] ; then
         exit
@@ -5671,9 +5650,11 @@ main() {
         prefix)   shift; __show_prefix     "$@" ;;
         fetch)    shift; ___load_a_formula "$@" &&
                          __fetch_resources_of_a_package "$@" ;;
-        logs)     shift; __show_logs_of_a_package       "$@" ;;
-        pack)     shift; __pack_a_installed_package     "$@" ;;
-        tree)     shift; __tree_a_installed_package     "$@" ;;
+
+        logs) shift; __show_logs_of_a_installed_package $@ ;;
+        pack) shift; __pack_a_installed_package $@ ;;
+        tree) shift; __tree_a_installed_package $@ ;;
+
         info)
             shift
             case $1 in
@@ -5681,11 +5662,14 @@ main() {
                 *)    __show_infomation_of_a_package $@ ;;
             esac
             ;;
-        ldd) shift; ldd "$@" ;;
+
+        ldd)shift; ldd $@ ;;
+
         list-dynamic-library-names)
             shift; list_dynamic_library_names_of_a_package $@ ;;
         gen-github-workflows)
             shift; __gen_github_workflows $@ ;;
+
         *) help 1
     esac
 }
