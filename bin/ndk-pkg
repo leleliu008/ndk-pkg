@@ -1438,6 +1438,7 @@ get_package_name_by_command_name_in_package_manager_emerge() {
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       xz)     echo 'xz-utils' ;;
+      tree)   echo 'app-text/tree' ;;
       rst2man|rst2html)
               echo "docutils" ;;
     sphinx-build)

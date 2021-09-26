@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: [28, 30, 33, latest, rawhide]
+        tag: [28, 30, 33, 34]
 
     container: fedora:${{ matrix.tag }}
 
