@@ -5316,17 +5316,17 @@ install_android_ndk() {
     case $ANDROID_NDK_URL in
         *.zip)
             handle_dependency required exe unzip
-            run unzip -q "$FETCH_OUTPUT_PATH"
+            run unzip -q "$FETCH_OUTPUT_PATH" -d "$MY_HOME_DIR"
             ;;
         *.tar.xz)
             handle_dependency required exe tar
             handle_dependency required exe xz
-            run tar xf "$FETCH_OUTPUT_PATH"
+            run tar xf "$FETCH_OUTPUT_PATH" -C "$MY_HOME_DIR"
             ;;
     esac
 
     unset ANDROID_NDK_VERSION_CODE
-    ANDROID_NDK_VERSION_CODE=$(printf '%s' "$FETCH_OUTPUT_NAME" | cut -d-  -f3)
+    ANDROID_NDK_VERSION_CODE=$(printf '%s' "$FETCH_OUTPUT_NAME" | cut -d- -f3 | cut -d. -f1)
 
     export ANDROID_NDK_HOME="$FETCH_OUTPUT_DIR/android-ndk-$ANDROID_NDK_VERSION_CODE"
 
