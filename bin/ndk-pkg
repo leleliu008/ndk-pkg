@@ -5292,7 +5292,7 @@ EOF
 }
 
 install_android_ndk() {
-    set -e
+    set -ex
 
     for arg in $@
     do
@@ -5316,7 +5316,7 @@ install_android_ndk() {
     case $ANDROID_NDK_URL in
         *.zip)
             handle_dependency required exe unzip
-            run unzip "$FETCH_OUTPUT_PATH"
+            run unzip -q "$FETCH_OUTPUT_PATH"
             ;;
         *.tar.xz)
             handle_dependency required exe tar
@@ -5642,6 +5642,8 @@ main() {
             echo "ndk-pkg ($MY_VERSION) is a package manager for Android NDK to build C/C++/Rust/Go project."
             echo
             os
+            echo
+            id | tr ' ' '\h'
 
             check_prerequisites
 
