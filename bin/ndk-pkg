@@ -5648,9 +5648,13 @@ main() {
         env)
             echo "ndk-pkg ($MY_VERSION) is a package manager for Android NDK to build C/C++/Rust/Go project."
             echo
-            os
+            run os
             echo
-            id | tr ' ' '\h'
+            run "id | tr ' ' '\n'"
+            echo
+            run env
+            echo
+            run export -p
 
             check_prerequisites
 
