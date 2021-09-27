@@ -27,12 +27,12 @@ autoload -U compinit && compinit
 ```
 
 ## ndk-pkg command usage
-*   print the help infomation of `ndk-pkg` command
+*   print the help infomation of this command
         
         ndk-pkg -h
         ndk-pkg --help
         
-*   print the version of `ndk-pkg`
+*   print the version of this command
         
         ndk-pkg -V
         ndk-pkg --version
@@ -64,7 +64,7 @@ autoload -U compinit && compinit
         ndk-pkg search curl
         ndk-pkg search lib
         
-*   print the infomation of a package or all available packages
+*   print the infomation of the given package or all available packages
         
         ndk-pkg info curl
         ndk-pkg info curl version
@@ -100,6 +100,7 @@ autoload -U compinit && compinit
         
 *   upgrade the outdated packages
 
+        ndk-pkg upgrade
         ndk-pkg upgrade curl
         ndk-pkg upgrade curl bzip2 --min-sdk-api-level=21 -v
         
@@ -123,23 +124,23 @@ autoload -U compinit && compinit
 
         ndk-pkg formula repo del my_repo
 
-*   view the formula of a package
+*   view the formula of the given package
         
         ndk-pkg formula view curl
         
-*   edit the formula of a package
+*   edit the formula of the given package
         
         ndk-pkg formula edit curl
         
-*   create a formula
+*   create the formula of the given package
         
         ndk-pkg formula create curl
         
-*   delete a formula
+*   delete the formula of the given package
         
         ndk-pkg formula delete curl
         
-*   rename a formula to new name
+*   rename the formula of the given package to new name
         
         ndk-pkg formula rename curl curl7
         
@@ -171,7 +172,7 @@ autoload -U compinit && compinit
         
         ndk-pkg ls outdated
         
-*   is the specified package available ?
+*   is the given package available ?
         
         ndk-pkg is available curl
         ndk-pkg is available curl ge 7.50.0
@@ -181,50 +182,47 @@ autoload -U compinit && compinit
         ndk-pkg is available curl eq 7.50.0
         ndk-pkg is available curl ne 7.50.0
         
-*   is the specified package installed ?
+*   is the given package installed ?
         
         ndk-pkg is installed curl
         
-*   is the specified package outdated ?
+*   is the given package outdated ?
         
         ndk-pkg is outdated curl
         
-*   list contents of a installed package directory in a tree-like format.
+*   list files of the given installed package in a tree-like format.
         
         ndk-pkg tree curl
         ndk-pkg tree curl -L 3
         
-*   download formula resources of a package to the cache
+*   download formula resources of the given package to the cache
         
         ndk-pkg fetch curl
         
-*   print the logs of a installed package
+*   show logs of the given installed package
         
         ndk-pkg logs curl armeabi-v7a
         ndk-pkg logs curl arm64-v8a
         ndk-pkg logs curl x86
         ndk-pkg logs curl x86_64
         
-*   pack a installed package
+*   pack the given installed package
         
         ndk-pkg pack curl
         
-*   show the homepage of the given formula or this project
+*   show or open the homepage of the given package or this project
         
-        ndk-pkg homepage show
-        ndk-pkg homepage show curl
+        ndk-pkg homepage
+        ndk-pkg homepage --open
+        ndk-pkg homepage --open curl
+        ndk-pkg homepage curl --open
         
-*   open the homepage of the given formula or this project
-        
-        ndk-pkg homepage open
-        ndk-pkg homepage open curl
-        
-*   show the installation direcotory of a formula or the ndk-pkg home
+*   show the installation direcotory of the given package or this software
         
         ndk-pkg prefix
         ndk-pkg prefix curl
         
-*   show the depended packages by a package
+*   show the depended packages of the given package
         
         ndk-pkg depends curl
         

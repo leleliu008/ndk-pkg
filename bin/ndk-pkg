@@ -3331,7 +3331,36 @@ __search_packages() {
     done
 }
 
-__show_webpage_of_the_given_package() {
+__show_or_open_homepage_of_the_given_package() {
+    unset ACTION
+    unset PACKAGE
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --open)
+                ACTION=open
+                ;;
+            -*|--*)
+                die "unrecognized argument: 41"
+                ;;
+            *)  if [ -z "$PACKAGE" ] ; then
+                    PACKAGE=$1
+                else
+                    die "too many packages given."
+                fi
+        esac
+        shift
+    done
+
+    if [ "$ACTION" = open ] ; then
+        __open_homepage_of_the_given_package $PACKAGE
+    else
+        __show_homepage_of_the_given_package $PACKAGE
+    fi
+}
+
+__show_homepage_of_the_given_package() {
     if [ -z "$1" ] ; then
         PACKAGE_WEBPAGE="$MY_HOME_PAGE"
     else
@@ -3341,7 +3370,7 @@ __show_webpage_of_the_given_package() {
     echo "$PACKAGE_WEBPAGE"
 }
 
-__open_webpage_of_the_given_package() {
+__open_homepage_of_the_given_package() {
     if [ -z "$1" ] ; then
         PACKAGE_WEBPAGE="$MY_HOME_PAGE"
     else
@@ -3376,8 +3405,8 @@ __show_depends_of_the_given_package() {
     fi
 }
 
-# if $1 is     specified, show prefix of a package.
-# if $1 is not specified, show this software's home direcotory.
+# if $1 is     given, show prefix of the given package.
+# if $1 is not given, show this software's home direcotory.
 __show_prefix() {
     if [ -z "$1" ] ; then
         echo "$MY_HOME_DIR"
@@ -3422,7 +3451,7 @@ __logs_the_given_installed_package() {
 __pack_the_given_installed_package() {
     set -e
 
-    load_installed_metadata "$1"
+    load_installed_metadata_of_the_given_package "$1"
 
     shift
 
@@ -3945,7 +3974,7 @@ __install_the_given_package() {
     __install_the_given_package_all_builds "$1" || return 1
 
     step "install installed metadata"
-    install_installed_metadata "$MY_CACHED_LOG_DIR/$1"
+    install_installed_metadata_of_the_given_package "$1"
     echo "INSTALLED_ABIS='$TARGET_OS_ABI_LIST'" >> "$MY_CACHED_LOG_DIR/$1/installed-metadata"
 
     [ "$KEEP_WORKING_DIR" = 'true' ] || {
@@ -4071,7 +4100,7 @@ __justfy_pc_files() {
 }
 
 __install_logs() {
-    install_installed_metadata "$ABI_LOG_DIR"
+    install_installed_metadata_of_the_given_package "$PACKAGE_NAME" "$TARGET_OS_ABI"
 
     for item in "$DEPENDENCIES__GV" "$DEPENDENCIES_TXT" "$DEPENDENCIES_PNG"
     do
@@ -4263,7 +4292,7 @@ __show_infomation_of_the_given_package() {
 
     is_package_installed "$1" || return 0
 
-    load_installed_metadata "$1"
+    load_installed_metadata_of_the_given_package "$1"
 
     echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$MY_INSTALL_DIR/$1" | awk '{print $2, $1}')"
 
@@ -4297,15 +4326,21 @@ mark_is_package_installed_or_not() {
     fi
 }
 
-# install_installed_metadata DIR
-install_installed_metadata() {
-    [ -z "$1" ] && die "install_installed_metadata() please specify a dir path."
+# install_installed_metadata_of_the_given_package PKG [ABI]
+install_installed_metadata_of_the_given_package() {
+    if [ -z "$1" ] ; then
+        die_if_package_is_not_specified
+    fi
 
-    [ -d "$1" ] || die "install_installed_metadata() $1 is not a directory."
+    if [ -z "$2" ] ; then
+        INSTALLED_METADATA_FILEPATH="$MY_CACHED_LOG_DIR/$1/installed-metadata"
+    else
+        INSTALLED_METADATA_FILEPATH="$MY_CACHED_LOG_DIR/$1/$2/installed-metadata"
+    fi
 
-    echo "-- Installing: $1/installed-metadata"
+    echo "-- Installing: $INSTALLED_METADATA_FILEPATH"
 
-    cat > "$1/installed-metadata" <<EOF
+    cat > "$INSTALLED_METADATA_FILEPATH" <<EOF
 INSTALLED_DATETIME='$TIMESTAMP_UNIX'
 
 INSTALLED_PKG_NAME='$PACKAGE_NAME'
@@ -4318,8 +4353,8 @@ BUILD_WITH_API_LEVEL='$TARGET_OS_VERS'
 EOF
 }
 
-# load_installed_metadata PKG
-load_installed_metadata() {
+# load_installed_metadata_of_the_given_package PKG
+load_installed_metadata_of_the_given_package() {
     die_if_package_is_not_installed "$1"
 
     INSTALLED_METADATA_FILEPATH="$MY_CACHED_LOG_DIR/$1/installed-metadata"
@@ -5552,14 +5587,14 @@ init() {
 
 help() {
     cat << EOF
-$CURRENT_SCRIPT_FILENAME is a package manager for Android NDK to build C/C++ project.
+$CURRENT_SCRIPT_FILENAME ($MY_VERSION) is a package manager for Android NDK to build C/C++ project.
 
 Usage: $CURRENT_SCRIPT_FILENAME <ACTION> [ARGUMENT...]
 
 ACTION:
-    --help    | -h                --show the help information of this software.
+    --help    | -h                --show the help information of this command.
 
-    --version | -V                --print the version of this software.
+    --version | -V                --print the version of this command.
 
     env                           --show current machine os and android-ndk toolchain info.
 
@@ -5570,12 +5605,17 @@ ACTION:
     cleanup                       --cleanup the unused cache.
 
     target levels                 --list the supported target os's api-levels.
+
     target triples                --list the supported target triples.
+
     target archs                  --list the supported target archs.
+
     target abis                   --list the supported target abis.
     
     ls available                  --list the available packages.
+
     ls installed                  --list the installed packages.
+
     ls outdated                   --list the outdated  packages.
 
     is available PACKAGE [eq|ne|ge|gt|le|lt VERSION]          --is PACKAGE available?
@@ -5587,32 +5627,40 @@ ACTION:
     search KEYWORD                --search available packages.
     
     formula create PACKAGE        --create a new formula.
+
     formula delete PACKAGE        --delete a exist formula.
+
     formula rename P1 P2          --rename a exist formula to new name.
-    formula view PACKAGE          --view the formula of a package.
-    formula edit PACKAGE          --edit the formula of a package.
+
+    formula view PACKAGE          --view the formula of the given package.
+
+    formula edit PACKAGE          --edit the formula of the given package.
+
     formula list                  --list all formulas.
+
     formula repo [list]           --list formula repos.
+
     formula repo add  NAME URL    --add a new formula repo.
+
     formula repo del  NAME        --delete a exist formula repo.
 
-    tree PACKAGE [-L N]           --list contents of a installed package directory in a tree-like format.
+    tree PACKAGE [-L N]           --list files of the given installed package in a tree-like format.
 
-    pack PACKAGE                  --pack a installed package.
+    pack PACKAGE                  --pack the given installed package.
 
-    logs PACKAGE ABI              --print the logs of a installed package.
+    logs PACKAGE ABI              --show logs of the given installed package.
 
     info PACKAGE [KEY]            --print the information of the given package.
+
     info @all [--json]            --print the information of all the available packages.
 
-    fetch PACKAGE                 --download formula resources of a package to the cache.
+    fetch PACKAGE                 --download formula resources of the given package to the cache.
 
-    prefix [PACKAGE]              --show the installation direcotory of a formula or the home directory of this software.
+    prefix [PACKAGE]              --show the installation direcotory of the given package or the home directory of this software.
 
-    depends PACKAGE               --show the depends of a package.
+    depends PACKAGE               --show the depends of the given package.
 
-    homepage show [PACKAGE]            --print the homepage of a given formula or this project.
-    homepage open [PACKAGE]            --open the homepage of a given formula or this projectin web browser.
+    homepage open [PACKAGE]       --show or open the homepage of the given package or this project in web browser.
 
     install   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --install packages.
 
@@ -5709,6 +5757,7 @@ main() {
         install)     __install_packages $@ ;;
         reinstall) __reinstall_packages $@ ;;
         uninstall) __uninstall_packages $@ ;;
+
         upgrade)
             shift
             case $1 in
@@ -5728,14 +5777,7 @@ main() {
                 *)  die "ndk-pkg integrate $1: not support."
             esac
             ;;
-        homepage)
-            shift
-            case $1 in
-                show) shift; __show_webpage_of_the_given_package $@ ;;
-                open) shift; __open_webpage_of_the_given_package $@ ;;
-                *)    die "unsupported action: $1"
-            esac
-            ;;
+        homepage) shift; __show_or_open_homepage_of_the_given_package $@ ;;
         depends)  shift; __show_depends_of_the_given_package    $@ ;;
         prefix)   shift; __show_prefix     $@ ;;
         fetch)    shift; ___load_formula_of_the_given_package $@ &&
@@ -5769,4 +5811,4 @@ main() {
     esac
 }
 
-main "$@"
+main $@

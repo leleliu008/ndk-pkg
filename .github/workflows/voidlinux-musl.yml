@@ -40,8 +40,8 @@ jobs:
 
       - run: bin/ndk-pkg depends zlib
 
-      - run: bin/ndk-pkg homepage show
-      - run: bin/ndk-pkg homepage show zlib
+      - run: bin/ndk-pkg homepage
+      - run: bin/ndk-pkg homepage zlib
 
       - run: bin/ndk-pkg install zlib
 
