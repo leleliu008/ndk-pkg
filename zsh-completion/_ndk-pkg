@@ -116,18 +116,28 @@ function _ndk_pkg() {
                                                         info-subcommand)
                                                             case $words[1] in
                                                                 @all) _arguments '--json[output format is json]' ;;
-                                                                *) _arguments '1:key:(summary webpage version license src.git src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem)'
+                                                                *) _arguments '1:key:(summary webpage version license src.git src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-abis)'
                                                             esac
                                                         esac
                         ;;
                 fetch|depends)
                     _arguments ':package-name:_ndk_pkg_available_packages' ;;
-                prefix|pack|tree)
+                prefix)
                     _arguments ':package-name:_ndk_pkg_installed_packages' ;;
+                pack)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '--type=-[output file type]:type:(7z zip tar.gz tar.xz tar.bz2)'
+                    ;;
                 homepage)
                     _arguments \
-                        '1:action:(show open)' \
-                        '2:package-name:_ndk_pkg_available_packages'
+                        ':package-name:_ndk_pkg_available_packages' \
+                        '--open[open in the web browser]'
+                                                    ;;
+                tree)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '-L[level]:level:(3)'
                     ;;
                 logs)
                     _arguments \

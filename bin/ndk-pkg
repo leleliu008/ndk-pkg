@@ -1352,6 +1352,7 @@ get_package_name_by_command_name_in_package_manager_pkg_add() {
         diff) echo 'diffutils';;
     realpath) echo 'coreutils';;
      objcopy) echo 'binutils' ;;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     pip3|pip) echo 'py3-pip' ;;
@@ -1385,6 +1386,7 @@ get_package_name_by_command_name_in_package_manager_pkgin() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     pip3|pip) echo 'py38-pip'  ;;
@@ -1412,6 +1414,7 @@ get_package_name_by_command_name_in_package_manager_pkg() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     pip3|pip) echo 'py38-pip' ;;
@@ -1435,6 +1438,7 @@ get_package_name_by_command_name_in_package_manager_emerge() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       xz)     echo 'xz-utils' ;;
@@ -1464,6 +1468,7 @@ __get_package_name_by_command_name_in_package_manager_pacman() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1519,6 +1524,7 @@ get_package_name_by_command_name_in_package_manager_xbps() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     pip|pip3) echo "python3-pip" ;;
@@ -1545,6 +1551,7 @@ get_package_name_by_command_name_in_package_manager_apk() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     pip3|pip) echo 'py3-pip' ;;
@@ -1573,6 +1580,7 @@ get_package_name_by_command_name_in_package_manager_zypper() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1602,6 +1610,7 @@ get_package_name_by_command_name_in_package_manager_dnf() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
@@ -1629,6 +1638,7 @@ get_package_name_by_command_name_in_package_manager_yum() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     sphinx-build) echo "python-sphinx" ;;
@@ -1658,6 +1668,7 @@ get_package_name_by_command_name_in_package_manager_apt() {
         xz)   echo 'xz-utils' ;;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     pip3|pip) echo "python3-pip" ;;
@@ -1692,6 +1703,7 @@ get_package_name_by_command_name_in_package_manager_brew() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
+  7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
      rst2man.py|rst2html.py)
@@ -3524,7 +3536,7 @@ __pack_the_given_installed_package() {
     run cd $WORKING_DIR
 
     step "make link refer to installed package root dir"
-    run ln -s "$MY_INSTALL_DIR/$1" "$PACKED_DIR_NAME"
+    run ln -s "$MY_INSTALL_DIR/$INSTALLED_PKG_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
     case $PACKED_FILE_SUFFIX in
@@ -4238,12 +4250,44 @@ __show_infomation_of_all_available_packages() {
 # __show_infomation_of_the_given_package curl version
 # __show_infomation_of_the_given_package curl webpage
 __show_infomation_of_the_given_package() {
-    case $# in
-        0)  die_if_package_is_not_specified ;;
-        1)  ;;
-        2)  package get "$1" "$2"; return $? ;;
-        *)  die "too many arguments."
-    esac
+    if [ $# -eq 0 ] ; then
+        die_if_package_is_not_specified
+    fi
+
+    if [ $# -gt 2 ] ; then
+        die "too many arguments."
+    fi
+
+    if [ $# -eq 2 ] ; then
+        case $2 in
+            installed-dir)
+                die_if_package_is_not_installed "$1"
+                echo "$MY_INSTALL_DIR/$1"
+                ;;
+            installed-metadata)
+                die_if_package_is_not_installed "$1"
+                cat "$MY_CACHED_LOG_DIR/$1/installed-metadata"
+                ;;
+            installed-datetime-unix)
+                load_installed_metadata_of_the_given_package "$1"
+                echo "$INSTALLED_DATETIME"
+                ;;
+            installed-datetime-formatted)
+                load_installed_metadata_of_the_given_package "$1"
+                format_unix_timestamp "$INSTALLED_DATETIME" '+%Y/%m/%d %H:%M:%S'
+                ;;
+            installed-pkg-version)
+                load_installed_metadata_of_the_given_package "$1"
+                echo "$INSTALLED_PKG_VERS"
+                ;;
+            installed-abis)
+                load_installed_metadata_of_the_given_package "$1"
+                echo "$INSTALLED_ABIS"
+                ;;
+            *)  package get "$1" "$2"
+        esac
+        return $?
+    fi
 
     ___load_formula_of_the_given_package "$1"
 
