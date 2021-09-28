@@ -71,6 +71,12 @@ autoload -U compinit && compinit
         ndk-pkg info curl summary
         ndk-pkg info curl webpage
         ndk-pkg info curl src.git
+        ndk-pkg info curl installed-dir
+        ndk-pkg info curl installed-metadata
+        ndk-pkg info curl installed-datetime-unix
+        ndk-pkg info curl installed-datetime-formatted
+        ndk-pkg info curl installed-pkg-version
+        ndk-pkg info curl installed-abis
         ndk-pkg info @all
         ndk-pkg info @all --json
         ndk-pkg info @all --json | jq .
