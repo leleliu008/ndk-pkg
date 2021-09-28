@@ -1235,7 +1235,7 @@ version_match() {
 # command_exists_in_filesystem_and_version_matched automake
 command_exists_in_filesystem_and_version_matched() {
     if command_exists_in_filesystem "$1" ; then
-        if [ "$NATIVE_OS_TYPE" = 'cygwin' ] ; then
+        if [ "$NATIVE_OS_SUBS" = 'cygwin' ] ; then
             case $(command -v "$1") in
                 /cygdrive/*) return 1
             esac
@@ -1501,7 +1501,7 @@ get_package_name_by_command_name_in_package_manager_pacman() {
     if [ "$1" = 'make' ] || [ "$1" = 'gmake' ] ; then
         echo make
     fi
-    case $NATIVE_OS_TYPE in
+    case $NATIVE_OS_SUBS in
         mingw32) __mingw_w64_i686   $(__get_package_name_by_command_name_in_package_manager_pacman "$1") ;;
         mingw64) __mingw_w64_x86_64 $(__get_package_name_by_command_name_in_package_manager_pacman "$1") ;;
         *) __get_package_name_by_command_name_in_package_manager_pacman "$1"

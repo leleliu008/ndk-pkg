@@ -27,12 +27,12 @@ autoload -U compinit && compinit
 ```
 
 ## ndk-pkg command usage
-*   print the help infomation of this command
+*   show help of this command
         
         ndk-pkg -h
         ndk-pkg --help
         
-*   print the version of this command
+*   show version of this command
         
         ndk-pkg -V
         ndk-pkg --version
@@ -64,7 +64,7 @@ autoload -U compinit && compinit
         ndk-pkg search curl
         ndk-pkg search lib
         
-*   print the infomation of the given package or all available packages
+*   show infomation of the given package or all available packages
         
         ndk-pkg info curl
         ndk-pkg info curl version
