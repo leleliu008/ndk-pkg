@@ -4700,6 +4700,7 @@ __printf_this_build_variables() {
     echo " NATIVE_OS_NAME   = $NATIVE_OS_NAME"
     echo " NATIVE_OS_VERS   = $NATIVE_OS_VERS"
     echo " NATIVE_OS_ARCH   = $NATIVE_OS_ARCH"
+    echo " NATIVE_OS_LIBC   = $NATIVE_OS_LIBC"
     echo " NATIVE_OS_SUBS   = $NATIVE_OS_SUBS"
     echo
     echo " TARGET_OS_KIND   = $TARGET_OS_KIND"
@@ -5704,6 +5705,7 @@ init() {
         NATIVE_OS_NAME=$(os name)
         NATIVE_OS_VERS=$(os vers)
         NATIVE_OS_ARCH=$(os arch)
+        NATIVE_OS_LIBC=$(os libc)
         NATIVE_OS_SUBS=$(os subs)
     else
         die "command not found: uname. please make sure it in PATH."

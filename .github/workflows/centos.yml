@@ -50,7 +50,6 @@ jobs:
       - run: bin/ndk-pkg homepage
       - run: bin/ndk-pkg homepage zlib
 
-      - run: bin/ndk-pkg test
       - run: bin/ndk-pkg install zlib
 
       - run: bin/ndk-pkg prefix
