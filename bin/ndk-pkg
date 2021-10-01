@@ -3766,14 +3766,14 @@ __config_global_installation_variables() {
         TOOL_UPPER=$(echo "$tool" | tr a-z A-Z)
 
         eval $TOOL_UPPER=$TOOL_PATH
-        eval export ${TOOL_UPPER}_FOR_BUILD=\"$TOOL_PATH\"
+        eval export "${TOOL_UPPER}_FOR_BUILD=\"$TOOL_PATH\""
     done
     unset TOOL_PATH
     unset TOOL_UPPER
 
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
-        eval export ${FLAG}_FOR_BUILD=\"\$$FLAG\"
+        eval export "${FLAG}_FOR_BUILD=\"\$$FLAG\""
     done
     unset FLAG
 
@@ -3954,13 +3954,13 @@ __install_the_given_package() {
 
             for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
             do
-                eval export $TOOL=\$"${TOOL}_FOR_BUILD"
+                eval export "$TOOL=\"\$${TOOL}_FOR_BUILD\""
                 printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
             done
 
             for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
             do
-                eval export $FLAG=\$"${FLAG}_FOR_BUILD"
+                eval export "$FLAG=\"\$${FLAG}_FOR_BUILD\""
                 printf "\n%17s = " "$FLAG"
                 FIRST='true'
                 for item in $(eval echo \$$FLAG | tr ':' ' ')
@@ -4636,8 +4636,8 @@ __config_this_build_variables() {
                 # https://doc.rust-lang.org/cargo/reference/environment-variables.html
                 CARGO_TARGET_XXX=$(echo "$CARGO_TARGET" | tr a-z A-Z | tr - _)
 
-                eval export CARGO_TARGET_${CARGO_TARGET_XXX}_AR=$AR
-                eval export CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=$CC
+                eval export "CARGO_TARGET_${CARGO_TARGET_XXX}_AR=\"$AR\""
+                eval export "CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=\"$CC\""
 
                 # https://libraries.io/cargo/cc
                 export HOST_CC="$CC_FOR_BUILD"
@@ -4722,7 +4722,7 @@ __printf_this_build_variables() {
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
-        eval export $TOOL=\"\$$TOOL\"
+        eval export "$TOOL=\"\$$TOOL\""
         printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
     done
 
@@ -4730,7 +4730,7 @@ __printf_this_build_variables() {
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
-        eval export ${TOOL}_FOR_BUILD="\$${TOOL}_FOR_BUILD"
+        eval export "${TOOL}_FOR_BUILD=\"\$${TOOL}_FOR_BUILD\""
         printf "%17s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$${TOOL}_FOR_BUILD)"
     done
 
@@ -4738,7 +4738,7 @@ __printf_this_build_variables() {
 
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
-        eval export $FLAG=\"\$$FLAG\"
+        eval export "$FLAG=\"\$$FLAG\""
         printf "\n%17s = " "$FLAG"
         FIRST=true
         for item in $(eval echo \$$FLAG | tr ':' ' ')
