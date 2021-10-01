@@ -5022,7 +5022,7 @@ cmakew() {
         if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
             CMAKE_FLAGS="$CMAKE_FLAGS -S $SOURCE_DIR -B $NATIVE_BUILD_DIR"
         else
-            CMAKE_FLAGS="$CMAKE_FLAGS -S$SOURCE_DIR -H$NATIVE_BUILD_DIR"
+            CMAKE_FLAGS="$CMAKE_FLAGS -H$SOURCE_DIR -B$NATIVE_BUILD_DIR"
         fi
 
         run $CMAKE $CMAKE_FLAGS $@ &&
@@ -5053,7 +5053,7 @@ cmakew() {
         if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
             CMAKE_FLAGS="$CMAKE_FLAGS -S $SOURCE_DIR -B $BUILD_DIR"
         else
-            CMAKE_FLAGS="$CMAKE_FLAGS -S$SOURCE_DIR -H$BUILD_DIR"
+            CMAKE_FLAGS="$CMAKE_FLAGS -H$SOURCE_DIR -B$BUILD_DIR"
         fi
 
         run $CMAKE $CMAKE_FLAGS $@ &&
