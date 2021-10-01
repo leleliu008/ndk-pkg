@@ -5003,19 +5003,30 @@ makew() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # run in a subshell
 cmakew() {
+    CMAKE_FLAGS="
+        -Wno-dev
+        -G 'Unix Makefiles'
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_VERBOSE_MAKEFILE=ON
+        -DCMAKE_COLOR_MAKEFILE=ON
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_TESTING=OFF"
+
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-        run "$CMAKE" \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DCMAKE_VERBOSE_MAKEFILE=ON \
-        -DCMAKE_COLOR_MAKEFILE=ON \
-        -DCMAKE_INSTALL_PREFIX="$NATIVE_INSTALL_DIR" \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DBUILD_TESTING=OFF \
-        -G "'Unix Makefiles'" \
-        -Wno-dev \
-        -S "$SOURCE_DIR" \
-        -B "$NATIVE_BUILD_DIR" $@ &&
+        CMAKE_FLAGS="
+            $CMAKE_FLAGS
+            -DBUILD_SHARED_LIBS=OFF
+            -DCMAKE_INSTALL_PREFIX='$NATIVE_INSTALL_DIR'
+            -S '$SOURCE_DIR'"
+
+        # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
+        if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
+            CMAKE_FLAGS="$CMAKE_FLAGS -B $NATIVE_BUILD_DIR"
+        else
+            CMAKE_FLAGS="$CMAKE_FLAGS -H $NATIVE_BUILD_DIR"
+        fi
+
+        run $CMAKE $CMAKE_FLAGS $@ &&
         makew -C "$NATIVE_BUILD_DIR" &&
         makew -C "$NATIVE_BUILD_DIR" install
     else
@@ -5025,27 +5036,29 @@ cmakew() {
             sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
         fi
 
-        run "$CMAKE" \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DCMAKE_VERBOSE_MAKEFILE=ON \
-        -DCMAKE_COLOR_MAKEFILE=ON \
-        -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-        -DCMAKE_INSTALL_PREFIX="$ABI_INSTALL_DIR" \
-        -DCMAKE_PREFIX_PATH="'$CMAKE_PREFIX_PATH'" \
-        -DCMAKE_FIND_ROOT_PATH="'$CMAKE_FIND_ROOT_PATH'" \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
-        -DCMAKE_CXX_FLAGS="'$CFLAGS $CPPFLAGS $LDFLAGS'" \
-        -DBUILD_SHARED_LIBS=ON \
-        -DBUILD_TESTING=OFF \
-        -DANDROID_TOOLCHAIN=clang \
-        -DANDROID_ABI="$TARGET_OS_ABI" \
-        -DANDROID_ARM_NEON=TRUE \
-        -DANDROID_PLATFORM="$TARGET_OS_VERS" \
-        -G "'Unix Makefiles'" \
-        -Wno-dev \
-        -S "$SOURCE_DIR" \
-        -B "$BUILD_DIR" $@ &&
+        CMAKE_FLAGS="
+        $CMAKE_FLAGS
+        -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
+        -DCMAKE_INSTALL_PREFIX='$ABI_INSTALL_DIR'
+        -DCMAKE_PREFIX_PATH='$CMAKE_PREFIX_PATH'
+        -DCMAKE_FIND_ROOT_PATH='$CMAKE_FIND_ROOT_PATH'
+        -DCMAKE_C_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
+        -DCMAKE_CXX_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
+        -DBUILD_SHARED_LIBS=ON 
+        -DANDROID_TOOLCHAIN=clang
+        -DANDROID_ABI=$TARGET_OS_ABI
+        -DANDROID_ARM_NEON=TRUE
+        -DANDROID_PLATFORM=$TARGET_OS_VERS
+        -S '$SOURCE_DIR'"
+
+        # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
+        if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
+            CMAKE_FLAGS="$CMAKE_FLAGS -B $BUILD_DIR"
+        else
+            CMAKE_FLAGS="$CMAKE_FLAGS -H $BUILD_DIR"
+        fi
+
+        run $CMAKE $CMAKE_FLAGS $@ &&
         makew -C "$BUILD_DIR" &&
         makew -C "$BUILD_DIR" install
     fi
