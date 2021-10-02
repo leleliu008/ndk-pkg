@@ -5497,18 +5497,13 @@ install_android_ndk() {
     unset ANDROID_NDK_VERSION_CODE
     ANDROID_NDK_VERSION_CODE=$(printf '%s' "$FETCH_OUTPUT_NAME" | cut -d- -f3 | cut -d. -f1)
 
-    export ANDROID_NDK_HOME="$FETCH_OUTPUT_DIR/android-ndk-$ANDROID_NDK_VERSION_CODE"
-    export PATH="$ANDROID_NDK_HOME:$PATH"
+    unset ANDROID_NDK_HOME
+    ANDROID_NDK_HOME="$FETCH_OUTPUT_DIR/android-ndk-$ANDROID_NDK_VERSION_CODE"
 
     run ls -l "$ANDROID_NDK_HOME"
 
-    # https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions
-    if [ -n "$GITHUB_ENV" ] && [ -e "$GITHUB_ENV" ] ; then
-        printf 'ANDROID_NDK_HOME=%s\n' "$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
-    fi
-    if [ -n "$GITHUB_PATH" ] && [ -e "$GITHUB_PATH" ] ; then
-        printf '%s\n' "$ANDROID_NDK_HOME" >> "$GITHUB_PATH"
-    fi
+    run "printf 'ANDROID_NDK_HOME=%s\n' '$ANDROID_NDK_HOME' >> '$MY_ENV_FILEPATH'"
+    run "printf 'PATH=%s:$PATH\n' '$ANDROID_NDK_HOME' >> '$MY_ENV_FILEPATH'"
 }
 
 check_prerequisites() {
@@ -5675,17 +5670,23 @@ EOF
 
 init() {
     # MY represents this software's
+    if [ -n "$NDK_PKG_HOME_DIR" ] && [ -d "$NDK_PKG_HOME_DIR" ] ; then
+        MY_HOME_DIR="$NDK_PKG_HOME_DIR"
+    else
+        MY_HOME_DIR="$HOME/.ndk-pkg"
+    fi
+
+    MY_ENV_FILEPATH="$MY_HOME_DIR/env"
+
+    if [ -e "$MY_ENV_FILEPATH" ] ; then
+        . "$MY_ENV_FILEPATH" || return 1
+    fi
+
     MY_VERSION=0.1.0
     MY_HOME_PAGE="https://github.com/leleliu008/ndk-pkg"
     MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ndk-pkg-formula-repository.git"
     MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg'
     MY_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/zsh-completion/_ndk-pkg'
-
-    if [ -z "$NDK_PKG_HOME_DIR" ] ; then
-        MY_HOME_DIR="$HOME/.ndk-pkg"
-    else
-        MY_HOME_DIR="$NDK_PKG_HOME_DIR"
-    fi
 
     MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
     MY_INSTALL_DIR="$MY_HOME_DIR/install.d"
