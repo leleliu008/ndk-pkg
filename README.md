@@ -1,12 +1,12 @@
 # ndk-pkg
 a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build C/C++/Rust/Go project.
 
-# Note
+## ndk-pkg supports system
 I recommend you to run this software on [Ubuntu](https://ubuntu.com/) or [macOS](https://www.apple.com.cn/mac/)
 
-`Android aarch64` [Termux](https://termux.com/) is support.
+`Android aarch64` [Termux](https://termux.com/) is supported.
 
-[FreeBSD](https://www.freebsd.org/) [NetBSD](https://www.netbsd.org/) [OpenBSD](https://www.openbsd.org/) are not supported due to [Android NDK](https://developer.android.com/ndk) don't support these system.
+[FreeBSD](https://www.freebsd.org/)、[NetBSD](https://www.netbsd.org/)、[OpenBSD](https://www.openbsd.org/) are not supported due to [Android NDK](https://developer.android.com/ndk) don't support these system.
 
 [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html) system are not supported due to [Android NDK](https://developer.android.com/ndk) only support [glibc](http://www.gnu.org/software/libc/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html) system.
 
