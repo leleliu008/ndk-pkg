@@ -28,7 +28,7 @@ jobs:
 
       - run: bin/ndk-pkg install-android-ndk
 
-      - run: bin/ndk-pkg env
+        #- run: bin/ndk-pkg env
 
       - run: bin/ndk-pkg integrate zsh
 

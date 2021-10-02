@@ -5288,7 +5288,7 @@ print_target_triple_by_arch() {
 }
 
 list_tools_in_the_toolchain() {
-    list cc cxx cpp as ar ranlib ld nm strip size strings objdump objcopy readelf
+    list cc cxx cpp as ld ar ranlib nm size strip strings objdump objcopy readelf
 }
 
 list_flags_used_by_tools_in_the_toolchain() {
@@ -5301,8 +5301,16 @@ print_path_of_tool_in_the_toolchain() {
         cc)  TOOL_FILE_NAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang"   ;;
         cxx) TOOL_FILE_NAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang++" ;;
         *)   TOOL_FILE_NAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
-             if [ "$1" = 'ld' ] && [ ! -f "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME" ] ; then
-                TOOL_FILE_NAME="$TOOL_FILE_NAME.gold"
+             if [ "$1" = 'ld' ] ; then
+                # https://github.com/android/ndk/wiki/Changelog-r22
+                if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME" ] ; then
+                    TOOL_FILE_NAME=lld
+                fi
+             fi
+
+             # https://github.com/android/ndk/wiki/Changelog-r23
+             if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME" ] ; then
+                 TOOL_FILE_NAME=llvm-$1
              fi
     esac
     die_if_not_executable "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME"

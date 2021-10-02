@@ -72,7 +72,7 @@ jobs:
 
       - run: bin/ndk-pkg is available zlib
       - run: bin/ndk-pkg is installed zlib
-      - run: bin/ndk-pkg is outdated zlib || true
+      - run: bin/ndk-pkg is outdated zlib || echo 'not outdated'
 
       - run: bin/ndk-pkg uninstall zlib
 
