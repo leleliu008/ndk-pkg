@@ -181,15 +181,15 @@ main() {
     RELEASE_VERSION_MINOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f2)
     RELEASE_VERSION_PATCH=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f3)
 
-    if [ "${RELEASE_VERSION_MAJOR_PLUS_PLUS-0}" -eq 1 ] ; then
+    if [ ${RELEASE_VERSION_MAJOR_PLUS_PLUS-0} -eq 1 ] ; then
         RELEASE_VERSION_MAJOR=$(expr $RELEASE_VERSION_MAJOR + 1)
     fi
 
-    if [ "${RELEASE_VERSION_MINOR_PLUS_PLUS-0}" -eq 1 ] ; then
+    if [ ${RELEASE_VERSION_MINOR_PLUS_PLUS-0} -eq 1 ] ; then
         RELEASE_VERSION_MINOR=$(expr $RELEASE_VERSION_MINOR + 1)
     fi
 
-    if [ "${RELEASE_VERSION_PATCH_PLUS_PLUS-0}" -eq 1 ] ; then
+    if [ ${RELEASE_VERSION_PATCH_PLUS_PLUS-0} -eq 1 ] ; then
         RELEASE_VERSION_PATCH=$(expr $RELEASE_VERSION_PATCH + 1)
     fi
 
@@ -205,7 +205,7 @@ main() {
 
     success "sha256sum($RELEASE_FILE_NAME)=$RELEASE_FILE_SHA256SUM"
 
-    if [ $RELEASE_VERSION_MAJOR_PLUS_PLUS -eq 1 ] || [ $RELEASE_VERSION_MINOR_PLUS_PLUS -eq 1 ] || [ $RELEASE_VERSION_PATCH_PLUS_PLUS -eq 1 ] ; then
+    if [ ${RELEASE_VERSION_MAJOR_PLUS_PLUS-0} -eq 1 ] || [ ${RELEASE_VERSION_MINOR_PLUS_PLUS-0} -eq 1 ] || [ ${RELEASE_VERSION_PATCH_PLUS_PLUS-0} -eq 1 ] ; then
         sed_in_place "s|MY_VERSION=[0-9].[0-9].[0-9]|MY_VERSION=$RELEASE_VERSION|" bin/ndk-pkg
         sed_in_place "s|RELEASE_VERSION='[0-9].[0-9].[0-9]'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
 
