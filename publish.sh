@@ -156,7 +156,7 @@ main() {
 
     sed_in_place "s|sha256sums=(.*)|sha256sums=(\'$RELEASE_FILE_SHA256SUM\')|" PKGBUILD
     sed_in_place "s|pkgver=.*|pkgver=\'$RELEASE_VERSION\'|" PKGBUILD
-    sed_in_place "s|VERSION='[0-9].[0-9].[0-9]'|VERSION='$RELEASE_VERSION'|" install.sh
+    sed_in_place "s|RELEASE_VERSION='[0-9].[0-9].[0-9]'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
     sed_in_place "s|v[0-9].[0-9].[0-9]|v$RELEASE_VERSION|" README.md
     sed_in_place "s|ndk-pkg-[0-9].[0-9].[0-9]|ndk-pkg-$RELEASE_VERSION|g" README.md
 

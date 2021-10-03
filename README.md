@@ -22,8 +22,14 @@ I recommend you to run this software on [Ubuntu](https://ubuntu.com/) or [macOS]
 |`Windows/WSL`|[LinuxBrew](http://blog.fpliu.com/it/software/LinuxBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
 
 ## Install ndk-pkg via running shell script
-```
+```bash
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh)"
+```
+or
+```bash
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh
+chmod a+x install.sh
+./install.sh --china
 ```
 
 ## Install ndk-pkg via cURL
