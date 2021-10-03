@@ -74,6 +74,10 @@ autoload -U compinit && compinit
         
     **Note:** this software supports multi formula repositories. Offical formula repository is [ndk-pkg-formula-repository](https://github.com/leleliu008/ndk-pkg-formula-repository)
 
+*   install [Android NDK](https://developer.android.google.cn/ndk)
+
+        ndk-pkg install-android-ndk
+        
 *   search packages can be installed
         
         ndk-pkg search curl
