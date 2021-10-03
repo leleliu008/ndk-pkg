@@ -4,7 +4,7 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 ## ndk-pkg supports system
 I recommend you to run this software on [Ubuntu](https://ubuntu.com/) or [macOS](https://www.apple.com.cn/mac/)
 
-`Android aarch64` [Termux](https://termux.com/) is supported.
+`Android aarch64` [Termux](https://termux.com/) is supported. Using the [Android NDK for aarch64](https://github.com/Lzhiyong/termux-ndk)
 
 [FreeBSD](https://www.freebsd.org/)、[NetBSD](https://www.netbsd.org/)、[OpenBSD](https://www.openbsd.org/) are not supported due to [Android NDK](https://developer.android.com/ndk) don't support these system.
 
