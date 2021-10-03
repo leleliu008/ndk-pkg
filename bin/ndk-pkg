@@ -5709,6 +5709,14 @@ init() {
     fi
 
     if command -v uname > /dev/null ; then
+        unset NATIVE_OS_KIND
+        unset NATIVE_OS_TYPE
+        unset NATIVE_OS_NAME
+        unset NATIVE_OS_VERS
+        unset NATIVE_OS_ARCH
+        unset NATIVE_OS_LIBC
+        unset NATIVE_OS_SUBS
+
         NATIVE_OS_KIND=$(os kind)
         NATIVE_OS_TYPE=$(os type)
         NATIVE_OS_NAME=$(os name)
