@@ -5251,7 +5251,10 @@ list_dynamic_library_names_of_the_given_package() {
 }
 
 __list_supported_target_sdk_api_levels() {
-    list 21 22 23 24 25 26 27 28 29
+    if [ -z "$TOOLCHAIN_BIN_DIR" ] ; then
+        check_prerequisites > /dev/null
+    fi
+    ls "$TOOLCHAIN_BIN_DIR" | sed -n '/aarch64-linux-android[1-9][0-9]-clang++/p' | cut -d- -f3 | sed 's/android//'
 }
 
 __list_supported_target_archs() {
