@@ -12,12 +12,12 @@ I recommend you to run this software on [Ubuntu](https://ubuntu.com/) or [macOS]
 
 [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) are not supported. If you are a windows user, you can try [WSL](https://docs.microsoft.com/en-us/windows/wsl/).
 
-## Install ndk-pkg via package manager
+## Install ndk-pkg via HomeBrew
 
-|OS|PackageManager|Installation Instructions|
-|-|-|-|
-|`macOS`<br>`GNU/Linux`<br>`Windows/WSL`|[HomeBrew](http://blog.fpliu.com/it/software/HomeBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
-|`ArchLinux`<br>`ArcoLinux`<br>`Manjaro Linux`<br>`Windows/msys2`|[pacman](http://blog.fpliu.com/it/software/pacman)|`curl -LO https://github.com/leleliu008/ndk-pkg/releases/download/v0.1.0/ndk-pkg-0.1.0-1-any.pkg.tar.gz`<br>`pacman -Syyu --noconfirm`<br>`pacman -U ndk-pkg-0.1.0-1-any.pkg.tar.gz`|
+```bash
+brew tap leleliu008/fpliu
+brew install ndk-pkg
+```
 
 ## Install ndk-pkg via running shell script
 ```bash
@@ -30,7 +30,7 @@ chmod +x install.sh
 ./install.sh --china
 ```
 
-## Install ndk-pkg via cURL
+## Install ndk-pkg step by step
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
