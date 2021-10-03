@@ -136,21 +136,71 @@ sha256sum() {
     fi
 }
 
+die_if_command_not_found() {
+    for item in $@
+    do
+        command_exists_in_filesystem $item || die "$item command not found."
+    done
+}
+
 main() {
+    for arg in $@
+    do
+        case $arg in
+            -x) set -x ;;
+        esac
+    done
+
     set -e
 
+    die_if_command_not_found tar gzip git gh
 
-    # tar gzip git gh
+    unset RELEASE_VERSION_MAJOR_PLUS_PLUS
+    unset RELEASE_VERSION_MINOR_PLUS_PLUS
+    unset RELEASE_VERSION_PATCH_PLUS_PLUS
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            -x) ;;
+            --major++) RELEASE_VERSION_MAJOR_PLUS_PLUS=1;;
+            --minor++) RELEASE_VERSION_MINOR_PLUS_PLUS=1;;
+            --patch++) RELEASE_VERSION_PATCH_PLUS_PLUS=1;;
+            *) die "unrecognized argument: $1"
+        esac
+        shift
+    done
 
     unset RELEASE_VERSION
-    unset RELEASE_FILE_NAME
-    unset RELEASE_FILE_SHA256SUM
+    unset RELEASE_VERSION_MAJOR
+    unset RELEASE_VERSION_MINOR
+    unset RELEASE_VERSION_PATCH
 
     RELEASE_VERSION=$(bin/ndk-pkg --version)
+    RELEASE_VERSION_MAJOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f1)
+    RELEASE_VERSION_MINOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f2)
+    RELEASE_VERSION_PATCH=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f3)
+
+    if [ "${RELEASE_VERSION_MAJOR_PLUS_PLUS-0}" -eq 1 ] ; then
+        RELEASE_VERSION_MAJOR=$(expr $RELEASE_VERSION_MAJOR + 1)
+    fi
+
+    if [ "${RELEASE_VERSION_MINOR_PLUS_PLUS-0}" -eq 1 ] ; then
+        RELEASE_VERSION_MINOR=$(expr $RELEASE_VERSION_MINOR + 1)
+    fi
+
+    if [ "${RELEASE_VERSION_PATCH_PLUS_PLUS-0}" -eq 1 ] ; then
+        RELEASE_VERSION_PATCH=$(expr $RELEASE_VERSION_PATCH + 1)
+    fi
+
+    RELEASE_VERSION="$RELEASE_VERSION_MAJOR.$RELEASE_VERSION_MINOR.$RELEASE_VERSION_PATCH"
+
+    unset RELEASE_FILE_NAME
     RELEASE_FILE_NAME="ndk-pkg-$RELEASE_VERSION.tar.gz"
 
     run tar zvcf "$RELEASE_FILE_NAME" bin/ndk-pkg zsh-completion/_ndk-pkg
 
+    unset RELEASE_FILE_SHA256SUM
     RELEASE_FILE_SHA256SUM=$(sha256sum "$RELEASE_FILE_NAME")
     
     success "sha256sum($RELEASE_FILE_NAME)=$RELEASE_FILE_SHA256SUM"
