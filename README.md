@@ -16,10 +16,8 @@ I recommend you to run this software on [Ubuntu](https://ubuntu.com/) or [macOS]
 
 |OS|PackageManager|Installation Instructions|
 |-|-|-|
-|`macOS`|[HomeBrew](http://blog.fpliu.com/it/os/macOS/software/HomeBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
-|`GNU/Linux`|[LinuxBrew](http://blog.fpliu.com/it/software/LinuxBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
+|`macOS`<br>`GNU/Linux`<br>`Windows/WSL`|[HomeBrew](http://blog.fpliu.com/it/software/HomeBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
 |`ArchLinux`<br>`ArcoLinux`<br>`Manjaro Linux`<br>`Windows/msys2`|[pacman](http://blog.fpliu.com/it/software/pacman)|`curl -LO https://github.com/leleliu008/ndk-pkg/releases/download/v0.1.0/ndk-pkg-0.1.0-1-any.pkg.tar.gz`<br>`pacman -Syyu --noconfirm`<br>`pacman -U ndk-pkg-0.1.0-1-any.pkg.tar.gz`|
-|`Windows/WSL`|[LinuxBrew](http://blog.fpliu.com/it/software/LinuxBrew)|`brew tap leleliu008/fpliu`<br>`brew install ndk-pkg`|
 
 ## Install ndk-pkg via running shell script
 ```bash
