@@ -25,7 +25,7 @@ I recommend you to run this software on [Ubuntu](https://ubuntu.com/) or [macOS]
 ```bash
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh)"
 ```
-**CHINESE USER IF NO VPN}**, please try following instructions:
+**CHINESE USER IF NO VPN**, please try following instructions:
 ```bash
 curl -LO https://raw.githubusercontents.com/leleliu008/ndk-pkg/master/install.sh
 chmod +x install.sh
