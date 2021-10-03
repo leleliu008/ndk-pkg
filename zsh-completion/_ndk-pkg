@@ -28,6 +28,7 @@ _commands=(
     'is:check something. easy to write script.'
     'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
+    'install-android-ndk:install android-ndk.'
 )
 
 _target=(

@@ -139,7 +139,8 @@ sha256sum() {
 main() {
     set -e
 
-    command -v makepkg > /dev/null || die "please install makepkg."
+
+    # tar gzip git gh
 
     unset RELEASE_VERSION
     unset RELEASE_FILE_NAME
@@ -154,19 +155,13 @@ main() {
     
     success "sha256sum($RELEASE_FILE_NAME)=$RELEASE_FILE_SHA256SUM"
 
-    sed_in_place "s|sha256sums=(.*)|sha256sums=(\'$RELEASE_FILE_SHA256SUM\')|" PKGBUILD
-    sed_in_place "s|pkgver=.*|pkgver=\'$RELEASE_VERSION\'|" PKGBUILD
     sed_in_place "s|RELEASE_VERSION='[0-9].[0-9].[0-9]'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
-    sed_in_place "s|v[0-9].[0-9].[0-9]|v$RELEASE_VERSION|" README.md
-    sed_in_place "s|ndk-pkg-[0-9].[0-9].[0-9]|ndk-pkg-$RELEASE_VERSION|g" README.md
 
-    run makepkg
-
-    run git add PKGBUILD README.md install.sh
+    run git add install.sh
     run git commit -m "'publish new version $RELEASE_VERSION'"
     run git push origin master
 
-    run gh release create v"$RELEASE_VERSION" "ndk-pkg-$RELEASE_VERSION.tar.gz" "ndk-pkg-$RELEASE_VERSION-1-any.pkg.tar.gz" --notes "'release $RELEASE_VERSION'"
+    run gh release create v"$RELEASE_VERSION" "ndk-pkg-$RELEASE_VERSION.tar.gz" --notes "'release $RELEASE_VERSION'"
 
     run git clone git@github.com:leleliu008/homebrew-fpliu.git
     run cd homebrew-fpliu
@@ -182,9 +177,6 @@ main() {
 
     run rm -rf homebrew-fpliu
     run rm "$RELEASE_FILE_NAME"
-    run rm "ndk-pkg-$RELEASE_VERSION-1-any.pkg.tar.gz"
-    run rm -rf pkg
-    run rm -rf src
 }
 
 main $@
