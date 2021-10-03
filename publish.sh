@@ -163,9 +163,9 @@ main() {
     do
         case $1 in
             -x) ;;
-            --major++) RELEASE_VERSION_MAJOR_PLUS_PLUS=1;;
-            --minor++) RELEASE_VERSION_MINOR_PLUS_PLUS=1;;
-            --patch++) RELEASE_VERSION_PATCH_PLUS_PLUS=1;;
+            --major++) RELEASE_VERSION_MAJOR_PLUS_PLUS=1 ;;
+            --minor++) RELEASE_VERSION_MINOR_PLUS_PLUS=1 ;;
+            --patch++) RELEASE_VERSION_PATCH_PLUS_PLUS=1 ;;
             *) die "unrecognized argument: $1"
         esac
         shift
@@ -202,23 +202,27 @@ main() {
 
     unset RELEASE_FILE_SHA256SUM
     RELEASE_FILE_SHA256SUM=$(sha256sum "$RELEASE_FILE_NAME")
-    
+
     success "sha256sum($RELEASE_FILE_NAME)=$RELEASE_FILE_SHA256SUM"
 
-    sed_in_place "s|RELEASE_VERSION='[0-9].[0-9].[0-9]'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
+    if [ $RELEASE_VERSION_MAJOR_PLUS_PLUS -eq 1 ] || [ $RELEASE_VERSION_MINOR_PLUS_PLUS -eq 1 ] || [ $RELEASE_VERSION_PATCH_PLUS_PLUS -eq 1 ] ; then
+        sed_in_place "s|MY_VERSION=[0-9].[0-9].[0-9]|MY_VERSION=$RELEASE_VERSION|" bin/ndk-pkg
+        sed_in_place "s|RELEASE_VERSION='[0-9].[0-9].[0-9]'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
 
-    run git add install.sh
-    run git commit -m "'publish new version $RELEASE_VERSION'"
-    run git push origin master
+        run git add bin/ndk-pkg install.sh
+        run git commit -m "'publish new version $RELEASE_VERSION'"
+        run git push origin master
+    fi
 
     run gh release create v"$RELEASE_VERSION" "ndk-pkg-$RELEASE_VERSION.tar.gz" --notes "'release $RELEASE_VERSION'"
 
     run git clone git@github.com:leleliu008/homebrew-fpliu.git
+
     run cd homebrew-fpliu
-    sed_in_place '/url      /d' Formula/ndk-pkg.rb
-    sed_in_place '/sha256   /d' Formula/ndk-pkg.rb
-    sed_in_place "/homepage/a \  sha256   \"$RELEASE_FILE_SHA256SUM\"" Formula/ndk-pkg.rb
-    sed_in_place "/homepage/a \  url      \"https://github.com/leleliu008/ndk-pkg/releases/download/v$RELEASE_VERSION/ndk-pkg-$RELEASE_VERSION.tar.gz\"" Formula/ndk-pkg.rb
+
+    sed_in_place "/sha256   /c \  sha256   \"$RELEASE_FILE_SHA256SUM\"" Formula/ndk-pkg.rb
+    sed_in_place "s@[0-9]\.[0-9]\.[0-9]@$RELEASE_VERSION@g" Formula/ndk-pkg.rb
+
     run git add Formula/ndk-pkg.rb
     run git commit -m "'publish new version ndk-pkg-$RELEASE_VERSION'"
     run git push origin master
