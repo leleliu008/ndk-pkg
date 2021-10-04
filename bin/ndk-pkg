@@ -3220,13 +3220,13 @@ __gen_github_workflows() {
     fi
 
     if [ -z "$OUTPUT_DIR" ] ; then
-        die "please sepecify --output-dir=DIR argument."
+        OUTPUT_DIR="$MY_HOME_DIR/repos.d/offical/.github/workflows"
     fi
 
-    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$MY_HOME_DIR/github-actions-workflow-template"
+    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$MY_HOME_DIR/repos.d/offical/.github/workflows/template"
 
-    if [ ! -e "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
-        fetch "https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/github-actions-workflow-template" --output-path="$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH"
+    if [ ! -f "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
+        __update_formula_repositories
     fi
 
     AVAILABLE_PACKAGES=$(__list_available_packages)
