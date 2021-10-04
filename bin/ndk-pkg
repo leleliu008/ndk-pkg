@@ -3184,6 +3184,8 @@ is_package__outdated() {
 }
 
 __gen_github_workflows() {
+    set -e
+
     unset BREAK
     unset NDEPENDED_PACKAGES
     unset AVAILABLE_PACKAGES
@@ -3219,6 +3221,12 @@ __gen_github_workflows() {
 
     if [ -z "$OUTPUT_DIR" ] ; then
         die "please sepecify --output-dir=DIR argument."
+    fi
+
+    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$MY_HOME_DIR/github-actions-workflow-template"
+
+    if [ ! -e "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
+        fetch "https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/github-actions-workflow-template" --output-path="$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH"
     fi
 
     AVAILABLE_PACKAGES=$(__list_available_packages)
@@ -3258,7 +3266,7 @@ __gen_github_workflows() {
                 NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
 
                 echo
-                run cp "$MY_HOME_DIR/github-workflow-template" "$OUTPUT_FILEPATH"
+                run cp "$GITHUB_ACTIONS_WORKFOLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
                 sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
                 sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
 
@@ -3273,7 +3281,7 @@ __gen_github_workflows() {
         OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
         NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
 
-        run cp "$MY_HOME_DIR/github-workflow-template" "$OUTPUT_FILEPATH"
+        run cp "$GITHUB_ACTIONS_WORKFOLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
         sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
         sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
     fi
