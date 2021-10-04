@@ -3266,7 +3266,7 @@ __gen_github_workflows() {
                 NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
 
                 echo
-                run cp "$GITHUB_ACTIONS_WORKFOLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
+                run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
                 sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
                 sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
 
@@ -3281,7 +3281,7 @@ __gen_github_workflows() {
         OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
         NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
 
-        run cp "$GITHUB_ACTIONS_WORKFOLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
+        run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
         sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
         sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"  "$OUTPUT_FILEPATH"
     fi
