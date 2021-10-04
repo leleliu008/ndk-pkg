@@ -4099,7 +4099,8 @@ __install_the_given_package_all_builds() {
                 install -d "$ABI_LOG_DIR" &&
                 mkfifo "$ABI_LOG_DIR"/pipe &&
                 (tee "$ABI_LOG_DIR"/install.log.txt < "$ABI_LOG_DIR"/pipe &) &&
-                __install_the_given_package_one_build "$1" > "$ABI_LOG_DIR"/pipe 2>&1
+                __install_the_given_package_one_build "$1" > "$ABI_LOG_DIR"/pipe 2>&1 &&
+                rm -f "$ABI_LOG_DIR"/pipe
             ) || return 1
         fi
     done
