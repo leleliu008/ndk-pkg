@@ -668,7 +668,7 @@ __upgrade_self() {
     for arg in $@
     do
         case $arg in
-            -x) set -x ;;
+            -x) set -x ; break
         esac
     done
 
@@ -724,7 +724,7 @@ __integrate_zsh_completions() {
     for arg in $@
     do
         case $arg in
-            -x) set -x ;;
+            -x) set -x ; break
         esac
     done
 
@@ -3332,7 +3332,7 @@ __tree_the_given_installed_package() {
     run tree $(shiftn 1 $@) --dirsfirst "$MY_INSTALL_DIR/$1"
 }
 
-__uninstall_packages() {
+__uninstall_the_given_packages() {
     shift
 
     die_if_package_is_not_specified "$1"
@@ -3349,9 +3349,10 @@ __uninstall_the_given_package() {
     run rm -rf "$MY_INSTALL_DIR/$1"
 }
 
-__reinstall_packages() {
-    check_prerequisites
-    parse_arguments $@
+__reinstall_the_given_packages() {
+    inspect_build_toolchains
+
+    inspect_install_arguments $@
 
     die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
 
@@ -3360,7 +3361,7 @@ __reinstall_packages() {
         die_if_package_is_not_available "$packageName"
         die_if_package_is_not_installed "$packageName"
     done
-    
+
     for packageName in $USER_SPECIFIED_PACKAGE_LIST
     do
         {
@@ -3373,18 +3374,23 @@ __reinstall_packages() {
 }
 
 __upgrade_packages() {
-    check_prerequisites
-    parse_arguments $@
+    inspect_build_toolchains
+
+    inspect_install_arguments $@
 
     if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
         USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
     fi
 
-    if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
-        return 0
-    fi
-
-    __reinstall_packages
+    for packageName in $USER_SPECIFIED_PACKAGE_LIST
+    do
+        {
+            [ -d "$MY_BACKUP_DIR" ] || mkdir -p "$MY_BACKUP_DIR"
+        } &&
+        mv "$MY_INSTALL_DIR/$packageName" "$MY_BACKUP_DIR/$packageName" &&
+        __install_the_given_package "$packageName" &&
+        rm -rf "$MY_BACKUP_DIR/$packageName"
+    done
 }
 
 __cleanup() {
@@ -3799,10 +3805,10 @@ __config_global_installation_variables() {
     fi
 }
 
-__install_packages() {
-    check_prerequisites
+__install_the_given_packages() {
+    inspect_build_toolchains
 
-    parse_arguments $@
+    inspect_install_arguments $@
 
     die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
 
@@ -5205,8 +5211,7 @@ list_all_installed_libs() {
 }
 
 ldd() {
-    set -x
-    check_prerequisites
+    inspect_build_toolchains
 
     die_if_package_is_not_installed "$1"
     die_if_abi_____is_not_supported "$2"
@@ -5261,7 +5266,7 @@ list_dynamic_library_names_of_the_given_package() {
 
 __list_supported_target_sdk_api_levels() {
     if [ -z "$TOOLCHAIN_BIN_DIR" ] ; then
-        check_prerequisites > /dev/null
+        inspect_build_toolchains > /dev/null
     fi
     ls "$TOOLCHAIN_BIN_DIR" | sed -n '/aarch64-linux-android[1-9][0-9]-clang++/p' | cut -d- -f3 | sed 's/android//'
 }
@@ -5478,7 +5483,7 @@ install_android_ndk() {
     for arg in $@
     do
         case $arg in
-            -x) set -x ;;
+            -x) set -x ; break
         esac
     done
 
@@ -5518,7 +5523,7 @@ install_android_ndk() {
     run "printf 'PATH=%s:$PATH\n' '$ANDROID_NDK_HOME' >> '$MY_ENV_FILEPATH'"
 }
 
-check_prerequisites() {
+inspect_build_toolchains() {
     echo
 
     if [ -n "$ANDROID_NDK_HOME" ] ; then
@@ -5565,10 +5570,9 @@ check_prerequisites() {
     fi
     
     TOOLCHAIN_NAME='android-ndk'
-    TOOLCHAIN_ROOTDIR="$ANDROID_NDK_HOME"
-    TOOLCHAIN_LLVM="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
-    TOOLCHAIN_BIN_DIR="$TOOLCHAIN_LLVM/bin"
-    SYSROOT="$TOOLCHAIN_LLVM/sysroot"
+    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    TOOLCHAIN_BIN_DIR="$TOOLCHAIN_ROOT/bin"
+    SYSROOT="$TOOLCHAIN_ROOT/sysroot"
 
     ANDROID_NDK_VERSION="$(ndk_version)"
     ANDROID_NDK_VERSION_MAJOR="$(ndk_version_major)"
@@ -5583,7 +5587,12 @@ check_prerequisites() {
     export PATH="$ANDROID_NDK_HOME:$PATH"
 }
 
-parse_arguments() {
+inspect_install_arguments() {
+    unset ACTION
+    ACTION=$1
+
+    shift
+
     # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
     unset TARGET_ARCH
 
@@ -5593,7 +5602,6 @@ parse_arguments() {
     unset USER_SPECIFIED_PACKAGE_LIST
 
     unset DRYRUN
-    unset XTRACE
     unset DEBUG
     unset VERBOSE
 
@@ -5602,24 +5610,21 @@ parse_arguments() {
 
     unset WORKING_DIR
     unset KEEP_WORKING_DIR
-    
-    shift
 
-    while test -n "$1"
+    while [ -n "$1" ]
     do
         case "$1" in
             --min-sdk-api-level=[1-9][0-9])
                 USER_SPECIFIED_TARGET_OS_VERS=$(getvalue "$1")
+                is_integer "$USER_SPECIFIED_TARGET_OS_VERS" || die "--min-sdk-api-level=INTEGER argument's value must be a integer."
                 ;;
             --verbose|-v)
                 VERBOSE=true
                 ;;
-            --xtrace|-x)
-                XTRACE=true
-                set -x
-                ;;
             --debug|-d)
                 DEBUG=true
+                ;;
+            --xtrace|-x)
                 ;;
             --dry-run)
                 DRYRUN=true
@@ -5642,7 +5647,7 @@ parse_arguments() {
                     fi
                 fi
                 ;;
-            *)  die "$1 is a invalid argument."
+            *)  die "unrecognized argument: $1"
         esac
         shift
     done
@@ -5836,6 +5841,19 @@ EOF
 }
 
 main() {
+    unset XTRACE
+
+    for arg in $@
+    do
+        case $arg in
+            --xtrace|-x)
+                XTRACE=true
+                set -x
+                break
+                ;;
+        esac
+    done
+
     init
 
     case $1 in
@@ -5856,7 +5874,7 @@ main() {
             echo
             run export -p
 
-            check_prerequisites
+            inspect_build_toolchains
 
             echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERSION"
             ;;
@@ -5910,9 +5928,9 @@ main() {
         update)  __update_formula_repositories ;;
         cleanup) __cleanup ;;
 
-        install)     __install_packages $@ ;;
-        reinstall) __reinstall_packages $@ ;;
-        uninstall) __uninstall_packages $@ ;;
+        install)   __install_the_given_packages $@ ;;
+      reinstall) __reinstall_the_given_packages $@ ;;
+      uninstall) __uninstall_the_given_packages $@ ;;
 
         upgrade)
             shift
@@ -5963,7 +5981,6 @@ main() {
             install_android_ndk $@
             ;;
         test)
-            set -x
             handle_dependency required exe cmake ge 3.10
             ;;
         *) help 1
