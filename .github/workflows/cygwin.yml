@@ -35,6 +35,8 @@ jobs:
 
       - run: bin/ndk-pkg env
 
+      - run: command -v curl
+
       - run: bin/ndk-pkg integrate zsh
 
       - run: bin/ndk-pkg update
