@@ -5534,6 +5534,11 @@ inspect_build_toolchains() {
     echo
 
     if [ -n "$ANDROID_NDK_HOME" ] ; then
+        if [ "$NATIVE_OS_SUBS" = cygwin ] ; then
+            case "$ANDROID_NDK_HOME" in
+                [A-Z]:*) ANDROID_NDK_HOME="$(cygpath "$ANDROID_NDK_HOME")"
+            esac
+        fi
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_HOME" ; then
             echo "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, which is used as the android ndk home."
         else
