@@ -549,7 +549,7 @@ fetch() {
 
             for FETCH_TOOL in curl wget http lynx aria2c axel
             do
-                if command -v "$FETCH_TOOL" > /dev/null ; then
+                if command_exists_in_filesystem "$FETCH_TOOL" ; then
                     break
                 else
                     unset FETCH_TOOL
