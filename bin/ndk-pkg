@@ -61,7 +61,7 @@ file_exists() {
 # $1 command name or path
 command_exists_in_filesystem() {
     case $1 in
-        '') return 1
+        '') return 1 ;;
         */*)
             case $(uname | tr A-Z a-z) in
                 cygwin*)
