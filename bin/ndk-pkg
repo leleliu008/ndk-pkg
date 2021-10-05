@@ -5320,25 +5320,30 @@ list_flags_used_by_tools_in_the_toolchain() {
 }
 
 print_path_of_tool_in_the_toolchain() {
-    unset TOOL_FILE_NAME
+    unset EXE
+    if [ "$NATIVE_OS_KIND" = windows ] ; then
+        EXE=.exe
+    fi
+
+    unset TOOL_FILENAME
     case $1 in
-        cc)  TOOL_FILE_NAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang"   ;;
-        cxx) TOOL_FILE_NAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang++" ;;
-        *)   TOOL_FILE_NAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
+        cc)  TOOL_FILENAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang"   ;;
+        cxx) TOOL_FILENAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang++" ;;
+        *)   TOOL_FILENAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
              if [ "$1" = 'ld' ] ; then
                 # https://github.com/android/ndk/wiki/Changelog-r22
-                if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME" ] ; then
-                    TOOL_FILE_NAME=lld
+                if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILENAME$EXE" ] ; then
+                    TOOL_FILENAME=lld
                 fi
              fi
 
              # https://github.com/android/ndk/wiki/Changelog-r23
-             if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME" ] ; then
-                 TOOL_FILE_NAME=llvm-$1
+             if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILENAME" ] ; then
+                 TOOL_FILENAME=llvm-$1
              fi
     esac
-    die_if_not_executable "$TOOLCHAIN_BIN_DIR/$TOOL_FILE_NAME"
-    echo "$TOOL_FILE_NAME"
+    die_if_not_executable "$TOOLCHAIN_BIN_DIR/$TOOL_FILENAME"
+    echo "$TOOL_FILENAME"
 }
 
 # $1: target_os_version configed in formula
