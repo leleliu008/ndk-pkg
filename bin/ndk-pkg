@@ -5338,7 +5338,7 @@ print_path_of_tool_in_the_toolchain() {
              fi
 
              # https://github.com/android/ndk/wiki/Changelog-r23
-             if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILENAME" ] ; then
+             if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILENAME$EXE" ] ; then
                  TOOL_FILENAME=llvm-$1
              fi
     esac
