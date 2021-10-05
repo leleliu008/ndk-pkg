@@ -61,8 +61,18 @@ file_exists() {
 # $1 command name or path
 command_exists_in_filesystem() {
     case $1 in
-        */*) executable "$1" ;;
-        *)   command -v "$1" > /dev/null
+        */*)
+            case $(uname | tr A-Z a-z) in
+                cygwin*)
+                    case $1 in
+                        /cygdrive/*) return 1 ;;
+                        *) executable "$1" ;;
+                    esac
+                    ;;
+                *) executable "$1" ;;
+            esac
+            ;;
+        *)  command_exists_in_filesystem $(command -v "$1" || true)
     esac
 }
 
@@ -1301,11 +1311,6 @@ version_match() {
 # command_exists_in_filesystem_and_version_matched automake
 command_exists_in_filesystem_and_version_matched() {
     if command_exists_in_filesystem "$1" ; then
-        if [ "$NATIVE_OS_SUBS" = 'cygwin' ] ; then
-            case $(command -v "$1") in
-                /cygdrive/*) return 1
-            esac
-        fi
         if [ $# -eq 3 ] ; then
             version_match "$(version_of_command "$1")" "$2" "$3"
         fi
