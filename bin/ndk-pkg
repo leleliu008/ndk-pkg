@@ -66,6 +66,7 @@ command_exists_in_filesystem() {
             case $(uname | tr A-Z a-z) in
                 cygwin*)
                     case $1 in
+                        /cygdrive/*/choco) executable "$1" ;;
                         /cygdrive/*) return 1 ;;
                         *) executable "$1" ;;
                     esac
