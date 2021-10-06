@@ -71,7 +71,7 @@ jobs:
 
       - run: bin/ndk-pkg upgrade @self
 
-  install_via_install.sh:
+  install_via_install_sh:
 
     strategy:
       fail-fast: false
