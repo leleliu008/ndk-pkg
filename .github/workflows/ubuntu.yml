@@ -71,6 +71,72 @@ jobs:
 
       - run: bin/ndk-pkg upgrade @self
 
+  install_via_install.sh:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [18.04, 20.04]
+
+    runs-on: ubuntu-${{ matrix.version }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: ./install.sh
+
+      - run: ndk-pkg --help
+      - run: ndk-pkg --version
+
+      - run: ndk-pkg env
+
+      - run: ndk-pkg integrate zsh
+
+      - run: ndk-pkg update
+
+      - run: ndk-pkg search lib
+      - run: ndk-pkg search zlib
+
+      - run: ndk-pkg info zlib
+      - run: ndk-pkg info zlib version
+      - run: ndk-pkg info zlib webpage
+      - run: ndk-pkg info zlib
+
+      - run: ndk-pkg depends zlib
+
+      - run: ndk-pkg homepage
+      - run: ndk-pkg homepage zlib
+
+      - run: ndk-pkg install zlib
+
+      - run: ndk-pkg prefix
+      - run: ndk-pkg prefix zlib
+
+      - run: ndk-pkg tree zlib
+      - run: ndk-pkg pack zlib
+
+      - run: ndk-pkg formula repo list
+      - run: ndk-pkg formula view curl
+
+      - run: ndk-pkg target abis
+      - run: ndk-pkg target archs
+      - run: ndk-pkg target triples
+      - run: ndk-pkg target levels
+
+      - run: ndk-pkg ls available
+      - run: ndk-pkg ls installed
+      - run: ndk-pkg ls outdated
+
+      - run: ndk-pkg is available zlib
+      - run: ndk-pkg is installed zlib
+      - run: ndk-pkg is outdated zlib || true
+
+      - run: ndk-pkg uninstall zlib
+
+      - run: ndk-pkg fetch curl
+
+      - run: ndk-pkg upgrade @self
+
   install_via_homebrew:
 
     strategy:
