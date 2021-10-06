@@ -147,7 +147,7 @@ main() {
     for arg in $@
     do
         case $arg in
-            -x) set -x ;;
+            -x) set -x ; break
         esac
     done
 
@@ -181,6 +181,10 @@ main() {
     RELEASE_VERSION_MINOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f2)
     RELEASE_VERSION_PATCH=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f3)
 
+    if [ ${RELEASE_VERSION_MAJOR_PLUS_PLUS-0} -eq 0 ] && [ ${RELEASE_VERSION_MINOR_PLUS_PLUS-0} -eq 0 ] && [ ${RELEASE_VERSION_PATCH_PLUS_PLUS-0} -eq 0 ] ; then
+        die "new release version must be bigger than old version($RELEASE_VERSION)"
+    fi
+
     if [ ${RELEASE_VERSION_MAJOR_PLUS_PLUS-0} -eq 1 ] ; then
         RELEASE_VERSION_MAJOR=$(expr $RELEASE_VERSION_MAJOR + 1)
     fi
@@ -195,6 +199,9 @@ main() {
 
     RELEASE_VERSION="$RELEASE_VERSION_MAJOR.$RELEASE_VERSION_MINOR.$RELEASE_VERSION_PATCH"
 
+    sed_in_place "s|MY_VERSION=[0-9].[0-9].[0-9]|MY_VERSION=$RELEASE_VERSION|" bin/ndk-pkg
+    sed_in_place "s|RELEASE_VERSION='[0-9].[0-9].[0-9]'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
+
     unset RELEASE_FILE_NAME
     RELEASE_FILE_NAME="ndk-pkg-$RELEASE_VERSION.tar.gz"
 
@@ -205,16 +212,11 @@ main() {
 
     success "sha256sum($RELEASE_FILE_NAME)=$RELEASE_FILE_SHA256SUM"
 
-    if [ ${RELEASE_VERSION_MAJOR_PLUS_PLUS-0} -eq 1 ] || [ ${RELEASE_VERSION_MINOR_PLUS_PLUS-0} -eq 1 ] || [ ${RELEASE_VERSION_PATCH_PLUS_PLUS-0} -eq 1 ] ; then
-        sed_in_place "s|MY_VERSION=[0-9].[0-9].[0-9]|MY_VERSION=$RELEASE_VERSION|" bin/ndk-pkg
-        sed_in_place "s|RELEASE_VERSION='[0-9].[0-9].[0-9]'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
+    run git add bin/ndk-pkg install.sh
+    run git commit -m "'publish new version $RELEASE_VERSION'"
+    run git push origin master
 
-        run git add bin/ndk-pkg install.sh
-        run git commit -m "'publish new version $RELEASE_VERSION'"
-        run git push origin master
-    fi
-
-    run gh release create v"$RELEASE_VERSION" "ndk-pkg-$RELEASE_VERSION.tar.gz" --notes "'release $RELEASE_VERSION'"
+    run gh release create v"$RELEASE_VERSION" "$RELEASE_FILE_NAME" --notes "'release $RELEASE_VERSION'"
 
     run git clone git@github.com:leleliu008/homebrew-fpliu.git
 

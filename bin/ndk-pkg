@@ -3391,6 +3391,12 @@ __upgrade_packages() {
 
     for packageName in $USER_SPECIFIED_PACKAGE_LIST
     do
+        die_if_package_is_not_available "$packageName"
+        die_if_package_is_not_installed "$packageName"
+    done
+
+    for packageName in $USER_SPECIFIED_PACKAGE_LIST
+    do
         {
             [ -d "$MY_BACKUP_DIR" ] || mkdir -p "$MY_BACKUP_DIR"
         } &&
@@ -5625,7 +5631,6 @@ inspect_install_arguments() {
     unset NPROC
     unset NJOBS
 
-    unset WORKING_DIR
     unset KEEP_WORKING_DIR
 
     while [ -n "$1" ]
