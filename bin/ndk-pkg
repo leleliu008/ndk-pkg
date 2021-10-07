@@ -3395,7 +3395,6 @@ __upgrade_packages() {
 }
 
 __cleanup() {
-    [ -d "$MY_DIR" ] || return 0
     [ -d "$MY_SOURCE_DIR" ] || return 0
     for repo in $(____list_formula_repositories | cut -d= -f1)
     do
@@ -3838,7 +3837,6 @@ __install_the_given_package() {
 
     unset WORKING_DIR
     unset SOURCE_DIR
-    unset EMPTY_DIR
     unset BUILD_DIR
 
     unset NATIVE_BUILD_DIR
@@ -3924,12 +3922,9 @@ __install_the_given_package() {
     step "list content of source directory"
     run ls -l
 
-    EMPTY_DIR="$WORKING_DIR/$TIMESTAMP_UNIX"
-    install -d "$EMPTY_DIR"
-
     step "build for native"
     if command -v build0 > /dev/null ; then
-        NATIVE_BUILD_DIR="$EMPTY_DIR/native"
+        NATIVE_BUILD_DIR="$WORKING_DIR/$TIMESTAMP_UNIX/native"
         NATIVE_INSTALL_DIR="$MY_HOME_DIR/native/$PACKAGE_NAME"
 
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
@@ -3943,7 +3938,7 @@ __install_the_given_package() {
             warn "build for native already have been done, skipped."
         else
             [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] || {
-                run mkdir "$NATIVE_BUILD_DIR" || return 1
+                run install -d "$NATIVE_BUILD_DIR" || return 1
                 run cd    "$NATIVE_BUILD_DIR" || return 1
             }
 
@@ -3996,7 +3991,6 @@ __install_the_given_package() {
             echo
             echo "      WORKING_DIR = $WORKING_DIR"
             echo "       SOURCE_DIR = $SOURCE_DIR"
-            echo "        EMPTY_DIR = $EMPTY_DIR"
             echo " NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR"
             echo " NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR"
             echo "                PWD = $PWD"
@@ -4105,13 +4099,11 @@ __install_the_given_package_all_builds() {
             exec "$SHELL" || return 1
         else
             (
-                ABI_LOG_DIR="$MY_INSTALL_DIR/$1/$TARGET_OS_ABI/share/log"
-                ABI_PIPE_FILEPATH="$WORKING_DIR/$TARGET_OS_ABI.pipe"
-                install -d "$ABI_LOG_DIR" &&
-                rm -f "$ABI_PIPE_FILEPATH" &&
-                mkfifo "$ABI_PIPE_FILEPATH" &&
-                (tee "$ABI_LOG_DIR"/install.log.txt < "$ABI_PIPE_FILEPATH" &) &&
-                __install_the_given_package_one_build "$1" > "$ABI_PIPE_FILEPATH" 2>&1
+                BUILD_DIR="$WORKING_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
+                install -d "$BUILD_DIR" &&
+                mkfifo "$BUILD_DIR/pipe" &&
+                (tee "$BUILD_DIR/install.log.txt" < "$BUILD_DIR/pipe" &) &&
+                __install_the_given_package_one_build "$1" > "$BUILD_DIR/pipe" 2>&1
             ) || return 1
         fi
     done
@@ -4186,9 +4178,13 @@ __justfy_pc_files() {
 }
 
 __install_logs() {
+    ABI_LOG_DIR="$ABI_INSTALL_DIR/share/log"
+
+    run install -d "$ABI_LOG_DIR"
+
     for item in "$BUILD_DIR" "$SOURCE_DIR"
     do
-        for item2 in 'config.log' 'compile_commands.json'
+        for item2 in 'config.log' 'compile_commands.json' 'install.log.txt'
         do
             if [ -f "$item/$item2" ] ; then
                 echo "-- Installing: $ABI_LOG_DIR/$item2"
@@ -4630,8 +4626,6 @@ __config_this_build_variables() {
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 
-    BUILD_DIR="$EMPTY_DIR/$TARGET_OS_ABI"
-
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
@@ -4827,7 +4821,6 @@ __printf_this_build_variables() {
     echo
     echo "      WORKING_DIR = $WORKING_DIR"
     echo "       SOURCE_DIR = $SOURCE_DIR"
-    echo "        EMPTY_DIR = $EMPTY_DIR"
     echo "        BUILD_DIR = $BUILD_DIR"
     echo "              PWD = $PWD"
     echo
