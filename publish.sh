@@ -226,7 +226,7 @@ main() {
     sed_in_place "s@[0-9]\.[0-9]\.[0-9]@$RELEASE_VERSION@g" Formula/ndk-pkg.rb
 
     run git add Formula/ndk-pkg.rb
-    run git commit -m "'publish new version ndk-pkg-$RELEASE_VERSION'"
+    run git commit -m "'publish new version $RELEASE_VERSION'"
     run git push origin master
 
     run cd ..

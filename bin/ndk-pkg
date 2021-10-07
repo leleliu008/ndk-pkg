@@ -3510,7 +3510,7 @@ __show_depends_of_the_given_package() {
     fi
 }
 
-# if $1 is     given, show prefix of the given package.
+# if $1 is     given, show installed directory of the given package.
 # if $1 is not given, show this software's home direcotory.
 __show_prefix() {
     if [ -z "$1" ] ; then
