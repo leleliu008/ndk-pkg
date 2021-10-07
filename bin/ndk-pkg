@@ -5223,7 +5223,7 @@ list_all_installed_libs() {
     done
 }
 
-ldd() {
+__ldd() {
     inspect_build_toolchains
 
     die_if_package_is_not_installed "$1"
@@ -5991,7 +5991,7 @@ main() {
             esac
             ;;
 
-        ldd)shift; ldd $@ ;;
+        ldd)shift; __ldd $@ ;;
 
         list-dynamic-library-names)
             shift; list_dynamic_library_names_of_the_given_package $@ ;;
