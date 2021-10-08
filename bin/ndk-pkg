@@ -3100,25 +3100,6 @@ __fetch_resources_of_the_given_package() {
     __fetch_patches_of_the_given_package $PACKAGE_PATCHES
 }
 
-die_if_abi_____is_not_specified() {
-    if [ -z "$1" ] ; then
-        die "please specify a abi."
-    fi
-}
-
-die_if_abi_____is_not_supported() {
-    die_if_abi_____is_not_specified "$1"
-
-    for ABI in $(__list_supported_target_abis)
-    do
-        if [ "$ABI" = "$1" ] ; then
-            return 0
-        fi
-    done
-
-    die "unsupported abi: $1"
-}
-
 die_if_package_is_not_specified() {
     [ -n "$1" ] || die "no package is specified."
 }
@@ -3510,7 +3491,23 @@ __show_prefix() {
 
 __logs_the_given_installed_package() {
     die_if_package_is_not_installed "$1"
-    die_if_abi_____is_not_supported "$2"
+
+    if [ -z "$2" ] ; then
+        die "please specify a abi."
+    fi
+
+    for ABI in $(cat "$MY_INSTALL_DIR/$1/installed-abis")
+    do
+        if [ "$ABI" = "$2" ] ; then
+            break
+        else
+            unset ABI
+        fi
+    done
+
+    if [ -z "$ABI" ] ; then
+        die "unsupported abi: $1"
+    fi
 
     if command -v bat > /dev/null ; then
         VIEWER=bat
