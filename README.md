@@ -95,6 +95,7 @@ autoload -U compinit && compinit
         ndk-pkg info curl installed-datetime-unix
         ndk-pkg info curl installed-datetime-formatted
         ndk-pkg info curl installed-pkg-version
+        ndk-pkg info curl installed-files
         ndk-pkg info curl installed-abis
         ndk-pkg info @all
         ndk-pkg info @all --json
