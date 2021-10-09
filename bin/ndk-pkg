@@ -4304,9 +4304,12 @@ __show_infomation_of_all_available_packages() {
 
 # examples:
 # __show_infomation_of_the_given_package curl
+# __show_infomation_of_the_given_package curl --json
 # __show_infomation_of_the_given_package curl version
 # __show_infomation_of_the_given_package curl webpage
 __show_infomation_of_the_given_package() {
+    set -e
+
     if [ $# -eq 0 ] ; then
         die_if_package_is_not_specified
     fi
@@ -4317,6 +4320,10 @@ __show_infomation_of_the_given_package() {
 
     if [ $# -eq 2 ] ; then
         case $2 in
+            --json)
+                ___load_formula_of_the_given_package "$1"
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
+                ;;
             installed-dir)
                 die_if_package_is_not_installed "$1"
                 echo "$MY_INSTALL_DIR/$1"
@@ -5812,7 +5819,7 @@ ACTION:
 
     logs PACKAGE ABI              --show logs of the given installed package.
 
-    info PACKAGE [KEY]            --print the information of the given package.
+    info PACKAGE [KEY|--json]            --print the information of the given package.
 
     info @all [--json]            --print the information of all the available packages.
 

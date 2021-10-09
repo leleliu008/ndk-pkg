@@ -97,6 +97,8 @@ autoload -U compinit && compinit
         ndk-pkg info curl installed-pkg-version
         ndk-pkg info curl installed-files
         ndk-pkg info curl installed-abis
+        ndk-pkg info curl --json
+        ndk-pkg info curl --json | jq .
         ndk-pkg info @all
         ndk-pkg info @all --json
         ndk-pkg info @all --json | jq .
