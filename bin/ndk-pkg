@@ -5781,17 +5781,17 @@ ACTION:
 
     target abis                   --list the supported target abis.
     
-    ls available                  --list the available packages.
+    ls-available                  --list the available packages.
 
-    ls installed                  --list the installed packages.
+    ls-installed                  --list the installed packages.
 
-    ls outdated                   --list the outdated  packages.
+    ls-outdated                   --list the outdated  packages.
 
-    is available PACKAGE [eq|ne|ge|gt|le|lt VERSION]          --is PACKAGE available?
+    is-available PACKAGE [eq|ne|ge|gt|le|lt VERSION]          --is PACKAGE available?
 
-    is installed PACKAGE          --is PACKAGE installed?
+    is-installed PACKAGE          --is PACKAGE installed?
 
-    is outdated  PACKAGE          --is PACKAGE outdated?
+    is-outdated  PACKAGE          --is PACKAGE outdated?
 
     search KEYWORD                --search available packages.
     
@@ -5807,11 +5807,11 @@ ACTION:
 
     formula list                  --list all formulas.
 
-    formula repo [list]           --list formula repos.
+    formula-repo [list]           --list formula-repos.
 
-    formula repo add  NAME URL    --add a new formula repo.
+    formula-repo add  NAME URL    --add a new formula-repo.
 
-    formula repo del  NAME        --delete a exist formula repo.
+    formula-repo del  NAME        --delete a exist formula-repo.
 
     tree PACKAGE [-L N]           --list files of the given installed package in a tree-like format.
 
