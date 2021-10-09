@@ -5709,7 +5709,7 @@ init() {
         . "$MY_ENV_FILEPATH" || return 1
     fi
 
-    MY_VERSION=0.1.3
+    MY_VERSION=0.1.4
     MY_HOME_PAGE="https://github.com/leleliu008/ndk-pkg"
     MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ndk-pkg-formula-repository.git"
     MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg'
