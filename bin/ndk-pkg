@@ -5896,25 +5896,25 @@ main() {
                 *) help 1
             esac
             ;;
-        ls|list)
+        ls-available) shift; __list_available_packages ;;
+        ls-installed) shift; __list_installed_packages ;;
+        ls-outdated)  shift; __list__outdated_packages ;;
+
+        is-available) shift; is_package_available $@ ;;
+        is-installed) shift; is_package_installed $@ ;;
+        is-outdated)  shift; is_package__outdated $@ ;;
+
+        formula-repo)
             shift
             case $1 in
-                available) shift; __list_available_packages ;;
-                installed) shift; __list_installed_packages ;;
-                outdated)  shift; __list__outdated_packages ;;
+                list) shift; ____list_formula_repositories ;;
+                add)  shift; __add_a_formula_repo $@ ;;
+                del)  shift; __del_a_formula_repo $@ ;;
                 *) help 1
             esac
             ;;
-        is) shift
-            case $1 in
-                available) shift; is_package_available $@ ;;
-                installed) shift; is_package_installed $@ ;;
-                outdated)  shift; is_package__outdated $@ ;;
-                *) help 1
-            esac
-            ;;
-        search)  shift; __search_packages "$*" ;;
-        formula) shift
+        formula)
+            shift
             case $1 in
                 create) shift; __create_formula_of_the_given_package "$@" ;;
                 delete) shift; __delete_formula_of_the_given_package "$@" ;;
@@ -5922,19 +5922,13 @@ main() {
                 view)   shift; ____view_formula_of_the_given_package "$@" ;;
                 edit)   shift; ____edit_formula_of_the_given_package "$@" ;;
                 list)   shift; __list_formulas ;;
-                repo)   shift;
-                        case $1 in
-                            list) shift; ____list_formula_repositories ;;
-                            add)  shift; __add_a_formula_repo $@ ;;
-                            del)  shift; __del_a_formula_repo $@ ;;
-                            *) help 1
-                        esac
-                        ;;
                    *)   help 1
             esac
             ;;
         update)  __update_formula_repositories ;;
         cleanup) __cleanup ;;
+
+        search)  shift; __search_packages "$*" ;;
 
         install)   __install_the_given_packages $@ ;;
       reinstall) __reinstall_the_given_packages $@ ;;

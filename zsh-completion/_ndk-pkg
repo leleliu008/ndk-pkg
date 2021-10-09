@@ -7,10 +7,16 @@ _commands=(
     '--version:show version of this command.'
     'search:search packages can be installed.'
     'target:list the supported target abis, archs, triples, api-levels.'
-    'ls:list the available, installed and outdated packages.'
+    'ls-available:list the available packages.'
+    'ls-installed:list the installed packages.'
+    'ls-outdated:list the installed packages which can be upgraded.'
+    'is-available:is the given package available.'
+    'is-installed:is the given package installed.'
+    'is-outdated:is the given package outdated.'
     'tree:list files of the given installed package in a tree-like format.'
     'info:show infomation of the given package or all available packages.'
-    'formula:view,edit the formula of the given package.'
+    'formula:create, delete, rename, view, edit the formula of the given package.'
+    'formula-repo:add, delete, list the formula-repos.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
@@ -25,7 +31,6 @@ _commands=(
     'prefix:show the installation direcotory of the given package or the home dir of this project.'
     'pack:pack the given installed package.'
     'logs:show logs of the given installed package.'
-    'is:check something. easy to write script.'
     'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
     'install-android-ndk:install android-ndk.'
@@ -38,31 +43,25 @@ _target=(
     'triples:list the supported target triples.'
 )
 
-_list=(
-    'available:list the available packages.'
-    'installed:list the installed packages.'
-    'outdated:list the installed packages which can be upgraded.'
-)
-
 function _ndk_pkg_commands() {
     _describe 'command' _commands
 }
 
 function _ndk_pkg_available_packages() {
     local -a _available_packages
-    _available_packages=($(ndk-pkg ls available 2>/dev/null))
+    _available_packages=($(ndk-pkg ls-available 2>/dev/null))
     _describe 'available-packages' _available_packages
 }
 
 function _ndk_pkg_installed_packages() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg ls installed 2>/dev/null))
+    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null))
     _describe 'installed-packages' _installed_packages
 }
 
 function _ndk_pkg_outdated_packages() {
     local -a _outdated_packages
-    _outdated_packages=($(ndk-pkg ls outdated 2>/dev/null))
+    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null))
     _describe 'outdated-packages' _outdated_packages
 }
 
@@ -78,27 +77,29 @@ function _ndk_pkg() {
         option)
             case $words[1] in
                 target) _arguments '1: :{_describe 'target' _target}' ;;
-                ls)     _arguments '1: :{_describe 'list'   _list}'   ;;
+                formula-repo)
+                    _arguments \
+                        ':action:(add del list)' \
+                        '*:: :->action'
+                    case $state in
+                        action)
+                            case $words[1] in
+                                del)
+                                    _arguments '1:repo-name:($(ndk-pkg formula-repo list | cut -d= -f1))' 
+                                    ;;
+                            esac
+                    esac
+                    ;;
+
                 formula)
                     _arguments \
-                        ':action:(create delete rename view edit list repo)' \
+                        ':action:(create delete rename view edit list)' \
                         '*:: :->action'
                     case $state in
                         action)
                             case $words[1] in
                                 delete|rename|view|edit)
                                     _arguments ':package-name:_ndk_pkg_available_packages'
-                                    ;;
-                                repo)
-                                    _arguments \
-                                        '1:action:(list add del)' \
-                                        '*:: :->repo-subcommand'
-                                    case $state in
-                                        repo-subcommand)
-                                            case $words[1] in
-                                                del) _arguments '1:repo-name:($(ndk-pkg formula repo list | cut -d= -f1))' ;;
-                                            esac
-                                    esac
                                     ;;
                             esac
                     esac
@@ -111,7 +112,7 @@ function _ndk_pkg() {
                     ;;
                 info)
                     _arguments \
-                        '1:package-name:(@all $(ndk-pkg ls available))' \
+                        '1:package-name:(@all $(ndk-pkg ls-available))' \
                         '*:: :->info-subcommand'
                                                     case $state in
                                                         info-subcommand)
@@ -167,7 +168,7 @@ function _ndk_pkg() {
                     ;;
                 upgrade)
                     _arguments \
-                        '1:package-name:(@self $(ndk-pkg ls outdated))' \
+                        '1:package-name:(@self $(ndk-pkg ls-outdated))' \
                         '*:: :->upgrade-subcommand'
                                                     case $state in
                                                         upgrade-subcommand)
@@ -191,12 +192,19 @@ function _ndk_pkg() {
                                                     ;;
                 uninstall)
                     _arguments '*:package-name:_ndk_pkg_installed_packages' ;;
-                is)
+                is-available)
                     _arguments \
-                        '1: :(available installed outdated)' \
-                        '2:package-name:_ndk_pkg_available_packages' \
-                        '3:condition-operator:(eq ne ge gt le lt)'
+                        '1:package-name:_ndk_pkg_available_packages' \
+                        '2:condition-operator:(eq ne ge gt le lt)'
                     ;;
+                is-installed)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages'
+                                                    ;;
+                is-outdated)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_outdated_packages'
+                                                    ;;
                 ldd)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \

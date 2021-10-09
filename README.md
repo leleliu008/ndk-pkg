@@ -142,15 +142,15 @@ autoload -U compinit && compinit
 
 *   list the avaliable formula repos
 
-        ndk-pkg formula repo list
+        ndk-pkg formula-repo list
 
 *   add a new formula repo
 
-        ndk-pkg formula repo add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository.git
+        ndk-pkg formula-repo add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository.git
 
 *   delete a existing formula repo
 
-        ndk-pkg formula repo del my_repo
+        ndk-pkg formula-repo del my_repo
 
 *   view the formula of the given package
         
@@ -190,33 +190,33 @@ autoload -U compinit && compinit
         
 *   list the available packages
         
-        ndk-pkg ls available
+        ndk-pkg ls-available
         
 *   list the installed packages
         
-        ndk-pkg ls installed
+        ndk-pkg ls-installed
         
 *   list the outdated packages
         
-        ndk-pkg ls outdated
+        ndk-pkg ls-outdated
         
 *   is the given package available ?
         
-        ndk-pkg is available curl
-        ndk-pkg is available curl ge 7.50.0
-        ndk-pkg is available curl gt 7.50.0
-        ndk-pkg is available curl le 7.50.0
-        ndk-pkg is available curl lt 7.50.0
-        ndk-pkg is available curl eq 7.50.0
-        ndk-pkg is available curl ne 7.50.0
+        ndk-pkg is-available curl
+        ndk-pkg is-available curl ge 7.50.0
+        ndk-pkg is-available curl gt 7.50.0
+        ndk-pkg is-available curl le 7.50.0
+        ndk-pkg is-available curl lt 7.50.0
+        ndk-pkg is-available curl eq 7.50.0
+        ndk-pkg is-available curl ne 7.50.0
         
 *   is the given package installed ?
         
-        ndk-pkg is installed curl
+        ndk-pkg is-installed curl
         
 *   is the given package outdated ?
         
-        ndk-pkg is outdated curl
+        ndk-pkg is-outdated curl
         
 *   list files of the given installed package in a tree-like format.
         

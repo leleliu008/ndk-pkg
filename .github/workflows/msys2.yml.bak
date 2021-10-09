@@ -23,7 +23,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msystem }}
-          update: true
+          update: echo "not outdated"
           install: git
 
       - run: git config --global core.autocrlf input
@@ -63,7 +63,7 @@ jobs:
       - run: bin/ndk-pkg tree zlib
       - run: bin/ndk-pkg pack zlib
 
-      - run: bin/ndk-pkg formula repo list
+      - run: bin/ndk-pkg formula-repo list
       - run: bin/ndk-pkg formula view curl
 
       - run: bin/ndk-pkg target abis
@@ -71,13 +71,13 @@ jobs:
       - run: bin/ndk-pkg target triples
       - run: bin/ndk-pkg target levels
 
-      - run: bin/ndk-pkg ls available
-      - run: bin/ndk-pkg ls installed
-      - run: bin/ndk-pkg ls outdated
+      - run: bin/ndk-pkg ls-available
+      - run: bin/ndk-pkg ls-installed
+      - run: bin/ndk-pkg ls-outdated
 
-      - run: bin/ndk-pkg is available zlib
-      - run: bin/ndk-pkg is installed zlib
-      - run: bin/ndk-pkg is outdated zlib || true
+      - run: bin/ndk-pkg is-available zlib
+      - run: bin/ndk-pkg is-installed zlib
+      - run: bin/ndk-pkg is-outdated zlib || echo "not outdated"
 
       - run: bin/ndk-pkg uninstall zlib
 
