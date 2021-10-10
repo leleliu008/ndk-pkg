@@ -2549,7 +2549,7 @@ package() {
             ;;
         get)
             shift
-            ___load_formula_of_the_given_package "$1"
+            __load_formula_of_the_given_package "$1"
             shift
             __PACKAGE_KEY__="$(echo "$1" | tr - _  | tr . _ | tr a-z A-Z)"
             eval echo \$PACKAGE_$__PACKAGE_KEY__ || exit 1
@@ -2634,7 +2634,7 @@ __parse_package_patches() {
 ##############################################################################
 # {{{ operations of formula
 
-___load_formula_of_the_given_package() {
+__load_formula_of_the_given_package() {
     die_if_package_is_not_available "$1"
 
     unset PACKAGE_NAME
@@ -2817,9 +2817,9 @@ ___load_formula_of_the_given_package() {
 }
 
 # examples:
-# ____view_formula_of_the_given_package curl 
-# ____view_formula_of_the_given_package curl --paging=never 
-____view_formula_of_the_given_package() {
+# __view_formula_of_the_given_package curl
+# __view_formula_of_the_given_package curl --paging=never
+__view_formula_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
     unset PACKAGE_FORMULA_FILEPATH
@@ -2879,7 +2879,7 @@ ____view_formula_of_the_given_package() {
     esac
 }
 
-____edit_formula_of_the_given_package() {
+__edit_formula_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
     unset PACKAGE_FORMULA_FILEPATH
@@ -2945,7 +2945,7 @@ build() {
     #makew
 }
 EOF
-    ____edit_formula_of_the_given_package "$1"
+    __edit_formula_of_the_given_package "$1"
 }
 
 __delete_formula_of_the_given_package() {
@@ -3018,7 +3018,7 @@ __add_a_formula_repo() {
         *)  die "$2: repo url must end with .git"
     esac
 
-    for repoName in $(____list_formula_repositories | cut -d= -f1)
+    for repoName in $(__list_formula_repositories | cut -d= -f1)
     do
         if [ "$repoName" = "$1" ] ; then
             die "$1 formula repo already exists."
@@ -3039,7 +3039,7 @@ __del_a_formula_repo() {
     fi
 
     unset REPO_EXISTS
-    for repoName in $(____list_formula_repositories | cut -d= -f1)
+    for repoName in $(__list_formula_repositories | cut -d= -f1)
     do
         if [ "$repoName" = "$1" ] ; then
             REPO_EXISTS=true
@@ -3055,7 +3055,7 @@ __del_a_formula_repo() {
 __repo_of_formula_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
-    for repo in $(____list_formula_repositories | cut -d= -f1)
+    for repo in $(__list_formula_repositories | cut -d= -f1)
     do
         if [ -e "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
             echo "$repo"
@@ -3078,7 +3078,7 @@ __path_of_formula_of_the_given_package() {
     done
 }
 
-____list_formula_repositories() {
+__list_formula_repositories() {
     if [ -e "$MY_HOME_DIR/repos" ] ; then
         cat "$MY_HOME_DIR/repos"
     else
@@ -3092,7 +3092,7 @@ __update_formula_repositories() {
 
     handle_dependency required exe git
 
-    for repo in $(____list_formula_repositories)
+    for repo in $(__list_formula_repositories)
     do
         unset MY_FORMULA_REPO_NAME
         unset MY_FORMULA_REPO_URL_
@@ -3176,7 +3176,7 @@ is_package_available() {
     case $# in
         0)  die_if_package_is_not_specified ;;
         1)  [ -n "$(__path_of_formula_of_the_given_package $1)" ] ;;
-        3)  ___load_formula_of_the_given_package "$1"
+        3)  __load_formula_of_the_given_package "$1"
             shift
             version_match $PACKAGE_VERSION $@
             ;;
@@ -3194,7 +3194,7 @@ is_package_installed() {
 }
 
 is_package__outdated() {
-    ___load_formula_of_the_given_package "$1"
+    __load_formula_of_the_given_package "$1"
 
     __load_installed_metadata_of_the_given_package "$1"
 
@@ -3306,7 +3306,7 @@ __gen_github_workflows() {
 }
 
 __list_available_packages() {
-    for repo in $(____list_formula_repositories | cut -d= -f1)
+    for repo in $(__list_formula_repositories | cut -d= -f1)
     do
         cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
         ls -1 *.sh | sed 's/\.sh//g' || return 1
@@ -3419,7 +3419,7 @@ __upgrade_packages() {
 
 __cleanup() {
     [ -d "$MY_SOURCE_DIR" ] || return 0
-    for repo in $(____list_formula_repositories | cut -d= -f1)
+    for repo in $(__list_formula_repositories | cut -d= -f1)
     do
         cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
         for item in $(ls)
@@ -3427,7 +3427,7 @@ __cleanup() {
             if [ -f "$item" ] ; then
                 case $item in
                     *.sh)
-                        ___load_formula_of_the_given_package $(echo "$item" | sed 's/\.sh//g')
+                        __load_formula_of_the_given_package $(echo "$item" | sed 's/\.sh//g')
                 esac
             fi
         done
@@ -3440,7 +3440,7 @@ __search_packages() {
         die "please specify a keyword."
     fi
 
-    for repo in $(____list_formula_repositories | cut -d= -f1)
+    for repo in $(__list_formula_repositories | cut -d= -f1)
     do
         cd "$MY_FORMULA_REPO_DIR/$repo/formula" && ls -1 *.sh | sed 's/\.sh//g' | grep "$*"
     done
@@ -3479,7 +3479,7 @@ __show_homepage_of_the_given_package() {
     if [ -z "$1" ] ; then
         PACKAGE_WEBPAGE="$MY_HOME_PAGE"
     else
-        ___load_formula_of_the_given_package "$1"
+        __load_formula_of_the_given_package "$1"
     fi
 
     echo "$PACKAGE_WEBPAGE"
@@ -3489,7 +3489,7 @@ __open_homepage_of_the_given_package() {
     if [ -z "$1" ] ; then
         PACKAGE_WEBPAGE="$MY_HOME_PAGE"
     else
-        ___load_formula_of_the_given_package "$1"
+        __load_formula_of_the_given_package "$1"
     fi
     
     if command -v open > /dev/null ; then
@@ -3886,10 +3886,10 @@ __install_the_given_package() {
     unset STEP_NUM
 
     step "view formula"
-    ___view_formula_of_the_given_package "$1" --paging=never
+    __view_formula_of_the_given_package "$1" --paging=never
 
     step "load formula"
-    ___load_formula_of_the_given_package "$1"
+    __load_formula_of_the_given_package "$1"
 
     unset TARGET_OS_VERS
     TARGET_OS_VERS=$(pick_target_os_version "$PACKAGE_SDK_API" "$USER_SPECIFIED_TARGET_OS_VERS") || die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_SDK_API, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
@@ -4319,7 +4319,7 @@ __show_infomation_of_all_available_packages() {
     if [ "$OUTPUT_FORMAT" = 'json' ] ; then
         for PACKAGE in $PACKAGE_LIST
         do
-            ___load_formula_of_the_given_package "$PACKAGE"
+            __load_formula_of_the_given_package "$PACKAGE"
 
             I=$(expr ${I-0} + 1)
 
@@ -4366,7 +4366,7 @@ __show_infomation_of_the_given_package() {
     if [ $# -eq 2 ] ; then
         case $2 in
             --json)
-                ___load_formula_of_the_given_package "$1"
+                __load_formula_of_the_given_package "$1"
                 printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
                 ;;
             installed-dir)
@@ -4402,7 +4402,7 @@ __show_infomation_of_the_given_package() {
         return $?
     fi
 
-    ___load_formula_of_the_given_package "$1"
+    __load_formula_of_the_given_package "$1"
 
     echo "name    : $(mark_is_package_installed_or_not $1)"
 
@@ -5962,7 +5962,7 @@ main() {
         formula-repo)
             shift
             case $1 in
-                list) shift; ____list_formula_repositories ;;
+                list) shift; __list_formula_repositories ;;
                 add)  shift; __add_a_formula_repo $@ ;;
                 del)  shift; __del_a_formula_repo $@ ;;
                 *) help 1
@@ -5974,8 +5974,8 @@ main() {
                 create) shift; __create_formula_of_the_given_package $@ ;;
                 delete) shift; __delete_formula_of_the_given_package $@ ;;
                 rename) shift; __rename_formula_of_the_given_package $@ ;;
-                view)   shift; ____view_formula_of_the_given_package $@ ;;
-                edit)   shift; ____edit_formula_of_the_given_package $@ ;;
+                view)   shift;   __view_formula_of_the_given_package $@ ;;
+                edit)   shift;   __edit_formula_of_the_given_package $@ ;;
                 list)   shift; __list_formulas ;;
                    *)   help 1
             esac
@@ -6011,7 +6011,7 @@ main() {
         homepage) shift; __show_or_open_homepage_of_the_given_package $@ ;;
         depends)  shift; __show_depends_of_the_given_package    $@ ;;
         prefix)   shift; __show_prefix     $@ ;;
-        fetch)    shift; ___load_formula_of_the_given_package $@ &&
+        fetch)    shift; __load_formula_of_the_given_package $@ &&
                          __fetch_resources_of_the_given_package "$@" ;;
 
         logs) shift; __logs_the_given_installed_package $@ ;;
