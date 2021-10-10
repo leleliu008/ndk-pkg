@@ -32,6 +32,8 @@ jobs:
       - run: bin/ndk-pkg search lib
       - run: bin/ndk-pkg search zlib
 
+      - run: bin/ndk-pkg view zlib --paging=never
+
       - run: bin/ndk-pkg info zlib
       - run: bin/ndk-pkg info zlib version
       - run: bin/ndk-pkg info zlib webpage

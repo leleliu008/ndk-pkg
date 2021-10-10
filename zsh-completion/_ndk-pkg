@@ -98,8 +98,13 @@ function _ndk_pkg() {
                     case $state in
                         action)
                             case $words[1] in
-                                delete|rename|view|edit)
-                                    _arguments ':package-name:_ndk_pkg_available_packages'
+                                delete|rename|edit)
+                                    _arguments '1:package-name:_ndk_pkg_available_packages'
+                                    ;;
+                                view)
+                                    _arguments \
+                                        '1:package-name:_ndk_pkg_available_packages' \
+                                        '--paging=-[when use pager]:paging:(auto always never)'
                                     ;;
                             esac
                     esac

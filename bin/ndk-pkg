@@ -2816,6 +2816,9 @@ ___load_formula_of_the_given_package() {
     package add dep.cmd 'find'
 }
 
+# examples:
+# ____view_formula_of_the_given_package curl 
+# ____view_formula_of_the_given_package curl --paging=never 
 ____view_formula_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
@@ -2826,15 +2829,54 @@ ____view_formula_of_the_given_package() {
         die "$1 package is not available."
     fi
 
-    [ -z "$2" ] || warn "view action accept only one argument."
-    
-    if command -v bat > /dev/null ; then
-        bat "$PACKAGE_FORMULA_FILEPATH"
-    else
-        cat "$PACKAGE_FORMULA_FILEPATH"
-        echo
-        prompt_user_to_install_bat
-    fi    
+    shift
+
+    unset VIEW_FORMULA_PAGING
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --paging=*)
+                VIEW_FORMULA_PAGING=$(getvalue "$1")
+                case $VIEW_FORMULA_PAGING in
+                    auto|always|never) ;;
+                    *) die "--paging=VALUE VALUE must be one of auto, always, never"
+                esac
+                ;;
+            *)  die "unrecognized argument: $1"
+        esac
+        shift
+    done
+
+    case $VIEW_FORMULA_PAGING in
+        ''|auto)
+            if command -v bat > /dev/null ; then
+                bat --paging=auto "$PACKAGE_FORMULA_FILEPATH"
+            else
+                cat "$PACKAGE_FORMULA_FILEPATH"
+                echo
+                prompt_user_to_install_bat
+            fi
+            ;;
+        always)
+            if command -v bat > /dev/null ; then
+                bat --paging=always "$PACKAGE_FORMULA_FILEPATH"
+            else
+                more "$PACKAGE_FORMULA_FILEPATH"
+                echo
+                prompt_user_to_install_bat
+            fi
+            ;;
+        never)
+            if command -v bat > /dev/null ; then
+                bat --paging=never "$PACKAGE_FORMULA_FILEPATH"
+            else
+                cat "$PACKAGE_FORMULA_FILEPATH"
+                echo
+                prompt_user_to_install_bat
+            fi
+            ;;
+    esac
 }
 
 ____edit_formula_of_the_given_package() {
@@ -3842,6 +3884,9 @@ __install_the_given_package() {
     unset TARGET_OS_ABI
     unset CONFIG_XX_UPDATED
     unset STEP_NUM
+
+    step "view formula"
+    ___view_formula_of_the_given_package "$1" --paging=never
 
     step "load formula"
     ___load_formula_of_the_given_package "$1"
@@ -5926,11 +5971,11 @@ main() {
         formula)
             shift
             case $1 in
-                create) shift; __create_formula_of_the_given_package "$@" ;;
-                delete) shift; __delete_formula_of_the_given_package "$@" ;;
-                rename) shift; __rename_formula_of_the_given_package "$@" ;;
-                view)   shift; ____view_formula_of_the_given_package "$@" ;;
-                edit)   shift; ____edit_formula_of_the_given_package "$@" ;;
+                create) shift; __create_formula_of_the_given_package $@ ;;
+                delete) shift; __delete_formula_of_the_given_package $@ ;;
+                rename) shift; __rename_formula_of_the_given_package $@ ;;
+                view)   shift; ____view_formula_of_the_given_package $@ ;;
+                edit)   shift; ____edit_formula_of_the_given_package $@ ;;
                 list)   shift; __list_formulas ;;
                    *)   help 1
             esac
