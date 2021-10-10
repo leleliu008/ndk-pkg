@@ -4416,13 +4416,23 @@ __show_infomation_of_the_given_package() {
     INSTALLED_ABIS=$(cat "$MY_INSTALL_DIR/$1/installed-abis")
     INSTALLED_ABIS_LENGTH=$(list_length $INSTALLED_ABIS)
 
+    MAX=0
+    for ABI in $INSTALLED_ABIS
+    do
+        unset V
+        V=$(printf '%s\n' "$ABI" | wc -m)
+        if [ "$V" -gt "$MAX" ] ; then
+            MAX=$V
+        fi
+    done
+
     for ABI in $INSTALLED_ABIS
     do
         I=$(expr ${I-0} + 1)
         if [ "$I" -eq "$INSTALLED_ABIS_LENGTH" ] ; then
-            echo "              └── $(printf "%-12s" "$ABI") $(du -sh "$MY_INSTALL_DIR/$1/$ABI" | awk '{print $1}')"
+            printf "              └── %-${MAX}s %s\n" "$ABI" "$(du -sh "$MY_INSTALL_DIR/$1/$ABI" | cut -f1)"
         else
-            echo "              ├── $(printf "%-12s" "$ABI") $(du -sh "$MY_INSTALL_DIR/$1/$ABI" | awk '{print $1}')"
+            printf "              ├── %-${MAX}s %s\n" "$ABI" "$(du -sh "$MY_INSTALL_DIR/$1/$ABI" | cut -f1)"
         fi
     done
 
