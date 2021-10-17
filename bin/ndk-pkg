@@ -5793,7 +5793,7 @@ inspect_install_arguments() {
     fi
 
     [ -z "$TREE_ARGS" ] && TREE_ARGS='--dirsfirst'
-    [ -z "$PACK_TYPE" ] || TREE_ARGS="--type=$PACK_TYPE"
+    [ -z "$PACK_TYPE" ] || PACK_ARGS="--type=$PACK_TYPE"
 
     BUILD_LIST="$(__list_supported_target_abis)"
 
