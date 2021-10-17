@@ -3654,7 +3654,7 @@ __pack_the_given_installed_package() {
     unset PACKED_DIR_NAME
     unset PACKED_FILE_NAME
 
-    PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS.bin"
+    PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-ndk-pkg-bin"
     PACKED_FILE_NAME="$PACKED_DIR_NAME.$PACKED_FILE_SUFFIX"
 
     step "create working directory"
@@ -3669,7 +3669,7 @@ __pack_the_given_installed_package() {
 
     step "packing"
     case $PACKED_FILE_SUFFIX in
-        7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
+        7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
         zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
         tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
         tar.xz)  run tar Jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
