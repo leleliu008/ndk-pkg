@@ -61,8 +61,20 @@ file_exists() {
 # $1 command name or path
 command_exists_in_filesystem() {
     case $1 in
-        */*) executable "$1" ;;
-        *)   command -v "$1" > /dev/null
+        '') return 1 ;;
+        */*)
+            case $(uname | tr A-Z a-z) in
+                cygwin*)
+                    case $1 in
+                        /cygdrive/*/choco) executable "$1" ;;
+                        /cygdrive/*) return 1 ;;
+                        *) executable "$1" ;;
+                    esac
+                    ;;
+                *) executable "$1" ;;
+            esac
+            ;;
+        *)  command_exists_in_filesystem $(command -v "$1" || true)
     esac
 }
 
@@ -196,16 +208,19 @@ tolower() {
     fi
 }
 
+# https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
 nproc() {
-    if command nproc --version > /dev/null 2>&1 ; then
-        command nproc
-    elif test -f /proc/cpuinfo ; then
-        grep -c processor /proc/cpuinfo
-    elif command -v sysctl > /dev/null ; then
-        sysctl -n machdep.cpu.thread_count
-    else
-        echo 4
-    fi
+    case "$(uname)" in
+        Darwin) sysctl -n machdep.cpu.thread_count ;;
+        *BSD)   sysctl -n hw.ncpu ;;
+        *)  if command nproc --version > /dev/null 2>&1 ; then
+                command nproc
+            elif test -f /proc/cpuinfo ; then
+                grep -c processor /proc/cpuinfo
+            else
+                echo 4
+            fi
+    esac
 }
 
 own() {
@@ -538,7 +553,7 @@ fetch() {
 
             for FETCH_TOOL in curl wget http lynx aria2c axel
             do
-                if command -v "$FETCH_TOOL" > /dev/null ; then
+                if command_exists_in_filesystem "$FETCH_TOOL" ; then
                     break
                 else
                     unset FETCH_TOOL
@@ -608,14 +623,12 @@ fetch() {
 install_ca_certificates_on_netbsd() {
     # https://www.cambus.net/installing-ca-certificates-on-netbsd/
     if [ "$(uname)" = NetBSD ] ; then
-        if command -v pkgin > /dev/null ; then
-            if [ "$(whoami)" = root ] ; then
-                run      pkgin -y install mozilla-rootcerts || return 1
-            else
-                run sudo pkgin -y install mozilla-rootcerts || return 1
+        command -v mozilla-rootcerts > /dev/null || {
+            if command -v pkgin > /dev/null ; then
+                run $([ "$(whoami)" = root ] || printf 'sudo\n') pkgin -y install mozilla-rootcerts || return 1
             fi
-            run mozilla-rootcerts install
-        fi
+        }
+        run mozilla-rootcerts install || true
     fi
 }
 
@@ -668,7 +681,7 @@ __upgrade_self() {
     for arg in $@
     do
         case $arg in
-            -x) set -x ;;
+            -x) set -x ; break
         esac
     done
 
@@ -724,7 +737,7 @@ __integrate_zsh_completions() {
     for arg in $@
     do
         case $arg in
-            -x) set -x ;;
+            -x) set -x ; break
         esac
     done
 
@@ -1301,11 +1314,6 @@ version_match() {
 # command_exists_in_filesystem_and_version_matched automake
 command_exists_in_filesystem_and_version_matched() {
     if command_exists_in_filesystem "$1" ; then
-        if [ "$NATIVE_OS_SUBS" = 'cygwin' ] ; then
-            case $(command -v "$1") in
-                /cygdrive/*) return 1
-            esac
-        fi
         if [ $# -eq 3 ] ; then
             version_match "$(version_of_command "$1")" "$2" "$3"
         fi
@@ -2461,13 +2469,21 @@ __decode_dependency() {
 main() {
     set -e
 
+    while [ -n "$1" ]
+    do
+        case $arg in
+            -x) set -x ; break
+        esac
+    done
+
     unset COUNTRY
 
     while [ -n "$1" ]
     do
         case $arg in
-            -x) set -x ;;
             --china) COUNTRY=china ;;
+            -x) ;;
+            *)  die "unrecognized argument: $1"
         esac
         shift
     done

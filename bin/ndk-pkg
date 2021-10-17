@@ -208,16 +208,19 @@ tolower() {
     fi
 }
 
+# https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
 nproc() {
-    if command nproc --version > /dev/null 2>&1 ; then
-        command nproc
-    elif test -f /proc/cpuinfo ; then
-        grep -c processor /proc/cpuinfo
-    elif command -v sysctl > /dev/null ; then
-        sysctl -n machdep.cpu.thread_count
-    else
-        echo 4
-    fi
+    case "$(uname)" in
+        Darwin) sysctl -n machdep.cpu.thread_count ;;
+        *BSD)   sysctl -n hw.ncpu ;;
+        *)  if command nproc --version > /dev/null 2>&1 ; then
+                command nproc
+            elif test -f /proc/cpuinfo ; then
+                grep -c processor /proc/cpuinfo
+            else
+                echo 4
+            fi
+    esac
 }
 
 own() {
@@ -620,14 +623,12 @@ fetch() {
 install_ca_certificates_on_netbsd() {
     # https://www.cambus.net/installing-ca-certificates-on-netbsd/
     if [ "$(uname)" = NetBSD ] ; then
-        if command -v pkgin > /dev/null ; then
-            if [ "$(whoami)" = root ] ; then
-                run      pkgin -y install mozilla-rootcerts || return 1
-            else
-                run sudo pkgin -y install mozilla-rootcerts || return 1
+        command -v mozilla-rootcerts > /dev/null || {
+            if command -v pkgin > /dev/null ; then
+                run $([ "$(whoami)" = root ] || printf 'sudo\n') pkgin -y install mozilla-rootcerts || return 1
             fi
-            run mozilla-rootcerts install
-        fi
+        }
+        run mozilla-rootcerts install || true
     fi
 }
 
@@ -2525,7 +2526,7 @@ regist_dependency() {
 # package set|add dep.cmd "nasm"
 # package set|add dep.pkg "libxx"
 # package set|add bsystem "cmake"
-# package set     binsrcd 'true'
+# package set     binsrcd 'YES|NO'
 # package set     sourced 'src'
 # package set     sdk.api '23'
 #
@@ -2798,13 +2799,13 @@ __load_formula_of_the_given_package() {
         __parse_package_patches $PACKAGE_PATCHES
     fi
 
-    if [ "$PACKAGE_BUILD_IN_PARALLEL" = 'false' ] ; then
+    if [ "$PACKAGE_BUILD_IN_PARALLEL" = NO ] ; then
         NJOBS=1
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
-        PACKAGE_BINSRCD='true'
-        PACKAGE_BUILD_IN_SOURCE_DIR='true'
+        PACKAGE_BINSRCD=YES
+        PACKAGE_BUILD_IN_SOURCE_DIR=YES
     fi
 
     package add dep.cmd 'tree'
@@ -3042,10 +3043,10 @@ __del_a_formula_repo() {
     for repoName in $(__list_formula_repositories | cut -d= -f1)
     do
         if [ "$repoName" = "$1" ] ; then
-            REPO_EXISTS=true
+            REPO_EXISTS=YES
         fi
     done
-    if [ "$REPO_EXISTS" = 'true' ] ; then
+    if [ "$REPO_EXISTS" = YES ] ; then
         sed_in_place "/^$1=/d" "$MY_HOME_DIR/repos"
     else
         die "$1 formula repo not exists."
@@ -3262,13 +3263,13 @@ __gen_github_workflows() {
                 for z in $(get_direct_dependency_package_list_of_the_given_package "$y")
                 do
                     if [ "$x" = "$z" ] ; then
-                        BREAK=true
+                        BREAK=YES
                         break 2
                     fi
                 done
             fi
         done
-        if [ "$BREAK" = 'true' ] ; then
+        if [ "$BREAK" = YES ] ; then
             unset BREAK
         else
             if [ -z "$NDEPENDED_PACKAGES" ] ; then
@@ -3695,12 +3696,12 @@ get_direct_dependency_package_list_of_the_given_package() {
 }
 
 # $1 packageName, if packageName is not specified, USER_SPECIFIED_PACKAGE_LIST will be used
-# $2=true invoked by myself
+# $2=YES invoked by myself
 __gen_dependency_list_of_the_given_package() {
-    if [ "$2" != 'true' ] ; then
+    [ "$2" = YES ] || {
         unset I
         unset DEPENDENCY_PACKAGE_LIST
-    fi
+    }
 
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
     if [ -z "$1" ] ; then
@@ -3726,7 +3727,7 @@ __gen_dependency_list_of_the_given_package() {
 
         DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST_TEMP"
 
-        __gen_dependency_list_of_the_given_package "$dependencyPkgName" true
+        __gen_dependency_list_of_the_given_package "$dependencyPkgName" YES
     done
 }
 
@@ -3831,7 +3832,7 @@ __config_global_installation_variables() {
         done
     fi
 
-    if [ "$DEBUG" = 'true' ] ; then
+    if [ "$DEBUG" = YES ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
 }
@@ -3979,7 +3980,7 @@ __install_the_given_package() {
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
             warn "build for native already have been done, skipped."
         else
-            [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] || {
+            [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = YES ] || {
                 run install -d "$NATIVE_BUILD_DIR" || return 1
                 run cd    "$NATIVE_BUILD_DIR" || return 1
             }
@@ -4003,11 +4004,11 @@ __install_the_given_package() {
             do
                 eval export "$FLAG=\"\$${FLAG}_FOR_BUILD\""
                 printf "\n%17s = " "$FLAG"
-                FIRST='true'
+                FIRST=YES
                 for item in $(eval echo \$$FLAG | tr ':' ' ')
                 do
-                    if [ "$FIRST" = 'true' ] ; then
-                        FIRST='false'
+                    if [ "$FIRST" = YES ] ; then
+                        FIRST=NO
                         echo "$item"
                     else
                         echo "                    $item"
@@ -4016,11 +4017,11 @@ __install_the_given_package() {
             done
             echo
             printf "\n%17s = " PATH
-            FIRST='true'
+            FIRST=YES
             for item in $(echo "$PATH" | tr ':' ' ')
             do
-                if [ "$FIRST" = 'true' ] ; then
-                    FIRST='false'
+                if [ "$FIRST" = YES ] ; then
+                    FIRST=NO
                     echo "$item"
                 else
                     echo "                    $item"
@@ -4102,7 +4103,7 @@ __install_the_given_package() {
     step "record installed files"
     __record_installed_files_of_the_given_package "$1"
 
-    [ "$KEEP_WORKING_DIR" = 'true' ] || {
+    [ "$KEEP_WORKING_DIR" = YES ] || {
         step "clean working directory."
         run rm -rf "$WORKING_DIR"
     }
@@ -4132,7 +4133,7 @@ __install_the_given_package_all_builds() {
             TARGET_OS_ABI_LIST=$(printf "%s %s" "$TARGET_OS_ABI_LIST" "$TARGET_OS_ABI")
         fi
 
-        if [ "$DRYRUN" = 'true' ] ; then
+        if [ "$DRYRUN" = YES ] ; then
             __config_this_build_variables "$1"
             __printf_this_build_variables "$1"
             if [ -z "$SHELL" ] ; then
@@ -4156,7 +4157,7 @@ __install_the_given_package_one_build() {
     __config_this_build_variables "$1"
     __printf_this_build_variables "$1"
 
-    if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = 'true' ] ; then
+    if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = YES ] ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             run cd "$SOURCE_DIR" || return 1
         fi
@@ -4669,7 +4670,7 @@ __config_this_build_variables() {
     # export CMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH"
     # export CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH"
 
-    if [ "$VERBOSE" = 'true' ] ; then
+    if [ "$VERBOSE" = YES ] ; then
         CFLAGS="$CFLAGS -v"
     fi
 
@@ -4813,11 +4814,11 @@ __printf_this_build_variables() {
     do
         eval export "$FLAG=\"\$$FLAG\""
         printf "\n%17s = " "$FLAG"
-        FIRST=true
+        FIRST=YES
         for item in $(eval echo \$$FLAG | tr ':' ' ')
         do
-            if [ "$FIRST" = 'true' ] ; then
-                FIRST=false
+            if [ "$FIRST" = YES ] ; then
+                FIRST=NO
                 echo "$item"
             else
                 echo "                    $item"
@@ -4828,11 +4829,11 @@ __printf_this_build_variables() {
     echo
 
     printf "\n%17s = " PATH
-    FIRST='true'
+    FIRST=YES
     for item in $(echo "$PATH" | tr ':' ' ')
     do
-        if [ "$FIRST" = 'true' ] ; then
-            FIRST='false'
+        if [ "$FIRST" = YES ] ; then
+            FIRST=NO
             echo "$item"
         else
             echo "                    $item"
@@ -4894,7 +4895,7 @@ __printf_this_build_variables() {
     echo "            NJOBS = $NJOBS"
     echo
 
-    if [ "$VERBOSE" = 'true' ] ; then
+    if [ "$VERBOSE" = YES ] ; then
         echo
         run export -p
         echo
@@ -4973,7 +4974,7 @@ config_url() {
 # run in a subshell
 configure() {
     if [ -z "$CONFIG_XX_UPDATED" ] ; then
-        CONFIG_XX_UPDATED=true
+        CONFIG_XX_UPDATED=YES
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
         # https://git.savannah.gnu.org/cgit/config.git/tree/
         for item in config.sub config.guess
@@ -5042,7 +5043,7 @@ configure() {
         fi
     fi
 
-    if [ "$VERBOSE" = 'true' ] ; then
+    if [ "$VERBOSE" = YES ] ; then
         for Makefile in $(find "$SOURCE_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
@@ -5058,7 +5059,7 @@ configure() {
 
 # make wrapper
 makew() {
-    if [ "$DEBUG" = 'true' ] ; then
+    if [ "$DEBUG" = YES ] ; then
         run "$GMAKE -w -j$NJOBS --debug V=1 $*"
     else
         run "$GMAKE -w -j$NJOBS $*"
@@ -5684,18 +5685,18 @@ inspect_install_arguments() {
                 is_integer "$USER_SPECIFIED_TARGET_OS_VERS" || die "--min-sdk-api-level=INTEGER argument's value must be a integer."
                 ;;
             --verbose|-v)
-                VERBOSE=true
+                VERBOSE=YES
                 ;;
             --debug|-d)
-                DEBUG=true
+                DEBUG=YES
                 ;;
             --xtrace|-x)
                 ;;
             --dry-run)
-                DRYRUN=true
+                DRYRUN=YES
                 ;;
             --keep-working-dir)
-                KEEP_WORKING_DIR=true
+                KEEP_WORKING_DIR=YES
                 ;;
             --jobs=*)
                 NJOBS=$(getvalue "$1")
@@ -5910,7 +5911,7 @@ main() {
     do
         case $arg in
             --xtrace|-x)
-                XTRACE=true
+                XTRACE=YES
                 set -x
                 break
                 ;;
