@@ -160,7 +160,16 @@ function _ndk_pkg() {
                         '--keep-working-dir[do not delete working-dir even if installed success]' \
                         '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
                         '(--debug -d)'{--debug,-d}'[debug]' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
+                        '--linkage=-[link static or shared library]:linkage:(static-only shared-only static-prefered shared-prefgered)' \
+                        '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
+                        '--install-exe[install executable programs]' \
+                        '--install-doc[install documents]' \
+                        '--install-man[install manpages]' \
+                        '--tree[list installed files in a tree-like format after installed successfully]' \
+                        '--pack[pack after installed successfully]' \
+                        '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
+                        '--pack-type=-[set output file type]:pack-type:(7z zip tar.gz tar.xz tar.bz2)'
                     ;;
                 reinstall)
                     _arguments \

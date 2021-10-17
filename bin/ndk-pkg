@@ -3348,7 +3348,7 @@ __list__outdated_packages() {
 __tree_the_given_installed_package() {
     die_if_package_is_not_installed "$1"
     handle_dependency required exe tree
-    run tree $(shiftn 1 $@) --dirsfirst "$MY_INSTALL_DIR/$1"
+    run tree $(shiftn 1 $@) "$MY_INSTALL_DIR/$1"
 }
 
 __uninstall_the_given_packages() {
@@ -3685,7 +3685,7 @@ __pack_the_given_installed_package() {
     run cp "$PACKED_FILE_NAME" "$MY_BINARY_DIR/"
 
     step "show disk usage statistics"
-    run du -sh "$PACKED_FILE_NAME"
+    run "du -sh $PACKED_FILE_NAME | cut -f1"
 
     step "delete working directory"
     run rm -rf $WORKING_DIR
@@ -4108,11 +4108,22 @@ __install_the_given_package() {
         run rm -rf "$WORKING_DIR"
     }
 
-    step "list installed content."
-    __tree_the_given_installed_package "$1"
-
     echo
     success "$1 have been installed successfully."
+
+    if [ "$NEED_RUN_TREE" = YES ] ; then
+        unset STEP_NUM
+        echo
+        echo "${COLOR_GREEN}$_0 tree $1 $TREE_ARGS${COLOR_OFF}"
+        __tree_the_given_installed_package "$1" $TREE_ARGS
+    fi
+
+    if [ "$NEED_RUN_PACK" = YES ] ; then
+        unset STEP_NUM
+        echo
+        echo "${COLOR_GREEN}$_0 pack $1 $PACK_ARGS${COLOR_OFF}"
+        __pack_the_given_installed_package "$1" $PACK_ARGS
+    fi
 }
 
 __install_the_given_package_all_builds() {
@@ -5185,6 +5196,7 @@ EOF
         --pkg-config-path="$PKG_CONFIG_PATH" \
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$BUILD_DIR/cross-file" \
+        -Ddefault_library=static \
         $@ "$BUILD_DIR" "$SOURCE_DIR" &&
     {
         if command -v build_configed > /dev/null ; then
@@ -5677,6 +5689,20 @@ inspect_install_arguments() {
 
     unset KEEP_WORKING_DIR
 
+    unset NEED_RUN_TREE
+    unset NEED_RUN_PACK
+
+    unset TREE_ARGS
+    unset PACK_ARGS
+    unset PACK_TYPE
+
+    unset INSTALL_EXE
+    unset INSTALL_MAN
+    unset INSTALL_DOC
+    unset INSTALL_LIB
+
+    unset LINKAGE
+
     while [ -n "$1" ]
     do
         case "$1" in
@@ -5697,6 +5723,48 @@ inspect_install_arguments() {
                 ;;
             --keep-working-dir)
                 KEEP_WORKING_DIR=YES
+                ;;
+            --tree)
+                NEED_RUN_TREE=YES
+                ;;
+            --tree-args=*)
+                TREE_ARGS=$(getvalue "$1")
+                ;;
+            --pack)
+                NEED_RUN_PACK=YES
+                ;;
+            --pack-type=*)
+                PACK_TYPE=$(getvalue "$1")
+                case $PACK_TYPE in
+                    7z|zip|tar.gz|tar.xz|tar.bz2) ;;
+                    '') die "--pack-type=VALUE VALUE must not be empty." ;;
+                    *) die "--pack-type=VALUE VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
+                esac
+                ;;
+            --install-doc)
+                INSTALL_DOC=YES
+                ;;
+            --install-man)
+                INSTALL_MAN=YES
+                ;;
+            --install-exe)
+                INSTALL_EXE=YES
+                ;;
+            --install-lib=*)
+                INSTALL_LIB=$(getvalue "$1")
+                case $INSTALL_LIB in
+                    static|shared|both|yes|no) ;;
+                    '') die "--install-lib=VALUE VALUE must not be empty." ;;
+                    *) die "--install-lib=VALUE VALUE must be one of static shared both yes no"
+                esac
+                ;;
+            --linkage=*)
+                LINKAGE=$(getvalue "$1")
+                case $LINKAGE in
+                    static-only|shared-only|static-prefered|shared-prefered) ;;
+                    '') die "--linkage=VALUE VALUE must not be empty." ;;
+                    *) die "--linkage=VALUE VALUE must be one of static-only shared-only static-prefered shared-prefered"
+                esac
                 ;;
             --jobs=*)
                 NJOBS=$(getvalue "$1")
@@ -5723,6 +5791,9 @@ inspect_install_arguments() {
     if [ -z "$NJOBS" ] ; then
         NJOBS=$NPROC
     fi
+
+    [ -z "$TREE_ARGS" ] && TREE_ARGS='--dirsfirst'
+    [ -z "$PACK_TYPE" ] || TREE_ARGS="--type=$PACK_TYPE"
 
     BUILD_LIST="$(__list_supported_target_abis)"
 
