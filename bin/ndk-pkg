@@ -5189,6 +5189,13 @@ c_link_args = $(to_meson_array $LDFLAGS)
 cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
 EOF
+
+    unset MESON_ARGUMENT_DEFAULT_LIBRARY
+
+    case $INSTALL_LIB in
+        static|shared|both) MESON_ARGUMENT_DEFAULT_LIBRARY="-Ddefault_library=$INSTALL_LIB"
+    esac
+
     run "$MESON" setup \
         --prefix="$ABI_INSTALL_DIR" \
         --buildtype=release \
@@ -5196,7 +5203,7 @@ EOF
         --pkg-config-path="$PKG_CONFIG_PATH" \
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$BUILD_DIR/cross-file" \
-        -Ddefault_library=static \
+        $MESON_ARGUMENT_DEFAULT_LIBRARY \
         $@ "$BUILD_DIR" "$SOURCE_DIR" &&
     {
         if command -v build_configed > /dev/null ; then
