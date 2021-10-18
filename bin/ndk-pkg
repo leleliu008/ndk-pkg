@@ -208,21 +208,6 @@ tolower() {
     fi
 }
 
-# https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
-nproc() {
-    case "$(uname)" in
-        Darwin) sysctl -n machdep.cpu.thread_count ;;
-        *BSD)   sysctl -n hw.ncpu ;;
-        *)  if command nproc --version > /dev/null 2>&1 ; then
-                command nproc
-            elif test -f /proc/cpuinfo ; then
-                grep -c processor /proc/cpuinfo
-            else
-                echo 4
-            fi
-    esac
-}
-
 own() {
     if command -v awk > /dev/null ; then
         ls -ld "$1" | awk '{print $3":"$4}'
@@ -1066,6 +1051,21 @@ __get_os_libc_from_os_kind() {
     esac
 }
 
+# https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
+__get_os_ncpu() {
+    case "$(uname)" in
+        Darwin) sysctl -n machdep.cpu.thread_count ;;
+        *BSD)   sysctl -n hw.ncpu ;;
+        *)  if command nproc --version > /dev/null 2>&1 ; then
+                command nproc
+            elif test -f /proc/cpuinfo ; then
+                grep -c processor /proc/cpuinfo
+            else
+                echo 4
+            fi
+    esac
+}
+
 os() {
     if [ $# -eq 0 ] ; then
         printf "current-machine-os-kind : %s\n" "$(os kind)"
@@ -1073,6 +1073,8 @@ os() {
         printf "current-machine-os-name : %s\n" "$(os name)"
         printf "current-machine-os-vers : %s\n" "$(os vers)"
         printf "current-machine-os-arch : %s\n" "$(os arch)"
+        printf "current-machine-os-ncpu : %s\n" "$(os ncpu)"
+        printf "current-machine-os-euid : %s\n" "$(os euid)"
         printf "current-machine-os-libc : %s\n" "$(os libc)"
         printf "current-machine-os-subs : %s\n" "$(os subs)"
     elif [ $# -eq 1 ] ; then
@@ -1086,6 +1088,8 @@ os type
 os name
 os vers
 os arch
+os ncpu
+os euid
 os libc
 os subs
 EOF
@@ -1110,6 +1114,12 @@ EOF
                 ;;
             arch)
                 __get_os_arch
+                ;;
+            ncpu)
+                __get_os_ncpu
+                ;;
+            euid)
+                id -u
                 ;;
             libc)
                 __get_os_libc_from_os_kind $(os kind)
@@ -4029,7 +4039,6 @@ __install_the_given_package() {
             done
 
             echo
-            echo "            NPROC = $NPROC"
             echo "            NJOBS = $NJOBS"
             echo
             echo "      WORK_DIR = $WORK_DIR"
@@ -4784,6 +4793,7 @@ __printf_this_build_variables() {
     echo " NATIVE_OS_NAME   = $NATIVE_OS_NAME"
     echo " NATIVE_OS_VERS   = $NATIVE_OS_VERS"
     echo " NATIVE_OS_ARCH   = $NATIVE_OS_ARCH"
+    echo " NATIVE_OS_NCPU   = $NATIVE_OS_NCPU"
     echo " NATIVE_OS_LIBC   = $NATIVE_OS_LIBC"
     echo " NATIVE_OS_SUBS   = $NATIVE_OS_SUBS"
     echo
@@ -4902,7 +4912,6 @@ __printf_this_build_variables() {
     echo "  ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR"
     echo "  ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR"
     echo
-    echo "            NPROC = $NPROC"
     echo "            NJOBS = $NJOBS"
     echo
 
@@ -5093,7 +5102,7 @@ cmakew() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DCMAKE_VERBOSE_MAKEFILE=ON
         -DCMAKE_COLOR_MAKEFILE=ON
-        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
         -DBUILD_TESTING=OFF"
 
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
@@ -5198,7 +5207,7 @@ EOF
 
     run "$MESON" setup \
         --prefix="$ABI_INSTALL_DIR" \
-        --buildtype=release \
+        --buildtype=$MESON_BUILD_TYPE \
         --backend=ninja \
         --pkg-config-path="$PKG_CONFIG_PATH" \
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
@@ -5691,10 +5700,11 @@ inspect_install_arguments() {
     unset DEBUG
     unset VERBOSE
 
-    unset NPROC
     unset NJOBS
 
-    unset BUILD_TYPE
+    unset GIVEN_BUILD_TYPE
+    unset CMAKE_BUILD_TYPE
+    unset MESON_BUILD_TYPE
 
     unset LINK_TYPE
 
@@ -5751,8 +5761,8 @@ inspect_install_arguments() {
                 esac
                 ;;
             --build-type=*)
-                BUILD_TYPE=$(getvalue "$1")
-                case $BUILD_TYPE in
+                GIVEN_BUILD_TYPE=$(getvalue "$1")
+                case $GIVEN_BUILD_TYPE in
                     debug|release) ;;
                     '') die "--build-type=VALUE VALUE must not be empty." ;;
                     *) die "--build-type=VALUE VALUE must be one of debug release"
@@ -5803,11 +5813,24 @@ inspect_install_arguments() {
         shift
     done
 
-    NPROC=$(nproc)
-
     if [ -z "$NJOBS" ] ; then
-        NJOBS=$NPROC
+        NJOBS=$NATIVE_OS_NCPU
     fi
+
+    if [ -z "$GIVEN_BUILD_TYPE" ] ; then
+        GIVEN_BUILD_TYPE=release
+    fi
+
+    case $GIVEN_BUILD_TYPE in
+        debug)
+            CMAKE_BUILD_TYPE=Debug
+            MESON_BUILD_TYPE=debug
+            ;;
+        release)
+            CMAKE_BUILD_TYPE=Release
+            MESON_BUILD_TYPE=release
+            ;;
+    esac
 
     [ -z "$TREE_ARGS" ] && TREE_ARGS='--dirsfirst'
     [ -z "$PACK_TYPE" ] || PACK_ARGS="--type=$PACK_TYPE"
@@ -5883,6 +5906,7 @@ init() {
         unset NATIVE_OS_NAME
         unset NATIVE_OS_VERS
         unset NATIVE_OS_ARCH
+        unset NATIVE_OS_NCPU
         unset NATIVE_OS_LIBC
         unset NATIVE_OS_SUBS
 
@@ -5891,6 +5915,7 @@ init() {
         NATIVE_OS_NAME=$(os name)
         NATIVE_OS_VERS=$(os vers)
         NATIVE_OS_ARCH=$(os arch)
+        NATIVE_OS_NCPU=$(os ncpu)
         NATIVE_OS_LIBC=$(os libc)
         NATIVE_OS_SUBS=$(os subs)
     else
@@ -5899,10 +5924,11 @@ init() {
 }
 
 help() {
-    cat << EOF
-$CURRENT_SCRIPT_FILENAME ($MY_VERSION) is a package manager for Android NDK to build C/C++ project.
+    echo "${COLOR_GREEN}$_0 $MY_VERSION is a package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}"
 
-Usage: $CURRENT_SCRIPT_FILENAME <ACTION> [ARGUMENT...]
+    cat << EOF
+
+Usage: $_0 <ACTION> [ARGUMENT...]
 
 ACTION:
     --help    | -h                --show the help information of this command.
@@ -6016,7 +6042,7 @@ main() {
             echo "$MY_VERSION"
             ;;
         env)
-            echo "ndk-pkg ($MY_VERSION) is a package manager for Android NDK to build C/C++/Rust/Go project."
+            echo "${COLOR_GREEN}$_0 $MY_VERSION is a package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}"
             echo
             run os
             echo
