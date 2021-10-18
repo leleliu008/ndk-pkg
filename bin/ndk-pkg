@@ -3833,7 +3833,7 @@ __config_global_installation_variables() {
     done
     unset FLAG
 
-    export PATH="$TOOLCHAIN_BIN_DIR:$PATH"
+    export PATH="$TOOLCHAIN_BIND:$PATH"
 
     if [ -d "$MY_HOME_DIR/native" ] ; then
         for item in $(find "$MY_HOME_DIR/native" -maxdepth 1 -type d -name bin)
@@ -3869,10 +3869,10 @@ __install_the_given_packages() {
         else
             echo "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${INSTALLING_PACKAGE}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
             __install_the_given_package "$INSTALLING_PACKAGE" || {
-                if [ -z "$TARGET_OS_ABI" ] ; then
+                if [ -z "$BUILD_ITEM" ] ; then
                     die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
                 else
-                    die "install $INSTALLING_PACKAGE/$TARGET_OS_ABI failed! you can go to $WORK_DIR to see see."
+                    die "install $INSTALLING_PACKAGE/$BUILD_ITEM failed! you can go to $WORK_DIR to see see."
                 fi
             }
         fi
@@ -3888,6 +3888,8 @@ __install_the_given_package() {
     unset WORK_DIR
     unset SOURCE_DIR
     unset BUILD_DIR
+    unset BUILD_ITEM
+    unset BUILD_INDEX
 
     unset NATIVE_BUILD_DIR
     unset NATIVE_INSTALL_DIR
@@ -4037,15 +4039,15 @@ __install_the_given_package() {
                 fi
             done
 
-            echo
-            echo "            NJOBS = $NJOBS"
-            echo
-            echo "      WORK_DIR = $WORK_DIR"
-            echo "       SOURCE_DIR = $SOURCE_DIR"
-            echo " NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR"
-            echo " NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR"
-            echo "                PWD = $PWD"
-            echo
+            echo "
+            NJOBS = $NJOBS
+
+            WORK_DIR = $WORK_DIR
+            SOURCE_DIR = $SOURCE_DIR
+            NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR
+            NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
+            PWD = $PWD
+            "
 
             run build0 || return 1
 
@@ -4137,28 +4139,28 @@ __install_the_given_package() {
 __install_the_given_package_all_builds() {
     PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
 
-    unset BUILD_ROUND_N
+    unset BUILD_INDEX
 
-    for TARGET_OS_ABI in $BUILD_LIST
+    for BUILD_ITEM in $BUILD_LIST
     do
-        BUILD_ROUND_N=$(expr ${BUILD_ROUND_N-0} + 1)
+        BUILD_INDEX=$(expr ${BUILD_INDEX-0} + 1)
 
         if [ "$DRYRUN" = YES ] ; then
-            __dryrun_install_the_given_package_one_build "$1" "$TARGET_OS_ABI"
+            __dryrun_install_the_given_package_one_build "$1" "$BUILD_ITEM"
         else
             (
-                BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
+                BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$BUILD_ITEM"
                 install -d "$BUILD_DIR" &&
                 mkfifo "$BUILD_DIR/pipe" &&
                 (tee "$BUILD_DIR/install.log.txt" < "$BUILD_DIR/pipe" &) &&
-                __install_the_given_package_one_build "$1" "$TARGET_OS_ABI" > "$BUILD_DIR/pipe" 2>&1
+                __install_the_given_package_one_build "$1" "$BUILD_ITEM" > "$BUILD_DIR/pipe" 2>&1
             ) || return 1
         fi
     done
 }
 
 __dryrun_install_the_given_package_one_build() {
-    step "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
+    step "build for target ${COLOR_GREEN}${2}${COLOR_OFF}"
     __config_variables_of_the_given_build $@
     __printf_variables_of_the_given_build $@
 
@@ -4168,7 +4170,7 @@ __dryrun_install_the_given_package_one_build() {
 }
 
 __install_the_given_package_one_build() {
-    step "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
+    step "build for target ${COLOR_GREEN}${2}${COLOR_OFF}"
     __config_variables_of_the_given_build $@
     __printf_variables_of_the_given_build $@
 
@@ -4497,10 +4499,11 @@ __show_infomation_of_the_given_package() {
         fi
     done
 
-    echo "installed datetime    : $(format_unix_timestamp $INSTALLED_DATETIME '+%Y/%m/%d %H:%M:%S')"
-    echo "installed pkg version : $INSTALLED_PKG_VERS"
-    echo "build with toolchain  : $BUILD_WITH_TOOLCHAIN_NAME $BUILD_WITH_TOOLCHAIN_VERS"
-    echo "build with api-level  : $BUILD_WITH_API_LEVEL"
+    echo "
+installed-datetime    : $(format_unix_timestamp $INSTALLED_DATETIME '+%Y/%m/%d %H:%M:%S')
+installed-pkg-version : $INSTALLED_PKG_VERS
+build-use-toolchain   : $BUILD_USE_TOOLCHAIN_NAME $BUILD_USE_TOOLCHAIN_VERS
+build-use-sdk-version : $BUILD_USE_SDK_VERS"
 }
 
 mark_is_package_installed_or_not() {
@@ -4549,10 +4552,10 @@ INSTALLED_DATETIME='$TIMESTAMP_UNIX'
 INSTALLED_PKG_NAME='$PACKAGE_NAME'
 INSTALLED_PKG_VERS='$PACKAGE_VERSION'
 
-BUILD_WITH_TOOLCHAIN_NAME='$TOOLCHAIN_NAME'
-BUILD_WITH_TOOLCHAIN_VERS='$TOOLCHAIN_VERSION'
+BUILD_USE_SDK_VERS='$TARGET_OS_VERS'
 
-BUILD_WITH_API_LEVEL='$TARGET_OS_VERS'
+BUILD_USE_TOOLCHAIN_NAME='$TOOLCHAIN_NAME'
+BUILD_USE_TOOLCHAIN_VERS='$TOOLCHAIN_VERS'
 EOF
 }
 
@@ -4563,10 +4566,10 @@ __load_installed_metadata_of_the_given_package() {
     unset INSTALLED_PKG_NAME
     unset INSTALLED_PKG_VERS
 
-    unset BUILD_WITH_TOOLCHAIN_NAME
-    unset BUILD_WITH_TOOLCHAIN_VERS
+    unset BUILD_USE_SDK_VERS
 
-    unset BUILD_WITH_API_LEVEL
+    unset BUILD_USE_TOOLCHAIN_NAME
+    unset BUILD_USE_TOOLCHAIN_VERS
 
     INSTALLED_METADATA_FILEPATH="$MY_INSTALL_DIR/$1/installed-metadata"
 
@@ -4579,7 +4582,7 @@ __config_variables_of_the_given_build() {
     TARGET_OS_KIND=linux
     TARGET_OS_TYPE=android
     TARGET_OS_NAME=Android
-
+    TARGET_OS_ABI=$2
     TARGET_OS_ARCH=$(print_target_arch_by_abi "$TARGET_OS_ABI")
 
     TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
@@ -4785,35 +4788,36 @@ __config_variables_of_the_given_build() {
 # __printf_variables_of_the_given_build curl x86_64
 __printf_variables_of_the_given_build() {
     echo "
-    BUILD_ROUND_N    = $BUILD_ROUND_N
+    BUILD_INDEX    = $BUILD_INDEX
 
-    NATIVE_OS_KIND   = $NATIVE_OS_KIND
-    NATIVE_OS_TYPE   = $NATIVE_OS_TYPE
-    NATIVE_OS_NAME   = $NATIVE_OS_NAME
-    NATIVE_OS_VERS   = $NATIVE_OS_VERS
-    NATIVE_OS_ARCH   = $NATIVE_OS_ARCH
-    NATIVE_OS_NCPU   = $NATIVE_OS_NCPU
-    NATIVE_OS_LIBC   = $NATIVE_OS_LIBC
-    NATIVE_OS_SUBS   = $NATIVE_OS_SUBS
+    NATIVE_OS_KIND = $NATIVE_OS_KIND
+    NATIVE_OS_TYPE = $NATIVE_OS_TYPE
+    NATIVE_OS_NAME = $NATIVE_OS_NAME
+    NATIVE_OS_VERS = $NATIVE_OS_VERS
+    NATIVE_OS_ARCH = $NATIVE_OS_ARCH
+    NATIVE_OS_NCPU = $NATIVE_OS_NCPU
+    NATIVE_OS_LIBC = $NATIVE_OS_LIBC
+    NATIVE_OS_SUBS = $NATIVE_OS_SUBS
 
-    TARGET_OS_KIND   = $TARGET_OS_KIND
-    TARGET_OS_TYPE   = $TARGET_OS_TYPE
-    TARGET_OS_NAME   = $TARGET_OS_NAME
-    TARGET_OS_VERS   = $TARGET_OS_VERS
-    TARGET_OS_ARCH   = $TARGET_OS_ARCH
-    TARGET_OS_ABI    = $TARGET_OS_ABI
-    TARGET_TRIPLE    = $TARGET_TRIPLE
+    TARGET_OS_KIND = $TARGET_OS_KIND
+    TARGET_OS_TYPE = $TARGET_OS_TYPE
+    TARGET_OS_NAME = $TARGET_OS_NAME
+    TARGET_OS_VERS = $TARGET_OS_VERS
+    TARGET_OS_ARCH = $TARGET_OS_ARCH
+    TARGET_OS_ABI  = $TARGET_OS_ABI
+    TARGET_TRIPLE  = $TARGET_TRIPLE
 
-    TOOLCHAIN_NAME    = $TOOLCHAIN_NAME
-    TOOLCHAIN_VERSION = $TOOLCHAIN_VERSION
-    TOOLCHAIN_BIN_DIR = $TOOLCHAIN_BIN_DIR
+    TOOLCHAIN_NAME = $TOOLCHAIN_NAME
+    TOOLCHAIN_VERS = $TOOLCHAIN_VERS
+    TOOLCHAIN_ROOT = $TOOLCHAIN_ROOT
+    TOOLCHAIN_BIND = $TOOLCHAIN_BIND
 
-    ANDROID_NDK_HOME  = $ANDROID_NDK_HOME
+  ANDROID_NDK_HOME = $ANDROID_NDK_HOME
 
-    SYSROOT = $SYSROOT
+SYSROOT            = $SYSROOT
 
-    SYSTEM_INCLUDE_DIR= $SYSTEM_INCLUDE_DIR
-    SYSTEM_LIBRARY_DIR= $SYSTEM_LIBRARY_DIR
+SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR
+SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
     "
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
@@ -5239,7 +5243,7 @@ to_meson_array() {
 include_stub_getdtablesize() {
     # https://linux.die.net/man/2/getdtablesize
     # https://hg.mozilla.org/mozreview/gecko/rev/038c2fe02074d03a6c34d44f68cb5f078a2472cc#index_header
-    if [ "$BUILD_ROUND_N" -eq 1 ] ; then
+    if [ "$BUILD_INDEX" -eq 1 ] ; then
         cat > "$SOURCE_DIR/stub-getdtablesize.c" <<EOF
 #ifndef STUB_GETDTABLESIZE_H
 #define STUB_GETDTABLESIZE_H
@@ -5312,7 +5316,7 @@ __ldd() {
     TARGET_OS_ARCH=$(print_target_arch_by_abi "$2")
     TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
     READELF="$(path_of_tool_in_the_toolchain readelf)"
-    export PATH="$TOOLCHAIN_BIN_DIR:$PATH"
+    export PATH="$TOOLCHAIN_BIND:$PATH"
 
     ldd_recursion() {
         die_if_package_is_not_installed "$1"
@@ -5350,10 +5354,10 @@ list_dynamic_library_names_of_the_given_package() {
 }
 
 __list_supported_target_sdk_api_levels() {
-    if [ -z "$TOOLCHAIN_BIN_DIR" ] ; then
+    if [ -z "$TOOLCHAIN_BIND" ] ; then
         inspect_build_toolchains > /dev/null
     fi
-    ls "$TOOLCHAIN_BIN_DIR" | sed -n '/aarch64-linux-android[1-9][0-9]-clang++/p' | cut -d- -f3 | sed 's/android//'
+    ls "$TOOLCHAIN_BIND" | sed -n '/aarch64-linux-android[1-9][0-9]-clang++/p' | cut -d- -f3 | sed 's/android//'
 }
 
 __list_supported_target_archs() {
@@ -5420,17 +5424,17 @@ path_of_tool_in_the_toolchain() {
         *)   TOOL_FILENAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
              if [ "$1" = 'ld' ] ; then
                 # https://github.com/android/ndk/wiki/Changelog-r22
-                if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILENAME$EXE" ] ; then
+                if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME$EXE" ] ; then
                     TOOL_FILENAME=lld
                 fi
              fi
 
              # https://github.com/android/ndk/wiki/Changelog-r23
-             if [ ! -e "$TOOLCHAIN_BIN_DIR/$TOOL_FILENAME$EXE" ] ; then
+             if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME$EXE" ] ; then
                  TOOL_FILENAME=llvm-$1
              fi
     esac
-    die_if_not_executable "$TOOLCHAIN_BIN_DIR/$TOOL_FILENAME"
+    die_if_not_executable "$TOOLCHAIN_BIND/$TOOL_FILENAME"
     echo "$TOOL_FILENAME"
 }
 
@@ -5676,7 +5680,7 @@ inspect_build_toolchains() {
     
     TOOLCHAIN_NAME='android-ndk'
     TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
-    TOOLCHAIN_BIN_DIR="$TOOLCHAIN_ROOT/bin"
+    TOOLCHAIN_BIND="$TOOLCHAIN_ROOT/bin"
     SYSROOT="$TOOLCHAIN_ROOT/sysroot"
 
     ANDROID_NDK_VERSION="$(ndk_version)"
@@ -5687,7 +5691,7 @@ inspect_build_toolchains() {
         die "your installed android-ndk [$ANDROID_NDK_HOME] version is $ANDROID_NDK_VERSION, please update to r19 or newer."
     fi
 
-    TOOLCHAIN_VERSION=$ANDROID_NDK_VERSION
+    TOOLCHAIN_VERS=$ANDROID_NDK_VERSION
 
     export PATH="$ANDROID_NDK_HOME:$PATH"
 }
@@ -6064,7 +6068,7 @@ main() {
 
             inspect_build_toolchains
 
-            echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERSION"
+            echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERS"
             ;;
         target)
             shift
