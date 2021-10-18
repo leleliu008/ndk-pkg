@@ -3892,7 +3892,6 @@ __install_the_given_package() {
     unset NATIVE_BUILD_DIR
     unset NATIVE_INSTALL_DIR
 
-    unset TARGET_OS_ABI
     unset CONFIG_XX_UPDATED
     unset STEP_NUM
 
@@ -4104,7 +4103,7 @@ __install_the_given_package() {
     step "record installed abis"
     INSTALLED_ABIS_FILEPATH="$MY_INSTALL_DIR/$1/installed-abis"
     echo "-- Installing: $INSTALLED_ABIS_FILEPATH"
-    printf '%s\n' "$TARGET_OS_ABI_LIST" > "$INSTALLED_ABIS_FILEPATH"
+    printf '%s\n' "$BUILD_LIST" > "$INSTALLED_ABIS_FILEPATH"
 
     step "record installed metadata"
     __record_installed_metadata_of_the_given_package "$1"
@@ -4118,7 +4117,7 @@ __install_the_given_package() {
     }
 
     echo
-    success "$1 have been installed successfully."
+    success "$1 installed successfully."
 
     if [ "$NEED_RUN_TREE" = YES ] ; then
         unset STEP_NUM
@@ -4138,44 +4137,40 @@ __install_the_given_package() {
 __install_the_given_package_all_builds() {
     PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
 
-    unset BUILD_ROUND_NUM
-    unset TARGET_OS_ABI_LIST
+    unset BUILD_ROUND_N
 
-    for BUILD in $BUILD_LIST
+    for TARGET_OS_ABI in $BUILD_LIST
     do
-        BUILD_ROUND_NUM=$(expr ${BUILD_ROUND_NUM-0} + 1)
-
-        TARGET_OS_ABI=$(echo "$BUILD" | cut -d: -f1)
-
-        if [ -z "$TARGET_OS_ABI_LIST" ] ; then
-            TARGET_OS_ABI_LIST="$TARGET_OS_ABI"
-        else
-            TARGET_OS_ABI_LIST=$(printf "%s %s" "$TARGET_OS_ABI_LIST" "$TARGET_OS_ABI")
-        fi
+        BUILD_ROUND_N=$(expr ${BUILD_ROUND_N-0} + 1)
 
         if [ "$DRYRUN" = YES ] ; then
-            __config_this_build_variables "$1"
-            __printf_this_build_variables "$1"
-            if [ -z "$SHELL" ] ; then
-                SHELL=$(command -v zsh || command -v bash || command -v sh)
-            fi
-            exec "$SHELL" || return 1
+            __dryrun_install_the_given_package_one_build "$1" "$TARGET_OS_ABI"
         else
             (
                 BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
                 install -d "$BUILD_DIR" &&
                 mkfifo "$BUILD_DIR/pipe" &&
                 (tee "$BUILD_DIR/install.log.txt" < "$BUILD_DIR/pipe" &) &&
-                __install_the_given_package_one_build "$1" > "$BUILD_DIR/pipe" 2>&1
+                __install_the_given_package_one_build "$1" "$TARGET_OS_ABI" > "$BUILD_DIR/pipe" 2>&1
             ) || return 1
         fi
     done
 }
 
+__dryrun_install_the_given_package_one_build() {
+    step "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
+    __config_variables_of_the_given_build $@
+    __printf_variables_of_the_given_build $@
+
+    [ -z "$SHELL" ] && SHELL=$(command -v zsh || command -v bash || command -v sh)
+
+    exec "$SHELL"
+}
+
 __install_the_given_package_one_build() {
     step "build for target ${COLOR_GREEN}${TARGET_OS_ABI}${COLOR_OFF}"
-    __config_this_build_variables "$1"
-    __printf_this_build_variables "$1"
+    __config_variables_of_the_given_build $@
+    __printf_variables_of_the_given_build $@
 
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = YES ] ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
@@ -4578,12 +4573,14 @@ __load_installed_metadata_of_the_given_package() {
     . "$INSTALLED_METADATA_FILEPATH" || die "$INSTALLED_METADATA_FILEPATH is broken."
 }
 
-__config_this_build_variables() {
+# examples:
+# __config_variables_of_the_given_build curl x86_64
+__config_variables_of_the_given_build() {
     TARGET_OS_KIND=linux
     TARGET_OS_TYPE=android
     TARGET_OS_NAME=Android
-    TARGET_OS_ARCH=$(print_target_arch_by_abi "$TARGET_OS_ABI")
 
+    TARGET_OS_ARCH=$(print_target_arch_by_abi "$TARGET_OS_ABI")
 
     TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
 
@@ -4784,36 +4781,40 @@ __config_this_build_variables() {
     done
 }
 
-__printf_this_build_variables() {
-    echo
-    echo " BUILD_ROUND_NUM  = $BUILD_ROUND_NUM"
-    echo
-    echo " NATIVE_OS_KIND   = $NATIVE_OS_KIND"
-    echo " NATIVE_OS_TYPE   = $NATIVE_OS_TYPE"
-    echo " NATIVE_OS_NAME   = $NATIVE_OS_NAME"
-    echo " NATIVE_OS_VERS   = $NATIVE_OS_VERS"
-    echo " NATIVE_OS_ARCH   = $NATIVE_OS_ARCH"
-    echo " NATIVE_OS_NCPU   = $NATIVE_OS_NCPU"
-    echo " NATIVE_OS_LIBC   = $NATIVE_OS_LIBC"
-    echo " NATIVE_OS_SUBS   = $NATIVE_OS_SUBS"
-    echo
-    echo " TARGET_OS_KIND   = $TARGET_OS_KIND"
-    echo " TARGET_OS_TYPE   = $TARGET_OS_TYPE"
-    echo " TARGET_OS_NAME   = $TARGET_OS_NAME"
-    echo " TARGET_OS_VERS   = $TARGET_OS_VERS"
-    echo " TARGET_OS_ARCH   = $TARGET_OS_ARCH"
-    echo
-    echo " TARGET_OS_ABI    = $TARGET_OS_ABI"
-    echo " TARGET_TRIPLE    = $TARGET_TRIPLE"
-    echo
-    echo "TOOLCHAIN_NAME    = $TOOLCHAIN_NAME"
-    echo "TOOLCHAIN_VERSION = $TOOLCHAIN_VERSION"
-    echo "ANDROID_NDK_HOME  = $ANDROID_NDK_HOME"
-    echo "TOOLCHAIN_BIN_DIR = $TOOLCHAIN_BIN_DIR"
-    echo "          SYSROOT = $SYSROOT"
-    echo "SYSTEM_INCLUDE_DIR= $SYSTEM_INCLUDE_DIR"
-    echo "SYSTEM_LIBRARY_DIR= $SYSTEM_LIBRARY_DIR"
-    echo
+# examples:
+# __printf_variables_of_the_given_build curl x86_64
+__printf_variables_of_the_given_build() {
+    echo "
+    BUILD_ROUND_N    = $BUILD_ROUND_N
+
+    NATIVE_OS_KIND   = $NATIVE_OS_KIND
+    NATIVE_OS_TYPE   = $NATIVE_OS_TYPE
+    NATIVE_OS_NAME   = $NATIVE_OS_NAME
+    NATIVE_OS_VERS   = $NATIVE_OS_VERS
+    NATIVE_OS_ARCH   = $NATIVE_OS_ARCH
+    NATIVE_OS_NCPU   = $NATIVE_OS_NCPU
+    NATIVE_OS_LIBC   = $NATIVE_OS_LIBC
+    NATIVE_OS_SUBS   = $NATIVE_OS_SUBS
+
+    TARGET_OS_KIND   = $TARGET_OS_KIND
+    TARGET_OS_TYPE   = $TARGET_OS_TYPE
+    TARGET_OS_NAME   = $TARGET_OS_NAME
+    TARGET_OS_VERS   = $TARGET_OS_VERS
+    TARGET_OS_ARCH   = $TARGET_OS_ARCH
+    TARGET_OS_ABI    = $TARGET_OS_ABI
+    TARGET_TRIPLE    = $TARGET_TRIPLE
+
+    TOOLCHAIN_NAME    = $TOOLCHAIN_NAME
+    TOOLCHAIN_VERSION = $TOOLCHAIN_VERSION
+    TOOLCHAIN_BIN_DIR = $TOOLCHAIN_BIN_DIR
+
+    ANDROID_NDK_HOME  = $ANDROID_NDK_HOME
+
+    SYSROOT = $SYSROOT
+
+    SYSTEM_INCLUDE_DIR= $SYSTEM_INCLUDE_DIR
+    SYSTEM_LIBRARY_DIR= $SYSTEM_LIBRARY_DIR
+    "
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
@@ -4867,53 +4868,52 @@ __printf_this_build_variables() {
             cargo)
                 echo
                 env | grep CARGO
-                echo
-                echo "    HOST_AR       = $HOST_AR"
-                echo "    HOST_CC       = $HOST_CC"
-                echo "    HOST_CXX      = $HOST_CXX"
-                echo "    HOST_CFLAGS   = $HOST_CFLAGS"
-                echo "    HOST_CXXFLAGS = $HOST_CXXFLAGS"
-                echo
-                echo "  TARGET_AR       = $TARGET_AR"
-                echo "  TARGET_CC       = $TARGET_CC"
-                echo "  TARGET_CXX      = $TARGET_CXX"
-                echo "  TARGET_CFLAGS   = $TARGET_CFLAGS"
-                echo "  TARGET_CXXFLAGS = $TARGET_CXXFLAGS"
+                echo "
+                HOST_AR       = $HOST_AR
+                HOST_CC       = $HOST_CC
+                HOST_CXX      = $HOST_CXX
+                HOST_CFLAGS   = $HOST_CFLAGS
+                HOST_CXXFLAGS = $HOST_CXXFLAGS
+
+                TARGET_AR       = $TARGET_AR
+                TARGET_CC       = $TARGET_CC
+                TARGET_CXX      = $TARGET_CXX
+                TARGET_CFLAGS   = $TARGET_CFLAGS
+                TARGET_CXXFLAGS = $TARGET_CXXFLAGS
+                "
                 ;;
                go)
-                echo
-                echo "      GOOS        = $GOOS"
-                echo "      GOARCH      = $GOARCH"
-                echo
-                echo "      GO111MODULE = $GO111MODULE"
-                echo "      GOPROXY     = $GOPROXY"
-                echo
-                echo "     CGO_ENABLED  = $CGO_ENABLED"
-                echo "     CGO_CFLAGS   = $CGO_CFLAGS"
-                echo "     CGO_CXXFLAGS = $CGO_CXXFLAGS"
-                echo "     CGO_CPPFLAGS = $CGO_CPPFLAGS"
-                echo "     CGO_LDFLAGS  = $CGO_LDFLAGS"
+                echo "
+                GOOS        = $GOOS
+                GOARCH      = $GOARCH
+                GO111MODULE = $GO111MODULE
+                GOPROXY     = $GOPROXY
+
+                CGO_ENABLED  = $CGO_ENABLED
+                CGO_CFLAGS   = $CGO_CFLAGS
+                CGO_CXXFLAGS = $CGO_CXXFLAGS
+                CGO_CPPFLAGS = $CGO_CPPFLAGS
+                CGO_LDFLAGS  = $CGO_LDFLAGS
+                "
                 ;;
         esac
     done
 
-    echo
-    echo "   TIMESTAMP_UNIX = $TIMESTAMP_UNIX"
-    echo
-    echo "         WORK_DIR = $WORK_DIR"
-    echo "       SOURCE_DIR = $SOURCE_DIR"
-    echo "        BUILD_DIR = $BUILD_DIR"
-    echo "              PWD = $PWD"
-    echo
-    echo "  PKG_INSTALL_DIR = $PKG_INSTALL_DIR"
-    echo "  ABI_INSTALL_DIR = $ABI_INSTALL_DIR"
-    echo "  ABI_BINARY__DIR = $ABI_BINARY__DIR"
-    echo "  ABI_INCLUDE_DIR = $ABI_INCLUDE_DIR"
-    echo "  ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR"
-    echo "  ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR"
-    echo
-    echo "            NJOBS = $NJOBS"
-    echo
+    echo "
+    TIMESTAMP_UNIX = $TIMESTAMP_UNIX
+          WORK_DIR = $WORK_DIR
+        SOURCE_DIR = $SOURCE_DIR
+         BUILD_DIR = $BUILD_DIR
+               PWD = $PWD
+   PKG_INSTALL_DIR = $PKG_INSTALL_DIR
+   ABI_INSTALL_DIR = $ABI_INSTALL_DIR
+   ABI_BINARY__DIR = $ABI_BINARY__DIR
+   ABI_INCLUDE_DIR = $ABI_INCLUDE_DIR
+   ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR
+   ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR
+
+   NJOBS = $NJOBS
+   "
 
     if [ "$VERBOSE" = YES ] ; then
         echo
@@ -5239,7 +5239,7 @@ to_meson_array() {
 include_stub_getdtablesize() {
     # https://linux.die.net/man/2/getdtablesize
     # https://hg.mozilla.org/mozreview/gecko/rev/038c2fe02074d03a6c34d44f68cb5f078a2472cc#index_header
-    if [ "$BUILD_ROUND_NUM" -eq 1 ] ; then
+    if [ "$BUILD_ROUND_N" -eq 1 ] ; then
         cat > "$SOURCE_DIR/stub-getdtablesize.c" <<EOF
 #ifndef STUB_GETDTABLESIZE_H
 #define STUB_GETDTABLESIZE_H
@@ -5378,6 +5378,16 @@ print_target_arch_by_abi() {
         arm64-v8a)   echo aarch64 ;;
         x86)         echo i686    ;;
         x86_64)      echo x86_64  ;;
+    esac
+}
+
+print_target_abi_by_arch() {
+    case $1 in
+        '')          die  "arch is not specified." ;;
+        armv7a)      echo armeabi-v7a ;;
+        aarch64)     echo arm64-v8a   ;;
+        i686)        echo x86         ;;
+        x86_64)      echo x86_64      ;;
     esac
 }
 
