@@ -703,11 +703,11 @@ __upgrade_self() {
     fi
 
     info "mktemp -d"
-    WORKING_DIR=$(mktemp -d)
+    WORK_DIR=$(mktemp -d)
 
-    run cd $WORKING_DIR
+    run cd $WORK_DIR
 
-    fetch "$(get_china_mirror_url $@)" --output-path="$WORKING_DIR/self"
+    fetch "$(get_china_mirror_url $@)" --output-path="$WORK_DIR/self"
 
     __upgrade_self_exit() {
         if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
@@ -716,7 +716,7 @@ __upgrade_self() {
             run sudo install -m 755 self "$CURRENT_SCRIPT_REALPATH"
         fi
 
-        run rm -rf $WORKING_DIR
+        run rm -rf $WORK_DIR
     }
 
     trap __upgrade_self_exit EXIT
@@ -763,11 +763,11 @@ __integrate_zsh_completions() {
     fi
 
     info "mktemp -d"
-    WORKING_DIR=$(mktemp -d)
+    WORK_DIR=$(mktemp -d)
 
-    run cd $WORKING_DIR
+    run cd $WORK_DIR
 
-    fetch "$(get_china_mirror_url $@)" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    fetch "$(get_china_mirror_url $@)" --output-path="$WORK_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
@@ -787,7 +787,7 @@ __integrate_zsh_completions() {
         fi
     fi
 
-    run rm -rf $WORKING_DIR
+    run rm -rf $WORK_DIR
 
     echo "\n${COLOR_YELLOW}Note: you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
 }
@@ -2651,7 +2651,7 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_LICENSE
     unset PACKAGE_PATCHES
 
-    # relative to $WORKING_DIR, which contains build script such as configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, etc.
+    # relative to $WORK_DIR, which contains build script such as configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, etc.
     unset PACKAGE_SOURCED
 
     unset PACKAGE_BSYSTEM
@@ -3657,12 +3657,12 @@ __pack_the_given_installed_package() {
     PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-ndk-pkg-bin"
     PACKED_FILE_NAME="$PACKED_DIR_NAME.$PACKED_FILE_SUFFIX"
 
-    step "create working directory"
+    step "create work directory"
     info "mktemp -d"
-    WORKING_DIR=$(mktemp -d)
+    WORK_DIR=$(mktemp -d)
 
-    step "change to working directory"
-    run cd $WORKING_DIR
+    step "change to work directory"
+    run cd $WORK_DIR
 
     step "make link refer to installed package root dir"
     run ln -s "$MY_INSTALL_DIR/$INSTALLED_PKG_NAME" "$PACKED_DIR_NAME"
@@ -3687,8 +3687,8 @@ __pack_the_given_installed_package() {
     step "show disk usage statistics"
     run "du -sh $PACKED_FILE_NAME | cut -f1"
 
-    step "delete working directory"
-    run rm -rf $WORKING_DIR
+    step "delete work directory"
+    run rm -rf $WORK_DIR
 }
 
 get_direct_dependency_package_list_of_the_given_package() {
@@ -3860,9 +3860,9 @@ __install_the_given_packages() {
             echo "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${INSTALLING_PACKAGE}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
             __install_the_given_package "$INSTALLING_PACKAGE" || {
                 if [ -z "$TARGET_OS_ABI" ] ; then
-                    die "install $INSTALLING_PACKAGE failed! you can go to $WORKING_DIR to see see."
+                    die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
                 else
-                    die "install $INSTALLING_PACKAGE/$TARGET_OS_ABI failed! you can go to $WORKING_DIR to see see."
+                    die "install $INSTALLING_PACKAGE/$TARGET_OS_ABI failed! you can go to $WORK_DIR to see see."
                 fi
             }
         fi
@@ -3871,11 +3871,11 @@ __install_the_given_packages() {
 
 __install_the_given_package() {
     # brew install meson
-    # Error: The current working directory doesn't exist, cannot proceed.
-    # beacuse previous package's working direcotory is deleted.
+    # Error: The current work directory doesn't exist, cannot proceed.
+    # beacuse previous package's work direcotory is deleted.
     cd ~ || return 1
 
-    unset WORKING_DIR
+    unset WORK_DIR
     unset SOURCE_DIR
     unset BUILD_DIR
 
@@ -3931,32 +3931,32 @@ __install_the_given_package() {
     step "fetch resources if needed"
     __fetch_resources_of_the_given_package "$1" || return 1
 
-    step "create working directory"
+    step "create work directory"
     info "mktemp -d"
-    WORKING_DIR=$(mktemp -d) || die "create working directory failed."
+    WORK_DIR=$(mktemp -d) || die "create work directory failed."
 
-    step "unpack sources to working directory"
+    step "unpack sources to work directory"
     case $PACKAGE_SRC_URL in
         dir://*|*.git)
             PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h) || return 1
-            run cp -r "$PACKAGE_SRC_PATH/." "$WORKING_DIR" || return 1
+            run cp -r "$PACKAGE_SRC_PATH/." "$WORK_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
-            run cp    "$PACKAGE_SRC_PATH"   "$WORKING_DIR" || return 1
+            run cp    "$PACKAGE_SRC_PATH"   "$WORK_DIR" || return 1
             ;;
         *.zip)
-            run unzip "$PACKAGE_SRC_PATH" -d "$WORKING_DIR" || return 1
+            run unzip "$PACKAGE_SRC_PATH" -d "$WORK_DIR" || return 1
             ;;
         *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
-            run tar xf "$PACKAGE_SRC_PATH" -C "$WORKING_DIR" --strip-components 1 || return 1
+            run tar xf "$PACKAGE_SRC_PATH" -C "$WORK_DIR" --strip-components 1 || return 1
             ;;
         *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
     if [ -z "$PACKAGE_SOURCED" ] ; then
-        SOURCE_DIR="$WORKING_DIR"
+        SOURCE_DIR="$WORK_DIR"
     else
-        SOURCE_DIR="$WORKING_DIR/$PACKAGE_SOURCED"
+        SOURCE_DIR="$WORK_DIR/$PACKAGE_SOURCED"
     fi
 
     step "change to source directory"
@@ -3967,7 +3967,7 @@ __install_the_given_package() {
 
     step "build for native"
     if command -v build0 > /dev/null ; then
-        NATIVE_BUILD_DIR="$WORKING_DIR/$TIMESTAMP_UNIX/native"
+        NATIVE_BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/native"
         NATIVE_INSTALL_DIR="$MY_HOME_DIR/native/$PACKAGE_NAME"
 
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
@@ -4032,7 +4032,7 @@ __install_the_given_package() {
             echo "            NPROC = $NPROC"
             echo "            NJOBS = $NJOBS"
             echo
-            echo "      WORKING_DIR = $WORKING_DIR"
+            echo "      WORK_DIR = $WORK_DIR"
             echo "       SOURCE_DIR = $SOURCE_DIR"
             echo " NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR"
             echo " NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR"
@@ -4103,9 +4103,9 @@ __install_the_given_package() {
     step "record installed files"
     __record_installed_files_of_the_given_package "$1"
 
-    [ "$KEEP_WORKING_DIR" = YES ] || {
-        step "clean working directory."
-        run rm -rf "$WORKING_DIR"
+    [ "$KEEP_WORK_DIR" = YES ] || {
+        step "clean work directory."
+        run rm -rf "$WORK_DIR"
     }
 
     echo
@@ -4153,7 +4153,7 @@ __install_the_given_package_all_builds() {
             exec "$SHELL" || return 1
         else
             (
-                BUILD_DIR="$WORKING_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
+                BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
                 install -d "$BUILD_DIR" &&
                 mkfifo "$BUILD_DIR/pipe" &&
                 (tee "$BUILD_DIR/install.log.txt" < "$BUILD_DIR/pipe" &) &&
@@ -4890,7 +4890,7 @@ __printf_this_build_variables() {
     echo
     echo "   TIMESTAMP_UNIX = $TIMESTAMP_UNIX"
     echo
-    echo "      WORKING_DIR = $WORKING_DIR"
+    echo "         WORK_DIR = $WORK_DIR"
     echo "       SOURCE_DIR = $SOURCE_DIR"
     echo "        BUILD_DIR = $BUILD_DIR"
     echo "              PWD = $PWD"
@@ -5694,7 +5694,16 @@ inspect_install_arguments() {
     unset NPROC
     unset NJOBS
 
-    unset KEEP_WORKING_DIR
+    unset BUILD_TYPE
+
+    unset LINK_TYPE
+
+    unset INSTALL_EXE
+    unset INSTALL_MAN
+    unset INSTALL_DOC
+    unset INSTALL_LIB
+
+    unset KEEP_WORK_DIR
 
     unset NEED_RUN_TREE
     unset NEED_RUN_PACK
@@ -5702,13 +5711,6 @@ inspect_install_arguments() {
     unset TREE_ARGS
     unset PACK_ARGS
     unset PACK_TYPE
-
-    unset INSTALL_EXE
-    unset INSTALL_MAN
-    unset INSTALL_DOC
-    unset INSTALL_LIB
-
-    unset LINKAGE
 
     while [ -n "$1" ]
     do
@@ -5728,8 +5730,8 @@ inspect_install_arguments() {
             --dry-run)
                 DRYRUN=YES
                 ;;
-            --keep-working-dir)
-                KEEP_WORKING_DIR=YES
+            --keep-work-dir)
+                KEEP_WORK_DIR=YES
                 ;;
             --tree)
                 NEED_RUN_TREE=YES
@@ -5746,6 +5748,14 @@ inspect_install_arguments() {
                     7z|zip|tar.gz|tar.xz|tar.bz2) ;;
                     '') die "--pack-type=VALUE VALUE must not be empty." ;;
                     *) die "--pack-type=VALUE VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
+                esac
+                ;;
+            --build-type=*)
+                BUILD_TYPE=$(getvalue "$1")
+                case $BUILD_TYPE in
+                    debug|release) ;;
+                    '') die "--build-type=VALUE VALUE must not be empty." ;;
+                    *) die "--build-type=VALUE VALUE must be one of debug release"
                 esac
                 ;;
             --install-doc)
@@ -5765,12 +5775,12 @@ inspect_install_arguments() {
                     *) die "--install-lib=VALUE VALUE must be one of static shared both yes no"
                 esac
                 ;;
-            --linkage=*)
-                LINKAGE=$(getvalue "$1")
-                case $LINKAGE in
+            --link-type=*)
+                LINK_TYPE=$(getvalue "$1")
+                case $LINK_TYPE in
                     static-only|shared-only|static-prefered|shared-prefered) ;;
-                    '') die "--linkage=VALUE VALUE must not be empty." ;;
-                    *) die "--linkage=VALUE VALUE must be one of static-only shared-only static-prefered shared-prefered"
+                    '') die "--link-type=VALUE VALUE must not be empty." ;;
+                    *) die "--link-type=VALUE VALUE must be one of static-only shared-only static-prefered shared-prefered"
                 esac
                 ;;
             --jobs=*)
@@ -5965,11 +5975,11 @@ ACTION:
 
     homepage open [PACKAGE]       --show or open the homepage of the given package or this project in web browser.
 
-    install   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --install packages.
+    install   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-work-dir]     --install packages.
 
-    reinstall PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --reinstall packages.
+    reinstall PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-work-dir]     --reinstall packages.
 
-    upgrade   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-working-dir]     --upgrade packages.
+    upgrade   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-work-dir]     --upgrade packages.
 
     upgrade @self  [-x | --china]   --upgrade this software.
 
