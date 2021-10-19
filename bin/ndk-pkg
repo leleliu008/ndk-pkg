@@ -3531,17 +3531,6 @@ __show_depends_of_the_given_package() {
     fi
 }
 
-# if $1 is     given, show installed directory of the given package.
-# if $1 is not given, show this software's home direcotory.
-__show_prefix() {
-    if [ -z "$1" ] ; then
-        echo "$MY_HOME_DIR"
-    else
-        die_if_package_is_not_installed "$1"
-        echo "$MY_INSTALL_DIR/$1"
-    fi
-}
-
 __logs_the_given_installed_package() {
     die_if_package_is_not_installed "$1"
 
@@ -6055,6 +6044,12 @@ main() {
         --version|-V)
             echo "$MY_VERSION"
             ;;
+        --homedir)
+            echo "$MY_HOME_DIR"
+            ;;
+        --homepage)
+            echo "$MY_HOME_PAGE"
+            ;;
         env)
             echo "${COLOR_GREEN}$_0 $MY_VERSION is a package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}"
             echo
@@ -6139,7 +6134,6 @@ main() {
             ;;
         homepage) shift; __show_or_open_homepage_of_the_given_package $@ ;;
         depends)  shift; __show_depends_of_the_given_package    $@ ;;
-        prefix)   shift; __show_prefix     $@ ;;
         fetch)    shift; __load_formula_of_the_given_package $@ &&
                          __fetch_resources_of_the_given_package "$@" ;;
 

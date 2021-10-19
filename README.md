@@ -48,10 +48,18 @@ autoload -U compinit && compinit
         ndk-pkg --help
         
 *   show version of this command
-        
+
         ndk-pkg -V
         ndk-pkg --version
         
+*   show home directory this software
+
+        ndk-pkg --homedir
+
+*   show home webpage this software
+
+        ndk-pkg --homepage
+
 *   show current machine os and [Android NDK](https://developer.android.google.cn/ndk) toolchain info
 
         ndk-pkg env
@@ -244,11 +252,6 @@ autoload -U compinit && compinit
         ndk-pkg homepage --open
         ndk-pkg homepage --open curl
         ndk-pkg homepage curl --open
-        
-*   show the installation direcotory of the given package or this software
-        
-        ndk-pkg prefix
-        ndk-pkg prefix curl
         
 *   show the depended packages of the given package
         

@@ -5,6 +5,8 @@ _commands=(
     '--help:show help of this command.'
     '-V:show version of this.'
     '--version:show version of this command.'
+    '--homedir:show home directory of this command.'
+    '--homepage:show home webpage of this command.'
     'search:search packages can be installed.'
     'target:list the supported target abis, archs, triples, api-levels.'
     'ls-available:list the available packages.'
@@ -28,7 +30,6 @@ _commands=(
     'integrate:integrate zsh completions.'
     'env:show current machine os and android-ndk toolchain info.'
     'depends:show the depends of the given package.'
-    'prefix:show the installation direcotory of the given package or the home dir of this project.'
     'pack:pack the given installed package.'
     'logs:show logs of the given installed package.'
     'ldd:list dynamic dependencies.'
@@ -129,8 +130,6 @@ function _ndk_pkg() {
                         ;;
                 fetch|depends)
                     _arguments ':package-name:_ndk_pkg_available_packages' ;;
-                prefix)
-                    _arguments ':package-name:_ndk_pkg_installed_packages' ;;
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
