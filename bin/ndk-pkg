@@ -3749,6 +3749,7 @@ __gen_dependency_tree_of_the_given_package() {
         DEPENDENCIES_OUTPUT_DIR=$(mktemp -d) || return 1
     else
         DEPENDENCIES_OUTPUT_DIR="$2"
+        [ -d "$2" ] || install -d "$2"
     fi
 
     DEPENDENCIES__GV="$DEPENDENCIES_OUTPUT_DIR/dependencies.gv"

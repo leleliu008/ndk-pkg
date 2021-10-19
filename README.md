@@ -122,7 +122,7 @@ autoload -U compinit && compinit
         ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v
         ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x
         ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run
-        ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run --keep-working-dir
+        ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run --keep-work-dir
         
 *   reinstall packages
         
