@@ -52,11 +52,11 @@ autoload -U compinit && compinit
         ndk-pkg -V
         ndk-pkg --version
         
-*   show home directory this software
+*   show home directory of this software
 
         ndk-pkg --homedir
 
-*   show home webpage this software
+*   show home webpage of this software
 
         ndk-pkg --homepage
 
@@ -245,6 +245,7 @@ autoload -U compinit && compinit
 *   pack the given installed package
         
         ndk-pkg pack curl
+        ndk-pkg pack curl --type=tar.xz
         
 *   show or open the homepage of the given package or this project
         
