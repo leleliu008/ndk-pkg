@@ -21,6 +21,8 @@ jobs:
 
       - run: bin/ndk-pkg --help
       - run: bin/ndk-pkg --version
+      - run: bin/ndk-pkg --homedir
+      - run: bin/ndk-pkg --homepage
 
       - run: bin/ndk-pkg env
 
@@ -87,6 +89,8 @@ jobs:
 
       - run: ndk-pkg --help
       - run: ndk-pkg --version
+      - run: bin/ndk-pkg --homedir
+      - run: bin/ndk-pkg --homepage
 
       - run: ndk-pkg env
 
@@ -150,6 +154,8 @@ jobs:
 
       - run: ndk-pkg --help
       - run: ndk-pkg --version
+      - run: ndk-pkg --homedir
+      - run: ndk-pkg --homepage
 
       - run: ndk-pkg env
 
