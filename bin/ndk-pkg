@@ -3664,7 +3664,7 @@ __pack_the_given_installed_package() {
     unset PACKED_DIR_NAME
     unset PACKED_FILE_NAME
 
-    PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-ndk-pkg-bin"
+    PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-bin"
     PACKED_FILE_NAME="$PACKED_DIR_NAME.$PACKED_FILE_SUFFIX"
 
     step "create work directory"
@@ -4103,9 +4103,7 @@ __install_the_given_package() {
     __install_the_given_package_all_builds "$1" || return 1
 
     step "record installed abis"
-    INSTALLED_ABIS_FILEPATH="$MY_INSTALL_DIR/$1/installed-abis"
-    echo "-- Installing: $INSTALLED_ABIS_FILEPATH"
-    printf '%s\n' "$BUILD_LIST" > "$INSTALLED_ABIS_FILEPATH"
+    run cp "$WORK_DIR/$TIMESTAMP_UNIX/installed-abis" "$MY_INSTALL_DIR/$1/installed-abis"
 
     step "record installed metadata"
     __record_installed_metadata_of_the_given_package "$1"
@@ -4160,7 +4158,7 @@ __install_the_given_package_all_builds() {
 }
 
 __dryrun_install_the_given_package_one_build() {
-    step "build for target ${COLOR_GREEN}${2}${COLOR_OFF}"
+    step "build for target ${COLOR_GREEN}$@${COLOR_OFF}"
     __config_variables_of_the_given_build $@
     __printf_variables_of_the_given_build $@
 
@@ -4170,7 +4168,7 @@ __dryrun_install_the_given_package_one_build() {
 }
 
 __install_the_given_package_one_build() {
-    step "build for target ${COLOR_GREEN}${2}${COLOR_OFF}"
+    step "build for target ${COLOR_GREEN}$@${COLOR_OFF}"
     __config_variables_of_the_given_build $@
     __printf_variables_of_the_given_build $@
 
@@ -4211,6 +4209,8 @@ __install_the_given_package_one_build() {
     run __justfy_pc_files || return 1
 
     run __install_logs || return 1
+
+    run "printf '%s\n' '$TARGET_OS_ABI' >> $WORK_DIR/$TIMESTAMP_UNIX/installed-abis"
 }
 
 __justfy_la_files() {
