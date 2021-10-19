@@ -48,8 +48,6 @@ jobs:
 
       - run: bin/ndk-pkg install zlib
 
-      - run: bin/ndk-pkg prefix
-      - run: bin/ndk-pkg prefix zlib
 
       - run: bin/ndk-pkg tree zlib
       - run: bin/ndk-pkg pack zlib

@@ -20,6 +20,8 @@ jobs:
 
       - run: bin/ndk-pkg --help
       - run: bin/ndk-pkg --version
+      - run: bin/ndk-pkg --homedir
+      - run: bin/ndk-pkg --homepage
 
       - run: bin/ndk-pkg install-android-ndk
 
@@ -49,8 +51,6 @@ jobs:
 
       - run: bin/ndk-pkg install zlib
 
-      - run: bin/ndk-pkg prefix
-      - run: bin/ndk-pkg prefix zlib
 
       - run: bin/ndk-pkg tree zlib
       - run: bin/ndk-pkg pack zlib
