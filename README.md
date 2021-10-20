@@ -229,7 +229,9 @@ autoload -U compinit && compinit
 *   list files of the given installed package in a tree-like format.
         
         ndk-pkg tree curl
+        ndk-pkg tree curl --dirsfirst
         ndk-pkg tree curl -L 3
+        ndk-pkg tree curl -L 3 --dirsfirst
         
 *   download formula resources of the given package to the cache
         
@@ -245,7 +247,11 @@ autoload -U compinit && compinit
 *   pack the given installed package
         
         ndk-pkg pack curl
+        ndk-pkg pack curl --type=tar.gz
         ndk-pkg pack curl --type=tar.xz
+        ndk-pkg pack curl --type=tar.bz2
+        ndk-pkg pack curl --type=zip
+        ndk-pkg pack curl --type=7z
         
 *   show or open the homepage of the given package or this project
         
