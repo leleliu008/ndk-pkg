@@ -143,7 +143,8 @@ function _ndk_pkg() {
                 tree)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '-L[level]:level:(3)'
+                        '-L[level]:level:(3)' \
+                        '--dirsfirst[show dirs first]'
                     ;;
                 logs)
                     _arguments \
@@ -157,9 +158,10 @@ function _ndk_pkg() {
                         '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-work-dir[do not delete work-dir even if installed success]' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
-                        '(--debug -d)'{--debug,-d}'[debug]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
+                        '(--debug -d)'{--debug,-d}'[debug output]' \
+                        '(--verbose -v)'{--verbose,-v}'[verbose output]' \
+                        '(--quiet -q)'{--quiet,-q}'[no output]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefgered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \

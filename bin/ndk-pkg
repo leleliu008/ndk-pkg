@@ -18,7 +18,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 COLOR_RED='\033[0;31m'          # Red
 COLOR_GREEN='\033[0;32m'        # Green
 COLOR_YELLOW='\033[0;33m'       # Yellow
-COLOR_BLUE='\033[0;34m'         # Blue
+COLOR_BLUE='\033[0;94m'         # Blue
 COLOR_PURPLE='\033[0;35m'       # Purple
 COLOR_OFF='\033[0m'             # Reset
 
@@ -95,6 +95,13 @@ step() {
     STEP_MESSAGE="$@"
     echo
     echo "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
+}
+
+step2() {
+    STEP2_NUM=$(expr ${STEP2_NUM-0} + 1)
+    STEP2_MESSAGE="$@"
+    echo
+    echo "${COLOR_BLUE}>>> STEP ${STEP_NUM}.${STEP2_NUM} : ${STEP2_MESSAGE} ${COLOR_OFF}"
 }
 
 run() {
@@ -3832,7 +3839,7 @@ __config_global_installation_variables() {
         done
     fi
 
-    if [ "$DEBUG" = YES ] ; then
+    if [ "$LOG_LEVEL" = 3 ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
 }
@@ -3855,21 +3862,18 @@ __install_the_given_packages() {
     for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
         if is_package_installed "$INSTALLING_PACKAGE" ; then
-            printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
+            if [ "$LOG_LEVEL" != 0 ] ; then
+                printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
+            fi
         else
-            echo "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${INSTALLING_PACKAGE}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
-            __install_the_given_package "$INSTALLING_PACKAGE" || {
-                if [ -z "$BUILD_ITEM" ] ; then
-                    die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
-                else
-                    die "install $INSTALLING_PACKAGE/$BUILD_ITEM failed! you can go to $WORK_DIR to see see."
-                fi
-            }
+            __install_the_given_package "$INSTALLING_PACKAGE" || die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
         fi
     done
 }
 
 __install_the_given_package() {
+    echo "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
+
     # brew install meson
     # Error: The current work directory doesn't exist, cannot proceed.
     # beacuse previous package's work direcotory is deleted.
@@ -3878,8 +3882,6 @@ __install_the_given_package() {
     unset WORK_DIR
     unset SOURCE_DIR
     unset BUILD_DIR
-    unset BUILD_ITEM
-    unset BUILD_INDEX
 
     unset NATIVE_BUILD_DIR
     unset NATIVE_INSTALL_DIR
@@ -3988,12 +3990,13 @@ __install_the_given_package() {
 
             printf "%17s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
 
-            echo
-            echo "       PKG_CONFIG = $PKG_CONFIG"
-            echo "            MESON = $MESON"
-            echo "            CMAKE = $CMAKE"
-            echo "            GMAKE = $GMAKE"
-            echo "            NINJA = $NINJA"
+            echo "
+            PKG_CONFIG = $PKG_CONFIG
+                 MESON = $MESON
+                 CMAKE = $CMAKE
+                 GMAKE = $GMAKE
+                 NINJA = $NINJA
+                "
 
             for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
             do
@@ -4030,10 +4033,10 @@ __install_the_given_package() {
             done
 
             echo "
-            NJOBS = $NJOBS
+                       NJOBS = $NJOBS
 
-            WORK_DIR = $WORK_DIR
-            SOURCE_DIR = $SOURCE_DIR
+                    WORK_DIR = $WORK_DIR
+                  SOURCE_DIR = $SOURCE_DIR
             NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR
             NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
             PWD = $PWD
@@ -4052,11 +4055,12 @@ __install_the_given_package() {
     fi
 
     step "do some preparation works"
+    run install -d "$WORK_DIR/$TIMESTAMP_UNIX"
     if command -v prepare > /dev/null ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             run cd "$SOURCE_DIR" || return 1
         fi
-        run prepare || return 1
+        run prepare "$1" || return 1
     else
         case $PACKAGE_BUILD_SYSTEM in
             autogen)
@@ -4090,7 +4094,14 @@ __install_the_given_package() {
         fi
     fi
 
-    __install_the_given_package_all_builds "$1" || return 1
+    unset TARGET_INDEX
+
+    for TARGET_ITEM in $TARGET_LIST
+    do
+        TARGET_INDEX=$(expr ${TARGET_INDEX-0} + 1)
+        step "${COLOR_PURPLE}Installing ${COLOR_OFF}${COLOR_GREEN}$1 $TARGET_ITEM${COLOR_OFF}"
+        (__install_the_given_package_for_the_given_target "$1" "$TARGET_ITEM") || die "install $1/$TARGET_ITEM failed! you can go to $WORK_DIR to see see."
+    done
 
     step "record installed abis"
     run cp "$WORK_DIR/$TIMESTAMP_UNIX/installed-abis" "$MY_INSTALL_DIR/$1/installed-abis"
@@ -4124,43 +4135,20 @@ __install_the_given_package() {
     fi
 }
 
-__install_the_given_package_all_builds() {
-    PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
+__install_the_given_package_for_the_given_target() {
+    unset STEP2_NUM
 
-    unset BUILD_INDEX
+    step2 "config variables for ${COLOR_GREEN}$@${COLOR_OFF}"
+    __config_variables_for_the_given_target $@
 
-    for BUILD_ITEM in $BUILD_LIST
-    do
-        BUILD_INDEX=$(expr ${BUILD_INDEX-0} + 1)
+    step2 "printf variables for ${COLOR_GREEN}$@${COLOR_OFF}"
+    __printf_variables_for_the_given_target $@
 
-        if [ "$DRYRUN" = YES ] ; then
-            __dryrun_install_the_given_package_one_build "$1" "$BUILD_ITEM"
-        else
-            (
-                BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$BUILD_ITEM"
-                install -d "$BUILD_DIR" &&
-                mkfifo "$BUILD_DIR/pipe" &&
-                (tee "$BUILD_DIR/install.log.txt" < "$BUILD_DIR/pipe" &) &&
-                __install_the_given_package_one_build "$1" "$BUILD_ITEM" > "$BUILD_DIR/pipe" 2>&1
-            ) || return 1
-        fi
-    done
-}
+    [ "$DRYRUN" = YES ] && {
+        [ -z "$SHELL" ] && SHELL=$(command -v zsh || command -v bash || command -v sh)
 
-__dryrun_install_the_given_package_one_build() {
-    step "build for target ${COLOR_GREEN}$@${COLOR_OFF}"
-    __config_variables_of_the_given_build $@
-    __printf_variables_of_the_given_build $@
-
-    [ -z "$SHELL" ] && SHELL=$(command -v zsh || command -v bash || command -v sh)
-
-    exec "$SHELL"
-}
-
-__install_the_given_package_one_build() {
-    step "build for target ${COLOR_GREEN}$@${COLOR_OFF}"
-    __config_variables_of_the_given_build $@
-    __printf_variables_of_the_given_build $@
+        exec "$SHELL" || return 1
+    }
 
     if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = YES ] ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
@@ -4172,7 +4160,8 @@ __install_the_given_package_one_build() {
     fi
 
     if command -v build > /dev/null ; then
-        build || return 1
+        step2 "build for ${COLOR_GREEN}$@${COLOR_OFF}"
+        build $@ || return 1
     else
         {
             case $PACKAGE_BUILD_SYSTEM in
@@ -4194,16 +4183,19 @@ __install_the_given_package_one_build() {
         return 1
     }
 
-    run __justfy_la_files || return 1
+    step2 "justfy la files for ${COLOR_GREEN}$@${COLOR_OFF}"
+    __justfy_la_files_for_the_given_target $@ || return 1
 
-    run __justfy_pc_files || return 1
+    step2 "justfy pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
+    __justfy_pc_files_for_the_given_target $@ || return 1
 
-    run __install_logs || return 1
+    step2 "install logs for ${COLOR_GREEN}$@${COLOR_OFF}"
+    __install_logs_for_the_given_target $@ || return 1
 
     run "printf '%s\n' '$TARGET_OS_ABI' >> $WORK_DIR/$TIMESTAMP_UNIX/installed-abis"
 }
 
-__justfy_la_files() {
+__justfy_la_files_for_the_given_target() {
     if [ -d "$ABI_LIBRARY_DIR" ] ; then
         for item in $(find "$ABI_LIBRARY_DIR" -name "*.la")
         do
@@ -4212,7 +4204,7 @@ __justfy_la_files() {
     fi
 }
 
-__justfy_pc_files() {
+__justfy_pc_files_for_the_given_target() {
     if [ -d "$ABI_PKGCONF_DIR" ] ; then
         for item in $(find "$ABI_PKGCONF_DIR" -name "*.pc")
         do
@@ -4227,7 +4219,7 @@ __justfy_pc_files() {
     fi
 }
 
-__install_logs() {
+__install_logs_for_the_given_target() {
     ABI_LOG_DIR="$ABI_INSTALL_DIR/share/log"
 
     run install -d "$ABI_LOG_DIR"
@@ -4567,8 +4559,8 @@ __load_installed_metadata_of_the_given_package() {
 }
 
 # examples:
-# __config_variables_of_the_given_build curl x86_64
-__config_variables_of_the_given_build() {
+# __config_variables_for_the_given_target curl x86_64
+__config_variables_for_the_given_target() {
     TARGET_OS_KIND=linux
     TARGET_OS_TYPE=android
     TARGET_OS_NAME=Android
@@ -4680,7 +4672,7 @@ __config_variables_of_the_given_build() {
     # export CMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH"
     # export CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH"
 
-    if [ "$VERBOSE" = YES ] ; then
+    if [ "$LOG_LEVEL" = 2 ] ; then
         CFLAGS="$CFLAGS -v"
     fi
 
@@ -4690,6 +4682,9 @@ __config_variables_of_the_given_build() {
         CXXFLAGS="$CXXFLAGS $PACKAGE_XXFLAGS"
     fi
 
+    BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
+
+    PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
     ABI_INSTALL_DIR="$PKG_INSTALL_DIR/$TARGET_OS_ABI"
     ABI_BINARY__DIR="$ABI_INSTALL_DIR/bin"
     ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
@@ -4775,11 +4770,9 @@ __config_variables_of_the_given_build() {
 }
 
 # examples:
-# __printf_variables_of_the_given_build curl x86_64
-__printf_variables_of_the_given_build() {
+# __printf_variables_for_the_given_target curl x86_64
+__printf_variables_for_the_given_target() {
     echo "
-    BUILD_INDEX    = $BUILD_INDEX
-
     NATIVE_OS_KIND = $NATIVE_OS_KIND
     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
     NATIVE_OS_NAME = $NATIVE_OS_NAME
@@ -4796,6 +4789,7 @@ __printf_variables_of_the_given_build() {
     TARGET_OS_ARCH = $TARGET_OS_ARCH
     TARGET_OS_ABI  = $TARGET_OS_ABI
     TARGET_TRIPLE  = $TARGET_TRIPLE
+    TARGET_INDEX   = $TARGET_INDEX
 
     TOOLCHAIN_NAME = $TOOLCHAIN_NAME
     TOOLCHAIN_VERS = $TOOLCHAIN_VERS
@@ -4808,6 +4802,8 @@ SYSROOT            = $SYSROOT
 
 SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR
 SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
+
+             NJOBS = $NJOBS
     "
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
@@ -4905,11 +4901,9 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
    ABI_INCLUDE_DIR = $ABI_INCLUDE_DIR
    ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR
    ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR
-
-   NJOBS = $NJOBS
    "
 
-    if [ "$VERBOSE" = YES ] ; then
+    if [ "$LOG_LEVEL" = 2 ] ; then
         echo
         run export -p
         echo
@@ -5057,7 +5051,7 @@ configure() {
         fi
     fi
 
-    if [ "$VERBOSE" = YES ] ; then
+    if [ "$LOG_LEVEL" = 2 ] ; then
         for Makefile in $(find "$SOURCE_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
@@ -5073,7 +5067,7 @@ configure() {
 
 # make wrapper
 makew() {
-    if [ "$DEBUG" = YES ] ; then
+    if [ "$LOG_LEVEL" = 3 ] ; then
         run "$GMAKE -w -j$NJOBS --debug V=1 $*"
     else
         run "$GMAKE -w -j$NJOBS $*"
@@ -5233,7 +5227,7 @@ to_meson_array() {
 include_stub_getdtablesize() {
     # https://linux.die.net/man/2/getdtablesize
     # https://hg.mozilla.org/mozreview/gecko/rev/038c2fe02074d03a6c34d44f68cb5f078a2472cc#index_header
-    if [ "$BUILD_INDEX" -eq 1 ] ; then
+    if [ "$TARGET_INDEX" -eq 1 ] ; then
         cat > "$SOURCE_DIR/stub-getdtablesize.c" <<EOF
 #ifndef STUB_GETDTABLESIZE_H
 #define STUB_GETDTABLESIZE_H
@@ -5618,7 +5612,11 @@ install_android_ndk() {
 }
 
 inspect_build_toolchains() {
-    echo
+    debug() {
+        if [ "$LOG_LEVEL" = 3 ] ; then
+            echo "$*"
+        fi
+    }
 
     if [ -n "$ANDROID_NDK_HOME" ] ; then
         if [ "$NATIVE_OS_SUBS" = cygwin ] ; then
@@ -5627,47 +5625,45 @@ inspect_build_toolchains() {
             esac
         fi
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_HOME" ; then
-            echo "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, which is used as the android ndk home."
+            debug "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, which is used as the android ndk home."
         else
-            echo "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, but it is not a valid android ndk home directory."
+            debug "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, but it is not a valid android ndk home directory."
             unset ANDROID_NDK_HOME
         fi
     fi
 
     if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_NDK_ROOT" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_ROOT" ; then
-            echo "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, which is used as the android ndk home."
+            debug "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
         else
-            echo "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, but it is not a valid android ndk home directory."
+            debug "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, but it is not a valid android ndk home directory."
         fi
     fi
 
     # https://developer.android.com/studio/command-line/variables
     if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_HOME" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_HOME/ndk-bundle" ; then
-            echo "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
+            debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
         else
-            echo "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} direcotory is not exist."
+            debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} direcotory is not exist."
         fi
     fi
 
     if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_SDK_ROOT" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_SDK_ROOT/ndk-bundle" ; then
-            echo "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
+            debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk-bundle"
         else
-            echo "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} direcotory is not exist."
+            debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} direcotory is not exist."
         fi
     fi
-
-    echo
 
     if [ -z "$ANDROID_NDK_HOME" ] ; then
         die "please set and export ANDROID_NDK_HOME=DIR environment variable, then try again!"
     fi
-    
+
     TOOLCHAIN_NAME='android-ndk'
     TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     TOOLCHAIN_BIND="$TOOLCHAIN_ROOT/bin"
@@ -5701,8 +5697,8 @@ inspect_install_arguments() {
     unset USER_SPECIFIED_PACKAGE_LIST
 
     unset DRYRUN
-    unset DEBUG
-    unset VERBOSE
+
+    unset LOG_LEVEL
 
     unset NJOBS
 
@@ -5729,17 +5725,20 @@ inspect_install_arguments() {
     while [ -n "$1" ]
     do
         case "$1" in
-            --min-sdk-api-level=[1-9][0-9])
+            --min-sdk-api-level=*)
                 USER_SPECIFIED_TARGET_OS_VERS=$(getvalue "$1")
                 is_integer "$USER_SPECIFIED_TARGET_OS_VERS" || die "--min-sdk-api-level=INTEGER argument's value must be a integer."
                 ;;
-            --verbose|-v)
-                VERBOSE=YES
+            --xtrace|-x)
                 ;;
             --debug|-d)
-                DEBUG=YES
+                LOG_LEVEL=3
                 ;;
-            --xtrace|-x)
+            --verbose|-v)
+                LOG_LEVEL=2
+                ;;
+            --quiet|-q)
+                LOG_LEVEL=0
                 ;;
             --dry-run)
                 DRYRUN=YES
@@ -5839,7 +5838,15 @@ inspect_install_arguments() {
     [ -z "$TREE_ARGS" ] && TREE_ARGS='--dirsfirst'
     [ -z "$PACK_TYPE" ] || PACK_ARGS="--type=$PACK_TYPE"
 
-    BUILD_LIST="$(__list_supported_target_abis)"
+    [ -z "$LOG_LEVEL" ] && LOG_LEVEL=1
+
+    if [ "$LOG_LEVEL" = 0 ] ; then
+        exec 1>/dev/null
+        exec 2>&1
+    fi
+
+    unset TARGET_LIST
+    TARGET_LIST="$(__list_supported_target_abis)"
 
     unset COMMON_INCLUDE_H_FILEPATH
     COMMON_INCLUDE_H_FILEPATH="$MY_HOME_DIR/include.h"
@@ -5898,123 +5905,158 @@ init() {
         echo "offical=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
     fi
 
-    if command -v date > /dev/null ; then
-        TIMESTAMP_UNIX="$(date +%s)"
-    else
-        die "command not found: date. please make sure it in PATH."
-    fi
+    TIMESTAMP_UNIX="$(date +%s)"
 
-    if command -v uname > /dev/null ; then
-        unset NATIVE_OS_KIND
-        unset NATIVE_OS_TYPE
-        unset NATIVE_OS_NAME
-        unset NATIVE_OS_VERS
-        unset NATIVE_OS_ARCH
-        unset NATIVE_OS_NCPU
-        unset NATIVE_OS_LIBC
-        unset NATIVE_OS_SUBS
+    unset NATIVE_OS_KIND
+    unset NATIVE_OS_TYPE
+    unset NATIVE_OS_NAME
+    unset NATIVE_OS_VERS
+    unset NATIVE_OS_ARCH
+    unset NATIVE_OS_NCPU
+    unset NATIVE_OS_LIBC
+    unset NATIVE_OS_SUBS
 
-        NATIVE_OS_KIND=$(os kind)
-        NATIVE_OS_TYPE=$(os type)
-        NATIVE_OS_NAME=$(os name)
-        NATIVE_OS_VERS=$(os vers)
-        NATIVE_OS_ARCH=$(os arch)
-        NATIVE_OS_NCPU=$(os ncpu)
-        NATIVE_OS_LIBC=$(os libc)
-        NATIVE_OS_SUBS=$(os subs)
-    else
-        die "command not found: uname. please make sure it in PATH."
-    fi
+    NATIVE_OS_KIND=$(os kind)
+    NATIVE_OS_TYPE=$(os type)
+    NATIVE_OS_NAME=$(os name)
+    NATIVE_OS_VERS=$(os vers)
+    NATIVE_OS_ARCH=$(os arch)
+    NATIVE_OS_NCPU=$(os ncpu)
+    NATIVE_OS_LIBC=$(os libc)
+    NATIVE_OS_SUBS=$(os subs)
 }
 
 help() {
-    echo "${COLOR_GREEN}$_0 $MY_VERSION is a package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}"
+    echo "${COLOR_GREEN}$_0 $MY_VERSION is a package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}
 
-    cat << EOF
+${COLOR_GREEN}ndk-pkg <ACTION> [ARGUMENT...]${COLOR_OFF}
 
-Usage: $_0 <ACTION> [ARGUMENT...]
+${COLOR_GREEN}ndk-pkg --help${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg -h${COLOR_OFF}
+    show help of this command.
 
-ACTION:
-    --help    | -h                --show the help information of this command.
+${COLOR_GREEN}ndk-pkg --version${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
+    show version of this command.
 
-    --version | -V                --print the version of this command.
+${COLOR_GREEN}ndk-pkg --homedir${COLOR_OFF}
+    show home directory of this software.
 
-    env                           --show current machine os and android-ndk toolchain info.
+${COLOR_GREEN}ndk-pkg --homepage${COLOR_OFF}
+    show home webpage of this software.
 
-    integrate zsh [-x | --china]        --download a zsh-completion script file to a approprivate location.
+${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
+    show current machine os and android-ndk toolchain info.
 
-    update                        --update the formula repositories.
+${COLOR_GREEN}ndk-pkg integrate zsh [-x | --china]${COLOR_OFF}
+    download a zsh-completion script file to a approprivate location.
 
-    cleanup                       --cleanup the unused cache.
+${COLOR_GREEN}ndk-pkg update${COLOR_OFF}
+    update the formula repositories.
 
-    target levels                 --list the supported target os's api-levels.
+${COLOR_GREEN}ndk-pkg cleanup${COLOR_OFF}
+    cleanup the unused cache.
 
-    target triples                --list the supported target triples.
+${COLOR_GREEN}ndk-pkg target levels${COLOR_OFF}
+    list the supported target os's api-levels.
 
-    target archs                  --list the supported target archs.
+${COLOR_GREEN}ndk-pkg target triples${COLOR_OFF}
+    list the supported target triples.
 
-    target abis                   --list the supported target abis.
-    
-    ls-available                  --list the available packages.
+${COLOR_GREEN}ndk-pkg target archs${COLOR_OFF}
+    list the supported target archs.
 
-    ls-installed                  --list the installed packages.
+${COLOR_GREEN}ndk-pkg target abis${COLOR_OFF}
+    list the supported target abis.
 
-    ls-outdated                   --list the outdated  packages.
+${COLOR_GREEN}ndk-pkg ls-available${COLOR_OFF}
+    list the available packages.
 
-    is-available PACKAGE [eq|ne|ge|gt|le|lt VERSION]          --is PACKAGE available?
+${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
+    list the installed packages.
 
-    is-installed PACKAGE          --is PACKAGE installed?
+${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
+    list the outdated  packages.
 
-    is-outdated  PACKAGE          --is PACKAGE outdated?
+${COLOR_GREEN}ndk-pkg is-available <PACKAGE> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
+    is PACKAGE available?
 
-    search KEYWORD                --search available packages.
-    
-    formula create PACKAGE        --create a new formula.
+${COLOR_GREEN}ndk-pkg is-installed <PACKAGE>${COLOR_OFF}
+    is PACKAGE installed?
 
-    formula delete PACKAGE        --delete a exist formula.
+${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE>${COLOR_OFF}
+    is PACKAGE outdated?
 
-    formula rename P1 P2          --rename a exist formula to new name.
+${COLOR_GREEN}ndk-pkg search <KEYWORD>${COLOR_OFF}
+    search available packages.
+ 
+${COLOR_GREEN}ndk-pkg formula create <PACKAGE>${COLOR_OFF}
+    create a new formula.
 
-    formula view PACKAGE          --view the formula of the given package.
+${COLOR_GREEN}ndk-pkg formula delete <PACKAGE>${COLOR_OFF}
+    delete a exist formula.
 
-    formula edit PACKAGE          --edit the formula of the given package.
+${COLOR_GREEN}ndk-pkg formula rename <P1> <P2>${COLOR_OFF}
+    rename a exist formula to new name.
 
-    formula list                  --list all formulas.
+${COLOR_GREEN}ndk-pkg formula view <PACKAGE>${COLOR_OFF}
+    view the formula of the given package.
 
-    formula-repo [list]           --list formula-repos.
+${COLOR_GREEN}ndk-pkg formula edit <PACKAGE>${COLOR_OFF}
+    edit the formula of the given package.
 
-    formula-repo add  NAME URL    --add a new formula-repo.
+${COLOR_GREEN}ndk-pkg formula list${COLOR_OFF}
+    list all formulas.
 
-    formula-repo del  NAME        --delete a exist formula-repo.
+${COLOR_GREEN}ndk-pkg formula-repo [list]${COLOR_OFF}
+    list formula-repos.
 
-    tree PACKAGE [-L N]           --list files of the given installed package in a tree-like format.
+${COLOR_GREEN}ndk-pkg formula-repo add <NAME> <URL>${COLOR_OFF}
+    add a new formula-repo.
 
-    pack PACKAGE                  --pack the given installed package.
+${COLOR_GREEN}ndk-pkg formula-repo del <NAME>${COLOR_OFF}
+    delete a exist formula-repo.
 
-    logs PACKAGE ABI              --show logs of the given installed package.
+${COLOR_GREEN}ndk-pkg tree <PACKAGE> [--dirsfirst | -L N]${COLOR_OFF}
+    list files of the given installed package in a tree-like format.
 
-    info PACKAGE [KEY|--json]            --print the information of the given package.
+${COLOR_GREEN}ndk-pkg pack <PACKAGE> [--type=7z|zip|tar.gz|tar.xz|tar.bz2]${COLOR_OFF}
+    pack the given installed package.
 
-    info @all [--json]            --print the information of all the available packages.
+${COLOR_GREEN}ndk-pkg logs <PACKAGE> <PLATFORM/ARCH>${COLOR_OFF}
+    show logs of the given installed package.
 
-    fetch PACKAGE                 --download formula resources of the given package to the cache.
+${COLOR_GREEN}ndk-pkg info <PACKAGE> [KEY|--json]${COLOR_OFF}
+    show information of the given package.
 
-    prefix [PACKAGE]              --show the installation direcotory of the given package or the home directory of this software.
+${COLOR_GREEN}ndk-pkg info @all [--json]${COLOR_OFF}
+    show information of all the available packages.
 
-    depends PACKAGE               --show the depends of the given package.
+${COLOR_GREEN}ndk-pkg fetch <PACKAGE>${COLOR_OFF}
+    download formula resources of the given package to the cache.
 
-    homepage open [PACKAGE]       --show or open the homepage of the given package or this project in web browser.
+${COLOR_GREEN}ndk-pkg depends <PACKAGE>${COLOR_OFF}
+    show the depends of the given package.
 
-    install   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-work-dir]     --install packages.
+${COLOR_GREEN}ndk-pkg homepage [--open] [PACKAGE]${COLOR_OFF}
+    show or open the homepage of the given package or this project in web browser.
 
-    reinstall PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-work-dir]     --reinstall packages.
+${COLOR_GREEN}ndk-pkg install   <PACKAGE>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+    install the given packages.
 
-    upgrade   PACKAGE... [--min-sdk-api-level=21 --jobs=N -v -x --dry-run --keep-work-dir]     --upgrade packages.
+${COLOR_GREEN}ndk-pkg reinstall <PACKAGE>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+    reinstall the given packages.
 
-    upgrade @self  [-x | --china]   --upgrade this software.
+${COLOR_GREEN}ndk-pkg upgrade   [PACKAGE]... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+    upgrade the given packages or all outdated packages.
 
-    uninstall PACKAGE...          --uninstall packages.
-EOF
+${COLOR_GREEN}ndk-pkg upgrade @self  [-x | --china]${COLOR_OFF}
+    upgrade this software.
+
+${COLOR_GREEN}ndk-pkg uninstall <PACKAGE>...${COLOR_OFF}
+    uninstall the given packages.
+    "
+
     if [ -z "$1" ] ; then
         exit
     else
