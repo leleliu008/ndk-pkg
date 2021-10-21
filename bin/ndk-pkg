@@ -3118,7 +3118,7 @@ __update_formula_repositories() {
         MY_FORMULA_REPO_NAME=$(echo "$repo" | cut -d= -f1)
         MY_FORMULA_REPO_URL_=$(echo "$repo" | cut -d= -f2)
 
-        info "=== Updating repository ${COLOR_GREEN}$MY_FORMULA_REPO_NAME${COLOR_OFF}"
+        echo "${COLOR_PURPLE}=== Updating repository${COLOR_OFF} ${COLOR_GREEN}$MY_FORMULA_REPO_NAME${COLOR_OFF}"
         fetch "$MY_FORMULA_REPO_URL_" --output-dir="$MY_FORMULA_REPO_DIR" --output-name="$MY_FORMULA_REPO_NAME"
     done
 }
@@ -6023,7 +6023,7 @@ ${COLOR_GREEN}ndk-pkg tree <PACKAGE> [--dirsfirst | -L N]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg pack <PACKAGE> [--type=7z|zip|tar.gz|tar.xz|tar.bz2]${COLOR_OFF}
     pack the given installed package.
 
-${COLOR_GREEN}ndk-pkg logs <PACKAGE> <PLATFORM/ARCH>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg logs <PACKAGE> <ABI>${COLOR_OFF}
     show logs of the given installed package.
 
 ${COLOR_GREEN}ndk-pkg info <PACKAGE> [KEY|--json]${COLOR_OFF}
