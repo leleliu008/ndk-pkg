@@ -1822,7 +1822,6 @@ get_package_name_by_command_name_in_package_manager_pip() {
     case $1 in
         sphinx-build) echo "sphinx"   ;;
         rst2man.py)   echo "docutils" ;;
-        ninja)        echo "ninja" ;;
     esac
 }
 
