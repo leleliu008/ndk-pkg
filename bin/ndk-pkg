@@ -1390,8 +1390,8 @@ is_package_available_in_package_manager() {
         zypper) [ "$(zypper info "$2" 2>&1 | tail -n 1)" != "package '$2' not found." ] ;;
         emerge)
             case $2 in
-                */*) [ $(emerge -s "%@^$2$" 2>&1 | tail -n 2 | head -n 1) != '[ Applications found : 0 ]' ] ;;
-                *)   [ $(emerge -s "%^$2$"  2>&1 | tail -n 2 | head -n 1) != '[ Applications found : 0 ]' ]
+                */*) [ "$(emerge -s "%@^$2$" 2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ] ;;
+                *)   [ "$(emerge -s "%^$2$"  2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ]
             esac
             ;;
     esac
