@@ -1888,14 +1888,22 @@ __install_package_via_package_manager() {
     case $1 in
         pip3)
             case $NATIVE_OS_KIND in
-                *bsd|linux) run pip3 install --user -U "$2" ;;
-                *)          run pip3 install        -U "$2"
+                *bsd|linux)
+                    run pip3 install --user -U pip
+                    run pip3 install --user -U "$2"
+                    ;;
+                *)  run pip3 install        -U pip
+                    run pip3 install        -U "$2"
             esac
             ;;
         pip)
             case $NATIVE_OS_KIND in
-                *bsd|linux) run pip  install --user -U "$2" ;;
-                *)          run pip  install        -U "$2"
+                *bsd|linux)
+                    run pip  install --user -U pip
+                    run pip  install --user -U "$2"
+                    ;;
+                *)  run pip  install        -U pip
+                *)  run pip  install        -U "$2"
             esac
             ;;
         brew)
@@ -2116,6 +2124,7 @@ autoreconf|glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/r
 cmake     |glibc|linux |x86_64|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
 cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
 ninja     |     |linux |      |https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
+ninja     |     |darwin|      |https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
 EOF
 } | while read LINE
     do
