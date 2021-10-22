@@ -1887,22 +1887,14 @@ __install_package_via_package_manager() {
     case $1 in
         pip3)
             case $NATIVE_OS_KIND in
-                *bsd|linux)
-                    run pip3 install --user -U pip
-                    run pip3 install --user -U "$2"
-                    ;;
-                *)  run pip3 install        -U pip
-                    run pip3 install        -U "$2"
+                *bsd|linux) run pip3 install --user -U "$2" ;;
+                *)          run pip3 install        -U "$2"
             esac
             ;;
         pip)
             case $NATIVE_OS_KIND in
-                *bsd|linux)
-                    run pip  install --user -U pip
-                    run pip  install --user -U "$2"
-                    ;;
-                *)  run pip  install        -U pip
-                    run pip  install        -U "$2"
+                *bsd|linux) run pip  install --user -U "$2" ;;
+                *)          run pip  install        -U "$2"
             esac
             ;;
         brew)
@@ -2094,7 +2086,7 @@ __install_command_via_fetch_prebuild_binary() {
     if [ -d "$PREBUILD_BINARY_INSTALL_DIR/bin" ] ; then
         export PATH="$PREBUILD_BINARY_INSTALL_DIR/bin:$PATH"
     fi
-    
+
     export PATH="$PREBUILD_BINARY_INSTALL_DIR:$PATH"
 
     case $1 in
@@ -2831,7 +2823,7 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ "$PACKAGE_BUILD_IN_PARALLEL" = NO ] ; then
-        NJOBS=1
+        BUILD_NJOBS=1
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
@@ -3853,7 +3845,7 @@ __config_global_installation_variables() {
         done
     fi
 
-    if [ "$LOG_LEVEL" = 3 ] ; then
+    if [ "$LOG_LEVEL" = DEBUG ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
 }
@@ -3876,7 +3868,7 @@ __install_the_given_packages() {
     for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
         if is_package_installed "$INSTALLING_PACKAGE" ; then
-            if [ "$LOG_LEVEL" != 0 ] ; then
+            if [ "$LOG_LEVEL" != QUIET ] ; then
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
             fi
         else
@@ -4047,7 +4039,7 @@ __install_the_given_package() {
             done
 
             echo "
-                       NJOBS = $NJOBS
+                 BUILD_NJOBS = $BUILD_NJOBS
 
                     WORK_DIR = $WORK_DIR
                   SOURCE_DIR = $SOURCE_DIR
@@ -4686,7 +4678,7 @@ __config_variables_for_the_given_target() {
     # export CMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH"
     # export CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH"
 
-    if [ "$LOG_LEVEL" = 2 ] ; then
+    if [ "$LOG_LEVEL" = VERBOSE ] ; then
         CFLAGS="$CFLAGS -v"
     fi
 
@@ -4817,7 +4809,8 @@ SYSROOT            = $SYSROOT
 SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR
 SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
 
-             NJOBS = $NJOBS
+       BUILD_NJOBS = $BUILD_NJOBS
+       BUILD_TYPE  = $BUILD_TYPE
     "
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
@@ -4917,7 +4910,7 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
    ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR
    "
 
-    if [ "$LOG_LEVEL" = 2 ] ; then
+    if [ "$LOG_LEVEL" = VERBOSE ] ; then
         echo
         run export -p
         echo
@@ -5065,7 +5058,7 @@ configure() {
         fi
     fi
 
-    if [ "$LOG_LEVEL" = 2 ] ; then
+    if [ "$LOG_LEVEL" = VERBOSE ] ; then
         for Makefile in $(find "$SOURCE_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
@@ -5081,10 +5074,10 @@ configure() {
 
 # make wrapper
 makew() {
-    if [ "$LOG_LEVEL" = 3 ] ; then
-        run "$GMAKE -w -j$NJOBS --debug V=1 $*"
+    if [ "$LOG_LEVEL" = DEBUG ] ; then
+        run "$GMAKE -w -j$BUILD_NJOBS --debug V=1 $*"
     else
-        run "$GMAKE -w -j$NJOBS $*"
+        run "$GMAKE -w -j$BUILD_NJOBS $*"
     fi
 }
 
@@ -5129,7 +5122,7 @@ cmakew() {
         fi
 
         run $CMAKE $CMAKE_FLAGS $@ &&
-        run $CMAKE --build   "$NATIVE_BUILD_DIR" -- -j$NJOBS &&
+        run $CMAKE --build   "$NATIVE_BUILD_DIR" -- -j$BUILD_NJOBS &&
         run $CMAKE --install "$NATIVE_BUILD_DIR"
     else
         # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
@@ -5147,7 +5140,7 @@ cmakew() {
                 ;;
         esac
 
-        if [ "$LOG_LEVEL" = 0 ] ; then
+        if [ "$LOG_LEVEL" = QUIET ] ; then
             CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_VERBOSE_MAKEFILE=OFF -DCMAKE_COLOR_MAKEFILE=OFF"
         else
             CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_COLOR_MAKEFILE=ON"
@@ -5175,7 +5168,7 @@ cmakew() {
         fi
 
         run $CMAKE $CMAKE_FLAGS $@ &&
-        run $CMAKE --build   "$BUILD_DIR" -- -j$NJOBS &&
+        run $CMAKE --build   "$BUILD_DIR" -- -j$BUILD_NJOBS &&
         run $CMAKE --install "$BUILD_DIR"
     fi
 }
@@ -5650,7 +5643,7 @@ install_android_ndk() {
 
 inspect_build_toolchains() {
     debug() {
-        if [ "$LOG_LEVEL" = 3 ] ; then
+        if [ "$LOG_LEVEL" = DEBUG ] ; then
             echo "$*"
         fi
     }
@@ -5737,7 +5730,7 @@ inspect_install_arguments() {
 
     unset LOG_LEVEL
 
-    unset NJOBS
+    unset BUILD_NJOBS
 
     unset BUILD_TYPE
 
@@ -5767,13 +5760,13 @@ inspect_install_arguments() {
             --xtrace|-x)
                 ;;
             --debug|-d)
-                LOG_LEVEL=3
+                LOG_LEVEL=DEBUG
                 ;;
             --verbose|-v)
-                LOG_LEVEL=2
+                LOG_LEVEL=VERBOSE
                 ;;
             --quiet|-q)
-                LOG_LEVEL=0
+                LOG_LEVEL=QUIET
                 ;;
             --dry-run)
                 DRYRUN=YES
@@ -5832,8 +5825,8 @@ inspect_install_arguments() {
                 esac
                 ;;
             --jobs=*)
-                NJOBS=$(getvalue "$1")
-                is_integer "$NJOBS" || die "--jobs=INTEGER argument's value must be a integer."
+                BUILD_NJOBS=$(getvalue "$1")
+                is_integer "$BUILD_NJOBS" || die "--jobs=INTEGER argument's value must be a integer."
                 ;;
             [a-z]*)
                 if [ "$1" = 'all' ] ; then
@@ -5851,8 +5844,8 @@ inspect_install_arguments() {
         shift
     done
 
-    if [ -z "$NJOBS" ] ; then
-        NJOBS=$NATIVE_OS_NCPU
+    if [ -z "$BUILD_NJOBS" ] ; then
+        BUILD_NJOBS=$NATIVE_OS_NCPU
     fi
 
     if [ -z "$BUILD_TYPE" ] ; then
@@ -5862,9 +5855,9 @@ inspect_install_arguments() {
     [ -z "$TREE_ARGS" ] && TREE_ARGS='--dirsfirst'
     [ -z "$PACK_TYPE" ] || PACK_ARGS="--type=$PACK_TYPE"
 
-    [ -z "$LOG_LEVEL" ] && LOG_LEVEL=1
+    [ -z "$LOG_LEVEL" ] && LOG_LEVEL=NORMAL
 
-    if [ "$LOG_LEVEL" = 0 ] ; then
+    if [ "$LOG_LEVEL" = QUIET ] ; then
         exec 1>/dev/null
         exec 2>&1
     fi
