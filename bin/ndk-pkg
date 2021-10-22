@@ -1364,7 +1364,7 @@ is_package_available_and_version_matched_in_package_manager() {
     if is_package_available_in_package_manager "$1" "$2" ; then
         if [ $# -eq 4 ] ; then
             case $1 in
-                apt|apk|yum|dnf) version_match "$(get_package_version_by_package_name_in_package_manager "$1" "$2")" "$3" "$4" ;;
+                apt|apk|yum|dnf|zypper) version_match "$(get_package_version_by_package_name_in_package_manager "$1" "$2")" "$3" "$4" ;;
                 *)       return 0 ;;
             esac
         fi
@@ -1384,6 +1384,7 @@ is_package_available_in_package_manager() {
         apk) apk info "$2" > /dev/null 2>&1 ;;
         yum) yum info "$2" > /dev/null 2>&1 ;;
         dnf) dnf info "$2" > /dev/null 2>&1 ;;
+        zypper) [ "$(zypper info "$2" 2>&1 | tail -n 1)" != "package '$2' not found." ] ;;
     esac
 }
 
@@ -1398,6 +1399,7 @@ get_package_version_by_package_name_in_package_manager() {
         apk) apk info "$2" 2> /dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
         yum) yum info "$2" 2> /dev/null | grep 'Version     :'  | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
         dnf) dnf info "$2" 2> /dev/null | grep 'Version      :' | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
+        zyyper) zyyper info "$2" 2> /dev/null | sed -n '/Version        :/p' | sed 's/Version        : \(.*\)/\1/' | cut -d- -f1 ;;
     esac
 }
 
