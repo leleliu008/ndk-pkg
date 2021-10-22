@@ -5088,9 +5088,6 @@ cmakew() {
         -Wno-dev
         -G 'Unix Makefiles'
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-        -DCMAKE_VERBOSE_MAKEFILE=ON
-        -DCMAKE_COLOR_MAKEFILE=ON
-        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
         -DBUILD_TESTING=OFF"
 
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
@@ -5107,13 +5104,28 @@ cmakew() {
         fi
 
         run $CMAKE $CMAKE_FLAGS $@ &&
-        makew -C "$NATIVE_BUILD_DIR" &&
+        run $CMAKE --build "$NATIVE_BUILD_DIR" -- -j$NJOBS &&
         makew -C "$NATIVE_BUILD_DIR" install
     else
         # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
         # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
         if [ "$NATIVE_OS_KIND" = 'windows' ] ; then
             sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+        fi
+
+        case $BUILD_TYPE in
+            debug)
+                CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=Debug"
+                ;;
+            release)
+                CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=Release"
+                ;;
+        esac
+
+        if [ "$LOG_LEVEL" = 0 ] ; then
+            CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_VERBOSE_MAKEFILE=OFF -DCMAKE_COLOR_MAKEFILE=OFF"
+        else
+            CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_COLOR_MAKEFILE=ON"
         fi
 
         CMAKE_FLAGS="
@@ -5138,7 +5150,7 @@ cmakew() {
         fi
 
         run $CMAKE $CMAKE_FLAGS $@ &&
-        makew -C "$BUILD_DIR" &&
+        run $CMAKE --build "$BUILD_DIR" -- -j$NJOBS &&
         makew -C "$BUILD_DIR" install
     fi
 }
@@ -5195,7 +5207,7 @@ EOF
 
     run "$MESON" setup \
         --prefix="$ABI_INSTALL_DIR" \
-        --buildtype=$MESON_BUILD_TYPE \
+        --buildtype=$BUILD_TYPE \
         --backend=ninja \
         --pkg-config-path="$PKG_CONFIG_PATH" \
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
@@ -5702,9 +5714,7 @@ inspect_install_arguments() {
 
     unset NJOBS
 
-    unset GIVEN_BUILD_TYPE
-    unset CMAKE_BUILD_TYPE
-    unset MESON_BUILD_TYPE
+    unset BUILD_TYPE
 
     unset LINK_TYPE
 
@@ -5764,8 +5774,8 @@ inspect_install_arguments() {
                 esac
                 ;;
             --build-type=*)
-                GIVEN_BUILD_TYPE=$(getvalue "$1")
-                case $GIVEN_BUILD_TYPE in
+                BUILD_TYPE=$(getvalue "$1")
+                case $BUILD_TYPE in
                     debug|release) ;;
                     '') die "--build-type=VALUE VALUE must not be empty." ;;
                     *) die "--build-type=VALUE VALUE must be one of debug release"
@@ -5820,20 +5830,9 @@ inspect_install_arguments() {
         NJOBS=$NATIVE_OS_NCPU
     fi
 
-    if [ -z "$GIVEN_BUILD_TYPE" ] ; then
-        GIVEN_BUILD_TYPE=release
+    if [ -z "$BUILD_TYPE" ] ; then
+        BUILD_TYPE=release
     fi
-
-    case $GIVEN_BUILD_TYPE in
-        debug)
-            CMAKE_BUILD_TYPE=Debug
-            MESON_BUILD_TYPE=debug
-            ;;
-        release)
-            CMAKE_BUILD_TYPE=Release
-            MESON_BUILD_TYPE=release
-            ;;
-    esac
 
     [ -z "$TREE_ARGS" ] && TREE_ARGS='--dirsfirst'
     [ -z "$PACK_TYPE" ] || PACK_ARGS="--type=$PACK_TYPE"
