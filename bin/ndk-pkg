@@ -5088,9 +5088,20 @@ makew() {
 cmakew() {
     CMAKE_FLAGS="
         -Wno-dev
-        -G 'Unix Makefiles'
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DBUILD_TESTING=OFF"
+
+    for item in $PACKAGE_BUILD_SYSTEM
+    do
+        case $item in
+            cmake-make)
+                CMAKE_FLAGS="$CMAKE_FLAGS -G 'Unix Makefiles'"
+                ;;
+            cmake-ninja|cmake)
+                CMAKE_FLAGS="$CMAKE_FLAGS -G Ninja"
+                ;;
+        esac
+    done
 
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
         CMAKE_FLAGS="
