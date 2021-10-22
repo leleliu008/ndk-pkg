@@ -5937,6 +5937,9 @@ init() {
     NATIVE_OS_NCPU=$(os ncpu)
     NATIVE_OS_LIBC=$(os libc)
     NATIVE_OS_SUBS=$(os subs)
+
+    # pip install --user <PKG>
+    export PATH=$HOME/.local/bin:$PATH
 }
 
 help() {
