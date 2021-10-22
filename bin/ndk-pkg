@@ -2087,6 +2087,8 @@ __install_command_via_fetch_prebuild_binary() {
     if [ -d "$PREBUILD_BINARY_INSTALL_DIR/bin" ] ; then
         export PATH="$PREBUILD_BINARY_INSTALL_DIR/bin:$PATH"
     fi
+    
+    export PATH="$PREBUILD_BINARY_INSTALL_DIR:$PATH"
 
     case $1 in
         autoconf)
