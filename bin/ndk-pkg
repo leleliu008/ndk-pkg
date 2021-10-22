@@ -2801,9 +2801,9 @@ __load_formula_of_the_given_package() {
             autotools)   package add dep.cmd perl m4 autoconf automake make ;;
             configure)   package add dep.cmd make ;;
             ndk-build)   package add dep.cmd make ;;
-            cmake)       package add dep.cmd 'cmake>=3.10' make  ;;
-            cmake-make)  package add dep.cmd 'cmake>=3.10' make  ;;
-            cmake-ninja) package add dep.cmd 'cmake>=3.10' ninja ;;
+            cmake)       package add dep.cmd 'cmake>=3.15.0' make  ;;
+            cmake-make)  package add dep.cmd 'cmake>=3.15.0' make  ;;
+            cmake-ninja) package add dep.cmd 'cmake>=3.15.0' ninja ;;
             meson)       package add dep.cmd meson ninja ;;
             make)        package add dep.cmd make  ;;
             ninja)       package add dep.cmd ninja ;;
@@ -5104,8 +5104,8 @@ cmakew() {
         fi
 
         run $CMAKE $CMAKE_FLAGS $@ &&
-        run $CMAKE --build "$NATIVE_BUILD_DIR" -- -j$NJOBS &&
-        makew -C "$NATIVE_BUILD_DIR" install
+        run $CMAKE --build   "$NATIVE_BUILD_DIR" -- -j$NJOBS &&
+        run $CMAKE --install "$NATIVE_BUILD_DIR"
     else
         # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
         # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
@@ -5150,8 +5150,8 @@ cmakew() {
         fi
 
         run $CMAKE $CMAKE_FLAGS $@ &&
-        run $CMAKE --build "$BUILD_DIR" -- -j$NJOBS &&
-        makew -C "$BUILD_DIR" install
+        run $CMAKE --build   "$BUILD_DIR" -- -j$NJOBS &&
+        run $CMAKE --install "$BUILD_DIR"
     fi
 }
 
