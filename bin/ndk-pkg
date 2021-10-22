@@ -1903,7 +1903,7 @@ __install_package_via_package_manager() {
                     run pip  install --user -U "$2"
                     ;;
                 *)  run pip  install        -U pip
-                *)  run pip  install        -U "$2"
+                    run pip  install        -U "$2"
             esac
             ;;
         brew)
