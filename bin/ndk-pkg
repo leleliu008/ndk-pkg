@@ -2803,7 +2803,7 @@ __load_formula_of_the_given_package() {
             autotools)   package add dep.cmd perl m4 autoconf automake make ;;
             configure)   package add dep.cmd make ;;
             ndk-build)   package add dep.cmd make ;;
-            cmake)       package add dep.cmd 'cmake>=3.15.0' make  ;;
+            cmake)       package add dep.cmd 'cmake>=3.15.0' ninja ;;
             cmake-make)  package add dep.cmd 'cmake>=3.15.0' make  ;;
             cmake-ninja) package add dep.cmd 'cmake>=3.15.0' ninja ;;
             meson)       package add dep.cmd meson ninja ;;
