@@ -2113,6 +2113,7 @@ autoconf  |glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/r
 autoreconf|glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
 cmake     |glibc|linux |x86_64|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
 cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
+ninja     |     |linux |      |https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
 EOF
 } | while read LINE
     do
