@@ -3445,8 +3445,8 @@ __compare_versions_with_brew() {
 
     for item in $(ls *.sh)
     do
-        . ./$item
-        NDK_PKG_NAME=$PACKAGE_NAME
+        NDK_PKG_NAME=${item%sh}
+        __load_formula_of_the_given_package "$item"
         NDK_PKG_VERS=$PACKAGE_VERSION
 
         BREW_PKG_NMAE=$NDK_PKG_NAME
