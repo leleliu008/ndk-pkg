@@ -2510,7 +2510,7 @@ main() {
         die "$INSTALL_BIN_FILENAME is already installed at $(command -v $INSTALL_BIN_FILENAME)"
     fi
 
-    RELEASE_VERSION='0.1.7'
+    RELEASE_VERSION='0.1.8'
     RELEASE_FILENAME="$INSTALL_BIN_FILENAME-${RELEASE_VERSION}.tar.gz"
 
     if [ "$COUNTRY" = china ] ; then
