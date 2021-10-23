@@ -2063,9 +2063,9 @@ __install_command_via_fetch_prebuild_binary() {
     PREBUILD_BINARY_FILEPATH="$PREBUILD_BINARY_INSTALL_DIR/$PREBUILD_BINARY_FILENAME"
 
     case $1 in
-        .zip)
+        *.zip)
             run unzip  "$PREBUILD_BINARY_FILEPATH" -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1 ;;
-        .tar.xz|.tar.gz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz)
+        *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz|*.tlz)
             run tar xf "$PREBUILD_BINARY_FILEPATH" -C "$PREBUILD_BINARY_INSTALL_DIR" --strip-components 1 || return 1 ;;
     esac
 
