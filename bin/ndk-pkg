@@ -1940,11 +1940,11 @@ __pmw_install_the_given_command() {
         if [ -z "$2" ] ; then
             # if pacmakge name is empty, assume command name is equal to package name.
             __pmw_is_package_available "$1" "$3" $4 $5 || return 1
-            note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}\n"
+            note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
             __pmw_install_the_given_package "$1" "$3" $4 $5
         else
             __pmw_is_package_available "$1" "$2" $4 $5 || return 1
-            note "${COLOR_GREEN}$(shiftn 2 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}\n"
+            note "${COLOR_GREEN}$(shiftn 2 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
             __pmw_install_the_given_package "$1" "$2" $4 $5
         fi
     fi
@@ -1958,7 +1958,7 @@ __install_command_via_fetch_prebuild_binary() {
         return 1
     fi
 
-    note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}fetch prebuild binary${COLOR_OFF}\n"
+    note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}fetch prebuild binary${COLOR_OFF}"
 
     unset PREBUILD_BINARY_FILENAME
     unset PREBUILD_BINARY_FILEPATH
@@ -2128,7 +2128,7 @@ __install_command_via_run_install_script() {
     case $1 in
         rustup)
             # https://www.rust-lang.org/tools/install
-            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running shell script.${COLOR_OFF}\n"
+            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running shell script.${COLOR_OFF}"
 
             handle_dependency required exe bash:zsh
 
@@ -2139,7 +2139,7 @@ __install_command_via_run_install_script() {
             ;;
         nvm)
             # https://github.com/nvm-sh/nvm
-            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running bash shell script.${COLOR_OFF}\n"
+            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running bash shell script.${COLOR_OFF}"
 
             handle_dependency required exe bash:zsh
 
@@ -2386,7 +2386,7 @@ python_module() {
                 die "please specify a python module name."
             fi
             if ! python_module is installed "$2" ; then
-                note "${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}\n"
+                note "${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
                 run "$__PIP_COMMAND__" install -U pip  || return 1
                 run "$__PIP_COMMAND__" install -U "$2" || return 1
             fi
@@ -3100,6 +3100,7 @@ __update_formula_repositories() {
 ##############################################################################
 
 prompt_user_to_install_bat() {
+    echo
     note "${COLOR_YELLOW}if you want to have a better experience, I strongly recommend you to install${COLOR_OFF} ${COLOR_GREEN}bat${COLOR_OFF} ${COLOR_YELLOW}on your os. For more details, please visit website${COLOR_OFF} ${COLOR_GREEN}https://github.com/sharkdp/bat${COLOR_OFF}"
 }
 
