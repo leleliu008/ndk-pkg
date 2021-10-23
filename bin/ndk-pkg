@@ -3449,7 +3449,7 @@ __compare_versions_with_brew() {
         BREW_PKG_NMAE=$PACKAGE_NAME
         if brew info "$BREW_PKG_NMAE" > /dev/null 2>&1 ; then
             BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" 2> /dev/null | sed -n "/$BREW_PKG_NMAE: /p" | cut -d ' ' -f3) 
-            if version_match "$BREW_PKG_VERS" ge "$PACKAGE_VERSION" ; then
+            if version_match "$BREW_PKG_VERS" gt "$PACKAGE_VERSION" ; then
                 printf "${COLOR_RED}%10s %10s  |  %10s %10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
             else
                 printf "${COLOR_GREEN}%10s %10s  |  %10s %10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
