@@ -3438,6 +3438,31 @@ __search_packages() {
     done
 }
 
+__compare_versions_with_brew() {
+    set -e
+
+    cd "$MY_HOME_DIR/repos.d/offical/formula"
+
+    for item in $(ls *.sh)
+    do
+        . ./$item
+        NDK_PKG_NAME=$PACKAGE_NAME
+        NDK_PKG_VERS=$PACKAGE_VERSION
+
+        BREW_PKG_NMAE=$NDK_PKG_NAME
+        if brew info "$BREW_PKG_NMAE" > /dev/null 2>&1 ; then
+            BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" 2> /dev/null | sed -n "/$BREW_PKG_NMAE: /p" | cut -d ' ' -f3) 
+            if version_match "$BREW_PKG_VERS" ge "$NDK_PKG_VERS" ; then
+                printf "${COLOR_RED}%10s %10s  |  %10s %10s${COLOR_OFF}\n" "$NDK_PKG_NAME" "$NDK_PKG_VERS" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
+            else
+                printf "${COLOR_GREEN}%10s %10s  |  %10s %10s${COLOR_OFF}\n" "$NDK_PKG_NAME" "$NDK_PKG_VERS" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
+            fi
+        else
+            note "$BREW_PKG_NMAE brew package not availalble"
+        fi
+    done
+}
+
 __show_or_open_homepage_of_the_given_package() {
     unset ACTION
     unset PACKAGE
@@ -6194,7 +6219,7 @@ main() {
             install_android_ndk $@
             ;;
         test)
-            handle_dependency required exe cmake ge 3.10
+            __compare_versions_with_brew
             ;;
         *) help 1
     esac
