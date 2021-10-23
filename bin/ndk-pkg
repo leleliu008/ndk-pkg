@@ -2318,7 +2318,7 @@ printf_dependency() {
 __printf_required_dependencies() {
     step "printf required dependencies"
     if [ -z "$REQUIRED_DEPENDENCY_LIST" ] ; then
-        warn "no required dependencies."
+        note "no required dependencies."
     else
         __printf_dependency TYPE NAME OP EXPECT ACTUAL LOCATION
         for dependency in $REQUIRED_DEPENDENCY_LIST
@@ -2331,7 +2331,7 @@ __printf_required_dependencies() {
 __printf_optional_dependencies() {
     step "printf optional dependencies"
     if [ -z "$OPTIONAL_DEPENDENCY_LIST" ] ; then
-        warn "no optional dependencies."
+        note "no optional dependencies."
     else
         __printf_dependency TYPE NAME OP EXPECT ACTUAL LOCATION
         for dependency in $OPTIONAL_DEPENDENCY_LIST
@@ -3754,7 +3754,7 @@ __gen_dependency_tree_of_the_given_package() {
     if command -v dot > /dev/null ; then
         run dot -Tpng -o "$DEPENDENCIES_PNG" "$DEPENDENCIES__GV"
     else
-        warn "graphviz is not installed. we do not generate png format dependency image."
+        note "graphviz is not installed. we do not generate png format dependency image."
     fi
 
     # https://github.com/ggerganov/dot-to-ascii
@@ -3955,7 +3955,7 @@ __install_the_given_package() {
         fi
 
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
-            warn "build for native already have been done, skipped."
+            note "build for native already have been done, skipped."
         else
             [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = YES ] || {
                 run install -d "$NATIVE_BUILD_DIR" || return 1
@@ -4025,7 +4025,7 @@ __install_the_given_package() {
             fi
         fi
     else
-        warn "no build0  function defined in formula, skipped."
+        note "no build0  function defined in formula, skipped."
     fi
 
     step "do some preparation works"
@@ -4038,14 +4038,14 @@ __install_the_given_package() {
     else
         case $PACKAGE_BUILD_SYSTEM in
             autogen)
-                warn "no prepare function defined in formula."
+                note "no prepare function defined in formula."
                 run NOCONFIGURE=yes ./autogen.sh    || return 1
                 ;;
             autotools)
-                warn "no prepare function defined in formula."
+                note "no prepare function defined in formula."
                 run autoreconf -ivf || return 1
                 ;;
-            *)  warn "no prepare function defined in formula, skipped."
+            *)  note "no prepare function defined in formula, skipped."
         esac
     fi
 
@@ -4059,7 +4059,7 @@ __install_the_given_package() {
     step "calculate dependencies"
     unset DEPENDENCY_PACKAGE_LIST
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
-        warn "no dependencies."
+        note "no dependencies."
     else
         __gen_dependency_list_of_the_given_package "$1"              || return 1
         __gen_dependency_tree_of_the_given_package "$1" "$MY_INSTALL_DIR/$1" || return 1
