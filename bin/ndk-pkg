@@ -758,7 +758,7 @@ __integrate_zsh_completions() {
         fi
     fi
 
-    info "mktemp -d"
+    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
     WORK_DIR=$(mktemp -d)
 
     run cd $WORK_DIR
@@ -785,7 +785,7 @@ __integrate_zsh_completions() {
 
     run rm -rf $WORK_DIR
 
-    echo
+    echo '\n'
     note "${COLOR_YELLOW}you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
 }
 
@@ -3638,7 +3638,7 @@ __pack_the_given_installed_package() {
     PACKED_FILE_NAME="$PACKED_DIR_NAME.$PACKED_FILE_SUFFIX"
 
     step "create work directory"
-    info "mktemp -d"
+    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
     WORK_DIR=$(mktemp -d)
 
     step "change to work directory"
@@ -3909,7 +3909,7 @@ __install_the_given_package() {
     __fetch_resources_of_the_given_package "$1" || return 1
 
     step "create work directory"
-    info "mktemp -d"
+    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
     WORK_DIR=$(mktemp -d) || die "create work directory failed."
 
     step "unpack sources to work directory"
