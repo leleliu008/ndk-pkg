@@ -4567,9 +4567,12 @@ __config_variables_for_the_given_target() {
 
     TARGET_TRIPLE2=$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')
 
-
-
-
+    case $TARGET_OS_ARCH in
+        i686|armv7a)
+            TARGET_OS_BIT=32 ;;
+        x86_64|aarch64)
+            TARGET_OS_BIT=64 ;;
+    esac
 
     for tool in $(list_tools_in_the_toolchain)
     do
@@ -4585,7 +4588,7 @@ __config_variables_for_the_given_target() {
 
       CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
-     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR"
+     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=/system/bin/linker$TARGET_OS_BIT"
 
     for item in $PACKAGE_CDEFINE
     do
@@ -4784,6 +4787,7 @@ __printf_variables_for_the_given_target() {
     TARGET_OS_VERS = $TARGET_OS_VERS
     TARGET_OS_ARCH = $TARGET_OS_ARCH
     TARGET_OS_ABI  = $TARGET_OS_ABI
+    TARGET_OS_BIT  = $TARGET_OS_BIT
     TARGET_TRIPLE  = $TARGET_TRIPLE
     TARGET_INDEX   = $TARGET_INDEX
 
