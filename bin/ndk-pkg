@@ -4569,9 +4569,13 @@ __config_variables_for_the_given_target() {
 
     case $TARGET_OS_ARCH in
         i686|armv7a)
-            TARGET_OS_BIT=32 ;;
+            TARGET_OS_BIT=32
+            RUNTIME_DYNAMIC_LINKER_PATH='/system/bin/linker'
+            ;;
         x86_64|aarch64)
-            TARGET_OS_BIT=64 ;;
+            TARGET_OS_BIT=64
+            RUNTIME_DYNAMIC_LINKER_PATH='/system/bin/linker64'
+            ;;
     esac
 
     for tool in $(list_tools_in_the_toolchain)
@@ -4586,9 +4590,9 @@ __config_variables_for_the_given_target() {
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
     SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2/$TARGET_OS_VERS"
 
-      CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic -Wl,--dynamic-linker=/system/bin/linker$TARGET_OS_BIT"
+      CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
-     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=/system/bin/linker$TARGET_OS_BIT"
+     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
 
     for item in $PACKAGE_CDEFINE
     do
