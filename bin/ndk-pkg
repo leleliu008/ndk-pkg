@@ -4173,11 +4173,37 @@ __install_the_given_package_for_the_given_target() {
             esac
         } || return 1
     fi
-    
+
     [ -d "$ABI_INSTALL_DIR" ] || {
         error "installed nothing."
         return 1
     }
+
+    if [ "$BUILD_TYPE" = release ] ; then
+        step "strip ELF file"
+        if [ -d "$ABI_BINARY__DIR" ] ; then
+            for item in $(ls "$ABI_BINARY__DIR")
+            do
+                if [ -d "$ABI_BINARY__DIR/$item" ] ; then
+                    continue
+                fi
+                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$ABI_BINARY__DIR/$item")" = '7F454C46' ] ; then
+                    run "$STRIP" "$ABI_BINARY__DIR/$item" || return 1
+                fi
+            done
+        fi
+        if [ -d "$ABI_LIBRARY_DIR" ] ; then
+            for item in $(ls "$ABI_LIBRARY_DIR")
+            do
+                if [ -d "$ABI_LIBRARY_DIR/$item" ] ; then
+                    continue
+                fi
+                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$ABI_LIBRARY_DIR/$item")" = '7F454C46' ] ; then
+                    run "$STRIP" "$ABI_LIBRARY_DIR/$item" || return 1
+                fi
+            done
+        fi
+    fi
 
     step2 "justfy la files for ${COLOR_GREEN}$@${COLOR_OFF}"
     __justfy_la_files_for_the_given_target $@ || return 1
