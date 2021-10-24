@@ -47,11 +47,11 @@ success() {
 }
 
 error() {
-    print "${COLOR_RED}❌  $*${COLOR_OFF}\n" >&2
+    print "${COLOR_RED}💔  $*${COLOR_OFF}\n" >&2
 }
 
 die() {
-    print "${COLOR_RED}❌  $*${COLOR_OFF}\n" >&2
+    print "${COLOR_RED}💔  $*${COLOR_OFF}\n" >&2
     exit 1
 }
 
