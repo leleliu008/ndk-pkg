@@ -4586,7 +4586,7 @@ __config_variables_for_the_given_target() {
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
     SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2/$TARGET_OS_VERS"
 
-      CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic"
+      CFLAGS="--sysroot $SYSROOT -Qunused-arguments -Os -fpic -Wl,--dynamic-linker=/system/bin/linker$TARGET_OS_BIT"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
      LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=/system/bin/linker$TARGET_OS_BIT"
 
