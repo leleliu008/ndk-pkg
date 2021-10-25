@@ -2516,7 +2516,7 @@ regist_dependency() {
 # package set|add dep.cmd "nasm"
 # package set|add dep.pkg "libxx"
 # package set|add bsystem "cmake"
-# package set     binsrcd 'YES|NO'
+# package set     binsrcd 'yes|no'
 # package set     sourced 'src'
 # package set     sdk.api '23'
 #
@@ -2789,13 +2789,13 @@ __load_formula_of_the_given_package() {
         __parse_package_patches $PACKAGE_PATCHES
     fi
 
-    if [ "$PACKAGE_BUILD_IN_PARALLEL" = NO ] ; then
+    if [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] ; then
         BUILD_NJOBS=1
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
-        PACKAGE_BINSRCD=YES
-        PACKAGE_BUILD_IN_SOURCE_DIR=YES
+        PACKAGE_BINSRCD=yes
+        PACKAGE_BUILD_IN_SOURCE_DIR=yes
     fi
 
     package add dep.cmd 'tree'
@@ -3033,10 +3033,10 @@ __del_a_formula_repo() {
     for repoName in $(__list_formula_repositories | cut -d= -f1)
     do
         if [ "$repoName" = "$1" ] ; then
-            REPO_EXISTS=YES
+            REPO_EXISTS=yes
         fi
     done
-    if [ "$REPO_EXISTS" = YES ] ; then
+    if [ "$REPO_EXISTS" = yes ] ; then
         sed_in_place "/^$1=/d" "$MY_HOME_DIR/repos"
     else
         die "$1 formula repo not exists."
@@ -3254,13 +3254,13 @@ __gen_github_workflows() {
                 for z in $(get_direct_dependency_package_list_of_the_given_package "$y")
                 do
                     if [ "$x" = "$z" ] ; then
-                        BREAK=YES
+                        BREAK=yes
                         break 2
                     fi
                 done
             fi
         done
-        if [ "$BREAK" = YES ] ; then
+        if [ "$BREAK" = yes ] ; then
             unset BREAK
         else
             if [ -z "$NDEPENDED_PACKAGES" ] ; then
@@ -3698,9 +3698,9 @@ get_direct_dependency_package_list_of_the_given_package() {
 }
 
 # $1 packageName, if packageName is not specified, USER_SPECIFIED_PACKAGE_LIST will be used
-# $2=YES invoked by myself
+# $2=yes invoked by myself
 __gen_dependency_list_of_the_given_package() {
-    [ "$2" = YES ] || {
+    [ "$2" = yes ] || {
         unset I
         unset DEPENDENCY_PACKAGE_LIST
     }
@@ -3729,7 +3729,7 @@ __gen_dependency_list_of_the_given_package() {
 
         DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST_TEMP"
 
-        __gen_dependency_list_of_the_given_package "$dependencyPkgName" YES
+        __gen_dependency_list_of_the_given_package "$dependencyPkgName" yes
     done
 }
 
@@ -3979,7 +3979,7 @@ __install_the_given_package() {
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
             note "build for native already have been done, skipped."
         else
-            [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = YES ] || {
+            [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = yes ] || {
                 run install -d "$NATIVE_BUILD_DIR" || return 1
                 run cd    "$NATIVE_BUILD_DIR" || return 1
             }
@@ -4004,11 +4004,11 @@ __install_the_given_package() {
             do
                 eval export "$FLAG=\"\$${FLAG}_FOR_BUILD\""
                 printf "\n%17s = " "$FLAG"
-                FIRST=YES
+                FIRST=yes
                 for item in $(eval echo \$$FLAG | tr ':' ' ')
                 do
-                    if [ "$FIRST" = YES ] ; then
-                        FIRST=NO
+                    if [ "$FIRST" = yes ] ; then
+                        FIRST=no
                         echo "$item"
                     else
                         echo "                    $item"
@@ -4017,11 +4017,11 @@ __install_the_given_package() {
             done
             echo
             printf "\n%17s = " PATH
-            FIRST=YES
+            FIRST=yes
             for item in $(echo "$PATH" | tr ':' ' ')
             do
-                if [ "$FIRST" = YES ] ; then
-                    FIRST=NO
+                if [ "$FIRST" = yes ] ; then
+                    FIRST=no
                     echo "$item"
                 else
                     echo "                    $item"
@@ -4108,7 +4108,7 @@ __install_the_given_package() {
     step "record installed files"
     __record_installed_files_of_the_given_package "$1"
 
-    [ "$KEEP_WORK_DIR" = YES ] || {
+    [ "$KEEP_WORK_DIR" = yes ] || {
         step "clean work directory."
         run rm -rf "$WORK_DIR"
     }
@@ -4116,14 +4116,14 @@ __install_the_given_package() {
     echo
     success "$1 installed successfully."
 
-    if [ "$NEED_RUN_TREE" = YES ] ; then
+    if [ "$NEED_RUN_TREE" = yes ] ; then
         unset STEP_NUM
         echo
         echo "${COLOR_GREEN}$_0 tree $1 $TREE_ARGS${COLOR_OFF}"
         __tree_the_given_installed_package "$1" $TREE_ARGS
     fi
 
-    if [ "$NEED_RUN_PACK" = YES ] ; then
+    if [ "$NEED_RUN_PACK" = yes ] ; then
         unset STEP_NUM
         echo
         echo "${COLOR_GREEN}$_0 pack $1 $PACK_ARGS${COLOR_OFF}"
@@ -4140,13 +4140,13 @@ __install_the_given_package_for_the_given_target() {
     step2 "printf variables for ${COLOR_GREEN}$@${COLOR_OFF}"
     __printf_variables_for_the_given_target $@
 
-    [ "$DRYRUN" = YES ] && {
+    [ "$DRYRUN" = yes ] && {
         [ -z "$SHELL" ] && SHELL=$(command -v zsh || command -v bash || command -v sh)
 
         exec "$SHELL" || return 1
     }
 
-    if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = YES ] ; then
+    if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = yes ] ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             run cd "$SOURCE_DIR" || return 1
         fi
@@ -4616,13 +4616,21 @@ __config_variables_for_the_given_target() {
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
     SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2/$TARGET_OS_VERS"
 
-      CFLAGS="--sysroot $SYSROOT -Qunused-arguments -fpic -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
+    # https://gcc.gnu.org/onlinedocs/gcc/Invoking-GCC.html#Invoking-GCC
+     CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
      LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
 
     if [ "$BUILD_TYPE" = release ] ; then
-        CFLAGS="$CFLAGS -Os -Wl,--strip-debug"
+        CCFLAGS="$CCFLAGS -Wl,--strip-debug -Os"
         LDFLAGS="$LDFLAGS -Wl,--strip-debug"
+    fi
+
+    if [ "$LINK_TYPE" = 'static-only' ] ; then
+        CCFLAGS="$CCFLAGS -static"
+        LDFLAGS="$LDFLAGS -static"
+    else
+        CCFLAGS="$CCFLAGS -fpic"
     fi
 
     for item in $PACKAGE_CDEFINE
@@ -4633,7 +4641,7 @@ __config_variables_for_the_given_target() {
     CPPFLAGS="$CPPFLAGS -include $COMMON_INCLUDE_H_FILEPATH"
 
     if [ -n "$PACKAGE_CCFLAGS" ] ; then
-        CFLAGS="$CFLAGS $PACKAGE_CCFLAGS"
+        CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
     fi
 
     if [ -n "$PACKAGE_LDFLAGS" ] ; then
@@ -4707,10 +4715,11 @@ __config_variables_for_the_given_target() {
     # export CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH"
 
     if [ "$LOG_LEVEL" = VERBOSE ] ; then
-        CFLAGS="$CFLAGS -v"
+        CCFLAGS="$CCFLAGS -v"
     fi
 
-    CXXFLAGS="$CFLAGS"
+      CFLAGS="$CCFLAGS"
+    CXXFLAGS="$CCFLAGS"
 
     if [ -n "$PACKAGE_XXFLAGS" ] ; then
         CXXFLAGS="$CXXFLAGS $PACKAGE_XXFLAGS"
@@ -4862,11 +4871,11 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
     do
         eval export "$FLAG=\"\$$FLAG\""
         printf "\n%17s = " "$FLAG"
-        FIRST=YES
+        FIRST=yes
         for item in $(eval echo \$$FLAG | tr ':' ' ')
         do
-            if [ "$FIRST" = YES ] ; then
-                FIRST=NO
+            if [ "$FIRST" = yes ] ; then
+                FIRST=no
                 echo "$item"
             else
                 echo "                    $item"
@@ -4877,11 +4886,11 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
     echo
 
     printf "\n%17s = " PATH
-    FIRST=YES
+    FIRST=yes
     for item in $(echo "$PATH" | tr ':' ' ')
     do
-        if [ "$FIRST" = YES ] ; then
-            FIRST=NO
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
             echo "$item"
         else
             echo "                    $item"
@@ -5018,7 +5027,7 @@ config_url() {
 # run in a subshell
 configure() {
     if [ -z "$CONFIG_XX_UPDATED" ] ; then
-        CONFIG_XX_UPDATED=YES
+        CONFIG_XX_UPDATED=yes
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
         # https://git.savannah.gnu.org/cgit/config.git/tree/
         for item in config.sub config.guess
@@ -5052,30 +5061,44 @@ configure() {
             return 1
         fi
     else
-        if run "$SOURCE_DIR"/configure \
-            --host="\"$TARGET_TRIPLE\"" \
-            --prefix="\"$ABI_INSTALL_DIR\"" \
-            --disable-option-checking \
-            --disable-rpath \
-            --disable-debug \
-            --disable-nls\
-            --enable-largefile \
-            --enable-static \
-            --enable-shared \
-            CC="\"$CC\"" \
-            CFLAGS="\"$CFLAGS\"" \
-            CXX="\"$CXX\"" \
-            CXXFLAGS="\"$CXXFLAGS\"" \
-            CPP="\"$CPP\"" \
-            CPPFLAGS="\"$CPPFLAGS\"" \
-            LDFLAGS="\"$LDFLAGS\"" \
-            AR="\"$AR\"" \
-            RANLIB="\"$RANLIB\"" \
-            PKG_CONFIG="\"$PKG_CONFIG\"" \
-            PKG_CONFIG_PATH="\"$PKG_CONFIG_PATH\"" \
-            PKG_CONFIG_LIBDIR="\"\"" \
-            CC_FOR_BUILD="\"$CC_FOR_BUILD\"" \
-            $@ ; then
+        CONFIGURE_ARGS="
+            --host='$TARGET_TRIPLE'
+            --prefix='$ABI_INSTALL_DIR'
+            --disable-option-checking
+            --disable-rpath
+            --disable-nls
+            --enable-largefile
+            --enable-static
+            --enable-shared
+            CC='$CC'
+            CFLAGS='$CFLAGS'
+            CXX='$CXX'
+            CXXFLAGS='$CXXFLAGS'
+            CPP='$CPP'
+            CPPFLAGS='$CPPFLAGS'
+            LDFLAGS='$LDFLAGS'
+            AR='$AR'
+            RANLIB='$RANLIB'
+            PKG_CONFIG='$PKG_CONFIG'
+            PKG_CONFIG_PATH='$PKG_CONFIG_PATH'
+            PKG_CONFIG_LIBDIR=''
+            CC_FOR_BUILD='$CC_FOR_BUILD'"
+
+        if [ "$LOG_LEVEL" = DEBUG ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
+        else
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
+        fi
+
+        case $INSTALL_LIB in
+            static) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --disable-shared" ;;
+            shared) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared --disable-static" ;;
+            both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
+            yes)    CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
+            no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
+        esac
+
+        if run $SOURCE_DIR/configure $CONFIGURE_ARGS $@ ; then
             echo
         else
             if [ -f "$BUILD_DIR/config.log" ] ; then
@@ -5757,27 +5780,27 @@ inspect_install_arguments() {
 
     unset DRYRUN
 
-    unset LOG_LEVEL
+    LOG_LEVEL=NORMAL
 
-    unset BUILD_NJOBS
+    BUILD_NJOBS=$NATIVE_OS_NCPU
 
-    unset BUILD_TYPE
+    BUILD_TYPE=release
 
-    unset LINK_TYPE
+    LINK_TYPE=shared-prefered
 
-    unset INSTALL_EXE
-    unset INSTALL_MAN
-    unset INSTALL_DOC
-    unset INSTALL_LIB
+    INSTALL_EXE=yes
+    INSTALL_MAN=yes
+    INSTALL_DOC=yes
+    INSTALL_LIB=yes
 
-    unset KEEP_WORK_DIR
+    KEEP_WORK_DIR=no
 
-    unset NEED_RUN_TREE
-    unset NEED_RUN_PACK
+    NEED_RUN_TREE=no
+    NEED_RUN_PACK=no
 
-    unset TREE_ARGS
-    unset PACK_ARGS
-    unset PACK_TYPE
+    TREE_ARGS='--dirsfirst'
+
+    PACK_ARGS=
 
     while [ -n "$1" ]
     do
@@ -5798,24 +5821,27 @@ inspect_install_arguments() {
                 LOG_LEVEL=QUIET
                 ;;
             --dry-run)
-                DRYRUN=YES
+                DRYRUN=yes
                 ;;
             --keep-work-dir)
-                KEEP_WORK_DIR=YES
+                KEEP_WORK_DIR=yes
                 ;;
             --tree)
-                NEED_RUN_TREE=YES
+                NEED_RUN_TREE=yes
                 ;;
             --tree-args=*)
                 TREE_ARGS=$(getvalue "$1")
                 ;;
             --pack)
-                NEED_RUN_PACK=YES
+                NEED_RUN_PACK=yes
                 ;;
             --pack-type=*)
+                unset PACK_TYPE
                 PACK_TYPE=$(getvalue "$1")
                 case $PACK_TYPE in
-                    7z|zip|tar.gz|tar.xz|tar.bz2) ;;
+                    7z|zip|tar.gz|tar.xz|tar.bz2)
+                        PACK_ARGS="--type=$PACK_TYPE"
+                        ;;
                     '') die "--pack-type=VALUE VALUE must not be empty." ;;
                     *) die "--pack-type=VALUE VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
                 esac
@@ -5829,13 +5855,13 @@ inspect_install_arguments() {
                 esac
                 ;;
             --install-doc)
-                INSTALL_DOC=YES
+                INSTALL_DOC=yes
                 ;;
             --install-man)
-                INSTALL_MAN=YES
+                INSTALL_MAN=yes
                 ;;
             --install-exe)
-                INSTALL_EXE=YES
+                INSTALL_EXE=yes
                 ;;
             --install-lib=*)
                 INSTALL_LIB=$(getvalue "$1")
@@ -5872,19 +5898,6 @@ inspect_install_arguments() {
         esac
         shift
     done
-
-    if [ -z "$BUILD_NJOBS" ] ; then
-        BUILD_NJOBS=$NATIVE_OS_NCPU
-    fi
-
-    if [ -z "$BUILD_TYPE" ] ; then
-        BUILD_TYPE=release
-    fi
-
-    [ -z "$TREE_ARGS" ] && TREE_ARGS='--dirsfirst'
-    [ -z "$PACK_TYPE" ] || PACK_ARGS="--type=$PACK_TYPE"
-
-    [ -z "$LOG_LEVEL" ] && LOG_LEVEL=NORMAL
 
     if [ "$LOG_LEVEL" = QUIET ] ; then
         exec 1>/dev/null
@@ -6122,7 +6135,7 @@ main() {
     do
         case $arg in
             --xtrace|-x)
-                XTRACE=YES
+                XTRACE=yes
                 set -x
                 break
                 ;;
