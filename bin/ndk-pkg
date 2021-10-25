@@ -4596,11 +4596,11 @@ __config_variables_for_the_given_target() {
     case $TARGET_OS_ARCH in
         i686|armv7a)
             TARGET_OS_BIT=32
-            RUNTIME_DYNAMIC_LINKER_PATH='/system/bin/linker'
+            DYNAMIC_LINKER_PATH='/system/bin/linker'
             ;;
         x86_64|aarch64)
             TARGET_OS_BIT=64
-            RUNTIME_DYNAMIC_LINKER_PATH='/system/bin/linker64'
+            DYNAMIC_LINKER_PATH='/system/bin/linker64'
             ;;
     esac
 
@@ -4617,9 +4617,9 @@ __config_variables_for_the_given_target() {
     SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2/$TARGET_OS_VERS"
 
     # https://gcc.gnu.org/onlinedocs/gcc/Invoking-GCC.html#Invoking-GCC
-     CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
+     CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
-     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
+     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
 
     if [ "$BUILD_TYPE" = release ] ; then
         CCFLAGS="$CCFLAGS -Wl,--strip-debug -Os -DNDEBUG"
