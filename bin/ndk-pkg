@@ -5610,8 +5610,8 @@ get_android_ndk_download_config() {
 {
     # https://developer.android.google.cn/ndk/downloads
     cat <<EOF
-linux  |x86_64 |e3eacf80016b91d4cd2c8ca9f34eebd32df912bb799c859cc5450b6b19277b4f|https://dl.google.com/android/repository/android-ndk-r23-linux.zip
-linux  |aarch64|1a0b22ee995e1667312ada8faef9c5115bdcd93397353d7485b57b0547ca703b|https://github.com/Lzhiyong/termux-ndk/releases/download/android-ndk/android-ndk-r23.tar.xz
+linux  |x86_64 |c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382|https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
+linux  |aarch64|f9ee88ca1bad299521f589cb5895a0f077284e001f39e2e44835191d5df7416d|https://github.com/Lzhiyong/termux-ndk/releases/download/android-ndk/android-ndk-r23.tar.xz
 darwin |x86_64 |437278103a3db12632c05b1be5c41bbb8522791a67e415cc54411a65366f499d|https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip
 windows|x86_64 |40325b5bfdb7f6de016ea3efee0468a7d306eda55a6f80966a501645ba01fbfa|https://dl.google.com/android/repository/android-ndk-r23-windows.zip
 EOF
