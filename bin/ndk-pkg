@@ -4617,7 +4617,7 @@ __config_variables_for_the_given_target() {
     SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2/$TARGET_OS_VERS"
 
     # https://gcc.gnu.org/onlinedocs/gcc/Invoking-GCC.html#Invoking-GCC
-     CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -fpic -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
+     CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
      LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$RUNTIME_DYNAMIC_LINKER_PATH"
 
