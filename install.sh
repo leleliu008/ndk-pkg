@@ -18,7 +18,7 @@ CURRENT_SCRIPT_FILEPATH="$CURRENT_SCRIPT_DIR/$CURRENT_SCRIPT_FILENAME"
 COLOR_RED='\033[0;31m'          # Red
 COLOR_GREEN='\033[0;32m'        # Green
 COLOR_YELLOW='\033[0;33m'       # Yellow
-COLOR_BLUE='\033[0;34m'         # Blue
+COLOR_BLUE='\033[0;94m'         # Blue
 COLOR_PURPLE='\033[0;35m'       # Purple
 COLOR_OFF='\033[0m'             # Reset
 
@@ -31,23 +31,27 @@ echo() {
 }
 
 info() {
-    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
+    print "💠  $*\n"
 }
 
-success() {
-    print "${COLOR_GREEN}[✔] $*\n${COLOR_OFF}"
+note() {
+    print "${COLOR_YELLOW}🔔  $*${COLOR_OFF}\n" >&2
 }
 
 warn() {
-    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}" >&2
+    print "${COLOR_YELLOW}🔥  $*${COLOR_OFF}\n" >&2
+}
+
+success() {
+    print "${COLOR_GREEN}[✔] $*${COLOR_OFF}\n"
 }
 
 error() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
+    print "${COLOR_RED}💔  $*${COLOR_OFF}\n" >&2
 }
 
 die() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
+    print "${COLOR_RED}💔  $*${COLOR_OFF}\n" >&2
     exit 1
 }
 
@@ -97,8 +101,15 @@ step() {
     echo "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
 }
 
+step2() {
+    STEP2_NUM=$(expr ${STEP2_NUM-0} + 1)
+    STEP2_MESSAGE="$@"
+    echo
+    echo "${COLOR_BLUE}>>> STEP ${STEP_NUM}.${STEP2_NUM} : ${STEP2_MESSAGE} ${COLOR_OFF}"
+}
+
 run() {
-    info "$*"
+    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
     eval "$*"
 }
 
@@ -206,21 +217,6 @@ tolower() {
             die "please install GNU CoreUtils or awk."
         fi
     fi
-}
-
-# https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
-nproc() {
-    case "$(uname)" in
-        Darwin) sysctl -n machdep.cpu.thread_count ;;
-        *BSD)   sysctl -n hw.ncpu ;;
-        *)  if command nproc --version > /dev/null 2>&1 ; then
-                command nproc
-            elif test -f /proc/cpuinfo ; then
-                grep -c processor /proc/cpuinfo
-            else
-                echo 4
-            fi
-    esac
 }
 
 own() {
@@ -702,12 +698,12 @@ __upgrade_self() {
         CURRENT_SCRIPT_REALPATH="$CURRENT_SCRIPT_FILEPATH"
     fi
 
-    info "mktemp -d"
-    WORKING_DIR=$(mktemp -d)
+    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    WORK_DIR=$(mktemp -d)
 
-    run cd $WORKING_DIR
+    run cd $WORK_DIR
 
-    fetch "$(get_china_mirror_url $@)" --output-path="$WORKING_DIR/self"
+    fetch "$(get_china_mirror_url $@)" --output-path="$WORK_DIR/self"
 
     __upgrade_self_exit() {
         if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
@@ -716,7 +712,7 @@ __upgrade_self() {
             run sudo install -m 755 self "$CURRENT_SCRIPT_REALPATH"
         fi
 
-        run rm -rf $WORKING_DIR
+        run rm -rf $WORK_DIR
     }
 
     trap __upgrade_self_exit EXIT
@@ -762,12 +758,12 @@ __integrate_zsh_completions() {
         fi
     fi
 
-    info "mktemp -d"
-    WORKING_DIR=$(mktemp -d)
+    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    WORK_DIR=$(mktemp -d)
 
-    run cd $WORKING_DIR
+    run cd $WORK_DIR
 
-    fetch "$(get_china_mirror_url $@)" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    fetch "$(get_china_mirror_url $@)" --output-path="$WORK_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
@@ -787,9 +783,10 @@ __integrate_zsh_completions() {
         fi
     fi
 
-    run rm -rf $WORKING_DIR
+    run rm -rf $WORK_DIR
 
-    echo "\n${COLOR_YELLOW}Note: you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
+    echo '\n'
+    note "${COLOR_YELLOW}you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
 }
 
 # }}}
@@ -1066,6 +1063,21 @@ __get_os_libc_from_os_kind() {
     esac
 }
 
+# https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
+__get_os_ncpu() {
+    case "$(uname)" in
+        Darwin) sysctl -n machdep.cpu.thread_count ;;
+        *BSD)   sysctl -n hw.ncpu ;;
+        *)  if command nproc --version > /dev/null 2>&1 ; then
+                command nproc
+            elif test -f /proc/cpuinfo ; then
+                grep -c processor /proc/cpuinfo
+            else
+                echo 4
+            fi
+    esac
+}
+
 os() {
     if [ $# -eq 0 ] ; then
         printf "current-machine-os-kind : %s\n" "$(os kind)"
@@ -1073,6 +1085,8 @@ os() {
         printf "current-machine-os-name : %s\n" "$(os name)"
         printf "current-machine-os-vers : %s\n" "$(os vers)"
         printf "current-machine-os-arch : %s\n" "$(os arch)"
+        printf "current-machine-os-ncpu : %s\n" "$(os ncpu)"
+        printf "current-machine-os-euid : %s\n" "$(os euid)"
         printf "current-machine-os-libc : %s\n" "$(os libc)"
         printf "current-machine-os-subs : %s\n" "$(os subs)"
     elif [ $# -eq 1 ] ; then
@@ -1086,6 +1100,8 @@ os type
 os name
 os vers
 os arch
+os ncpu
+os euid
 os libc
 os subs
 EOF
@@ -1110,6 +1126,12 @@ EOF
                 ;;
             arch)
                 __get_os_arch
+                ;;
+            ncpu)
+                __get_os_ncpu
+                ;;
+            euid)
+                id -u
                 ;;
             libc)
                 __get_os_libc_from_os_kind $(os kind)
@@ -1324,11 +1346,13 @@ command_exists_in_filesystem_and_version_matched() {
 
 # }}}
 ##############################################################################
-# {{{ package_manager
+# {{{ package manager wrapper, aka pmw
 
-# check if the version of give package match the condition
+# check if the give package specification is available in specified package manager's repo
 #
-# condition:
+# package specification's form: <PKG> [OP VERSION]
+#
+# OP:
 # eq  equal
 # ne  not equal
 # gt  greater than
@@ -1336,60 +1360,67 @@ command_exists_in_filesystem_and_version_matched() {
 # ge  greater than or equal
 # le  less than or equal
 #
-# examples:
-# is_package_available_and_version_matched_in_package_manager apt automake eq 1.16.0
-# is_package_available_and_version_matched_in_package_manager apt automake lt 1.16.0
-# is_package_available_and_version_matched_in_package_manager apt automake gt 1.16.0
-# is_package_available_and_version_matched_in_package_manager apt automake le 1.16.0
-# is_package_available_and_version_matched_in_package_manager apt automake ge 1.16.0
-# is_package_available_and_version_matched_in_package_manager apt automake
-is_package_available_and_version_matched_in_package_manager() {
-    if is_package_available_in_package_manager "$1" "$2" ; then
-        if [ $# -eq 4 ] ; then
-            case $1 in
-                apt|apk|yum|dnf) version_match "$(get_package_version_by_package_name_in_package_manager "$1" "$2")" "$3" "$4" ;;
-                *)       return 0 ;;
-            esac
-        fi
+# __pmw_is_package_available <PM> <PKG> [OP VERSION]
+#
+# __pmw_is_package_available apt automake eq 1.16.0
+# __pmw_is_package_available apt automake lt 1.16.0
+# __pmw_is_package_available apt automake gt 1.16.0
+# __pmw_is_package_available apt automake le 1.16.0
+# __pmw_is_package_available apt automake ge 1.16.0
+# __pmw_is_package_available apt automake
+__pmw_is_package_available() {
+    if [ $# -eq 2 ] ; then
+        case $1 in
+            pkg) pkg show "$2" > /dev/null 2>&1 ;;
+            apt) apt show "$2" > /dev/null 2>&1 ;;
+            apk) apk info "$2" > /dev/null 2>&1 ;;
+            yum) yum info "$2" > /dev/null 2>&1 ;;
+            dnf) dnf info "$2" > /dev/null 2>&1 ;;
+            brew) brew info "$2" > /dev/null 2>&1 ;;
+            xbps) xbps-query -R "$2" > /dev/null 2>&1 ;;
+            pacman) pacman -Ss "^$2$" > /dev/null 2>&1 ;;
+            zypper) [ "$(zypper info "$2" 2>&1 | tail -n 1)" != "package '$2' not found." ] ;;
+            emerge)
+                case $2 in
+                    */*) [ "$(emerge -s "%@^$2$" 2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ] ;;
+                    *)   [ "$(emerge -s "%^$2$"  2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ]
+                esac
+                ;;
+        esac
+    elif [ $# -eq 4 ] ; then
+        __pmw_is_package_available "$1" "$2" && version_match "$(__pmw_get_available_package_version_by_package_name "$1" "$2")" "$3" "$4"
     else
-        return 1
+        die "USAGE:  __pmw_is_package_available <PM> <PKG> [OP VERSION]\nACTUAL: __pmw_is_package_available $@"
     fi
 }
 
-# check if the given package is in the given package manager's repo
-#
-# examples:
-# is_package_available_in_package_manager apt automake
-is_package_available_in_package_manager() {
-    case $1 in
-        #pkg) pkg show "$2" > /dev/null 2>&1 ;;
-        apt) apt show "$2" > /dev/null 2>&1 ;;
-        apk) apk info "$2" > /dev/null 2>&1 ;;
-        yum) yum info "$2" > /dev/null 2>&1 ;;
-        dnf) dnf info "$2" > /dev/null 2>&1 ;;
-    esac
-}
-
-# get the version of the given package in the given package manager's repo
-#
-# examples:
-# get_package_version_by_package_name_in_package_manager apt automake
-get_package_version_by_package_name_in_package_manager() {
+# __pmw_get_available_package_version_by_package_name <PM> <PKG>
+# __pmw_get_available_package_version_by_package_name apt automake
+__pmw_get_available_package_version_by_package_name() {
     case $1 in
         pkg) pkg show "$2" 2> /dev/null | grep 'Version: '      | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
         apt) apt show "$2" 2> /dev/null | grep 'Version: '      | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
         apk) apk info "$2" 2> /dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
         yum) yum info "$2" 2> /dev/null | grep 'Version     :'  | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
         dnf) dnf info "$2" 2> /dev/null | grep 'Version      :' | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
+        brew) brew info "$2" 2> /dev/null | grep "$2: " | cut -d ' ' -f3 ;;
+        xbps) xbps-query -R --property=pkgver "$2" | cut -d- -f2 | cut -d_ -f1 ;;
+        pacman) pacman -Ss "^$2$" 2> /dev/null | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
+        zyyper) zyyper info "$2" 2> /dev/null | sed -n '/Version        :/p' | sed 's/Version        : \(.*\)/\1/' | cut -d- -f1 ;;
+        emerge)
+            case $2 in
+                */*) emerge -s "%@^$2$" 2> /dev/null | sed -n '/Latest version available:/p' | cut -d: -f2 ;;
+                *)   emerge -s "%^$2$"  2> /dev/null | sed -n '/Latest version available:/p' | cut -d: -f2 ;;
+            esac
     esac
 }
 
 # }}}
 ##############################################################################
-# {{{ get_package_name_by_command_name_in_package_manager_XX
+# {{{ __pmw_get_available_package_name_by_command_name_XX
 
 # https://cygwin.com/packages/package_list.html
-get_package_name_by_command_name_in_package_manager_choco() {
+__pmw_get_available_package_name_by_command_name_choco() {
     case $1 in
           go) echo 'golang' ;;
       cc|gcc|c++|g++)
@@ -1412,7 +1443,7 @@ get_package_name_by_command_name_in_package_manager_choco() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_pkg_add() {
+__pmw_get_available_package_name_by_command_name_pkg_add() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1447,7 +1478,7 @@ get_package_name_by_command_name_in_package_manager_pkg_add() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_pkgin() {
+__pmw_get_available_package_name_by_command_name_pkgin() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1475,7 +1506,7 @@ get_package_name_by_command_name_in_package_manager_pkgin() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_pkg() {
+__pmw_get_available_package_name_by_command_name_pkg() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1502,7 +1533,7 @@ get_package_name_by_command_name_in_package_manager_pkg() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_emerge() {
+__pmw_get_available_package_name_by_command_name_emerge() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1532,7 +1563,7 @@ get_package_name_by_command_name_in_package_manager_emerge() {
     esac
 }
 
-__get_package_name_by_command_name_in_package_manager_pacman() {
+__pmw_get_available_package_name_by_command_name_pacman() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1576,18 +1607,18 @@ __mingw_w64_x86_64() {
     fi
 }
 
-get_package_name_by_command_name_in_package_manager_pacman() {
+__pmw_get_available_package_name_by_command_name_pacman() {
     if [ "$1" = 'make' ] || [ "$1" = 'gmake' ] ; then
         echo make
     fi
     case $NATIVE_OS_SUBS in
-        mingw32) __mingw_w64_i686   $(__get_package_name_by_command_name_in_package_manager_pacman "$1") ;;
-        mingw64) __mingw_w64_x86_64 $(__get_package_name_by_command_name_in_package_manager_pacman "$1") ;;
-        *) __get_package_name_by_command_name_in_package_manager_pacman "$1"
+        mingw32) __mingw_w64_i686   $(__pmw_get_available_package_name_by_command_name_pacman "$1") ;;
+        mingw64) __mingw_w64_x86_64 $(__pmw_get_available_package_name_by_command_name_pacman "$1") ;;
+        *) __pmw_get_available_package_name_by_command_name_pacman "$1"
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_xbps() {
+__pmw_get_available_package_name_by_command_name_xbps() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1614,7 +1645,7 @@ get_package_name_by_command_name_in_package_manager_xbps() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_apk() {
+__pmw_get_available_package_name_by_command_name_apk() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1643,7 +1674,7 @@ get_package_name_by_command_name_in_package_manager_apk() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_zypper() {
+__pmw_get_available_package_name_by_command_name_zypper() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'gcc-g++';;
@@ -1672,7 +1703,7 @@ get_package_name_by_command_name_in_package_manager_zypper() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_dnf() {
+__pmw_get_available_package_name_by_command_name_dnf() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1700,7 +1731,7 @@ get_package_name_by_command_name_in_package_manager_dnf() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_yum() {
+__pmw_get_available_package_name_by_command_name_yum() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1725,11 +1756,11 @@ get_package_name_by_command_name_in_package_manager_yum() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_apt_get() {
-    get_package_name_by_command_name_in_package_manager_apt $@
+__pmw_get_available_package_name_by_command_name_apt_get() {
+    __pmw_get_available_package_name_by_command_name_apt $@
 }
 
-get_package_name_by_command_name_in_package_manager_apt() {
+__pmw_get_available_package_name_by_command_name_apt() {
     case $1 in
           go) echo 'golang';;
           cc) echo 'gcc'   ;;
@@ -1766,7 +1797,7 @@ get_package_name_by_command_name_in_package_manager_apt() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_brew() {
+__pmw_get_available_package_name_by_command_name_brew() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1795,75 +1826,48 @@ get_package_name_by_command_name_in_package_manager_brew() {
     esac
 }
 
-get_package_name_by_command_name_in_package_manager_pip3() {
-    get_package_name_by_command_name_in_package_manager_pip $@
+__pmw_get_available_package_name_by_command_name_pip3() {
+    __pmw_get_available_package_name_by_command_name_pip $@
 }
 
-get_package_name_by_command_name_in_package_manager_pip() {
+__pmw_get_available_package_name_by_command_name_pip() {
     case $1 in
         sphinx-build) echo "sphinx"   ;;
         rst2man.py)   echo "docutils" ;;
     esac
 }
 
-# }}}
-##############################################################################
-# {{{ __get_available_package_manager_list
-
-__add_available_package_manager() {
-    if command_exists_in_filesystem "$1" ; then
-        if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
-            AVAILABLE_PACKAGE_MANAGER_LIST="$2"
-        else
-            AVAILABLE_PACKAGE_MANAGER_LIST="$AVAILABLE_PACKAGE_MANAGER_LIST $2"
-        fi
-    fi
+__pmw_get_available_pm_list() {
+    for pm in brew pkg apt apt-get dnf yum zypper apk xbps emerge pacman choco pkgin pkg_add
+    do
+        case $pm in
+            apt)
+                if command_exists_in_filesystem apt && apt show apt > /dev/null 2>&1 ; then
+                    printf '%s\n' apt
+                fi
+                ;;
+            xbps)
+                if command_exists_in_filesystem xbps-install ; then
+                    printf '%s\n' xbps
+                fi
+                ;;
+            *)
+                if command_exists_in_filesystem "$pm" ; then
+                    printf '%s\n' "$pm"
+                fi
+        esac
+    done
 }
 
-__get_available_package_manager_list() {
-    if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
-        for pm in brew apt dnf zypper apk xbps-install emerge pacman choco pkg pkgin pkg_add
-        do
-            case $pm in
-                apt)
-                    if command_exists_in_filesystem apt && apt show apt > /dev/null 2>&1 ; then
-                        __add_available_package_manager apt apt
-                    else
-                        __add_available_package_manager apt-get apt-get
-                    fi
-                    ;;
-                dnf)
-                    if command_exists_in_filesystem dnf ; then
-                        __add_available_package_manager dnf dnf
-                    else
-                        __add_available_package_manager yum yum
-                    fi
-                    ;;
-                xbps-install)
-                    __add_available_package_manager xbps-install xbps
-                    ;;
-                *)  __add_available_package_manager "$pm" "$pm"
-            esac
-        done
-    fi
-    echo "$AVAILABLE_PACKAGE_MANAGER_LIST"
-}
-
-# }}}
-##############################################################################
-# {{{ __install_required
-
-# $1 package manager name
-# $2 package name
-# examples:
-# __install_package_via_package_manager apt make ge 3.80
-# __install_package_via_package_manager apt make
-__install_package_via_package_manager() {
+# __pmw_install_the_given_package <PM> <PKG> [OP VERSION]
+# __pmw_install_the_given_package apt make ge 3.80
+# __pmw_install_the_given_package apt make
+__pmw_install_the_given_package() {
     if [ -z "$2" ] ; then
         return 1
     fi
 
-    is_package_available_and_version_matched_in_package_manager $@ || return 1
+    __pmw_is_package_available $@ || return 1
 
     case $1 in
         pip3)
@@ -1906,53 +1910,96 @@ __install_package_via_package_manager() {
     echo
 }
 
-# $1 package manager name
-# $2 command name
-# examples:
-# __install_command_via_package_manager apt make ge 3.80
-# __install_command_via_package_manager apt make
-__install_command_via_package_manager() {
-    unset __PACKAGE_NAME__
-    __PACKAGE_NAME__="$(eval get_package_name_by_command_name_in_package_manager_$(echo "$1" | tr - _) $2)"
+# __pmw_install_the_given_command <PM> <PKG> <CMD> [OP VERSION]
+# __pmw_install_the_given_command apt make make ge 3.80
+# __pmw_install_the_given_command apt make make
+__pmw_install_the_given_command() {
+    if [ "$1" = available ] ; then
+        if command_exists_in_filesystem_and_version_matched $3 $4 $5 ; then
+            return 0
+        fi
 
-    if [ -z "$__PACKAGE_NAME__" ] ; then
+        if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
+            AVAILABLE_PACKAGE_MANAGER_LIST=$(__pmw_get_available_pm_list | tr '\n' ' ')
+            if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
+                warn "no package manager found."
+                return 1
+            else
+                info "Found $(list_length $AVAILABLE_PACKAGE_MANAGER_LIST) package manager : ${COLOR_GREEN}$AVAILABLE_PACKAGE_MANAGER_LIST${COLOR_OFF}"
+            fi
+        fi
+
+        for pm in $AVAILABLE_PACKAGE_MANAGER_LIST
+        do
+            if __pmw_install_the_given_command "$pm" "$(eval __pmw_get_available_package_name_by_command_name_$(printf '%s\n' "$pm" | tr - _) $3)" "$3" $4 $5 ; then
+                return 0
+            fi
+        done
+        return 1
+    else
+        if [ -z "$2" ] ; then
+            # if pacmakge name is empty, assume command name is equal to package name.
+            __pmw_is_package_available "$1" "$3" $4 $5 || return 1
+            note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
+            __pmw_install_the_given_package "$1" "$3" $4 $5
+        else
+            __pmw_is_package_available "$1" "$2" $4 $5 || return 1
+            note "${COLOR_GREEN}$(shiftn 2 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
+            __pmw_install_the_given_package "$1" "$2" $4 $5
+        fi
+    fi
+}
+
+# __install_command_via_fetch_prebuild_binary <URL> <CMD> [OP VERSION]
+# __install_command_via_fetch_prebuild_binary <URL> python3 ge 3.5
+# __install_command_via_fetch_prebuild_binary <URL> make
+__install_command_via_fetch_prebuild_binary() {
+    if [ -z "$1" ] ; then
         return 1
     fi
 
-    is_package_available_and_version_matched_in_package_manager "$1" "$__PACKAGE_NAME__" $3 $4 || return 1
+    note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}fetch prebuild binary${COLOR_OFF}"
 
-    print "🔥  ${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}\n"
+    unset PREBUILD_BINARY_FILENAME
+    unset PREBUILD_BINARY_FILEPATH
 
-    __install_package_via_package_manager "$1" "$__PACKAGE_NAME__" $3 $4
-}
+    PREBUILD_BINARY_FILENAME=$(basename "$1")
 
-# examples:
-# __install_command_via_available_package_manager python3 ge 3.5
-# __install_command_via_available_package_manager make
-__install_command_via_available_package_manager() {
-    if command_exists_in_filesystem_and_version_matched $@ ; then
-        return 0
+    if [ -z "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
+        PREBUILD_BINARY_INSTALL_PREFIX_DIR='/opt'
     fi
- 
-    if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
-        AVAILABLE_PACKAGE_MANAGER_LIST=$(__get_available_package_manager_list)
-        if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
-            warn "no package manager found."
-            return 1
+
+    unset PREBUILD_BINARY_INSTALL_DIR
+    PREBUILD_BINARY_INSTALL_DIR="$PREBUILD_BINARY_INSTALL_PREFIX_DIR/$PREBUILD_BINARY_FILENAME.d"
+
+    PREBUILD_BINARY_FILEPATH="$PREBUILD_BINARY_INSTALL_DIR/$PREBUILD_BINARY_FILENAME"
+
+    if [ -d "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
+        if [ -d "$PREBUILD_BINARY_INSTALL_DIR" ] ; then
+            if [ -r "$PREBUILD_BINARY_INSTALL_DIR" ] && [ -w "$PREBUILD_BINARY_INSTALL_DIR" ] && [ -x "$PREBUILD_BINARY_INSTALL_DIR" ] ; then
+                rm -rf "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+                install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+            else
+                sudo rm -rf "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+                sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+            fi
         else
-            echo "    Found $(list_length $AVAILABLE_PACKAGE_MANAGER_LIST) package manager : ${COLOR_GREEN}$AVAILABLE_PACKAGE_MANAGER_LIST${COLOR_OFF}"
+            if [ -r "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] && [ -w "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] && [ -x "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
+                     install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+            else
+                sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+            fi
+        fi
+    else
+        if [ -r / ] && [ -w / ] && [ -x / ] ; then
+                 install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+        else
+            sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
         fi
     fi
-    for pm in $AVAILABLE_PACKAGE_MANAGER_LIST
-    do
-        if __install_command_via_package_manager "$pm" $@ ; then
-            return 0
-        fi
-    done
-    return 1
-}
 
-handle_dependency_from_url() {
+    fetch "$1" --output-dir="$PREBUILD_BINARY_INSTALL_DIR" --output-name="$PREBUILD_BINARY_FILENAME" || return 1
+
     case $1 in
         *.zip)
             handle_dependency required exe unzip
@@ -1981,86 +2028,25 @@ handle_dependency_from_url() {
             handle_dependency required exe tar
             handle_dependency required exe xz
     esac
-}
 
-get_suffix_from_filename() {
-    case $1 in
-        *.zip)     echo '.zip' ;;
-        *.tar.xz)  echo '.tar.xz' ;;
-        *.tar.gz)  echo '.tar.gz' ;;
-        *.tar.lz)  echo '.tar.lz' ;;
-        *.tar.bz2) echo '.tar.bz2' ;;
-        *.tgz)     echo '.tgz' ;;
-        *.txz)     echo '.txz' ;;
-    esac
-}
-
-# examples:
-# pkg-config ge 0.18
-# python3    ge 3.5
-# make
-__install_command_via_fetch_prebuild_binary() {
-    unset PREBUILD_BINARY_FETCH_URL
-    PREBUILD_BINARY_FETCH_URL=$(__get_prebuild_binary_fetch_url_by_command_name "$1")
-    if [ -z "$PREBUILD_BINARY_FETCH_URL" ] ; then
-        return 1
-    fi
-
-    handle_dependency_from_url "$PREBUILD_BINARY_FETCH_URL"
-
-    print "🔥  ${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}fetch prebuild binary${COLOR_OFF}\n"
-
-    unset PREBUILD_BINARY_FETCH_URL
-    PREBUILD_BINARY_FETCH_URL=$(__get_prebuild_binary_fetch_url_by_command_name "$1")
-
-    unset PREBUILD_BINARY_FILENAME_PREFIX
-    unset PREBUILD_BINARY_FILENAME_SUFFIX
     unset PREBUILD_BINARY_FILENAME
     unset PREBUILD_BINARY_FILEPATH
 
-    PREBUILD_BINARY_FILENAME=$(basename "$PREBUILD_BINARY_FETCH_URL")
-    PREBUILD_BINARY_FILENAME_SUFFIX=$(get_suffix_from_filename "$PREBUILD_BINARY_FILENAME")
-    PREBUILD_BINARY_FILENAME_PREFIX=$(basename "$PREBUILD_BINARY_FILENAME" "$PREBUILD_BINARY_FILENAME_SUFFIX")
+    PREBUILD_BINARY_FILENAME=$(basename "$1")
 
     if [ -z "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
         PREBUILD_BINARY_INSTALL_PREFIX_DIR='/opt'
     fi
 
     unset PREBUILD_BINARY_INSTALL_DIR
-    PREBUILD_BINARY_INSTALL_DIR="$PREBUILD_BINARY_INSTALL_PREFIX_DIR/$PREBUILD_BINARY_FILENAME_PREFIX"
+    PREBUILD_BINARY_INSTALL_DIR="$PREBUILD_BINARY_INSTALL_PREFIX_DIR/$PREBUILD_BINARY_FILENAME.d"
 
     PREBUILD_BINARY_FILEPATH="$PREBUILD_BINARY_INSTALL_DIR/$PREBUILD_BINARY_FILENAME"
 
-    if [ -d "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
-        if [ -d "$PREBUILD_BINARY_INSTALL_DIR" ] ; then
-            if [ -r "$PREBUILD_BINARY_INSTALL_DIR" ] && [ -w "$PREBUILD_BINARY_INSTALL_DIR" ] && [ -x "$PREBUILD_BINARY_INSTALL_DIR" ] ; then
-                rm -rf "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-                install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-            else
-                sudo rm -rf "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-                sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-            fi
-        else
-            if [ -r "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] && [ -w "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] && [ -x "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
-                     install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-            else
-                sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-            fi
-        fi
-    else
-        if [ -r / ] && [ -w / ] && [ -x / ] ; then
-                 install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-        else
-            sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-        fi
-    fi
-
-    fetch "$PREBUILD_BINARY_FETCH_URL" --output-dir="$PREBUILD_BINARY_INSTALL_DIR" --output-name="$PREBUILD_BINARY_FILENAME" || return 1
-
-    case $PREBUILD_BINARY_FILENAME_SUFFIX in
-        .zip)
+    case $1 in
+        *.zip)
             run unzip  "$PREBUILD_BINARY_FILEPATH" -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1 ;;
-        .tar.xz|.tar.gz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz)
+        *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz|*.tlz)
             run tar xf "$PREBUILD_BINARY_FILEPATH" -C "$PREBUILD_BINARY_INSTALL_DIR" --strip-components 1 || return 1 ;;
     esac
 
@@ -2068,7 +2054,9 @@ __install_command_via_fetch_prebuild_binary() {
         export PATH="$PREBUILD_BINARY_INSTALL_DIR/bin:$PATH"
     fi
 
-    case $1 in
+    export PATH="$PREBUILD_BINARY_INSTALL_DIR:$PATH"
+
+    case $2 in
         autoconf)
             for xx in $(grep '/root/.zpkg/install.d/autoconf' -rl "$PREBUILD_BINARY_INSTALL_DIR")
             do
@@ -2078,7 +2066,7 @@ __install_command_via_fetch_prebuild_binary() {
     esac
 }
 
-# examples:
+# __get_prebuild_binary_fetch_url_by_command_name <CMD> [OP VERSION]
 # __get_prebuild_binary_fetch_url_by_command_name python3 ge 3.5
 # __get_prebuild_binary_fetch_url_by_command_name cmake
 __get_prebuild_binary_fetch_url_by_command_name() {
@@ -2093,6 +2081,8 @@ autoconf  |glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/r
 autoreconf|glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
 cmake     |glibc|linux |x86_64|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
 cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
+ninja     |     |linux |      |https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
+ninja     |     |darwin|      |https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
 EOF
 } | while read LINE
     do
@@ -2138,7 +2128,7 @@ __install_command_via_run_install_script() {
     case $1 in
         rustup)
             # https://www.rust-lang.org/tools/install
-            print "🔥  ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running shell script.${COLOR_OFF}\n"
+            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running shell script.${COLOR_OFF}"
 
             handle_dependency required exe bash:zsh
 
@@ -2149,7 +2139,7 @@ __install_command_via_run_install_script() {
             ;;
         nvm)
             # https://github.com/nvm-sh/nvm
-            print "🔥  ${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running bash shell script.${COLOR_OFF}\n"
+            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running bash shell script.${COLOR_OFF}"
 
             handle_dependency required exe bash:zsh
 
@@ -2163,7 +2153,7 @@ __install_command_via_run_install_script() {
 }
 
 __install_command_via_pip() {
-    if [ -z "$(get_package_name_by_command_name_in_package_manager_pip3 "$1")" ] ; then
+    if [ -z "$(__pmw_get_available_package_name_by_command_name_pip3 "$1")" ] ; then
         return 1
     fi
 
@@ -2179,15 +2169,15 @@ __install_command_via_pip() {
     )
 
     if   command_exists_in_filesystem pip3 ; then
-        __install_package_via_package_manager pip3 "$(get_package_name_by_command_name_in_package_manager_pip3 "$1")"
+        __pmw_install_the_given_package pip3 "$(__pmw_get_available_package_name_by_command_name_pip3 "$1")"
     elif command_exists_in_filesystem pip ; then
-        __install_package_via_package_manager pip  "$(get_package_name_by_command_name_in_package_manager_pip "$1")"
+        __pmw_install_the_given_package pip  "$(__pmw_get_available_package_name_by_command_name_pip "$1")"
     else
         return 1
     fi
 }
 
-# examples:
+# __install_command <CMD> [OP VERSION]
 # __install_command python3 ge 3.5
 # __install_command make
 __install_command() {
@@ -2203,15 +2193,15 @@ __install_command() {
         return 0
     fi
 
-    if __install_command_via_available_package_manager $@ ; then
+    if __pmw_install_the_given_command available available $@ ; then
         return 0
     fi
 
-    if __install_command_via_fetch_prebuild_binary $@ ; then
+    if __install_command_via_fetch_prebuild_binary "$(__get_prebuild_binary_fetch_url_by_command_name "$1")" $@ ; then
         return 0
     fi
 
-    print "🔥  ${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but I found no way to install it.${COLOR_OFF}\n"
+    warn "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but I found no way to install it.${COLOR_OFF}\n"
     return 1
 }
 
@@ -2328,7 +2318,7 @@ printf_dependency() {
 __printf_required_dependencies() {
     step "printf required dependencies"
     if [ -z "$REQUIRED_DEPENDENCY_LIST" ] ; then
-        warn "no required dependencies."
+        note "no required dependencies."
     else
         __printf_dependency TYPE NAME OP EXPECT ACTUAL LOCATION
         for dependency in $REQUIRED_DEPENDENCY_LIST
@@ -2341,7 +2331,7 @@ __printf_required_dependencies() {
 __printf_optional_dependencies() {
     step "printf optional dependencies"
     if [ -z "$OPTIONAL_DEPENDENCY_LIST" ] ; then
-        warn "no optional dependencies."
+        note "no optional dependencies."
     else
         __printf_dependency TYPE NAME OP EXPECT ACTUAL LOCATION
         for dependency in $OPTIONAL_DEPENDENCY_LIST
@@ -2396,7 +2386,7 @@ python_module() {
                 die "please specify a python module name."
             fi
             if ! python_module is installed "$2" ; then
-                print "🔥  ${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}\n"
+                note "${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
                 run "$__PIP_COMMAND__" install -U pip  || return 1
                 run "$__PIP_COMMAND__" install -U "$2" || return 1
             fi
@@ -2460,6 +2450,54 @@ __decode_dependency() {
     else
         printf "%s" "$*" | tr '|' ' '
     fi
+}
+
+# }}}
+##############################################################################
+# {{{ regist dependency
+
+# regist dependency required|optional exe|lib|dev|py|pm|pip|npm|gem|pub|cargo|go NAME
+#
+# required this is a required dependency
+# optional this is a optional dependency
+#
+# exe  this dependency is a command
+# py   this dependency is a python  module
+# py2  this dependency is a python2 module
+# py3  this dependency is a python3 module
+# pm   this dependency is a perl module
+#
+# gt VERSION
+# ge VERSION
+# lt VERSION
+# le VERSION
+# eq VERSION
+# ne VERSION
+#
+# examples:
+# regist_dependency required exe pkg-config ge 0.18
+# regist_dependency required exe python     ge 3.5
+# regist_dependency required py  libxml2    ge 2.19
+#
+# regist_dependency optional exe pkg-config ge 0.18
+# regist_dependency optional exe python     ge 3.5
+# regist_dependency optional py  libxml2    ge 2.19
+regist_dependency() {
+    case $1 in
+        required)
+            if [ -z "$REQUIRED_DEPENDENCY_LIST" ] ; then
+                REQUIRED_DEPENDENCY_LIST="$(__encode_dependency "$*")"
+            else
+                REQUIRED_DEPENDENCY_LIST="$REQUIRED_DEPENDENCY_LIST $(__encode_dependency "$*")"
+            fi
+            ;;
+        optional)
+            if [ -z "$OPTIONAL_DEPENDENCY_LIST" ] ; then
+                OPTIONAL_DEPENDENCY_LIST=$(__encode_dependency "$*")
+            else
+                OPTIONAL_DEPENDENCY_LIST="$OPTIONAL_DEPENDENCY_LIST $(__encode_dependency "$*")"
+            fi
+    esac
 }
 
 # }}}
@@ -2542,7 +2580,7 @@ main() {
     if [ -e "$INSTALL_ZSH_COMPLETION_FILEPATH" ] ; then
         die "$INSTALL_ZSH_COMPLETION_FILEPATH is already exist."
     fi
-    
+
     on_exit() {
         if [ "$INSTALL_SUCCESS" = true ] ; then
             return 0
@@ -2566,10 +2604,10 @@ main() {
 
     trap on_exit EXIT
 
-    info "mktemp -d"
-    WORKING_DIR=$(mktemp -d)
+    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    WORK_DIR=$(mktemp -d)
 
-    run cd $WORKING_DIR
+    run cd $WORK_DIR
 
     fetch "$RELEASE_URL" --output-name="$RELEASE_FILENAME"
     

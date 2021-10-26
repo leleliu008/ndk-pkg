@@ -3,7 +3,7 @@
 COLOR_RED='\033[0;31m'          # Red
 COLOR_GREEN='\033[0;32m'        # Green
 COLOR_YELLOW='\033[0;33m'       # Yellow
-COLOR_BLUE='\033[0;34m'         # Blue
+COLOR_BLUE='\033[0;94m'         # Blue
 COLOR_PURPLE='\033[0;35m'       # Purple
 COLOR_OFF='\033[0m'             # Reset
 
@@ -16,23 +16,27 @@ echo() {
 }
 
 info() {
-    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
+    print "💠  $*\n"
 }
 
-success() {
-    print "${COLOR_GREEN}[✔] $*\n${COLOR_OFF}"
+note() {
+    print "${COLOR_YELLOW}🔔  $*${COLOR_OFF}\n" >&2
 }
 
 warn() {
-    print "${COLOR_YELLOW}🔥  $*\n${COLOR_OFF}" >&2
+    print "${COLOR_YELLOW}🔥  $*${COLOR_OFF}\n" >&2
+}
+
+success() {
+    print "${COLOR_GREEN}[✔] $*${COLOR_OFF}\n"
 }
 
 error() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
+    print "${COLOR_RED}💔  $*${COLOR_OFF}\n" >&2
 }
 
 die() {
-    print "${COLOR_RED}[✘] $*\n${COLOR_OFF}" >&2
+    print "${COLOR_RED}💔  $*${COLOR_OFF}\n" >&2
     exit 1
 }
 
