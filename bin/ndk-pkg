@@ -5682,8 +5682,17 @@ install_android_ndk() {
 
     run ls -l "$ANDROID_NDK_HOME"
 
-    run "printf 'ANDROID_NDK_HOME=%s\n' '$ANDROID_NDK_HOME' >> '$MY_ENV_FILEPATH'"
-    run "printf 'PATH=%s:$PATH\n' '$ANDROID_NDK_HOME' >> '$MY_ENV_FILEPATH'"
+    cat >> "$MY_ENV_FILEPATH" <<EOF
+export ANDROID_NDK_HOME=$ANDROID_NDK_HOME
+export ANDROID_NDK_ROOT=$ANDROID_NDK_HOME
+export PATH=$ANDROID_NDK_HOME:$PATH
+EOF
+
+    if command -v bat > /dev/null ; then
+        run bat -l bash --paging=never --style=plain "$MY_ENV_FILEPATH"
+    else
+        run cat "$MY_ENV_FILEPATH"
+    fi
 }
 
 inspect_build_toolchains() {
@@ -6157,12 +6166,9 @@ main() {
             echo
             run "id | tr ' ' '\n'"
             echo
-            run env
+            run "env | sed -n '/ANDROID_NDK_/p'"
             echo
-            run export -p
-
             inspect_build_toolchains
-
             echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERS"
             ;;
         target)
