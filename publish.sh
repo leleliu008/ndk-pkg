@@ -75,7 +75,7 @@ step() {
 }
 
 run() {
-    info "$*"
+    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
     eval "$*"
 }
 

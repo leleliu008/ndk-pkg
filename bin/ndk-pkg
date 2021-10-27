@@ -4188,28 +4188,20 @@ __install_the_given_package_for_the_given_target() {
 
     if [ "$BUILD_TYPE" = release ] ; then
         step "strip ELF file"
-        if [ -d "$ABI_BINARY__DIR" ] ; then
-            for item in $(ls "$ABI_BINARY__DIR")
-            do
-                if [ -d "$ABI_BINARY__DIR/$item" ] ; then
-                    continue
-                fi
-                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$ABI_BINARY__DIR/$item")" = '7F454C46' ] ; then
-                    run "$STRIP" "$ABI_BINARY__DIR/$item" || return 1
-                fi
-            done
-        fi
-        if [ -d "$ABI_LIBRARY_DIR" ] ; then
-            for item in $(ls "$ABI_LIBRARY_DIR")
-            do
-                if [ -d "$ABI_LIBRARY_DIR/$item" ] ; then
-                    continue
-                fi
-                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$ABI_LIBRARY_DIR/$item")" = '7F454C46' ] ; then
-                    run "$STRIP" "$ABI_LIBRARY_DIR/$item" || return 1
-                fi
-            done
-        fi
+        for x in bin sbin lib
+        do
+            if [ -d "$ABI_INSTALL_DIR/$x" ] ; then
+                for y in $(ls "$ABI_INSTALL_DIR/$x")
+                do
+                    if [ -d "$ABI_INSTALL_DIR/$x/$y" ] ; then
+                        continue
+                    fi
+                    if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$ABI_INSTALL_DIR/$x/$y")" = '7F454C46' ] ; then
+                        run "$STRIP" "$ABI_INSTALL_DIR/$x/$y" || true
+                    fi
+                done
+            fi
+        done
     fi
 
     step2 "justfy la files for ${COLOR_GREEN}$@${COLOR_OFF}"
