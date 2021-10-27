@@ -1834,6 +1834,7 @@ __pmw_get_available_package_name_by_command_name_pip() {
     case $1 in
         sphinx-build) echo "sphinx"   ;;
         rst2man.py)   echo "docutils" ;;
+        meson)        echo "meson" ;;
     esac
 }
 
@@ -3936,7 +3937,13 @@ __install_the_given_package() {
 
     step "unpack sources to work directory"
     case $PACKAGE_SRC_URL in
-        dir://*|*.git)
+        dir://*)
+            if command -v git > /dev/null ; then
+                PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h 2>/dev/null || true)
+            fi
+            run cp -r "$PACKAGE_SRC_PATH/." "$WORK_DIR" || return 1
+            ;;
+        *.git)
             PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h) || return 1
             run cp -r "$PACKAGE_SRC_PATH/." "$WORK_DIR" || return 1
             ;;
@@ -5061,8 +5068,6 @@ configure() {
             --disable-rpath
             --disable-nls
             --enable-largefile
-            --enable-static
-            --enable-shared
             CC='$CC'
             CFLAGS='$CFLAGS'
             CXX='$CXX'
