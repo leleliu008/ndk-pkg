@@ -5477,13 +5477,13 @@ path_of_tool_in_the_toolchain() {
     case $1 in
         cc)  TOOL_FILENAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang"   ;;
         cxx) TOOL_FILENAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang++" ;;
-        *)   TOOL_FILENAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
-             if [ "$1" = 'ld' ] ; then
-                # https://github.com/android/ndk/wiki/Changelog-r22
-                if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME$EXE" ] ; then
-                    TOOL_FILENAME=lld
-                fi
+        ld)  TOOL_FILENAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
+            # https://github.com/android/ndk/wiki/Changelog-r22
+             if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME$EXE" ] ; then
+                 TOOL_FILENAME=ld.lld
              fi
+             ;;
+        *)   TOOL_FILENAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
 
              # https://github.com/android/ndk/wiki/Changelog-r23
              if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME$EXE" ] ; then
