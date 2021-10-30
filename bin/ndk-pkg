@@ -2782,7 +2782,7 @@ __load_formula_of_the_given_package() {
             make)        package add dep.cmd make  ;;
             ninja)       package add dep.cmd ninja ;;
             cargo)       package add dep.cmd rustup cargo ;;
-            go)          package add dep.cmd go ;;
+            go)          package add dep.cmd 'go>=1.17' ;;
         esac
     done
 
