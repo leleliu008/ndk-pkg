@@ -2781,7 +2781,12 @@ __load_formula_of_the_given_package() {
             meson)       package add dep.cmd meson ninja ;;
             make)        package add dep.cmd make  ;;
             ninja)       package add dep.cmd ninja ;;
-            cargo)       package add dep.cmd rustup cargo ;;
+            cargo)       package add dep.cmd rustup cargo
+    if [ -n "$ANDROID_NDK_VERSION_MAJOR" ] && [ "$ANDROID_NDK_VERSION_MAJOR" -ge 23 ] ; then
+            # https://giters.com/bbqsrc/cargo-ndk/issues/22?amp=1
+            package add dep.pkg libgcc
+    fi
+                ;;
             go)          package add dep.cmd 'go>=1.17' ;;
         esac
     done
