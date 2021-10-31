@@ -2082,8 +2082,10 @@ autoconf  |glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/r
 autoreconf|glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
 cmake     |glibc|linux |x86_64|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
 cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
-ninja     |     |linux |      |https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
-ninja     |     |darwin|      |https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
+ninja     |     |linux |x86_64|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
+ninja     |     |darwin|x86_64|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
+go        |     |linux |x86_64|https://golang.org/dl/go1.17.2.linux-arm64.tar.gz
+go        |     |darwin|x86_64|https://golang.org/dl/go1.17.2.darwin-arm64.tar.gz
 EOF
 } | while read LINE
     do
