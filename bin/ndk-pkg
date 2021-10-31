@@ -4653,7 +4653,7 @@ __config_variables_for_the_given_target() {
     for PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
         PKG=$(printf "$PACKAGE" | tr '-' '_')
-        
+
         ABI_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE/$TARGET_OS_ABI"
         ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
         ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
@@ -4672,39 +4672,12 @@ __config_variables_for_the_given_target() {
             PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
         fi
 
-        if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
-            CMAKE_FIND_ROOT_PATH="$MY_INSTALL_DIR/$PACKAGE"
+        if [ -z "$CMAKE_PREFIX_PATH" ] ; then
+            CMAKE_PREFIX_PATH="$ABI_INSTALL_DIR"
         else
-            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$MY_INSTALL_DIR/$PACKAGE"
-        fi
-
-        # if [ -z "$CMAKE_INCLUDE_PATH" ] ; then
-        #     CMAKE_INCLUDE_PATH="$ABI_LIBRARY_DIR"
-        # else
-        #     CMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH:$ABI_INCLUDE_DIR"
-        # fi
-
-        # if [ -z "$CMAKE_LIBRARY_PATH" ] ; then
-        #     CMAKE_LIBRARY_PATH="$ABI_LIBRARY_DIR"
-        # else
-        #     CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH:$ABI_LIBRARY_DIR"
-        # fi
-
-        if [ -d "$ABI_LIBRARY_DIR/cmake" ] ; then
-            for cmake_config_dir in $(find "$ABI_LIBRARY_DIR/cmake" -maxdepth 0 -type d)
-            do
-                if [ -z "$CMAKE_PREFIX_PATH" ] ; then
-                    CMAKE_PREFIX_PATH="$cmake_config_dir"
-                else
-                    CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH;$cmake_config_dir"
-                fi
-            done
-            unset cmake_config_dir
+            CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH;$ABI_INSTALL_DIR"
         fi
     done
-
-    # export CMAKE_INCLUDE_PATH="$CMAKE_INCLUDE_PATH"
-    # export CMAKE_LIBRARY_PATH="$CMAKE_LIBRARY_PATH"
 
     if [ "$LOG_LEVEL" = VERBOSE ] ; then
         CCFLAGS="$CCFLAGS -v"
@@ -5193,7 +5166,6 @@ cmakew() {
         -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
         -DCMAKE_INSTALL_PREFIX='$ABI_INSTALL_DIR'
         -DCMAKE_PREFIX_PATH='$CMAKE_PREFIX_PATH'
-        -DCMAKE_FIND_ROOT_PATH='$CMAKE_FIND_ROOT_PATH'
         -DCMAKE_C_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DCMAKE_CXX_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DBUILD_SHARED_LIBS=ON 
