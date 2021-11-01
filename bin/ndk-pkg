@@ -4653,12 +4653,12 @@ __config_variables_for_the_given_target() {
     unset PKG_CONFIG_PATH
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
-    # https://cmake.org/cmake/help/latest/variable/CMAKE_FRAMEWORK_PATH.html
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_IGNORE_PATH.html
     # https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
     # https://cmake.org/cmake/help/latest/variable/CMAKE_INCLUDE_PATH.html
     # https://cmake.org/cmake/help/latest/variable/CMAKE_LIBRARY_PATH.html
     unset CMAKE_FIND_ROOT_PATH
-    unset CMAKE_FRAMEWORK_PATH
+    unset CMAKE_IGNORE_PATH
     unset CMAKE_PREFIX_PATH
     unset CMAKE_INCLUDE_PATH
     unset CMAKE_LIBRARY_PATH
@@ -4685,10 +4685,16 @@ __config_variables_for_the_given_target() {
             PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
         fi
 
-        if [ -z "$CMAKE_FRAMEWORK_PATH" ] ; then
-            CMAKE_FRAMEWORK_PATH="$ABI_INSTALL_DIR"
+        if [ -z "$CMAKE_PREFIX_PATH" ] ; then
+            CMAKE_PREFIX_PATH="$ABI_INSTALL_DIR"
         else
-            CMAKE_FRAMEWORK_PATH="$CMAKE_FRAMEWORK_PATH;$ABI_INSTALL_DIR"
+            CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH;$ABI_INSTALL_DIR"
+        fi
+
+        if [ -z "$CMAKE_IGNORE_PATH" ] ; then
+            CMAKE_IGNORE_PATH="$ABI_BINARY__DIR"
+        else
+            CMAKE_IGNORE_PATH="$CMAKE_IGNORE_PATH;$ABI_BINARY__DIR"
         fi
     done
 
@@ -5178,7 +5184,8 @@ cmakew() {
         $CMAKE_FLAGS
         -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
         -DCMAKE_INSTALL_PREFIX='$ABI_INSTALL_DIR'
-        -DCMAKE_FRAMEWORK_PATH='$CMAKE_FRAMEWORK_PATH'
+        -DCMAKE_PREFIX_PATH='$CMAKE_PREFIX_PATH'
+        -DCMAKE_IGNORE_PATH='$CMAKE_IGNORE_PATH'
         -DCMAKE_C_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DCMAKE_CXX_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DBUILD_SHARED_LIBS=ON 
