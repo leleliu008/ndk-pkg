@@ -4691,11 +4691,16 @@ __config_variables_for_the_given_target() {
             CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH;$ABI_INSTALL_DIR"
         fi
 
-        if [ -z "$CMAKE_IGNORE_PATH" ] ; then
-            CMAKE_IGNORE_PATH="$ABI_BINARY__DIR"
-        else
-            CMAKE_IGNORE_PATH="$CMAKE_IGNORE_PATH;$ABI_BINARY__DIR"
-        fi
+        for item in bin sbin
+        do
+            if [ -d "$ABI_INSTALL_DIR/$item" ] ; then
+                if [ -z "$CMAKE_IGNORE_PATH" ] ; then
+                    CMAKE_IGNORE_PATH="$ABI_INSTALL_DIR/$item"
+                else
+                    CMAKE_IGNORE_PATH="$CMAKE_IGNORE_PATH;$ABI_INSTALL_DIR/$item"
+                fi
+            fi
+        done
     done
 
     if [ "$LOG_LEVEL" = VERBOSE ] ; then
