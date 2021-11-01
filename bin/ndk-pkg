@@ -5130,6 +5130,11 @@ cmakew() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DBUILD_TESTING=OFF"
 
+    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
+    if [ "$LOG_LEVEL" = DEBUG ] ; then
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_FIND_DEBUG_MODE=TRUE"
+    fi
+
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
