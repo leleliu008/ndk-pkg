@@ -2085,7 +2085,8 @@ cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/downloa
 ninja     |     |linux |x86_64|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
 ninja     |     |darwin|x86_64|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
 go        |     |linux |x86_64|https://golang.org/dl/go1.17.2.linux-arm64.tar.gz
-go        |     |darwin|x86_64|https://golang.org/dl/go1.17.2.darwin-arm64.tar.gz
+go        |     |darwin|x86_64|https://golang.org/dl/go1.17.2.darwin-amd64.tar.gz
+go        |     |darwin|arm64 |https://golang.org/dl/go1.17.2.darwin-arm64.tar.gz
 EOF
 } | while read LINE
     do
