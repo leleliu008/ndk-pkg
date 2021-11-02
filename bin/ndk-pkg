@@ -3459,7 +3459,7 @@ __compare_versions_with_brew() {
                 printf "${COLOR_GREEN}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
             fi
         else
-            printf "${COLOR_BLUE}%-10s %-10s  |  brew package not available${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION"
+            printf "${COLOR_BLUE}%-10s %-10s  |${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION"
         fi
     done
 }
@@ -4680,22 +4680,11 @@ __config_variables_for_the_given_target() {
             PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
         fi
 
-        if [ -z "$CMAKE_PREFIX_PATH" ] ; then
-            CMAKE_PREFIX_PATH="$ABI_INSTALL_DIR"
+        if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
+            CMAKE_FIND_ROOT_PATH="$ABI_INSTALL_DIR"
         else
-            CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH;$ABI_INSTALL_DIR"
+            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$ABI_INSTALL_DIR"
         fi
-
-        for item in bin sbin
-        do
-            if [ -d "$ABI_INSTALL_DIR/$item" ] ; then
-                if [ -z "$CMAKE_IGNORE_PATH" ] ; then
-                    CMAKE_IGNORE_PATH="$ABI_INSTALL_DIR/$item"
-                else
-                    CMAKE_IGNORE_PATH="$CMAKE_IGNORE_PATH;$ABI_INSTALL_DIR/$item"
-                fi
-            fi
-        done
     done
 
     if [ "$LOG_LEVEL" = VERBOSE ] ; then
@@ -5188,9 +5177,8 @@ cmakew() {
         CMAKE_FLAGS="
         $CMAKE_FLAGS
         -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
+        -DCMAKE_FIND_ROOT_PATH='$CMAKE_FIND_ROOT_PATH'
         -DCMAKE_INSTALL_PREFIX='$ABI_INSTALL_DIR'
-        -DCMAKE_PREFIX_PATH='$CMAKE_PREFIX_PATH'
-        -DCMAKE_IGNORE_PATH='$CMAKE_IGNORE_PATH'
         -DCMAKE_C_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DCMAKE_CXX_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DBUILD_SHARED_LIBS=ON 
