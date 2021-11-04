@@ -1781,6 +1781,8 @@ __pmw_get_available_package_name_by_command_name_apt() {
               echo "python3-docutils" ;;
     sphinx-build)
               echo "python3-sphinx" ;;
+    grpc_cpp_plugin)
+              echo "libgrpc" ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -4686,6 +4688,17 @@ __config_variables_for_the_given_target() {
         else
             CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$ABI_INSTALL_DIR"
         fi
+
+        for item in bin sbin
+        do
+            if [ -d "$ABI_INSTALL_DIR/$item" ] ; then
+                if [ -z "$CMAKE_IGNORE_PATH" ] ; then
+                    CMAKE_IGNORE_PATH="$ABI_INSTALL_DIR/$item"
+                else
+                    CMAKE_IGNORE_PATH="$CMAKE_IGNORE_PATH;$ABI_INSTALL_DIR/$item"
+                fi
+            fi
+        done
     done
 
     if [ "$LOG_LEVEL" = VERBOSE ] ; then
@@ -5179,6 +5192,7 @@ cmakew() {
         $CMAKE_FLAGS
         -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
         -DCMAKE_FIND_ROOT_PATH='$CMAKE_FIND_ROOT_PATH'
+        -DCMAKE_IGNORE_PATH='$CMAKE_IGNORE_PATH'
         -DCMAKE_INSTALL_PREFIX='$ABI_INSTALL_DIR'
         -DCMAKE_C_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DCMAKE_CXX_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
