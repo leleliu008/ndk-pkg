@@ -3934,12 +3934,54 @@ __install_the_given_package() {
     GMAKE=$(command -v gmake || command -v make)
     NINJA=$(command -v ninja)
 
-    step "fetch resources if needed"
-    __fetch_resources_of_the_given_package "$1" || return 1
-
     step "create work directory"
     echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
     WORK_DIR=$(mktemp -d) || die "create work directory failed."
+    run install -d "$WORK_DIR/$TIMESTAMP_UNIX"
+
+    step "calculate dependencies"
+    unset DEPENDENCY_PACKAGE_LIST
+    if [ -z "$PACKAGE_DEP_PKG" ] ; then
+        note "no dependencies."
+    else
+        __gen_dependency_list_of_the_given_package "$1"              || return 1
+        __gen_dependency_tree_of_the_given_package "$1" "$MY_INSTALL_DIR/$1" || return 1
+        if [ -f "$DEPENDENCIES_TXT" ] ; then
+            cat "$DEPENDENCIES_TXT"
+        fi
+    fi
+
+    step "create common include.h"
+    unset COMMON_INCLUDE_H_FILEPATH
+    COMMON_INCLUDE_H_FILEPATH="$WORK_DIR/$TIMESTAMP_UNIX/include.h"
+    cat > "$COMMON_INCLUDE_H_FILEPATH" <<EOF
+// https://linux.die.net/man/3/index
+#define rindex(str,ch) strrchr(str,ch)
+
+// https://linux.die.net/man/3/bcmp
+#define bcmp(b1,b2,len) memcmp(b1,b2,len)
+
+// https://linux.die.net/man/2/wait3
+#define wait3(status,options,rusage) waitpid(-1,status,options)
+
+// https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
+// https://linux.die.net/man/3/ftello
+// int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
+// off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
+#if __ANDROID_API__ < 24
+    #define ftello(f) ftell(f)
+    #define fseeko    fseek
+#endif
+EOF
+
+    if command -v bat > /dev/null ; then
+        run bat --style=plain --paging=never "$COMMON_INCLUDE_H_FILEPATH"
+    else
+        run cat "$COMMON_INCLUDE_H_FILEPATH"
+    fi
+
+    step "fetch resources if needed"
+    __fetch_resources_of_the_given_package "$1" || return 1
 
     step "unpack sources to work directory"
     case $PACKAGE_SRC_URL in
@@ -4064,7 +4106,6 @@ __install_the_given_package() {
     fi
 
     step "do some preparation works"
-    run install -d "$WORK_DIR/$TIMESTAMP_UNIX"
     if command -v prepare > /dev/null ; then
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             run cd "$SOURCE_DIR" || return 1
@@ -4082,25 +4123,6 @@ __install_the_given_package() {
                 ;;
             *)  note "no prepare function defined in formula, skipped."
         esac
-    fi
-
-    step "show common include.h"
-    if command -v bat > /dev/null ; then
-        run bat --style=plain --paging=never "$COMMON_INCLUDE_H_FILEPATH"
-    else
-        run cat "$COMMON_INCLUDE_H_FILEPATH"
-    fi
-
-    step "calculate dependencies"
-    unset DEPENDENCY_PACKAGE_LIST
-    if [ -z "$PACKAGE_DEP_PKG" ] ; then
-        note "no dependencies."
-    else
-        __gen_dependency_list_of_the_given_package "$1"              || return 1
-        __gen_dependency_tree_of_the_given_package "$1" "$MY_INSTALL_DIR/$1" || return 1
-        if [ -f "$DEPENDENCIES_TXT" ] ; then
-            cat "$DEPENDENCIES_TXT"
-        fi
     fi
 
     unset TARGET_INDEX
@@ -5188,9 +5210,21 @@ cmakew() {
             CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_COLOR_MAKEFILE=ON"
         fi
 
+        case $TARGET_OS_ARCH in
+            armv7a)
+                CMAKE_SYSTEM_PROCESSOR=armv7-a ;;
+            aarch64)
+                CMAKE_SYSTEM_PROCESSOR=aarch64 ;;
+            i686)
+                CMAKE_SYSTEM_PROCESSOR=i686 ;;
+            x86_64)
+                CMAKE_SYSTEM_PROCESSOR=x86_64 ;;
+        esac
+
         CMAKE_FLAGS="
         $CMAKE_FLAGS
         -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
+        -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR
         -DCMAKE_FIND_ROOT_PATH='$CMAKE_FIND_ROOT_PATH'
         -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF \
         -DCMAKE_LIBRARY_PATH="$SYSTEM_LIBRARY_DIR" \
@@ -5907,30 +5941,6 @@ inspect_install_arguments() {
 
     unset TARGET_LIST
     TARGET_LIST="$(__list_supported_target_abis)"
-
-    unset COMMON_INCLUDE_H_FILEPATH
-    COMMON_INCLUDE_H_FILEPATH="$MY_HOME_DIR/include.h"
-    if [ ! -f "$COMMON_INCLUDE_H_FILEPATH" ] ; then
-        cat > "$COMMON_INCLUDE_H_FILEPATH" <<EOF
-// https://linux.die.net/man/3/index
-#define rindex(str,ch) strrchr(str,ch)
-
-// https://linux.die.net/man/3/bcmp
-#define bcmp(b1,b2,len) memcmp(b1,b2,len)
-
-// https://linux.die.net/man/2/wait3
-#define wait3(status,options,rusage) waitpid(-1,status,options)
-
-// https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
-// https://linux.die.net/man/3/ftello
-// int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
-// off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
-#if __ANDROID_API__ < 24
-    #define ftello(f) ftell(f)
-    #define fseeko    fseek
-#endif
-EOF
-    fi
 }
 
 init() {
