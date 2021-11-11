@@ -3701,7 +3701,7 @@ __pack_the_given_installed_package() {
 }
 
 get_direct_dependency_package_list_of_the_given_package() {
-    __load_formula_of_the_given_package "$1" && printf '%s\n' "$PACKAGE_DEP_PKG"
+    grep '^\s*package set dep\.pkg\s*".*"' $(__path_of_formula_of_the_given_package $1) | sed 's/.*package set dep\.pkg.*"\(.*\)"/\1/'
 }
 
 # $1 packageName, if packageName is not specified, USER_SPECIFIED_PACKAGE_LIST will be used
