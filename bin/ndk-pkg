@@ -5718,7 +5718,7 @@ install_android_ndk() {
     cat >> "$MY_ENV_FILEPATH" <<EOF
 export ANDROID_NDK_HOME=$ANDROID_NDK_HOME
 export ANDROID_NDK_ROOT=$ANDROID_NDK_HOME
-export PATH=$ANDROID_NDK_HOME:$PATH
+export PATH="$ANDROID_NDK_HOME:$PATH"
 EOF
 
     if command -v bat > /dev/null ; then
@@ -5996,7 +5996,7 @@ init() {
     NATIVE_OS_SUBS=$(os subs)
 
     # pip install --user <PKG>
-    export PATH=$HOME/.local/bin:$PATH
+    export PATH="$HOME/.local/bin:$PATH"
 
     unset AVAILABLE_PACKAGE_MANAGER_LIST
 }
