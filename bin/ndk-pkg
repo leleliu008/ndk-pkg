@@ -1439,6 +1439,7 @@ __pmw_get_available_package_name_by_command_name_choco() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
         *)      echo "$1"
     esac
 }
@@ -1472,7 +1473,8 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
                 echo "automake-1.16.2"
             fi
             ;;
-    autopoint) echo "gettext" ;;
+    autopoint)  echo "gettext" ;;
+    intltoolize)echo "intltool";;
     pkg-config) echo "pkgconf" ;;
         *) echo "$1"
     esac
@@ -1501,6 +1503,7 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
     pkg-config) echo "pkgconf"  ;;
         *)      echo "$1"
     esac
@@ -1528,6 +1531,7 @@ __pmw_get_available_package_name_by_command_name_pkg() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
     pkg-config) echo "pkgconf"  ;;
         *)      echo "$1"
     esac
@@ -1558,6 +1562,7 @@ __pmw_get_available_package_name_by_command_name_emerge() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
     pkg-config) echo "pkgconf"  ;;
         *)      echo "$1"
     esac
@@ -1586,6 +1591,7 @@ __pmw_get_available_package_name_by_command_name_pacman() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
     pkg-config) echo "pkgconf"  ;;
         *)      echo "$1"
     esac
@@ -1640,6 +1646,7 @@ __pmw_get_available_package_name_by_command_name_xbps() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
     pkg-config) echo "pkgconf"  ;;
         *)      echo "$1"
     esac
@@ -1669,6 +1676,7 @@ __pmw_get_available_package_name_by_command_name_apk() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
     pkg-config) echo "pkgconf"  ;;
         *) echo "$1"
     esac
@@ -1699,6 +1707,7 @@ __pmw_get_available_package_name_by_command_name_zypper() {
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
         *)      echo "$1"
     esac
 }
@@ -1727,6 +1736,7 @@ __pmw_get_available_package_name_by_command_name_dnf() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
         *)      echo "$1"
     esac
 }
@@ -1752,6 +1762,7 @@ __pmw_get_available_package_name_by_command_name_yum() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
         *)      echo "$1"
     esac
 }
@@ -1788,6 +1799,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
         ninja)
             if [ "$NATIVE_OS_SUBS" = termux ] ; then
                 echo ninja
@@ -1822,6 +1834,7 @@ __pmw_get_available_package_name_by_command_name_brew() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+    intltoolize)echo "intltool" ;;
     python|python3)
                 echo 'python@3.9' ;;
         *)      echo "$1"
