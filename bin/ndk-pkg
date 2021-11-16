@@ -5975,8 +5975,6 @@ init() {
         echo "offical=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
     fi
 
-    TIMESTAMP_UNIX="$(date +%s)"
-
     unset NATIVE_OS_KIND
     unset NATIVE_OS_TYPE
     unset NATIVE_OS_NAME
@@ -5994,11 +5992,18 @@ init() {
     NATIVE_OS_NCPU=$(os ncpu)
     NATIVE_OS_LIBC=$(os libc)
     NATIVE_OS_SUBS=$(os subs)
+    NATIVE_OS_EUID=$(os euid)
+
+    if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
+        sudo=sudo
+    fi
 
     # pip install --user <PKG>
     export PATH="$HOME/.local/bin:$PATH"
 
     unset AVAILABLE_PACKAGE_MANAGER_LIST
+
+    TIMESTAMP_UNIX="$(date +%s)"
 }
 
 help() {
