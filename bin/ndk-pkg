@@ -1398,8 +1398,8 @@ __pmw_is_package_available() {
 # __pmw_get_available_package_version_by_package_name apt automake
 __pmw_get_available_package_version_by_package_name() {
     case $1 in
-        pkg) pkg show "$2" 2> /dev/null | grep 'Version: '      | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
-        apt) apt show "$2" 2> /dev/null | grep 'Version: '      | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
+        pkg) pkg show "$2" 2> /dev/null | grep 'Version: ' | head -n 1 | cut -d ' ' -f2 | cut -d- -f1  | cut -d~ -f1 | sed 's/[0-9]://' ;;
+        apt) apt show "$2" 2> /dev/null | grep 'Version: ' | head -n 1 | cut -d ' ' -f2 | cut -d- -f1  | cut -d~ -f1 | sed 's/[0-9]://' ;;
         apk) apk info "$2" 2> /dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
         yum) yum info "$2" 2> /dev/null | grep 'Version     :'  | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
         dnf) dnf info "$2" 2> /dev/null | grep 'Version      :' | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
@@ -1979,181 +1979,153 @@ __pmw_install_the_given_command() {
     fi
 }
 
-# __install_command_via_fetch_prebuild_binary <URL> <CMD> [OP VERSION]
-# __install_command_via_fetch_prebuild_binary <URL> python3 ge 3.5
-# __install_command_via_fetch_prebuild_binary <URL> make
-__install_command_via_fetch_prebuild_binary() {
-    if [ -z "$1" ] ; then
-        return 1
-    fi
-
-    note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}fetch prebuild binary${COLOR_OFF}"
-
-    unset PREBUILD_BINARY_FILENAME
-    unset PREBUILD_BINARY_FILEPATH
-
-    PREBUILD_BINARY_FILENAME=$(basename "$1")
-
-    if [ -z "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
-        PREBUILD_BINARY_INSTALL_PREFIX_DIR='/opt'
-    fi
-
-    unset PREBUILD_BINARY_INSTALL_DIR
-    PREBUILD_BINARY_INSTALL_DIR="$PREBUILD_BINARY_INSTALL_PREFIX_DIR/$PREBUILD_BINARY_FILENAME.d"
-
-    PREBUILD_BINARY_FILEPATH="$PREBUILD_BINARY_INSTALL_DIR/$PREBUILD_BINARY_FILENAME"
-
-    if [ -d "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
-        if [ -d "$PREBUILD_BINARY_INSTALL_DIR" ] ; then
-            if [ -r "$PREBUILD_BINARY_INSTALL_DIR" ] && [ -w "$PREBUILD_BINARY_INSTALL_DIR" ] && [ -x "$PREBUILD_BINARY_INSTALL_DIR" ] ; then
-                rm -rf "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-                install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-            else
-                sudo rm -rf "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-                sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-            fi
-        else
-            if [ -r "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] && [ -w "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] && [ -x "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
-                     install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-            else
-                sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-            fi
-        fi
-    else
-        if [ -r / ] && [ -w / ] && [ -x / ] ; then
-                 install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-        else
-            sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-        fi
-    fi
-
-    fetch "$1" --output-dir="$PREBUILD_BINARY_INSTALL_DIR" --output-name="$PREBUILD_BINARY_FILENAME" || return 1
-
-    case $1 in
-        *.zip)
-            handle_dependency required exe unzip
-            ;;
-        *.tar.xz)
-            handle_dependency required exe tar
-            handle_dependency required exe xz
-            ;;
-        *.tar.gz)
-            handle_dependency required exe tar
-            handle_dependency required exe gzip
-            ;;
-        *.tar.lz)
-            handle_dependency required exe tar
-            handle_dependency required exe lzip
-            ;;
-        *.tar.bz2)
-            handle_dependency required exe tar
-            handle_dependency required exe bzip2
-            ;;
-        *.tgz)
-            handle_dependency required exe tar
-            handle_dependency required exe gzip
-            ;;
-        *.txz)
-            handle_dependency required exe tar
-            handle_dependency required exe xz
-    esac
-
-    unset PREBUILD_BINARY_FILENAME
-    unset PREBUILD_BINARY_FILEPATH
-
-    PREBUILD_BINARY_FILENAME=$(basename "$1")
-
-    if [ -z "$PREBUILD_BINARY_INSTALL_PREFIX_DIR" ] ; then
-        PREBUILD_BINARY_INSTALL_PREFIX_DIR='/opt'
-    fi
-
-    unset PREBUILD_BINARY_INSTALL_DIR
-    PREBUILD_BINARY_INSTALL_DIR="$PREBUILD_BINARY_INSTALL_PREFIX_DIR/$PREBUILD_BINARY_FILENAME.d"
-
-    PREBUILD_BINARY_FILEPATH="$PREBUILD_BINARY_INSTALL_DIR/$PREBUILD_BINARY_FILENAME"
-
-    case $1 in
-        *.zip)
-            run unzip  "$PREBUILD_BINARY_FILEPATH" -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1 ;;
-        *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz|*.tlz)
-            run tar xf "$PREBUILD_BINARY_FILEPATH" -C "$PREBUILD_BINARY_INSTALL_DIR" --strip-components 1 || return 1 ;;
-    esac
-
-    if [ -d "$PREBUILD_BINARY_INSTALL_DIR/bin" ] ; then
-        export PATH="$PREBUILD_BINARY_INSTALL_DIR/bin:$PATH"
-    fi
-
-    export PATH="$PREBUILD_BINARY_INSTALL_DIR:$PATH"
-
-    case $2 in
-        autoconf)
-            for xx in $(grep '/root/.zpkg/install.d/autoconf' -rl "$PREBUILD_BINARY_INSTALL_DIR")
-            do
-                sed_in_place "s|/root/.zpkg/install.d/autoconf|$PREBUILD_BINARY_INSTALL_DIR|" "$xx"
-            done
-            ;;
-    esac
-}
-
-# __get_prebuild_binary_fetch_url_by_command_name <CMD> [OP VERSION]
-# __get_prebuild_binary_fetch_url_by_command_name python3 ge 3.5
-# __get_prebuild_binary_fetch_url_by_command_name cmake
-__get_prebuild_binary_fetch_url_by_command_name() {
+# __get_prebuild_binary_config_by_command_name <CMD> [OP VERSION]
+# __get_prebuild_binary_config_by_command_name python3 ge 3.5
+# __get_prebuild_binary_config_by_command_name cmake
+__get_prebuild_binary_config_by_command_name() {
     # https://github.com/leleliu008/python-prebuild
     # https://cmake.org/download
 {
     cat <<EOF
-python    |glibc|linux |x86_64|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
-python3   |glibc|linux |x86_64|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
-git       |glibc|linux |x86_64|https://github.com/leleliu008/git-prebuild/releases/download/2.30.2/git-2.30.2-x86_64-linux-glibc.tar.xz
-autoconf  |glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
-autoreconf|glibc|linux |x86_64|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
-cmake     |glibc|linux |x86_64|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
-cmake     |     |darwin|      |https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
-ninja     |     |linux |x86_64|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
-ninja     |     |darwin|x86_64|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
-go        |     |linux |x86_64|https://golang.org/dl/go1.17.2.linux-arm64.tar.gz
-go        |     |darwin|x86_64|https://golang.org/dl/go1.17.2.darwin-amd64.tar.gz
-go        |     |darwin|arm64 |https://golang.org/dl/go1.17.2.darwin-arm64.tar.gz
+python    |glibc|linux |x86_64|python  |3.9.5 |tar.xz|5d9b13e38878292f18a41188bd530d059c7c2b1e64eed29cb5c6d38b0a94ad0a|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
+python3   |glibc|linux |x86_64|python  |3.9.5 |tar.xz|5d9b13e38878292f18a41188bd530d059c7c2b1e64eed29cb5c6d38b0a94ad0a|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
+git       |glibc|linux |x86_64|git     |2.30.2|tar.xz|61e545ef05e41565292c2e909e5b39e4eb8e60a4e729db06a1ddea3b44f89241|https://github.com/leleliu008/git-prebuild/releases/download/2.30.2/git-2.30.2-x86_64-linux-glibc.tar.xz
+autoconf  |glibc|linux |x86_64|autoconf|2.69  |tar.gz|3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
+autoreconf|glibc|linux |x86_64|autoconf|2.69  |tar.gz|3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
+cmake     |glibc|linux |x86_64|cmake   |3.20.2|tar.gz|3f827544f9c82e74ddf5016461fdfcfea4ede58a26f82612f473bf6bfad8bfc2|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
+cmake     |  -  |darwin|  -   |cmake   |3.20.2|tar.gz|0100663380a3bd977b001183cd487412db7aad9de6859927bde97e1e6e44e645|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
+ninja     |  -  |linux |x86_64|ninja   |1.10.2|zip   |763464859c7ef2ea3a0a10f4df40d2025d3bb9438fcb1228404640410c0ec22d|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
+ninja     |  -  |darwin|x86_64|ninja   |1.10.2|zip   |6fa359f491fac7e5185273c6421a000eea6a2f0febf0ac03ac900bd4d80ed2a5|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
+go        |  -  |linux |x86_64|golang  |1.17.2|tar.gz|a5a43c9cdabdb9f371d56951b14290eba8ce2f9b0db48fb5fc657943984fd4fc|https://golang.org/dl/go1.17.2.linux-arm64.tar.gz
+go        |  -  |darwin|x86_64|golang  |1.17.2|tar.gz|7914497a302a132a465d33f5ee044ce05568bacdb390ab805cb75a3435a23f94|https://golang.org/dl/go1.17.2.darwin-amd64.tar.gz
+go        |  -  |darwin|arm64 |golang  |1.17.2|tar.gz|ce8771bd3edfb5b28104084b56bbb532eeb47fbb7769c3e664c6223712c30904|https://golang.org/dl/go1.17.2.darwin-arm64.tar.gz
 EOF
 } | while read LINE
     do
-        LINE=$(printf '%s' "$LINE" | sed 's/[[:space:]]//g')
+        LINE=$(printf '%s\n' "$LINE" | sed 's/[[:space:]]//g')
 
         unset __PB_COMMAND__
         unset __PB_OS_LIBC__
         unset __PB_OS_KIND__
         unset __PB_OS_ARCH__
-        unset __PB_URL__
 
-        __PB_COMMAND__=$(printf '%s' "$LINE" | cut -d '|' -f1)
+        __PB_COMMAND__=$(printf '%s\n' "$LINE" | cut -d '|' -f1)
 
         if [ "$__PB_COMMAND__" != "$1" ] ; then
             continue
         fi
 
-        __PB_OS_LIBC__=$(printf '%s' "$LINE" | cut -d '|' -f2)
+        __PB_OS_LIBC__=$(printf '%s\n' "$LINE" | cut -d '|' -f2)
 
-        if [ -n "$__PB_OS_LIBC__" ] && [ "$__PB_OS_LIBC__" != "$NATIVE_OS_LIBC" ] ; then
+        if [ "$__PB_OS_LIBC__" != '-' ] && [ "$__PB_OS_LIBC__" != "$NATIVE_OS_LIBC" ] ; then
             continue
         fi
 
-        __PB_OS_KIND__=$(printf '%s' "$LINE" | cut -d '|' -f3)
+        __PB_OS_KIND__=$(printf '%s\n' "$LINE" | cut -d '|' -f3)
 
         if [ "$__PB_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
             continue
         fi
 
-        __PB_OS_ARCH__=$(printf '%s' "$LINE" | cut -d '|' -f4)
+        __PB_OS_ARCH__=$(printf '%s\n' "$LINE" | cut -d '|' -f4)
 
-        if [ -n "$__PB_OS_ARCH__" ] && [ "$__PB_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
+        if [ "$__PB_OS_ARCH__" != '-' ] && [ "$__PB_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
             continue
         fi
 
-        __PB_URL__=$(printf '%s' "$LINE" | cut -d '|' -f5)
+        unset __PB_TYPE__
+        unset __PB_SHA256__
+        unset __PB_URL__
 
-        echo "$__PB_URL__"
+        __PB_TYPE__=$(printf '%s\n' "$LINE" | cut -d '|' -f7)
+        __PB_SHA256__=$(printf '%s\n' "$LINE" | cut -d '|' -f8)
+        __PB_URL__=$(printf '%s\n' "$LINE" | cut -d '|' -f9)
+
+        printf "$__PB_TYPE__ $__PB_SHA256__ $__PB_URL__ $@\n"
     done
+}
+
+# mode1:                       <CMD> [OP VERS]
+# mode2: <TYPE> <SHA256> <URL> <CMD> [OP VERS]
+__install_command_via_fetch_prebuild_binary() {
+    if [ $# -eq 0 ] ; then
+        return 1
+    elif [ $# -eq 1 ] || [ $# -eq 3 ] ; then
+        __install_command_via_fetch_prebuild_binary $(__get_prebuild_binary_config_by_command_name $@)
+    elif [ $# -eq 4 ] || [ $# -eq 6 ] ; then
+        case $1 in
+            zip)
+                handle_dependency required exe unzip
+                ;;
+            tar.xz)
+                handle_dependency required exe tar
+                handle_dependency required exe xz
+                ;;
+            tar.gz)
+                handle_dependency required exe tar
+                handle_dependency required exe gzip
+                ;;
+            tar.lz)
+                handle_dependency required exe tar
+                handle_dependency required exe lzip
+                ;;
+            tar.bz2)
+                handle_dependency required exe tar
+                handle_dependency required exe bzip2
+                ;;
+            tgz)
+                handle_dependency required exe tar
+                handle_dependency required exe gzip
+                ;;
+            txz)
+                handle_dependency required exe tar
+                handle_dependency required exe xz
+                ;;
+        esac
+
+        note "${COLOR_GREEN}$(shiftn 3 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}fetch prebuild binary${COLOR_OFF}"
+
+        unset PREBUILD_BINARY_FILENAME_PREFIX
+        unset PREBUILD_BINARY_FILENAME
+
+        PREBUILD_BINARY_FILENAME=$(basename "$3")
+        PREBUILD_BINARY_FILENAME_PREFIX=$(basename "$PREBUILD_BINARY_FILENAME" ".$1")
+
+        PREBUILD_BINARY_INSTALL_DIR_PREFIX='/opt'
+        PREBUILD_BINARY_INSTALL_DIR="$PREBUILD_BINARY_INSTALL_DIR_PREFIX/$PREBUILD_BINARY_FILENAME_PREFIX"
+
+        PREBUILD_BINARY_FILEPATH="$PREBUILD_BINARY_INSTALL_DIR/$PREBUILD_BINARY_FILENAME"
+
+        if [ ! -d "$PREBUILD_BINARY_INSTALL_DIR" ] ; then
+            install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" 2>/dev/null || sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+        fi
+
+        fetch "$3" --sha256="$2" --output-path="$PREBUILD_BINARY_FILEPATH" || return 1
+
+        case $1 in
+            zip)
+                run unzip  "$PREBUILD_BINARY_FILEPATH" -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1 ;;
+            tar.xz|tar.gz|tar.lz|tar.bz2|tgz|txz|tlz)
+                run tar xf "$PREBUILD_BINARY_FILEPATH" -C "$PREBUILD_BINARY_INSTALL_DIR" --strip-components 1 || return 1 ;;
+        esac
+
+        if [ -d "$PREBUILD_BINARY_INSTALL_DIR/bin" ] ; then
+            export PATH="$PREBUILD_BINARY_INSTALL_DIR/bin:$PATH"
+        fi
+
+        export PATH="$PREBUILD_BINARY_INSTALL_DIR:$PATH"
+
+        case $4 in
+            autoconf)
+                for xx in $(grep '/root/.zpkg/install.d/autoconf' -rl "$PREBUILD_BINARY_INSTALL_DIR")
+                do
+                    sed_in_place "s|/root/.zpkg/install.d/autoconf|$PREBUILD_BINARY_INSTALL_DIR|" "$xx"
+                done
+                ;;
+        esac
+    else
+        die "__install_command_via_fetch_prebuild_binary $@ arguments not match"
+    fi
 }
 
 __install_command_via_run_install_script() {
@@ -2229,7 +2201,7 @@ __install_command() {
         return 0
     fi
 
-    if __install_command_via_fetch_prebuild_binary "$(__get_prebuild_binary_fetch_url_by_command_name "$1")" $@ ; then
+    if __install_command_via_fetch_prebuild_binary $@ ; then
         return 0
     fi
 
@@ -4136,7 +4108,7 @@ EOF
         if [ "$PWD" != "$SOURCE_DIR" ] ; then
             run cd "$SOURCE_DIR" || return 1
         fi
-        run prepare "$1" || return 1
+        prepare "$1" || return 1
     else
         case $PACKAGE_BUILD_SYSTEM in
             autogen)
@@ -5096,6 +5068,16 @@ configure() {
             return 1
         fi
     else
+        # char* nl_langinfo(nl_item __item) __INTRODUCED_IN(26)
+        if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+            export ac_cv_header_langinfo_h=no
+        else
+            export ac_cv_header_langinfo_h=yes
+        fi
+
+        export ac_cv_func_malloc_0_nonnull=yes
+        export ac_cv_func_realloc_0_nonnull=yes
+
         CONFIGURE_ARGS="
             --host='$TARGET_TRIPLE'
             --prefix='$ABI_INSTALL_DIR'
