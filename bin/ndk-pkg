@@ -1177,6 +1177,7 @@ version_of_command() {
       libtool) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
    libtoolize|glibtoolize)
                "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+  intltoolize) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
       objcopy) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f5 ;;
          flex) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         bison) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
@@ -1996,7 +1997,7 @@ cmake     |glibc|linux |x86_64|cmake   |3.20.2|tar.gz|3f827544f9c82e74ddf5016461
 cmake     |  -  |darwin|  -   |cmake   |3.20.2|tar.gz|0100663380a3bd977b001183cd487412db7aad9de6859927bde97e1e6e44e645|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
 ninja     |  -  |linux |x86_64|ninja   |1.10.2|zip   |763464859c7ef2ea3a0a10f4df40d2025d3bb9438fcb1228404640410c0ec22d|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
 ninja     |  -  |darwin|x86_64|ninja   |1.10.2|zip   |6fa359f491fac7e5185273c6421a000eea6a2f0febf0ac03ac900bd4d80ed2a5|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
-go        |  -  |linux |x86_64|golang  |1.17.2|tar.gz|a5a43c9cdabdb9f371d56951b14290eba8ce2f9b0db48fb5fc657943984fd4fc|https://golang.org/dl/go1.17.2.linux-arm64.tar.gz
+go        |  -  |linux |x86_64|golang  |1.17.2|tar.gz|f242a9db6a0ad1846de7b6d94d507915d14062660616a61ef7c808a76e4f1676|https://golang.org/dl/go1.17.2.linux-amd64.tar.gz
 go        |  -  |darwin|x86_64|golang  |1.17.2|tar.gz|7914497a302a132a465d33f5ee044ce05568bacdb390ab805cb75a3435a23f94|https://golang.org/dl/go1.17.2.darwin-amd64.tar.gz
 go        |  -  |darwin|arm64 |golang  |1.17.2|tar.gz|ce8771bd3edfb5b28104084b56bbb532eeb47fbb7769c3e664c6223712c30904|https://golang.org/dl/go1.17.2.darwin-arm64.tar.gz
 EOF
@@ -2209,14 +2210,17 @@ __install_command() {
     return 1
 }
 
-# examples:
-# handle_dependency required exe   pkg-config ge 0.18
-# handle_dependency required exe   python     ge 3.5
-# handle_dependency required py    libxml2    ge 2.19
+# usage:
+# handle_depnedency <required|optional> <exe|pym|plm> [<eq ne ge lt gt lt> <VERSION>]
 #
-# handle_dependency optional exe   pkg-config ge 0.18
-# handle_dependency optional exe   python     ge 3.5
-# handle_dependency optional py    libxml2    ge 2.19
+# examples:
+# handle_dependency required exe python      ge 3.5
+# handle_dependency required pym libxml2     ge 2.19
+# handle_dependency required plm XML::Parser ge 2.45
+#
+# handle_dependency optional exe python      ge 3.5
+# handle_dependency optional pym libxml2     ge 2.19
+# handle_dependency optional plm XML::Parser ge 2.45
 handle_dependency() {
     [ "$1" = 'required' ] || return 0
 
@@ -2246,13 +2250,13 @@ handle_dependency() {
                 *)  __install_command $@
             esac
             ;;
-        py)
+        pym)
             shift
-            python_module install "$1"
+            python_module install $@
             ;;
-        pm)
+        plm)
             shift
-            perl_module install "$1"
+            perl_module   install $@
             ;;
         *) die "handle_dependency() unrecognized argument:$1"
     esac
@@ -2272,25 +2276,25 @@ __handle_required_dependencies() {
 # {{{ __printf_dependencies
 
 # examples:
-# __printf_dependency required exe   pkg-config ge 0.18
-# __printf_dependency required exe   python     ge 3.5
-# __printf_dependency required py    libxml2    ge 2.19
+# __printf_dependency required exe python      ge 3.5
+# __printf_dependency required pym libxml2     ge 2.19
+# __printf_dependency required plm XML::Parser ge 2.45
 #
-# __printf_dependency optional exe   pkg-config ge 0.18
-# __printf_dependency optional exe   python     ge 3.5
-# __printf_dependency optional py    libxml2    ge 2.19
+# __printf_dependency optional exe python      ge 3.5
+# __printf_dependency optional plm libxml2     ge 2.19
+# __printf_dependency optional plm XML::Parser ge 2.45
 __printf_dependency() {
     printf "%-10s %-15s %-2s %-10s %-10s %s\n" "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
 # examples:
-# printf_dependency required exe   pkg-config ge 0.18
-# printf_dependency required exe   python     ge 3.5
-# printf_dependency required py    libxml2    ge 2.19
+# printf_dependency required exe python      ge 3.5
+# printf_dependency required pym libxml2     ge 2.19
+# printf_dependency required plm XML::Parser ge 2.45
 #
-# printf_dependency optional exe   pkg-config ge 0.18
-# printf_dependency optional exe   python     ge 3.5
-# printf_dependency optional py    libxml2    ge 2.19
+# printf_dependency optional exe python      ge 3.5
+# printf_dependency optional pym libxml2     ge 2.19
+# printf_dependency optional plm XML::Parser ge 2.45
 printf_dependency() {
     case $2 in
         exe)
@@ -2309,11 +2313,11 @@ printf_dependency() {
                 *)  __printf_dependency "$2" "$3" "$4" "$5" "$(version_of_command $3)" "$(command -v $3)"
             esac
             ;;
-        py)
-            __printf_dependency "$2" "$3" "$4" "$5" "$(python_module get version "$item")" "$(python_module get location "$item")"
+        pym)
+            __printf_dependency "$2" "$3" "$4" "$5" "$(python_module get-version "$item")" "$(python_module get-location "$item")"
             ;;
-        pm)
-            __printf_dependency "$2" "$3" "$4" "$5" "$(perl_module get version "$item")" "$(perl_module get location "$item")"
+        plm)
+            __printf_dependency "$2" "$3" "$4" "$5" "$(perl_module get-version "$item")" "$(perl_module get-location "$item")"
             ;;
         *)  die "printf_dependency() unrecognized argument: $2"
     esac
@@ -2404,32 +2408,48 @@ python_module() {
 # {{{ perl_module
 
 # examples:
-# perl_module is  installed libxml2
-# perl_module get version   libxml2
-# perl_module get location  libxml2
-# perl_module install       libxml2
+# perl_module is-installed  XML::Parser
+# perl_module install       XML::Parser
+# perl_module get-version   XML::Parser
+# perl_module get-location  XML::Parser
 perl_module() {
     case $1 in
-        is)
-            [ $# -eq 4 ] || die "perl_module command accept 4 arguments."
-            handle_dependency required exe perl
-            case $2 in
-                installed)  perl -M"$3" -le 'print "installed"' > /dev/null 2>&1 ;;
-                *) die "perl_module is $2: not support."
-            esac
+        get-version)
+            shift
+            cpan -l 2>/dev/null | sed -n "/$1/p" | head -n 1 | cut -f2
             ;;
-        get)
+        get-location)
+            shift
+            __PERL_MODULE_NAME_TO_PATH=$(printf "%s.pm\n" "$1" | sed 's|::|/|g')
+            for item in $(perl -e 'print "@INC"')
+            do
+                if [ -e  "$item/$__PERL_MODULE_NAME_TO_PATH" ] ; then
+                    echo "$item/$__PERL_MODULE_NAME_TO_PATH"
+                    return 0
+                else
+                    continue
+                fi
+                return 1
+            done
+            ;;
+        is-installed)
+            shift
+            handle_dependency required exe perl
+            perl -M"$1" -le 'print "installed"' > /dev/null 2>&1
             ;;
         install)
-            if ! perl_module is installed "$3" ; then
+            shift
+            perl_module is-installed "$1" && return 0
+
+            if command_exists_in_filesystem cpan  ; then
+                note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}perl module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}cpan${COLOR_OFF}"
+                run cpan -i "$1"
+            elif command_exists_in_filesystem cpanm ; then
+                note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}perl module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}cpanm${COLOR_OFF}"
+                run cpanm "$1"
+            else
                 handle_dependency required exe cpan:cpanm
-                if   command_exists_in_filesystem cpan  ; then
-                    cpan -i "$3"
-                elif command_exists_in_filesystem cpanm ; then
-                    cpanm "$3"
-                else
-                    die "no perl module installer found."
-                fi
+                perl_module install $@
             fi
             ;;
         *)  die "perl_module $1: not support."
@@ -2562,36 +2582,15 @@ package() {
     esac
 }
 
-__parse_require_command_item() {
-    case $1 in
-        *\<=*) echo "required exe $1" | sed 's/<=/ le /g' ;;
-        *\>=*) echo "required exe $1" | sed 's/>=/ ge /g' ;;
-        *=*)   echo "required exe $1" | sed 's/<=/ eq /g' ;;
-        *\<*)  echo "required exe $1" | sed 's/<=/ lt /g' ;;
-        *\>*)  echo "required exe $1" | sed 's/<=/ gt /g' ;;
-        *)     echo "required exe $1"
-    esac
-}
-
-__parse_require_python_module_item() {
-    case $1 in
-        *\<=*) echo "required py $1" | sed 's/<=/ le /g' ;;
-        *\>=*) echo "required py $1" | sed 's/>=/ ge /g' ;;
-        *=*)   echo "required py $1" | sed 's/<=/ eq /g' ;;
-        *\<*)  echo "required py $1" | sed 's/<=/ lt /g' ;;
-        *\>*)  echo "required py $1" | sed 's/<=/ gt /g' ;;
-        *)     echo "required py $1"
-    esac
-}
-
-__parse_require_perl_module_item() {
-    case $1 in
-        *\<=*) echo "required pm $1" | sed 's/<=/ le /g' ;;
-        *\>=*) echo "required pm $1" | sed 's/>=/ ge /g' ;;
-        *=*)   echo "required pm $1" | sed 's/<=/ eq /g' ;;
-        *\<*)  echo "required pm $1" | sed 's/<=/ lt /g' ;;
-        *\>*)  echo "required pm $1" | sed 's/<=/ gt /g' ;;
-        *)     echo "required pm $1"
+#__parse_require_dependency_item <exe|pym|plm> <cmake>=3.19>
+__parse_require_dependency_item() {
+    case $2 in
+        *\<=*) echo "required $1 $2" | sed 's/<=/ le /g' ;;
+        *\>=*) echo "required $1 $2" | sed 's/>=/ ge /g' ;;
+        *=*)   echo "required $1 $2" | sed 's/<=/ eq /g' ;;
+        *\<*)  echo "required $1 $2" | sed 's/<=/ lt /g' ;;
+        *\>*)  echo "required $1 $2" | sed 's/<=/ gt /g' ;;
+        *)     echo "required $1 $2"
     esac
 }
 
@@ -2663,7 +2662,10 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_DEP_CMD
 
     # dependency python modules
-    unset PACKAGE_DEP_PIP
+    unset PACKAGE_DEP_PYM
+
+    # dependency plm modules
+    unset PACKAGE_DEP_PLM
 
     # dependency packages
     unset PACKAGE_DEP_PKG
@@ -3899,25 +3901,33 @@ __install_the_given_package() {
     unset TARGET_OS_VERS
     TARGET_OS_VERS=$(pick_target_os_version "$PACKAGE_SDK_API" "$USER_SPECIFIED_TARGET_OS_VERS") || die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_SDK_API, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
 
-    step "handle required commands"
+    step "handle required dependencies"
     for item in $PACKAGE_DEP_CMD
     do
-        handle_dependency $(__parse_require_command_item "$item")
+        handle_dependency $(__parse_require_dependency_item exe "$item")
     done
-    for item in $PACKAGE_DEP_PIP
+    for item in $PACKAGE_DEP_PYM
     do
-        handle_dependency $(__parse_require_python_module_item "$item")
+        handle_dependency $(__parse_require_dependency_item pym"$item")
+    done
+    for item in $PACKAGE_DEP_PLM
+    do
+        handle_dependency $(__parse_require_dependency_item plm "$item")
     done
 
-    step "printf required commands"
+    step "printf required dependencies"
     __printf_dependency TYPE NAME OP EXPECT ACTUAL LOCATION
     for item in $PACKAGE_DEP_CMD
     do
-        printf_dependency $(__parse_require_command_item "$item")
+        printf_dependency $(__parse_require_dependency_item exe "$item")
     done
-    for item in $PACKAGE_DEP_PIP
+    for item in $PACKAGE_DEP_PYM
     do
-        printf_dependency $(__parse_require_python_module_item "$item")
+        printf_dependency $(__parse_require_dependency_item pym "$item")
+    done
+    for item in $PACKAGE_DEP_PLM
+    do
+        printf_dependency $(__parse_require_dependency_item plm "$item")
     done
 
     unset PKG_CONFIG
@@ -4721,6 +4731,8 @@ __config_variables_for_the_given_target() {
         done
     done
 
+    PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
+
     if [ "$LOG_LEVEL" = VERBOSE ] ; then
         CCFLAGS="$CCFLAGS -v"
     fi
@@ -5096,7 +5108,7 @@ configure() {
             RANLIB='$RANLIB'
             PKG_CONFIG='$PKG_CONFIG'
             PKG_CONFIG_PATH='$PKG_CONFIG_PATH'
-            PKG_CONFIG_LIBDIR=''
+            PKG_CONFIG_LIBDIR='$PKG_CONFIG_LIBDIR'
             CC_FOR_BUILD='$CC_FOR_BUILD'"
 
         if [ "$LOG_LEVEL" = DEBUG ] ; then
@@ -5116,10 +5128,13 @@ configure() {
         if run $SOURCE_DIR/configure $CONFIGURE_ARGS $@ ; then
             echo
         else
-            if [ -f "$BUILD_DIR/config.log" ] ; then
-                run cat "$BUILD_DIR/config.log"
-            elif [ -f "$SOURCE_DIR/config.log" ] ; then
-                run cat "$SOURCE_DIR/config.log"
+            # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+            if [ "$GITHUB_ACTIONS" = true ] ; then
+                if [ -f "$BUILD_DIR/config.log" ] ; then
+                    run cat "$BUILD_DIR/config.log"
+                elif [ -f "$SOURCE_DIR/config.log" ] ; then
+                    run cat "$SOURCE_DIR/config.log"
+                fi
             fi
             return 1
         fi
