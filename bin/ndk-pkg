@@ -1170,10 +1170,12 @@ version_of_command() {
    pkg-config) "$1" --version 2> /dev/null | head -n 1 ;;
        m4|gm4) "$1" --version 2> /dev/null | head -n 1 | awk '{print($NF)}';;
     autopoint) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     xgettext) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      automake|aclocal)
                "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      autoconf|autoheader|autom4te|autoreconf|autoscan|autoupdate|ifnames)
                "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     realpath) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
       libtool) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
    libtoolize|glibtoolize)
                "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
@@ -1440,6 +1442,7 @@ __pmw_get_available_package_name_by_command_name_choco() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
         *)      echo "$1"
@@ -1476,6 +1479,7 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
             fi
             ;;
     autopoint)  echo "gettext" ;;
+     xgettext)  echo "gettext" ;;
     intltoolize)echo "intltool";;
     gtkdocize)  echo "gtk-doc" ;;
     pkg-config) echo "pkgconf" ;;
@@ -1506,6 +1510,7 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
@@ -1535,6 +1540,7 @@ __pmw_get_available_package_name_by_command_name_pkg() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
@@ -1567,6 +1573,7 @@ __pmw_get_available_package_name_by_command_name_emerge() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
@@ -1597,6 +1604,7 @@ __pmw_get_available_package_name_by_command_name_pacman() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
@@ -1653,6 +1661,7 @@ __pmw_get_available_package_name_by_command_name_xbps() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
@@ -1684,6 +1693,7 @@ __pmw_get_available_package_name_by_command_name_apk() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
@@ -1715,6 +1725,7 @@ __pmw_get_available_package_name_by_command_name_zypper() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     autopoint)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
@@ -1746,6 +1757,7 @@ __pmw_get_available_package_name_by_command_name_dnf() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
         *)      echo "$1"
@@ -1773,6 +1785,7 @@ __pmw_get_available_package_name_by_command_name_yum() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
         *)      echo "$1"
@@ -1811,6 +1824,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc-tools" ;;
         ninja)
@@ -1847,6 +1861,7 @@ __pmw_get_available_package_name_by_command_name_brew() {
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
+     xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     python|python3)
