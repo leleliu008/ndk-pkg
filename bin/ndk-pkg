@@ -3460,6 +3460,18 @@ __search_packages() {
 }
 
 __compare_versions_with_brew() {
+    get_brew_package_name_from_my_package_name() {
+        case $1 in
+            gmake)    printf '%s\n' 'make'      ;;
+            gtar)     printf '%s\n' 'gnu-tar'   ;;
+            libjxl)   printf '%s\n' 'jpeg-xl'   ;;
+            gnu-coreutils)
+                      printf '%s\n' 'coreutils' ;;
+            tcl-core) printf '%s\n' 'tcl-tk'    ;;
+            *)        printf '%s\n' "$1"
+        esac
+    }
+
     set -e
 
     cd "$MY_HOME_DIR/repos.d/offical/formula"
@@ -3467,7 +3479,7 @@ __compare_versions_with_brew() {
     for item in $(ls -1 *.sh | sed 's/\.sh//')
     do
         __load_formula_of_the_given_package "$item"
-        BREW_PKG_NMAE=$PACKAGE_NAME
+        BREW_PKG_NMAE="$(get_brew_package_name_from_my_package_name $PACKAGE_NAME)"
         if brew info "$BREW_PKG_NMAE" > /dev/null 2>&1 ; then
             BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" 2> /dev/null | sed -n "/$BREW_PKG_NMAE: /p" | cut -d ' ' -f3) 
             if version_match "$BREW_PKG_VERS" gt "$PACKAGE_VERSION" ; then
