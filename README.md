@@ -2,15 +2,19 @@
 a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build C/C++/Rust/Go project.
 
 ## ndk-pkg supports system
-I recommend you to run this software on [Ubuntu](https://ubuntu.com/) or [macOS](https://www.apple.com.cn/mac/)
-
-`Android aarch64` [Termux](https://termux.com/) is supported. Using the [Android NDK for aarch64](https://github.com/Lzhiyong/termux-ndk)
-
-[FreeBSD](https://www.freebsd.org/)、[NetBSD](https://www.netbsd.org/)、[OpenBSD](https://www.openbsd.org/) are not supported due to [Android NDK](https://developer.android.com/ndk) don't support these system.
-
-[musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html) system are not supported due to [Android NDK](https://developer.android.com/ndk) only support [glibc](http://www.gnu.org/software/libc/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html) system.
-
-[Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) are not supported. If you are a windows user, you can try [WSL](https://docs.microsoft.com/en-us/windows/wsl/).
+|HostOS|SubSystem|supported|recommended|summary|
+|------|---------|---------|-----------|-------|
+[macOS](https://www.apple.com.cn/mac/)||✔︎|✔︎|tested with github actions|
+[Ubuntu](https://ubuntu.com/)||✔︎|✔︎|tested with github actions|
+[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[glibc](http://www.gnu.org/software/libc/)|✔︎|✔︎||
+[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[musl-libc](http://musl.libc.org/)|❌|❌||
+[Android](https://www.android.com/)|[Termux](https://termux.com/)|✔︎|❌|[Android NDK for aarch64](https://github.com/Lzhiyong/termux-ndk)|
+[FreeBSD](https://www.freebsd.org/)||❌|❌||
+[OpenBSD](https://www.openbsd.org/)||❌|❌||
+[NetBSD](https://www.netbsd.org/)||❌|❌||
+[Windows](https://www.microsoft.com/en-us/windows/)|[Cygwin](http://cygwin.org/)|❌|❌||
+[Windows](https://www.microsoft.com/en-us/windows/)|[MSYS2](https://www.msys2.org/)|❌|❌||
+[Windows](https://www.microsoft.com/en-us/windows/)|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|✔︎|tested with github actions|
 
 ## Install ndk-pkg via HomeBrew
 
