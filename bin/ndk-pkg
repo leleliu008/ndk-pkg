@@ -1437,6 +1437,7 @@ __pmw_get_available_package_name_by_command_name_choco() {
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     sphinx-build) echo 'python38-sphinx' ;;
+    glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1478,11 +1479,12 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
                 echo "automake-1.16.2"
             fi
             ;;
-    autopoint)  echo "gettext" ;;
-     xgettext)  echo "gettext" ;;
-    intltoolize)echo "intltool";;
-    gtkdocize)  echo "gtk-doc" ;;
-    pkg-config) echo "pkgconf" ;;
+    glib-mkenums) echo 'glib' ;;
+    autopoint)    echo "gettext" ;;
+     xgettext)    echo "gettext" ;;
+    intltoolize)  echo "intltool";;
+    gtkdocize)    echo "gtk-doc" ;;
+    pkg-config)   echo "pkgconf" ;;
         *) echo "$1"
     esac
 }
@@ -1505,6 +1507,7 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
       ps2pdf) echo "ghostscript" ;;
     pip3|pip) echo 'py38-pip'  ;;
     python3)  echo 'python38' ;;
+    glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1535,6 +1538,7 @@ __pmw_get_available_package_name_by_command_name_pkg() {
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     pip3|pip) echo 'py38-pip' ;;
+    glib-mkenums) echo 'glib' ;;
     libtool|libtoolize|glibtool|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1564,10 +1568,10 @@ __pmw_get_available_package_name_by_command_name_emerge() {
       xz)     echo 'xz-utils' ;;
       tree)   echo 'app-text/tree' ;;
       rst2man|rst2html)
-              echo "docutils" ;;
-    sphinx-build)
-              echo "sphinx" ;;
-    pip3|pip) echo "dev-python/pip" ;;
+                  echo "docutils" ;;
+    sphinx-build) echo "sphinx" ;;
+    pip3|pip)     echo "dev-python/pip" ;;
+    glib-mkenums) echo 'glib' ;;
     libtool|libtoolize|glibtool|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1595,10 +1599,10 @@ __pmw_get_available_package_name_by_command_name_pacman() {
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
-              echo "python-docutils" ;;
-    sphinx-build)
-              echo "python-sphinx" ;;
-    pip3|pip) echo "python-pip" ;;
+                  echo "python-docutils" ;;
+    sphinx-build) echo "python-sphinx" ;;
+    pip3|pip)     echo "python-pip" ;;
+    glib-mkenums) echo 'glib' ;;
     libtool|libtoolize|glibtool|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1656,6 +1660,7 @@ __pmw_get_available_package_name_by_command_name_xbps() {
     pip|pip3) echo "python3-pip" ;;
     rst2man|rst2html)
               echo "python3-docutils" ;;
+    glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1686,8 +1691,8 @@ __pmw_get_available_package_name_by_command_name_apk() {
     pip3|pip) echo 'py3-pip' ;;
     rst2man|rst2html)
               echo "py3-docutils" ;;
-    sphinx-build)
-              echo "sphinx"  ;;
+    sphinx-build) echo "sphinx" ;;
+    glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1716,10 +1721,10 @@ __pmw_get_available_package_name_by_command_name_zypper() {
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
-              echo "python3-docutils" ;;
-    sphinx-build)
-              echo "python3-Sphinx" ;;
-    pip3|pip) echo "python3-pip" ;;
+                  echo "python3-docutils" ;;
+    sphinx-build) echo "python3-Sphinx" ;;
+    pip3|pip)     echo "python3-pip" ;;
+    glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1749,9 +1754,9 @@ __pmw_get_available_package_name_by_command_name_dnf() {
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
       rst2man|rst2html)
-              echo "python3-docutils" ;;
-    sphinx-build)
-              echo "python3-sphinx" ;;
+                  echo "python3-docutils" ;;
+    sphinx-build) echo "python3-sphinx" ;;
+    glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1780,6 +1785,7 @@ __pmw_get_available_package_name_by_command_name_yum() {
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     sphinx-build) echo "python-sphinx" ;;
+    glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1819,6 +1825,8 @@ __pmw_get_available_package_name_by_command_name_apt() {
               echo "python3-sphinx" ;;
     grpc_cpp_plugin)
               echo "libgrpc" ;;
+    glib-mkenums)
+              echo 'libglib2.0-dev' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
@@ -1855,7 +1863,9 @@ __pmw_get_available_package_name_by_command_name_brew() {
      rst2man.py|rst2html.py)
               echo "docutils" ;;
     grpc_cpp_plugin)
-                echo "grpc" ;;
+              echo "grpc" ;;
+    glib-mkenums)
+              echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
