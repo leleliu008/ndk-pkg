@@ -25,6 +25,16 @@ jobs:
         with:
           distribution: ${{ matrix.distribution }}
 
+      - name: Use unix line endings
+        shell: bash
+        run: |
+          # Github's actions/checkout@v2 when run on Windows mangles the line-endings to DOS-style
+          # but we're running Linux *on top* of Windows, so we need to not mangle them!
+          # https://github.com/actions/checkout/issues/135#issuecomment-602171132
+          # https://github.com/actions/virtual-environments/issues/50#issuecomment-663920265
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
       - uses: actions/checkout@v2
 
       - run: bin/ndk-pkg --help
