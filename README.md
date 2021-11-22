@@ -4,17 +4,17 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 ## ndk-pkg supports system
 |HostOS|SubSystem|supported|recommended|summary|
 |------|---------|---------|-----------|-------|
-[macOS](https://www.apple.com.cn/mac/)||✔︎|✔︎|tested with github actions|
-[Ubuntu](https://ubuntu.com/)||✔︎|✔︎|tested with github actions|
+[macOS](https://www.apple.com.cn/mac/)||✔︎|✔︎|tested with Github-Actions|
+[Ubuntu](https://ubuntu.com/)||✔︎|✔︎|tested with Github-Actions|
 [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[glibc](http://www.gnu.org/software/libc/)|✔︎|✔︎||
 [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[musl-libc](http://musl.libc.org/)|❌|❌||
-[Android](https://www.android.com/)|[Termux](https://termux.com/)|✔︎|❌|[Android NDK for aarch64](https://github.com/Lzhiyong/termux-ndk)|
+[Android](https://www.android.com/)|[Termux](https://termux.com/)|✔︎|❌|[Android NDK for termux](https://github.com/Lzhiyong/termux-ndk)|
 [FreeBSD](https://www.freebsd.org/)||❌|❌||
 [OpenBSD](https://www.openbsd.org/)||❌|❌||
 [NetBSD](https://www.netbsd.org/)||❌|❌||
 [Windows](https://www.microsoft.com/en-us/windows/)|[Cygwin](http://cygwin.org/)|❌|❌||
 [Windows](https://www.microsoft.com/en-us/windows/)|[MSYS2](https://www.msys2.org/)|❌|❌||
-[Windows](https://www.microsoft.com/en-us/windows/)|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|✔︎|tested with github actions|
+[Windows](https://www.microsoft.com/en-us/windows/)|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|✔︎|tested with Github-Actions|
 
 ## Install ndk-pkg via HomeBrew
 
@@ -34,7 +34,7 @@ chmod +x install.sh
 ./install.sh --china
 ```
 
-## Install ndk-pkg step by step
+## Install ndk-pkg from github repository master branch HEAD
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
