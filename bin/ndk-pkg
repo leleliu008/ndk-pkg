@@ -1951,8 +1951,14 @@ __pmw_install_the_given_package() {
         pkg)     run $sudo pkg install -y "$2" ;;
         pkgin)   run $sudo pkgin -y install "$2" ;;
         pkg_add) run $sudo pkg_add "$2" ;;
-        apt)     run $sudo apt     -y install "$2" ;;
-        apt-get) run $sudo apt-get -y install "$2" ;;
+        apt)
+            run $sudo apt -y update &&
+            run $sudo apt -y install "$2"
+            ;;
+        apt-get)
+            run $sudo apt-get -y update &&
+            run $sudo apt-get -y install "$2"
+            ;;
         dnf)     run $sudo dnf -y install "$2" ;;
         yum)     run $sudo yum -y install "$2" ;;
         zypper)  run $sudo zypper install -y "$2" ;;
