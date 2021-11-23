@@ -1191,6 +1191,7 @@ version_of_command() {
         groff) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      help2man) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
  sphinx-build) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+ glib-mkenums) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          file) "$1" --version 2> /dev/null | head -n 1 | cut -d '-' -f2 ;;
       itstool) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
        protoc) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
