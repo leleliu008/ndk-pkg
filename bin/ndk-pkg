@@ -3951,7 +3951,7 @@ __install_the_given_package() {
     done
     for item in $PACKAGE_DEP_PYM
     do
-        handle_dependency $(__parse_require_dependency_item pym"$item")
+        handle_dependency $(__parse_require_dependency_item pym "$item")
     done
     for item in $PACKAGE_DEP_PLM
     do
