@@ -46,9 +46,6 @@ autoload -U compinit && compinit
 
 # update the ndk-pkg formula repositories
 ndk-pkg update
-
-# install android-ndk if you haven't install it yet.
-ndk-pkg install-android-ndk
 ```
 
 ## ndk-pkg command usage
