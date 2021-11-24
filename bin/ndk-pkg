@@ -3877,19 +3877,19 @@ __config_global_installation_variables() {
         case $tool in
             cc)
                 if [ -z "$CC" ] ; then
-                    TOOL_PATH=$(command -v cc || command -v gcc || command -v clang)
+                    TOOL_PATH=$(command -v cc || command -v gcc || command -v clang || true)
                 else
                     TOOL_PATH="$CC"
                 fi
                 ;;
             cxx)
                 if [ -z "$CXX" ] ; then
-                    TOOL_PATH=$(command -v c++ || command -v g++ || command -v clang++)
+                    TOOL_PATH=$(command -v c++ || command -v g++ || command -v clang++ || true)
                 else
                     TOOL_PATH="$CXX"
                 fi
                 ;;
-            *)  TOOL_PATH=$(command -v "$tool")
+            *)  TOOL_PATH=$(command -v "$tool" || true)
         esac
 
         unset TOOL_UPPER
@@ -4010,11 +4010,11 @@ __install_the_given_package() {
     unset GMAKE
     unset NINJA
 
-    PKG_CONFIG=$(command -v pkg-config)
-    MESON=$(command -v meson)
-    CMAKE=$(command -v cmake)
-    GMAKE=$(command -v gmake || command -v make)
-    NINJA=$(command -v ninja)
+    PKG_CONFIG=$(command -v pkg-config || true)
+    MESON=$(command -v meson || true)
+    CMAKE=$(command -v cmake || true)
+    GMAKE=$(command -v gmake || command -v make || true)
+    NINJA=$(command -v ninja || true)
 
     step "create work directory"
     echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
