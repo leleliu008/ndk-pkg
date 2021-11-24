@@ -2138,12 +2138,20 @@ __install_command_via_fetch_prebuild_binary() {
 
         fetch "$3" --sha256="$2" --output-path="$PREBUILD_BINARY_FILEPATH" || return 1
 
-        case $1 in
-            zip)
-                run unzip  "$PREBUILD_BINARY_FILEPATH" -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1 ;;
-            tar.xz|tar.gz|tar.lz|tar.bz2|tgz|txz|tlz)
-                run tar xf "$PREBUILD_BINARY_FILEPATH" -C "$PREBUILD_BINARY_INSTALL_DIR" --strip-components 1 || return 1 ;;
-        esac
+        if [ -f "$PREBUILD_BINARY_INSTALL_DIR/.installed" ] ; then
+            success "$PREBUILD_BINARY_FILEPATH already have been unpacked to $PREBUILD_BINARY_INSTALL_DIR."
+        else
+            case $1 in
+                zip)
+                    run unzip  "$PREBUILD_BINARY_FILEPATH" -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
+                    run touch  "$PREBUILD_BINARY_INSTALL_DIR/.installed"
+                    ;;
+                tar.xz|tar.gz|tar.lz|tar.bz2|tgz|txz|tlz)
+                    run tar xf "$PREBUILD_BINARY_FILEPATH" -C "$PREBUILD_BINARY_INSTALL_DIR" --strip-components 1 || return 1
+                    run touch  "$PREBUILD_BINARY_INSTALL_DIR/.installed"
+                    ;;
+            esac
+        fi
 
         if [ -d "$PREBUILD_BINARY_INSTALL_DIR/bin" ] ; then
             export PATH="$PREBUILD_BINARY_INSTALL_DIR/bin:$PATH"
@@ -4121,7 +4129,7 @@ EOF
                 run cd    "$NATIVE_BUILD_DIR" || return 1
             }
 
-            printf "%17s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
+            printf "%18s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
 
             echo "
             PKG_CONFIG = $PKG_CONFIG
@@ -4134,13 +4142,13 @@ EOF
             for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
             do
                 eval export "$TOOL=\"\$${TOOL}_FOR_BUILD\""
-                printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+                printf "%18s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
             done
 
             for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
             do
                 eval export "$FLAG=\"\$${FLAG}_FOR_BUILD\""
-                printf "\n%17s = " "$FLAG"
+                printf "\n%18s = " "$FLAG"
                 FIRST=yes
                 for item in $(eval echo \$$FLAG | tr ':' ' ')
                 do
@@ -4148,12 +4156,12 @@ EOF
                         FIRST=no
                         echo "$item"
                     else
-                        echo "                    $item"
+                        echo "                     $item"
                     fi
                 done
             done
             echo
-            printf "\n%17s = " PATH
+            printf "\n%18s = " PATH
             FIRST=yes
             for item in $(echo "$PATH" | tr ':' ' ')
             do
@@ -4161,7 +4169,7 @@ EOF
                     FIRST=no
                     echo "$item"
                 else
-                    echo "                    $item"
+                    echo "                     $item"
                 fi
             done
 
@@ -4943,7 +4951,7 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
         eval export "$TOOL=\"\$$TOOL\""
-        printf "%17s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+        printf "%18s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
     done
 
     echo
@@ -4951,7 +4959,7 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
         eval export "${TOOL}_FOR_BUILD=\"\$${TOOL}_FOR_BUILD\""
-        printf "%17s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$${TOOL}_FOR_BUILD)"
+        printf "%18s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$${TOOL}_FOR_BUILD)"
     done
 
     echo
@@ -4959,7 +4967,7 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
         eval export "$FLAG=\"\$$FLAG\""
-        printf "\n%17s = " "$FLAG"
+        printf "\n%18s = " "$FLAG"
         FIRST=yes
         for item in $(eval echo \$$FLAG | tr ':' ' ')
         do
@@ -4967,14 +4975,14 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
                 FIRST=no
                 echo "$item"
             else
-                echo "                    $item"
+                echo "                     $item"
             fi
         done
     done
 
     echo
 
-    printf "\n%17s = " PATH
+    printf "\n%18s = " PATH
     FIRST=yes
     for item in $(echo "$PATH" | tr ':' ' ')
     do
@@ -4982,7 +4990,7 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
             FIRST=no
             echo "$item"
         else
-            echo "                    $item"
+            echo "                     $item"
         fi
     done
 
