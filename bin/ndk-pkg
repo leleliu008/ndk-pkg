@@ -1223,6 +1223,7 @@ version_of_command() {
          grep) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '-' -f1 ;;
          ruby) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          perl) "$1" -v | sed -n '2p' | sed 's/.*v\([0-9]\.[0-9][0-9]\.[0-9]\).*/\1/' ;;
+          lua) "$1" -v 2>/dev/null | head -n 1 | cut -d ' ' -f2 ;;
     python|python2|python3)
                "$1" --version 2>&1 | head -n 1 | cut -d ' ' -f2 ;;
          pip)  "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
@@ -1528,6 +1529,7 @@ __pmw_get_available_package_name_by_command_name_pkg() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+         lua) echo 'lua54' ;;
          gm4) echo 'm4'    ;;
         make) echo 'gmake' ;;
         perl) echo 'perl5' ;;
@@ -1809,6 +1811,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+         lua) echo 'lua5.3';;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
@@ -2683,6 +2686,16 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BINSRCD
 
     unset PACKAGE_BUILD_SYSTEM
+    unset PACKAGE_BUILD_SYSTEM_GO
+    unset PACKAGE_BUILD_SYSTEM_NINJA
+    unset PACKAGE_BUILD_SYSTEM_GMAKE
+    unset PACKAGE_BUILD_SYSTEM_CMAKE
+    unset PACKAGE_BUILD_SYSTEM_MESON
+    unset PACKAGE_BUILD_SYSTEM_CARGO
+    unset PACKAGE_BUILD_SYSTEM_AUTOGENSH
+    unset PACKAGE_BUILD_SYSTEM_AUTOTOOLS
+    unset PACKAGE_BUILD_SYSTEM_CONFIGURE
+    unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
 
     # if build in source dir, otherwise in build dir
     unset PACKAGE_BUILD_IN_SOURCE_DIR
@@ -2696,7 +2709,7 @@ __load_formula_of_the_given_package() {
     # dependency python modules
     unset PACKAGE_DEP_PYM
 
-    # dependency plm modules
+    # dependency perl modules
     unset PACKAGE_DEP_PLM
 
     # dependency packages
@@ -2808,6 +2821,24 @@ __load_formula_of_the_given_package() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
+            autogen)     PACKAGE_BUILD_SYSTEM_AUTOGENSH=yes ;;
+            autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=yes ;;
+            configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=yes ;;
+            ndk-build)   PACKAGE_BUILD_SYSTEM_NDK_BUILD=yes ;;
+            cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes ;;
+            cmake-make)  PACKAGE_BUILD_SYSTEM_CMAKE=yes ;;
+            cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes ;;
+            meson)       PACKAGE_BUILD_SYSTEM_MESON=yes ;;
+            make)        PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            cargo)       PACKAGE_BUILD_SYSTEM_CARGO=yes ;;
+            go)          PACKAGE_BUILD_SYSTEM_GO=yes    ;;
+        esac
+    done
+
+    for item in $PACKAGE_BUILD_SYSTEM
+    do
+        case $item in
             autogen)     package add dep.cmd perl m4 autoconf automake make ;;
             autotools)   package add dep.cmd perl m4 autoconf automake make ;;
             configure)   package add dep.cmd make ;;
@@ -2831,18 +2862,17 @@ __load_formula_of_the_given_package() {
         BUILD_NJOBS=1
     fi
 
-    if [ "$PACKAGE_BUILD_SYSTEM" = 'go' ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
         PACKAGE_BINSRCD=yes
         PACKAGE_BUILD_IN_SOURCE_DIR=yes
     fi
-
-    package add dep.cmd 'tree'
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         package add dep.cmd 'gsed'
     fi
 
     package add dep.cmd 'find'
+    package add dep.cmd 'tree'
 }
 
 # examples:
@@ -2942,13 +2972,13 @@ package set summary "Summary of this package"
 
 package set webpage "https://www.xx.com"
 
-# the source code download url of this package. the value of src_url must end with one of .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz
+# the source code download url of this package. the value of src.url must end with one of .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz
 package set src.url "https://www.xx.com/pkgname-x.y.z.tar.gz"
 
-# the sha256sum of source code. If the value of src_url end with .git, this function is optional, otherwise, this function must be invoked.
+# the sha256sum of source code. If the value of src.url end with .git, this function is optional, otherwise, this function must be invoked.
 package set src.sum "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
 
-# the version of this package. If this function is not invoked, it will be calculated from src_url.
+# the version of this package. If this function is not invoked, it will be calculated from src.url.
 #package set version "x.y.z"
 
 # the license of this package.
@@ -4797,82 +4827,78 @@ __config_variables_for_the_given_target() {
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 
-    for item in $PACKAGE_BUILD_SYSTEM
-    do
-        case $item in
-            cargo)
-                for supportedTarget in $(__list_supported_target_triples)
-                do
-                    supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
-                    for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
-                    do
-                        if [ "$supportedTarget" = "$installedTarget" ] ; then
-                            break
-                        fi
-                    done
-                    [ "$supportedTarget" = "$installedTarget" ] || {
-                        rustup target add "$supportedTarget" || return 1
-                    }
-                done
+    if [ $PACKAGE_BUILD_SYSTEM_CARGO = yes ] ; then
+        for supportedTarget in $(__list_supported_target_triples)
+        do
+            supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
+            for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
+            do
+                if [ "$supportedTarget" = "$installedTarget" ] ; then
+                    break
+                fi
+            done
+            [ "$supportedTarget" = "$installedTarget" ] || {
+                rustup target add "$supportedTarget" || return 1
+            }
+        done
 
-                CARGO_TARGET=$(echo "$TARGET_TRIPLE" | sed 's/armv7a/armv7/')
+        CARGO_TARGET=$(echo "$TARGET_TRIPLE" | sed 's/armv7a/armv7/')
 
-                # https://doc.rust-lang.org/cargo/reference/environment-variables.html
-                CARGO_TARGET_XXX=$(echo "$CARGO_TARGET" | tr a-z A-Z | tr - _)
+        # https://doc.rust-lang.org/cargo/reference/environment-variables.html
+        CARGO_TARGET_XXX=$(echo "$CARGO_TARGET" | tr a-z A-Z | tr - _)
 
-                eval export "CARGO_TARGET_${CARGO_TARGET_XXX}_AR=\"$AR\""
-                eval export "CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=\"$CC\""
+        eval export "CARGO_TARGET_${CARGO_TARGET_XXX}_AR=\"$AR\""
+        eval export "CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=\"$CC\""
 
-                # https://libraries.io/cargo/cc
-                export HOST_CC="$CC_FOR_BUILD"
-                export HOST_CFLAGS="$CFLAGS_FOR_BUILD"
+        # https://libraries.io/cargo/cc
+        export HOST_CC="$CC_FOR_BUILD"
+        export HOST_CFLAGS="$CFLAGS_FOR_BUILD"
 
-                export HOST_CXX="$CXX_FOR_BUILD"
-                export HOST_CXXFLAGS="$CXXFLAGS_FOR_BUILD"
+        export HOST_CXX="$CXX_FOR_BUILD"
+        export HOST_CXXFLAGS="$CXXFLAGS_FOR_BUILD"
 
-                export HOST_AR="$AR_FOR_BUILD"
+        export HOST_AR="$AR_FOR_BUILD"
 
-                export TARGET_CC="$CC"
-                export TARGET_CFLAGS="$CFLAGS $CPPFLAGS $LDFLAGS"
+        export TARGET_CC="$CC"
+        export TARGET_CFLAGS="$CFLAGS $CPPFLAGS $LDFLAGS"
 
-                export TARGET_CXX="$CXX"
-                export TARGET_CXXFLAGS="$CXXFLAGS $CPPFLAGS $LDFLAGS"
+        export TARGET_CXX="$CXX"
+        export TARGET_CXXFLAGS="$CXXFLAGS $CPPFLAGS $LDFLAGS"
 
-                export TARGET_AR="$AR"
+        export TARGET_AR="$AR"
 
-                for item in $DEPENDENCY_PACKAGE_LIST
-                do
-                    case $item in
-                        openssl)
-                            unset OPENSSL_DIR
-                            # https://docs.rs/openssl/0.10.35/openssl/
-                            export OPENSSL_DIR="$openssl_INSTALL_DIR"
-                            ;;
-                    esac
-                done
-                ;;
-               go)
-                # https://golang.org/doc/install/source#environment
-                export CGO_ENABLED=1
-                export CGO_CFLAGS="$CFLAGS"
-                export CGO_CXXFLAGS="$CXXFLAGS"
-                export CGO_CPPFLAGS="$CPPFLAGS"
-                export CGO_LDFLAGS="$LDFLAGS"
+        for item in $DEPENDENCY_PACKAGE_LIST
+        do
+            case $item in
+                openssl)
+                    unset OPENSSL_DIR
+                    # https://docs.rs/openssl/0.10.35/openssl/
+                    export OPENSSL_DIR="$openssl_INSTALL_DIR"
+                    ;;
+            esac
+        done
+    fi
 
-                export GO111MODULE="auto"
-                export GOPROXY=https://goproxy.cn
+    if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+        # https://golang.org/doc/install/source#environment
+        export CGO_ENABLED=1
+        export CGO_CFLAGS="$CFLAGS"
+        export CGO_CXXFLAGS="$CXXFLAGS"
+        export CGO_CPPFLAGS="$CPPFLAGS"
+        export CGO_LDFLAGS="$LDFLAGS"
 
-                export GOOS="$TARGET_OS_TYPE"
+        export GO111MODULE='auto'
+        export GOPROXY='https://goproxy.cn'
 
-                case $TARGET_OS_ARCH in
-                    armv7a)  export GOARCH=arm   ;;
-                    aarch64) export GOARCH=arm64 ;;
-                    i686)    export GOARCH=386   ;;
-                    x86_64)  export GOARCH=amd64 ;;
-                esac
-                ;;
+        export GOOS="$TARGET_OS_TYPE"
+
+        case $TARGET_OS_ARCH in
+            armv7a)  export GOARCH=arm   ;;
+            aarch64) export GOARCH=arm64 ;;
+            i686)    export GOARCH=386   ;;
+            x86_64)  export GOARCH=amd64 ;;
         esac
-    done
+    fi
 }
 
 # examples:
@@ -4960,42 +4986,38 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
         fi
     done
 
-    for item in $PACKAGE_BUILD_SYSTEM
-    do
-        case $item in
-            cargo)
-                echo
-                env | grep CARGO
-                echo "
-                HOST_AR       = $HOST_AR
-                HOST_CC       = $HOST_CC
-                HOST_CXX      = $HOST_CXX
-                HOST_CFLAGS   = $HOST_CFLAGS
-                HOST_CXXFLAGS = $HOST_CXXFLAGS
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        echo
+        env | grep CARGO
+        echo "
+          HOST_AR       = $HOST_AR
+          HOST_CC       = $HOST_CC
+          HOST_CXX      = $HOST_CXX
+          HOST_CFLAGS   = $HOST_CFLAGS
+          HOST_CXXFLAGS = $HOST_CXXFLAGS
 
-                TARGET_AR       = $TARGET_AR
-                TARGET_CC       = $TARGET_CC
-                TARGET_CXX      = $TARGET_CXX
-                TARGET_CFLAGS   = $TARGET_CFLAGS
-                TARGET_CXXFLAGS = $TARGET_CXXFLAGS
-                "
-                ;;
-               go)
-                echo "
-                GOOS        = $GOOS
-                GOARCH      = $GOARCH
-                GO111MODULE = $GO111MODULE
-                GOPROXY     = $GOPROXY
+        TARGET_AR       = $TARGET_AR
+        TARGET_CC       = $TARGET_CC
+        TARGET_CXX      = $TARGET_CXX
+        TARGET_CFLAGS   = $TARGET_CFLAGS
+        TARGET_CXXFLAGS = $TARGET_CXXFLAGS
+        "
+    fi
 
-                CGO_ENABLED  = $CGO_ENABLED
-                CGO_CFLAGS   = $CGO_CFLAGS
-                CGO_CXXFLAGS = $CGO_CXXFLAGS
-                CGO_CPPFLAGS = $CGO_CPPFLAGS
-                CGO_LDFLAGS  = $CGO_LDFLAGS
-                "
-                ;;
-        esac
-    done
+    if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+        echo "
+         GOOS        = $GOOS
+         GOARCH      = $GOARCH
+         GO111MODULE = $GO111MODULE
+         GOPROXY     = $GOPROXY
+
+        CGO_ENABLED  = $CGO_ENABLED
+        CGO_CFLAGS   = $CGO_CFLAGS
+        CGO_CXXFLAGS = $CGO_CXXFLAGS
+        CGO_CPPFLAGS = $CGO_CPPFLAGS
+        CGO_LDFLAGS  = $CGO_LDFLAGS
+        "
+    fi
 
     echo "
     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
@@ -5706,93 +5728,102 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH/sysroot" ]
 }
 
+# get_android_ndk_download_config [eq|ne|ge|le|gt|lt VERSION]
+# get_android_ndk_download_config
+# get_android_ndk_download_config eq 21
 get_android_ndk_download_config() {
 {
     # https://developer.android.google.cn/ndk/downloads
     cat <<EOF
-linux  |x86_64 |c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382|https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
-linux  |aarch64|f9ee88ca1bad299521f589cb5895a0f077284e001f39e2e44835191d5df7416d|https://github.com/Lzhiyong/termux-ndk/releases/download/android-ndk/android-ndk-r23.tar.xz
-darwin |x86_64 |437278103a3db12632c05b1be5c41bbb8522791a67e415cc54411a65366f499d|https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip
-windows|x86_64 |40325b5bfdb7f6de016ea3efee0468a7d306eda55a6f80966a501645ba01fbfa|https://dl.google.com/android/repository/android-ndk-r23-windows.zip
+163ff3bb72306ffa814de35c49819bccae9df10855a4e3fbba52ad4111fcccae|https://dl.google.com/android/repository/android-ndk-r23b-darwin.zip
+437278103a3db12632c05b1be5c41bbb8522791a67e415cc54411a65366f499d|https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip
+c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382|https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
+ad7ce5467e18d40050dc51b8e7affc3e635c85bd8c59be62de32352328ed467e|https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip
+f9ee88ca1bad299521f589cb5895a0f077284e001f39e2e44835191d5df7416d|https://github.com/Lzhiyong/termux-ndk/releases/download/android-ndk/android-ndk-r23.tar.xz
 EOF
 } | while read LINE
     do
-        LINE=$(printf '%s' "$LINE" | sed 's/[[:space:]]//g')
-
+        unset __XX_VERSION__
         unset __XX_OS_KIND__
         unset __XX_OS_ARCH__
 
-        __XX_OS_KIND__=$(printf '%s' "$LINE" | cut -d '|' -f1)
+        if [ $# -eq 2 ] ; then
+            __XX_VERSION__=$(printf '%s\n' "$LINE" | cut -d- -f3 | cut -c2,3)
+            [ "$__XX_VERSION__" -"$1" "$2"] || continue
+        fi
 
-        if [ "$__XX_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
+        __XX_OS_KIND__=$(printf '%s' "$LINE" | cut -d- -f4 | cut -d. -f1)
+
+        if [ -n "$__XX_OS_KIND__" ] && [ "$__XX_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
             continue
         fi
 
-        __XX_OS_ARCH__=$(printf '%s' "$LINE" | cut -d '|' -f2)
+        __XX_OS_ARCH__=$(printf '%s' "$LINE" | cut -d- -f5 | cut -d. -f1)
 
         if [ -n "$__XX_OS_ARCH__" ] && [ "$__XX_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
             continue
         fi
 
-        printf '%s' "$LINE"
+        printf '%s\n' "$LINE" | tr '|' ' '
 
         break
     done
 }
 
+# mode1:
+# install_android_ndk [eq|ne|ge|le|gt|lt VERSION]
+# install_android_ndk
+# install_android_ndk eq 21
+#
+# mode2:
+# install_android_ndk sentry <SHA256> <URL>
 install_android_ndk() {
     set -e
 
-    for arg in $@
-    do
-        case $arg in
-            -x) set -x ; break
-        esac
-    done
-
-    unset ANDROID_NDK_URL
-    unset ANDROID_NDK_SHA256
-
-    unset LINE
-    LINE=$(get_android_ndk_download_config)
-
-    ANDROID_NDK_SHA256=$(printf '%s' "$LINE" | cut -d '|' -f3)
-
-    ANDROID_NDK_URL=$(printf '%s' "$LINE" | cut -d '|' -f4)
-
-    fetch "$ANDROID_NDK_URL" --sha256="$ANDROID_NDK_SHA256" --output-dir="$MY_HOME_DIR"
-
-    case $ANDROID_NDK_URL in
-        *.zip)
-            handle_dependency required exe unzip
-            run unzip -q "$FETCH_OUTPUT_PATH" -d "$MY_HOME_DIR"
+    case $1 in
+        ''|eq|ne|ge|le|gt|lt)
+            install_android_ndk sentry $(get_android_ndk_download_config $@)
             ;;
-        *.tar.xz)
-            handle_dependency required exe tar
-            handle_dependency required exe xz
-            run tar xf "$FETCH_OUTPUT_PATH" -C "$MY_HOME_DIR"
+        sentry)
+            shift
+
+            fetch "$2" --sha256="$1" --output-dir="$MY_HOME_DIR"
+
+            ANDROID_NDK_FILEPATH="$FETCH_OUTPUT_PATH"
+            ANDROID_NDK_FILENAME="$FETCH_OUTPUT_NAME"
+            ANDROID_NDK_VERSION_CODE=$(printf '%s\n' "$ANDROID_NDK_FILENAME" | cut -d- -f3 | cut -d. -f1)
+            ANDROID_NDK_HOME="$MY_HOME_DIR/android-ndk-$ANDROID_NDK_VERSION_CODE"
+
+            if [ -f "$ANDROID_NDK_HOME/.installed" ] ; then
+                success "$ANDROID_NDK_FILEPATH already have been unpacked to $ANDROID_NDK_HOME."
+            else
+                if [ -d "$ANDROID_NDK_HOME" ] ; then
+                    run rm -rf "$ANDROID_NDK_HOME"
+                fi
+                case $2 in
+                    *.zip)
+                        handle_dependency required exe unzip
+                        run unzip -q "$ANDROID_NDK_FILEPATH" -d "$MY_HOME_DIR"
+                        run touch "$ANDROID_NDK_HOME/.installed"
+                        ;;
+                    *.tar.xz)
+                        handle_dependency required exe tar
+                        handle_dependency required exe xz
+                        run tar xf   "$ANDROID_NDK_FILEPATH" -C "$MY_HOME_DIR"
+                        run touch "$ANDROID_NDK_HOME/.installed"
+                        ;;
+                esac
+            fi
+
+            run ls -l "$ANDROID_NDK_HOME"
+
+            export ANDROID_NDK_HOME="$ANDROID_NDK_HOME"
+            export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+
+            inspect_build_toolchains
             ;;
+        *)  die "install_android_ndk() unrecognized argument: $@"
     esac
-
-    unset ANDROID_NDK_VERSION_CODE
-    ANDROID_NDK_VERSION_CODE=$(printf '%s' "$FETCH_OUTPUT_NAME" | cut -d- -f3 | cut -d. -f1)
-
-    unset ANDROID_NDK_HOME
-    ANDROID_NDK_HOME="$FETCH_OUTPUT_DIR/android-ndk-$ANDROID_NDK_VERSION_CODE"
-
-    run ls -l "$ANDROID_NDK_HOME"
-
-    cat >> "$MY_ENV_FILEPATH" <<EOF
-export ANDROID_NDK_HOME=$ANDROID_NDK_HOME
-export ANDROID_NDK_ROOT=$ANDROID_NDK_HOME
-export PATH="$ANDROID_NDK_HOME:$PATH"
-EOF
-
-    if command -v bat > /dev/null ; then
-        run bat -l bash --paging=never --style=plain "$MY_ENV_FILEPATH"
-    else
-        run cat "$MY_ENV_FILEPATH"
-    fi
 }
 
 inspect_build_toolchains() {
@@ -5845,7 +5876,8 @@ inspect_build_toolchains() {
     fi
 
     if [ -z "$ANDROID_NDK_HOME" ] ; then
-        die "please set and export ANDROID_NDK_HOME=DIR environment variable, then try again!"
+        debug "you have not set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable, I will install for you!"
+        install_android_ndk
     fi
 
     TOOLCHAIN_NAME='android-ndk'
@@ -6012,24 +6044,14 @@ inspect_install_arguments() {
 
 init() {
     # MY represents this software's
-    if [ -n "$NDK_PKG_HOME_DIR" ] && [ -d "$NDK_PKG_HOME_DIR" ] ; then
-        MY_HOME_DIR="$NDK_PKG_HOME_DIR"
-    else
-        MY_HOME_DIR="$HOME/.ndk-pkg"
-    fi
-
-    MY_ENV_FILEPATH="$MY_HOME_DIR/env"
-
-    if [ -e "$MY_ENV_FILEPATH" ] ; then
-        . "$MY_ENV_FILEPATH" || return 1
-    fi
 
     MY_VERSION=0.1.14
-    MY_HOME_PAGE="https://github.com/leleliu008/ndk-pkg"
-    MY_OFFICAL_FORMULA_REPO_URL="https://github.com/leleliu008/ndk-pkg-formula-repository.git"
+    MY_HOME_PAGE='https://github.com/leleliu008/ndk-pkg'
+    MY_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository.git'
     MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg'
     MY_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/zsh-completion/_ndk-pkg'
 
+    MY_HOME_DIR="$HOME/.ndk-pkg"
     MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
     MY_INSTALL_DIR="$MY_HOME_DIR/install.d"
     MY_SOURCE_DIR="$MY_HOME_DIR/source.d"
@@ -6247,7 +6269,7 @@ main() {
             echo
             run "id | tr ' ' '\n'"
             echo
-            run "env | sed -n '/ANDROID_NDK_/p'"
+            run "env | sed -n '/ANDROID_/p'"
             echo
             inspect_build_toolchains
             echo "$TOOLCHAIN_NAME $TOOLCHAIN_VERS"
@@ -6345,7 +6367,7 @@ main() {
 
         install-android-ndk)
             shift
-            install_android_ndk $@
+            install_android_ndk
             ;;
         test)
             __compare_versions_with_brew
