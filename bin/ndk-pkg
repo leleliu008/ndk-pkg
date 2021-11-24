@@ -452,7 +452,11 @@ fetch() {
     if [ -z "$1" ] ; then
         die "fetch() please specify a url."
     else
-        FETCH_URL="$1"
+        if [ "$COUNTRY" = 'china' ] ; then
+            FETCH_URL="$(get_china_mirror_url "$1")"
+        else
+            FETCH_URL="$1"
+        fi
     fi
 
     shift
@@ -632,34 +636,17 @@ install_ca_certificates_on_netbsd() {
 ##############################################################################
 # {{{ get_china_mirror_url
 
-contains_china_argument() {
-    for arg in $@
-    do
-        case $arg in
-            --china) return 0
-        esac
-    done
-    return 1
-}
-
-# get_china_mirror_url <ORIGIN_URL> [--china]
+# get_china_mirror_url <ORIGIN_URL>
 get_china_mirror_url() {
-    if [ -z "$1" ] ; then
-        die "get_china_mirror_url() please specify a url."
-    fi
-
-    if contains_china_argument $@ ; then
-        case $1 in
-            *githubusercontent.com*)
-                printf "%s" "$1" | sed 's@githubusercontent.com@githubusercontents.com@'
-                ;;
-            *github.com*)
-                printf "%s" "$1" | sed 's@github.com@github.com.cnpm.org@'
-                ;;
-        esac
-    else
-        printf "%s" "$1"
-    fi
+    case $1 in
+        *githubusercontent.com/*)
+            printf "%s\n" "$1" | sed 's@githubusercontent.com/@githubusercontents.com/@'
+            ;;
+        *github.com/*)
+            printf "%s\n" "$1" | sed 's@github.com/@github.com.cnpm.org/@'
+            ;;
+        *)  printf '%s\n' "$1"
+    esac
 }
 
 # }}}
@@ -674,10 +661,15 @@ __upgrade_self() {
         die "__upgrade_self() please specify a url."
     fi
 
+    unset XTRACE
+    unset COUNTRY
+
     for arg in $@
     do
         case $arg in
-            -x) set -x ; break
+            --xtrace|-x) XTRACE=yes; set -x ;;
+            --china)     COUNTRY=china ;;
+            *) [ "$XTRACE" = yes ] && [ -n "$COUNTRY" ] && break
         esac
     done
 
@@ -703,7 +695,7 @@ __upgrade_self() {
 
     run cd $WORK_DIR
 
-    fetch "$(get_china_mirror_url $@)" --output-path="$WORK_DIR/self"
+    fetch "$1" --output-path="$WORK_DIR/self"
 
     __upgrade_self_exit() {
         if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
@@ -730,10 +722,15 @@ __integrate_zsh_completions() {
         die "__integrate_zsh_completions() please specify a url."
     fi
 
+    unset XTRACE
+    unset COUNTRY
+
     for arg in $@
     do
         case $arg in
-            -x) set -x ; break
+            --xtrace|-x) XTRACE=yes; set -x ;;
+            --china)     COUNTRY=china ;;
+            *) [ "$XTRACE" = yes ] && [ -n "$COUNTRY" ] && break
         esac
     done
 
@@ -763,7 +760,7 @@ __integrate_zsh_completions() {
 
     run cd $WORK_DIR
 
-    fetch "$(get_china_mirror_url $@)" --output-path="$WORK_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    fetch "$1" --output-path="$WORK_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
@@ -2178,9 +2175,15 @@ __install_command_via_run_install_script() {
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running shell script.${COLOR_OFF}"
 
-            handle_dependency required exe bash:zsh
+            handle_dependency required exe bash:zsh:dash:ash
 
-            fetch 'https://sh.rustup.rs' --pipe="$(command -v bash || command -v zsh || command -v dash || command -v ash || echo sh)"
+            if [ -f    "$MY_HOME_DIR/rustup-init.sh" ] ; then
+                run rm "$MY_HOME_DIR/rustup-init.sh"
+            fi
+
+            fetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/rustup-init.sh"
+
+            run $(command -v bash || command -v zsh || command -v dash || command -v ash || command -v sh) "$MY_HOME_DIR/rustup-init.sh" -y
 
             export CARGO_HOME=$HOME/.cargo
             export PATH="$CARGO_HOME/bin:$PATH"
@@ -2674,6 +2677,8 @@ __parse_package_patches() {
 __load_formula_of_the_given_package() {
     die_if_package_is_not_available "$1"
 
+    unset PACKAGE_FORMULA_LOADED
+
     unset PACKAGE_NAME
     unset PACKAGE_SUMMARY
     unset PACKAGE_WEBPAGE
@@ -2881,6 +2886,8 @@ __load_formula_of_the_given_package() {
 
     package add dep.cmd 'find'
     package add dep.cmd 'tree'
+
+    PACKAGE_FORMULA_LOADED=yes
 }
 
 # examples:
@@ -3188,6 +3195,10 @@ __fetch_sources_of_the_given_package() {
 }
 
 __fetch_patches_of_the_given_package() {
+    __fetch_patches $PACKAGE_PATCHES
+}
+
+__fetch_patches() {
     unset PACKAGE_PATCHES
 
     # fetch patches if posible
@@ -3206,8 +3217,11 @@ __fetch_patches_of_the_given_package() {
 }
 
 __fetch_resources_of_the_given_package() {
-    __fetch_sources_of_the_given_package &&
-    __fetch_patches_of_the_given_package $PACKAGE_PATCHES
+    if [ "$PACKAGE_FORMULA_LOADED" != yes ] ; then
+        __load_formula_of_the_given_package $@ || return 1
+    fi
+    __fetch_sources_of_the_given_package $@ &&
+    __fetch_patches_of_the_given_package $@
 }
 
 die_if_package_is_not_specified() {
@@ -3436,8 +3450,6 @@ __uninstall_the_given_package() {
 }
 
 __reinstall_the_given_packages() {
-    inspect_build_toolchains
-
     inspect_install_arguments $@
 
     die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
@@ -3460,8 +3472,6 @@ __reinstall_the_given_packages() {
 }
 
 __upgrade_packages() {
-    inspect_build_toolchains
-
     inspect_install_arguments $@
 
     if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
@@ -3607,7 +3617,7 @@ __open_homepage_of_the_given_package() {
 __show_depends_of_the_given_package() {
     die_if_package_is_not_specified "$1"
 
-    __gen_dependency_tree_of_the_given_package "$1"
+    __gen_dependency_package_tree_of_the_given_package "$1"
 
     if [ -f "$DEPENDENCIES_TXT" ] ; then
         cat "$DEPENDENCIES_TXT"
@@ -3788,7 +3798,7 @@ get_direct_dependency_package_list_of_the_given_package() {
 
 # $1 packageName, if packageName is not specified, USER_SPECIFIED_PACKAGE_LIST will be used
 # $2=yes invoked by myself
-__gen_dependency_list_of_the_given_package() {
+__gen_dependency_package_list_of_the_given_package() {
     [ "$2" = yes ] || {
         unset I
         unset DEPENDENCY_PACKAGE_LIST
@@ -3818,12 +3828,12 @@ __gen_dependency_list_of_the_given_package() {
 
         DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST_TEMP"
 
-        __gen_dependency_list_of_the_given_package "$dependencyPkgName" yes
+        __gen_dependency_package_list_of_the_given_package "$dependencyPkgName" yes
     done
 }
 
-# __gen_dependency_tree_of_the_given_package PKG [OUTPUT-DIR]
-__gen_dependency_tree_of_the_given_package() {
+# __gen_dependency_package_tree_of_the_given_package PKG [OUTPUT-DIR]
+__gen_dependency_package_tree_of_the_given_package() {
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
     DIRECT_DEPENDENCY_PACKAGE_LIST="$(get_direct_dependency_package_list_of_the_given_package "$1")"
 
@@ -3915,8 +3925,6 @@ __config_global_installation_variables() {
     done
     unset FLAG
 
-    export PATH="$TOOLCHAIN_BIND:$PATH"
-
     if [ -d "$MY_HOME_DIR/native" ] ; then
         for item in $(find "$MY_HOME_DIR/native" -maxdepth 1 -type d -name bin)
         do
@@ -3930,15 +3938,13 @@ __config_global_installation_variables() {
 }
 
 __install_the_given_packages() {
-    inspect_build_toolchains
-
     inspect_install_arguments $@
 
     die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
 
     __config_global_installation_variables
 
-    __gen_dependency_list_of_the_given_package || return 1
+    __gen_dependency_package_list_of_the_given_package || return 1
 
     if [ $(list_length $DEPENDENCY_PACKAGE_LIST) -gt 1 ] ; then
         echo "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
@@ -3951,11 +3957,15 @@ __install_the_given_packages() {
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
             fi
         else
-            __install_the_given_package "$INSTALLING_PACKAGE" || die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
+            unset WORK_DIR
+            WORK_DIR=$(mktemp -d) || die "create work directory for $INSTALLING_PACKAGE failed."
+            run install -d "$WORK_DIR/$TIMESTAMP_UNIX"
+            (__install_the_given_package "$INSTALLING_PACKAGE") || die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
         fi
     done
 }
 
+# Note: this function must run in a subshell
 __install_the_given_package() {
     echo "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
 
@@ -3964,7 +3974,6 @@ __install_the_given_package() {
     # beacuse previous package's work direcotory is deleted.
     cd ~ || return 1
 
-    unset WORK_DIR
     unset SOURCE_DIR
     unset BUILD_DIR
 
@@ -3979,6 +3988,12 @@ __install_the_given_package() {
 
     step "load formula"
     __load_formula_of_the_given_package "$1"
+
+    step "find android-ndk and setup env"
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        ndkmanager install r21e
+    fi
+    setup_build_toolchains_env
 
     unset TARGET_OS_VERS
     TARGET_OS_VERS=$(pick_target_os_version "$PACKAGE_SDK_API" "$USER_SPECIFIED_TARGET_OS_VERS") || die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_SDK_API, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
@@ -4024,18 +4039,13 @@ __install_the_given_package() {
     GMAKE=$(command -v gmake || command -v make || true)
     NINJA=$(command -v ninja || true)
 
-    step "create work directory"
-    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    WORK_DIR=$(mktemp -d) || die "create work directory failed."
-    run install -d "$WORK_DIR/$TIMESTAMP_UNIX"
-
-    step "calculate dependencies"
+    step "calculate dependency packages"
     unset DEPENDENCY_PACKAGE_LIST
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
-        note "no dependencies."
+        note "no dependency packages."
     else
-        __gen_dependency_list_of_the_given_package "$1"              || return 1
-        __gen_dependency_tree_of_the_given_package "$1" "$MY_INSTALL_DIR/$1" || return 1
+        __gen_dependency_package_list_of_the_given_package "$1"                      || return 1
+        __gen_dependency_package_tree_of_the_given_package "$1" "$MY_INSTALL_DIR/$1" || return 1
         if [ -f "$DEPENDENCIES_TXT" ] ; then
             cat "$DEPENDENCIES_TXT"
         fi
@@ -4163,13 +4173,13 @@ EOF
             echo
             printf "\n%18s = " PATH
             FIRST=yes
-            for item in $(echo "$PATH" | tr ':' ' ')
+            for item in $(printf '%s\n' "$PATH" | tr ' ' '|' | tr ':' ' ')
             do
                 if [ "$FIRST" = yes ] ; then
                     FIRST=no
-                    echo "$item"
+                    printf '%s\n' "$item" | tr '|' ' '
                 else
-                    echo "                     $item"
+                    printf '%s\n' "                     $item" | tr '|' ' '
                 fi
             done
 
@@ -4216,6 +4226,8 @@ EOF
     fi
 
     unset TARGET_INDEX
+    unset TARGET_LIST
+    TARGET_LIST="$(__list_supported_target_abis)"
 
     for TARGET_ITEM in $TARGET_LIST
     do
@@ -4361,14 +4373,13 @@ __justfy_pc_files_for_the_given_target() {
 __install_logs_for_the_given_target() {
     ABI_LOG_DIR="$ABI_INSTALL_DIR/share/log"
 
-    run install -d "$ABI_LOG_DIR"
-
     for item in "$BUILD_DIR" "$SOURCE_DIR"
     do
-        for item2 in 'config.log' 'compile_commands.json' 'install.log.txt'
+        for item2 in 'config.log' 'compile_commands.json'
         do
             if [ -f "$item/$item2" ] ; then
                 echo "-- Installing: $ABI_LOG_DIR/$item2"
+                [ -d "$ABI_LOG_DIR" ] || run install -d "$ABI_LOG_DIR"
                 install -m 644 "$item/$item2" "$ABI_LOG_DIR" || return 1
             fi
         done
@@ -4939,7 +4950,7 @@ __printf_variables_for_the_given_target() {
 
   ANDROID_NDK_HOME = $ANDROID_NDK_HOME
 
-SYSROOT            = $SYSROOT
+           SYSROOT = $SYSROOT
 
 SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR
 SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
@@ -4984,47 +4995,48 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
 
     printf "\n%18s = " PATH
     FIRST=yes
-    for item in $(echo "$PATH" | tr ':' ' ')
+    for item in $(printf '%s\n' "$PATH" | tr ' ' '|' | tr ':' ' ')
     do
         if [ "$FIRST" = yes ] ; then
             FIRST=no
-            echo "$item"
+            printf '%s\n' "$item" | tr '|' ' '
         else
-            echo "                     $item"
+            printf '%s\n' "                     $item" | tr '|' ' '
         fi
     done
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
         echo
         env | grep CARGO
-        echo "
-          HOST_AR       = $HOST_AR
-          HOST_CC       = $HOST_CC
-          HOST_CXX      = $HOST_CXX
-          HOST_CFLAGS   = $HOST_CFLAGS
-          HOST_CXXFLAGS = $HOST_CXXFLAGS
+        echo
+        cat <<EOF
+    HOST_AR       = $HOST_AR
+    HOST_CC       = $HOST_CC
+    HOST_CXX      = $HOST_CXX
+    HOST_CFLAGS   = $HOST_CFLAGS
+    HOST_CXXFLAGS = $HOST_CXXFLAGS
 
-        TARGET_AR       = $TARGET_AR
-        TARGET_CC       = $TARGET_CC
-        TARGET_CXX      = $TARGET_CXX
-        TARGET_CFLAGS   = $TARGET_CFLAGS
-        TARGET_CXXFLAGS = $TARGET_CXXFLAGS
-        "
+  TARGET_AR       = $TARGET_AR
+  TARGET_CC       = $TARGET_CC
+  TARGET_CXX      = $TARGET_CXX
+  TARGET_CFLAGS   = $TARGET_CFLAGS
+  TARGET_CXXFLAGS = $TARGET_CXXFLAGS
+EOF
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
-        echo "
-         GOOS        = $GOOS
-         GOARCH      = $GOARCH
-         GO111MODULE = $GO111MODULE
-         GOPROXY     = $GOPROXY
+        cat <<EOF
+     GOOS        = $GOOS
+     GOARCH      = $GOARCH
+     GO111MODULE = $GO111MODULE
+     GOPROXY     = $GOPROXY
 
-        CGO_ENABLED  = $CGO_ENABLED
-        CGO_CFLAGS   = $CGO_CFLAGS
-        CGO_CXXFLAGS = $CGO_CXXFLAGS
-        CGO_CPPFLAGS = $CGO_CPPFLAGS
-        CGO_LDFLAGS  = $CGO_LDFLAGS
-        "
+    CGO_ENABLED  = $CGO_ENABLED
+    CGO_CFLAGS   = $CGO_CFLAGS
+    CGO_CXXFLAGS = $CGO_CXXFLAGS
+    CGO_CPPFLAGS = $CGO_CPPFLAGS
+    CGO_LDFLAGS  = $CGO_LDFLAGS
+EOF
     fi
 
     echo "
@@ -5489,7 +5501,7 @@ list_all_installed_libs() {
 }
 
 __ldd() {
-    inspect_build_toolchains
+    setup_build_toolchains_env
 
     die_if_package_is_not_installed "$1"
     die_if_abi_____is_not_supported "$2"
@@ -5505,7 +5517,6 @@ __ldd() {
     TARGET_OS_ARCH=$(print_target_arch_by_abi "$2")
     TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
     READELF="$(path_of_tool_in_the_toolchain readelf)"
-    export PATH="$TOOLCHAIN_BIND:$PATH"
 
     ldd_recursion() {
         die_if_package_is_not_installed "$1"
@@ -5544,7 +5555,7 @@ list_dynamic_library_names_of_the_given_package() {
 
 __list_supported_target_sdk_api_levels() {
     if [ -z "$TOOLCHAIN_BIND" ] ; then
-        inspect_build_toolchains > /dev/null
+        setup_build_toolchains_env > /dev/null
     fi
     ls "$TOOLCHAIN_BIND" | sed -n '/aarch64-linux-android[1-9][0-9]-clang++/p' | cut -d- -f3 | sed 's/android//'
 }
@@ -5736,117 +5747,165 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH/sysroot" ]
 }
 
-# get_android_ndk_download_config [eq|ne|ge|le|gt|lt VERSION]
-# get_android_ndk_download_config
-# get_android_ndk_download_config eq 21
-get_android_ndk_download_config() {
-{
-    # https://developer.android.google.cn/ndk/downloads
-    cat <<EOF
+# ndkmanager config @world
+# ndkmanager config
+# ndkmanager config  r21e
+# ndkmanager ls-available
+# ndkmanager ls-installed
+# ndkmanager install r21e
+# ndkmanager install <URL> <SHA256>
+ndkmanager() {
+    set -e
+
+    case $1 in
+        '') die "ndk-pkg ndkmanager <ACTION> <ARGUMENT>..." ;;
+        config)
+            shift
+            case $1 in
+                @world)
+                    # https://developer.android.google.cn/ndk/downloads
+                    cat <<EOF
 163ff3bb72306ffa814de35c49819bccae9df10855a4e3fbba52ad4111fcccae|https://dl.google.com/android/repository/android-ndk-r23b-darwin.zip
 437278103a3db12632c05b1be5c41bbb8522791a67e415cc54411a65366f499d|https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip
 c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382|https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
 ad7ce5467e18d40050dc51b8e7affc3e635c85bd8c59be62de32352328ed467e|https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip
 f9ee88ca1bad299521f589cb5895a0f077284e001f39e2e44835191d5df7416d|https://github.com/Lzhiyong/termux-ndk/releases/download/android-ndk/android-ndk-r23.tar.xz
 EOF
-} | while read LINE
-    do
-        unset __XX_VERSION__
-        unset __XX_OS_KIND__
-        unset __XX_OS_ARCH__
+                    ;;
+                '')
+                    for LINE in $(ndkmanager config @world)
+                    do
+                        unset __XX_OS_KIND__
+                        unset __XX_OS_ARCH__
 
-        if [ $# -eq 2 ] ; then
-            __XX_VERSION__=$(printf '%s\n' "$LINE" | cut -d- -f3 | cut -c2,3)
-            [ "$__XX_VERSION__" -"$1" "$2"] || continue
-        fi
+                        if [ $# -ne 0 ] ; then
+                            __XX_VERSION__=$(printf '%s\n' "$LINE" | cut -d- -f3)
+                            [ "$__XX_VERSION__" = "$1"] || continue
+                        fi
 
-        __XX_OS_KIND__=$(printf '%s' "$LINE" | cut -d- -f4 | cut -d. -f1)
+                        __XX_OS_KIND__=$(printf '%s' "$LINE" | cut -d- -f4 | cut -d. -f1)
 
-        if [ -n "$__XX_OS_KIND__" ] && [ "$__XX_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
-            continue
-        fi
+                        if [ -n "$__XX_OS_KIND__" ] && [ "$__XX_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
+                            continue
+                        fi
 
-        __XX_OS_ARCH__=$(printf '%s' "$LINE" | cut -d- -f5 | cut -d. -f1)
+                        __XX_OS_ARCH__=$(printf '%s' "$LINE" | cut -d- -f5 | cut -d. -f1)
 
-        if [ -n "$__XX_OS_ARCH__" ] && [ "$__XX_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
-            continue
-        fi
+                        if [ -n "$__XX_OS_ARCH__" ] && [ "$__XX_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
+                            continue
+                        fi
 
-        printf '%s\n' "$LINE" | tr '|' ' '
+                        printf '%s\n' "$LINE"
+                    done
+                    ;;
+                r2[1-4][a-e])
+                    for LINE in $(ndkmanager config @world)
+                    do
+                        unset __XX_VERSION__
+                        unset __XX_OS_KIND__
+                        unset __XX_OS_ARCH__
 
-        break
-    done
-}
+                        if [ $# -ne 0 ] ; then
+                            __XX_VERSION__=$(printf '%s\n' "$LINE" | cut -d- -f3)
+                            [ "$__XX_VERSION__" = "$1" ] || continue
+                        fi
 
-# mode1:
-# install_android_ndk [eq|ne|ge|le|gt|lt VERSION]
-# install_android_ndk
-# install_android_ndk eq 21
-#
-# mode2:
-# install_android_ndk sentry <SHA256> <URL>
-install_android_ndk() {
-    set -e
+                        __XX_OS_KIND__=$(printf '%s' "$LINE" | cut -d- -f4 | cut -d. -f1)
 
-    case $1 in
-        ''|eq|ne|ge|le|gt|lt)
-            install_android_ndk sentry $(get_android_ndk_download_config $@)
+                        if [ -n "$__XX_OS_KIND__" ] && [ "$__XX_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
+                            continue
+                        fi
+
+                        __XX_OS_ARCH__=$(printf '%s' "$LINE" | cut -d- -f5 | cut -d. -f1)
+
+                        if [ -n "$__XX_OS_ARCH__" ] && [ "$__XX_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
+                            continue
+                        fi
+
+                        unset __XX_SUM__
+                        unset __XX_URL__
+
+                        __XX_SUM__=$(printf '%s\n' "$LINE" | cut -d '|' -f1)
+                        __XX_URL__=$(printf '%s\n' "$LINE" | cut -d '|' -f2)
+
+                        printf '%s %s\n' "$__XX_URL__" "$__XX_SUM__"
+
+                        break
+                    done
+                    ;;
+                *)  die "ndkmanager config unrecognized argument: $1"
+            esac
             ;;
-        sentry)
+        ls-available)
+            ndkmanager config | cut -d- -f3
+            ;;
+        install)
             shift
+            case $1 in
+                '') die "ndk-pkg ndkmanager install <Reversion> , for example: ndk-pkg ndkmanager install r23b, you can get <Reversion> via run: ndk-pkg ndkmanager ls-available" ;;
+                r2[1-3][a-e])
+                    if [ -f "$MY_HOME_DIR/android-ndk-$1/.installed" ] && is_a_valid_android_ndk_home_dir "$MY_HOME_DIR/android-ndk-$1" ; then
+                        ANDROID_NDK_HOME="$MY_HOME_DIR/android-ndk-$1"
+                        ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+                    else
+                        ndkmanager install $(ndkmanager config "$1")
+                    fi
+                    ;;
+                https://*)
+                    fetch "$1" --sha256="$2" --output-dir="$MY_HOME_DIR"
 
-            fetch "$2" --sha256="$1" --output-dir="$MY_HOME_DIR"
+                    unset ANDROID_NDK_FILEPATH
+                    unset ANDROID_NDK_FILENAME
+                    unset ANDROID_NDK_RVERSION
+                    unset ANDROID_NDK_INSTALLD
 
-            ANDROID_NDK_FILEPATH="$FETCH_OUTPUT_PATH"
-            ANDROID_NDK_FILENAME="$FETCH_OUTPUT_NAME"
-            ANDROID_NDK_VERSION_CODE=$(printf '%s\n' "$ANDROID_NDK_FILENAME" | cut -d- -f3 | cut -d. -f1)
-            ANDROID_NDK_HOME="$MY_HOME_DIR/android-ndk-$ANDROID_NDK_VERSION_CODE"
+                    ANDROID_NDK_FILEPATH="$FETCH_OUTPUT_PATH"
+                    ANDROID_NDK_FILENAME="$FETCH_OUTPUT_NAME"
+                    ANDROID_NDK_RVERSION=$(printf '%s\n' "$ANDROID_NDK_FILENAME" | cut -d- -f3 | cut -d. -f1)
+                    ANDROID_NDK_INSTALLD="$MY_HOME_DIR/android-ndk-$ANDROID_NDK_RVERSION"
 
-            if [ -f "$ANDROID_NDK_HOME/.installed" ] ; then
-                success "$ANDROID_NDK_FILEPATH already have been unpacked to $ANDROID_NDK_HOME."
-            else
-                if [ -d "$ANDROID_NDK_HOME" ] ; then
-                    run rm -rf "$ANDROID_NDK_HOME"
-                fi
-                case $2 in
-                    *.zip)
-                        handle_dependency required exe unzip
-                        run unzip -q "$ANDROID_NDK_FILEPATH" -d "$MY_HOME_DIR"
-                        run touch "$ANDROID_NDK_HOME/.installed"
-                        ;;
-                    *.tar.xz)
-                        handle_dependency required exe tar
-                        handle_dependency required exe xz
-                        run tar xf   "$ANDROID_NDK_FILEPATH" -C "$MY_HOME_DIR"
-                        run touch "$ANDROID_NDK_HOME/.installed"
-                        ;;
-                esac
-            fi
+                    if [ -f "$ANDROID_NDK_INSTALLD/.installed" ] ; then
+                        success "$ANDROID_NDK_FILEPATH already have been unpacked to $ANDROID_NDK_INSTALLD."
+                    else
+                        if [ -d "$ANDROID_NDK_INSTALLD" ] ; then
+                            run rm -rf "$ANDROID_NDK_INSTALLD"
+                        fi
+                        case $1 in
+                            *.zip)
+                                handle_dependency required exe unzip
+                                run unzip -q "$ANDROID_NDK_FILEPATH" -d "$MY_HOME_DIR"
+                                run touch "$ANDROID_NDK_INSTALLD/.installed"
+                                ;;
+                            *.tar.xz)
+                                handle_dependency required exe tar
+                                handle_dependency required exe xz
+                                run tar xf   "$ANDROID_NDK_FILEPATH" -C "$MY_HOME_DIR"
+                                run touch "$ANDROID_NDK_INSTALLD/.installed"
+                                ;;
+                        esac
+                    fi
 
-            run ln -sfr "$ANDROID_NDK_HOME" "$MY_HOME_DIR/android-ndk"
-
-            inspect_build_toolchains
+                    if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_INSTALLD" ; then
+                        ANDROID_NDK_HOME="$ANDROID_NDK_INSTALLD"
+                        ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+                    else
+                        return 1
+                    fi
+                    ;;
+                *)  die "ndkmanager install unrecognized argument: $1"
+            esac
             ;;
-        *)  die "install_android_ndk() unrecognized argument: $@"
+        *)  die "ndkmanager() unrecognized argument: $@"
     esac
 }
 
-inspect_build_toolchains() {
+setup_build_toolchains_env() {
     debug() {
         if [ "$LOG_LEVEL" = DEBUG ] ; then
             echo "$*"
         fi
     }
-
-    if [ -d "$MY_HOME_DIR/android-ndk" ] ; then
-        if is_a_valid_android_ndk_home_dir "$MY_HOME_DIR/android-ndk" ; then
-            export ANDROID_NDK_HOME="$MY_HOME_DIR/android-ndk"
-            debug "${COLOR_GREEN}~/.ndk-pkg/android-ndk${COLOR_OFF} dir exist, and is  a valid android ndk home dir, which is used as the android ndk home."
-        else
-            debug "${COLOR_GREEN}~/.ndk-pkg/android-ndk${COLOR_OFF} dir exist, but not a valid android ndk home dir, which is not used as the android ndk home."
-        fi
-    fi
-
+ 
     if [ -n "$ANDROID_NDK_HOME" ] ; then
         if [ "$NATIVE_OS_SUBS" = cygwin ] ; then
             case "$ANDROID_NDK_HOME" in
@@ -5861,17 +5920,18 @@ inspect_build_toolchains() {
         fi
     fi
 
-    if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_NDK_ROOT" ] ; then
+    if [ -z "$ANDROID_NDK_HOME" ] && [ -n  "$ANDROID_NDK_ROOT" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_ROOT" ; then
             debug "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
         else
             debug "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, but it is not a valid android ndk home directory."
+            unset ANDROID_NDK_ROOT
         fi
     fi
 
     # https://developer.android.com/studio/command-line/variables
-    if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_HOME" ] ; then
+    if [ -z "$ANDROID_NDK_HOME" ] && [ -n  "$ANDROID_HOME" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_HOME/ndk-bundle" ; then
             debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
@@ -5880,7 +5940,7 @@ inspect_build_toolchains() {
         fi
     fi
 
-    if [ -z "$ANDROID_NDK_HOME" -a -n "$ANDROID_SDK_ROOT" ] ; then
+    if [ -z "$ANDROID_NDK_HOME" ] && [ -n  "$ANDROID_SDK_ROOT" ] ; then
         if is_a_valid_android_ndk_home_dir "$ANDROID_SDK_ROOT/ndk-bundle" ; then
             debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk-bundle"
@@ -5890,8 +5950,24 @@ inspect_build_toolchains() {
     fi
 
     if [ -z "$ANDROID_NDK_HOME" ] ; then
-        debug "you have not set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable, I will install for you!"
-        install_android_ndk
+        for item in $(find "$MY_HOME_DIR" -maxdepth 1 -mindepth 1 -type d -name "android-ndk-r2[1-4][a-e]" | sort -r)
+        do
+            if is_a_valid_android_ndk_home_dir "$item" ; then
+                export ANDROID_NDK_HOME="$item"
+                export ANDROID_NDK_ROOT="$item"
+                break
+            else
+                continue
+            fi
+        done
+    fi
+
+    if [ -z "$ANDROID_NDK_HOME" ] ; then
+        ndkmanager install r23b
+    fi
+
+    if [ -z "$ANDROID_NDK_HOME" ] ; then
+        die "no proper Android NDK found."
     fi
 
     TOOLCHAIN_NAME='android-ndk'
@@ -5909,7 +5985,15 @@ inspect_build_toolchains() {
 
     TOOLCHAIN_VERS=$ANDROID_NDK_VERSION
 
-    export PATH="$ANDROID_NDK_HOME:$PATH"
+    bppend_to_PATH "$ANDROID_NDK_HOME"
+    bppend_to_PATH "$TOOLCHAIN_BIND"
+}
+
+bppend_to_PATH() {
+    case ":${PATH}:" in
+        *:"$1":*) ;;
+        *) export PATH="$1:$PATH" ;;
+    esac
 }
 
 inspect_install_arguments() {
@@ -5959,6 +6043,8 @@ inspect_install_arguments() {
                 ;;
             --xtrace|-x)
                 ;;
+            --china)
+                ;;
             --debug|-d)
                 LOG_LEVEL=DEBUG
                 ;;
@@ -5991,7 +6077,7 @@ inspect_install_arguments() {
                         PACK_ARGS="--type=$PACK_TYPE"
                         ;;
                     '') die "--pack-type=VALUE VALUE must not be empty." ;;
-                    *) die "--pack-type=VALUE VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
+                    *)  die "--pack-type=VALUE VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
                 esac
                 ;;
             --build-type=*)
@@ -5999,7 +6085,7 @@ inspect_install_arguments() {
                 case $BUILD_TYPE in
                     debug|release) ;;
                     '') die "--build-type=VALUE VALUE must not be empty." ;;
-                    *) die "--build-type=VALUE VALUE must be one of debug release"
+                    *)  die "--build-type=VALUE VALUE must be one of debug release"
                 esac
                 ;;
             --install-doc)
@@ -6016,7 +6102,7 @@ inspect_install_arguments() {
                 case $INSTALL_LIB in
                     static|shared|both|yes|no) ;;
                     '') die "--install-lib=VALUE VALUE must not be empty." ;;
-                    *) die "--install-lib=VALUE VALUE must be one of static shared both yes no"
+                    *)  die "--install-lib=VALUE VALUE must be one of static shared both yes no"
                 esac
                 ;;
             --link-type=*)
@@ -6024,7 +6110,7 @@ inspect_install_arguments() {
                 case $LINK_TYPE in
                     static-only|shared-only|static-prefered|shared-prefered) ;;
                     '') die "--link-type=VALUE VALUE must not be empty." ;;
-                    *) die "--link-type=VALUE VALUE must be one of static-only shared-only static-prefered shared-prefered"
+                    *)  die "--link-type=VALUE VALUE must be one of static-only shared-only static-prefered shared-prefered"
                 esac
                 ;;
             --jobs=*)
@@ -6051,9 +6137,6 @@ inspect_install_arguments() {
         exec 1>/dev/null
         exec 2>&1
     fi
-
-    unset TARGET_LIST
-    TARGET_LIST="$(__list_supported_target_abis)"
 }
 
 init() {
@@ -6073,10 +6156,10 @@ init() {
     MY_BACKUP_DIR="$MY_HOME_DIR/backup.d"
     MY_PATCH__DIR="$MY_HOME_DIR/patch.d"
 
-    if [ ! -e "$MY_HOME_DIR/repos" ] ; then
+    [ -e "$MY_HOME_DIR/repos" ] || {
         install -d "$MY_HOME_DIR"
         echo "offical=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
-    fi
+    }
 
     unset NATIVE_OS_KIND
     unset NATIVE_OS_TYPE
@@ -6104,6 +6187,24 @@ init() {
     # pip install --user <PKG>
     export PATH="$HOME/.local/bin:$PATH"
 
+    if [ -f "$HOME/.cargo/env" ] ; then
+        .   "$HOME/.cargo/env"
+    fi
+
+    if [ -d "$HOME/.cargo" ] ; then
+        # http://mirrors.ustc.edu.cn/help/crates.io-index.html
+        if [ ! -f  "$HOME/.cargo/config" ] ; then
+            cat >> "$HOME/.cargo/config" <<EOF
+[source.crates-io]
+replace-with = 'ustc'
+
+[source.ustc]
+registry = "git://mirrors.ustc.edu.cn/crates.io-index"
+EOF
+        fi
+    fi
+
+    unset PACKAGE_FORMULA_LOADED
     unset AVAILABLE_PACKAGE_MANAGER_LIST
 
     TIMESTAMP_UNIX="$(date +%s)"
@@ -6249,15 +6350,14 @@ ${COLOR_GREEN}ndk-pkg uninstall <PACKAGE>...${COLOR_OFF}
 
 main() {
     unset XTRACE
+    unset COUNTRY
 
     for arg in $@
     do
         case $arg in
-            --xtrace|-x)
-                XTRACE=yes
-                set -x
-                break
-                ;;
+            --xtrace|-x) XTRACE=yes; set -x ;;
+            --china)     COUNTRY=china ;;
+            *) [ "$XTRACE" = yes ] && [ -n "$COUNTRY" ] && break
         esac
     done
 
@@ -6283,11 +6383,10 @@ main() {
             echo
             run "id | tr ' ' '\n'"
             echo
+            setup_build_toolchains_env
+            echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}android-ndk${COLOR_OFF}"
+            echo "$ANDROID_NDK_HOME $TOOLCHAIN_VERS\n"
             run "env | sed -n '/ANDROID_/p'"
-            echo
-            inspect_build_toolchains
-            echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}android-ndk home and version${COLOR_OFF}"
-            echo "$ANDROID_NDK_HOME $TOOLCHAIN_VERS"
             ;;
         target)
             shift
@@ -6357,9 +6456,8 @@ main() {
             esac
             ;;
         homepage) shift; __show_or_open_homepage_of_the_given_package $@ ;;
-        depends)  shift; __show_depends_of_the_given_package    $@ ;;
-        fetch)    shift; __load_formula_of_the_given_package $@ &&
-                         __fetch_resources_of_the_given_package "$@" ;;
+        depends)  shift;          __show_depends_of_the_given_package $@ ;;
+        fetch)    shift;       __fetch_resources_of_the_given_package $@ ;;
 
         logs) shift; __logs_the_given_installed_package $@ ;;
         pack) shift; __pack_the_given_installed_package $@ ;;
@@ -6380,9 +6478,9 @@ main() {
         gen-github-workflows)
             shift; __gen_github_workflows $@ ;;
 
-        install-android-ndk)
+        ndkmanager)
             shift
-            install_android_ndk
+            ndkmanager $@
             ;;
         test)
             __compare_versions_with_brew

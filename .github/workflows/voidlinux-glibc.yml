@@ -22,7 +22,7 @@ jobs:
       - run: bin/ndk-pkg --homedir
       - run: bin/ndk-pkg --homepage
 
-      - run: bin/ndk-pkg install-android-ndk
+      - run: bin/ndk-pkg ndkmanager ls-available
 
       - run: bin/ndk-pkg env
 
