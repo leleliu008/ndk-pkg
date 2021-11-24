@@ -4827,7 +4827,7 @@ __config_variables_for_the_given_target() {
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 
-    if [ $PACKAGE_BUILD_SYSTEM_CARGO = yes ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
         for supportedTarget in $(__list_supported_target_triples)
         do
             supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
