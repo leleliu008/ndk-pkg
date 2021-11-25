@@ -3925,13 +3925,6 @@ __config_global_installation_variables() {
     done
     unset FLAG
 
-    if [ -d "$MY_HOME_DIR/native" ] ; then
-        for item in $(find "$MY_HOME_DIR/native" -maxdepth 1 -type d -name bin)
-        do
-            export PATH="$item:$PATH"
-        done
-    fi
-
     if [ "$LOG_LEVEL" = DEBUG ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
@@ -3982,6 +3975,18 @@ __install_the_given_package() {
 
     unset CONFIG_XX_UPDATED
     unset STEP_NUM
+
+    for bindir in "$MY_HOME_DIR/native" /opt
+    do
+        if [ -d "$bindir" ] ; then
+            for item in $(find "$bindir" -maxdepth 2 -type d -name bin)
+            do
+                PATH="$item:$PATH"
+            done
+        fi
+    done
+
+    export PATH
 
     step "view formula"
     __view_formula_of_the_given_package "$1" --paging=never
