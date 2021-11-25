@@ -1445,6 +1445,8 @@ __pmw_get_available_package_name_by_command_name_choco() {
      xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -1484,6 +1486,8 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
     intltoolize)  echo "intltool";;
     gtkdocize)    echo "gtk-doc" ;;
     pkg-config)   echo "pkgconf" ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *) echo "$1"
     esac
 }
@@ -1516,6 +1520,8 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -1548,6 +1554,8 @@ __pmw_get_available_package_name_by_command_name_pkg() {
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -1581,6 +1589,8 @@ __pmw_get_available_package_name_by_command_name_emerge() {
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -1612,6 +1622,8 @@ __pmw_get_available_package_name_by_command_name_pacman() {
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -1670,6 +1682,8 @@ __pmw_get_available_package_name_by_command_name_xbps() {
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -1702,6 +1716,8 @@ __pmw_get_available_package_name_by_command_name_apk() {
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     pkg-config) echo "pkgconf"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *) echo "$1"
     esac
 }
@@ -1734,6 +1750,8 @@ __pmw_get_available_package_name_by_command_name_zypper() {
     autopoint)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -1765,6 +1783,8 @@ __pmw_get_available_package_name_by_command_name_dnf() {
      xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -1794,6 +1814,8 @@ __pmw_get_available_package_name_by_command_name_yum() {
      xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -1836,6 +1858,8 @@ __pmw_get_available_package_name_by_command_name_apt() {
      xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc-tools" ;;
+    gdk-pixbuf-query-loaders)
+                echo 'libgdk-pixbuf2.0-bin' ;;
         ninja)
             if [ "$NATIVE_OS_SUBS" = termux ] ; then
                 echo ninja
@@ -1877,6 +1901,8 @@ __pmw_get_available_package_name_by_command_name_brew() {
     gtkdocize)  echo "gtk-doc"  ;;
     python|python3)
                 echo 'python@3.9' ;;
+    gdk-pixbuf-query-loaders)
+                echo 'gdk-pixbuf' ;;
         *)      echo "$1"
     esac
 }
@@ -4832,7 +4858,7 @@ __config_variables_for_the_given_target() {
     PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
     if [ "$LOG_LEVEL" = VERBOSE ] ; then
-        CCFLAGS="$CCFLAGS -v"
+        CCFLAGS="$CCFLAGS -v -Wl,-v"
     fi
 
       CFLAGS="$CCFLAGS"
@@ -4855,7 +4881,7 @@ __config_variables_for_the_given_target() {
         for supportedTarget in $(__list_supported_target_triples)
         do
             supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
-            for installedTarget in $(rustup target list | grep installed | cut -d " " -f1)
+            for installedTarget in $(rustup target list | sed -n '/installed/p' | cut -d ' ' -f1)
             do
                 if [ "$supportedTarget" = "$installedTarget" ] ; then
                     break
@@ -4866,13 +4892,17 @@ __config_variables_for_the_given_target() {
             }
         done
 
-        CARGO_TARGET=$(echo "$TARGET_TRIPLE" | sed 's/armv7a/armv7/')
+        RUST_TARGET=$(echo "$TARGET_TRIPLE" | sed 's/armv7a/armv7/')
 
+        # this environment variable is not defined by Rust, but it is widely used by third-party project.
+        export RUST_TARGET="$RUST_TARGET"
+
+        RUST_TARGET_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$RUST_TARGET" | tr a-z A-Z | tr - _)
+
+        # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
         # https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        CARGO_TARGET_XXX=$(echo "$CARGO_TARGET" | tr a-z A-Z | tr - _)
-
-        eval export "CARGO_TARGET_${CARGO_TARGET_XXX}_AR=\"$AR\""
-        eval export "CARGO_TARGET_${CARGO_TARGET_XXX}_LINKER=\"$CC\""
+        eval export "CARGO_TARGET_${RUST_TARGET_XXX}_AR=\"$AR\""
+        eval export "CARGO_TARGET_${RUST_TARGET_XXX}_LINKER=\"$CC\""
 
         # https://libraries.io/cargo/cc
         export HOST_CC="$CC_FOR_BUILD"
@@ -5090,7 +5120,7 @@ cargow() {
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --release"
             fi
             if [ -z "$CARGO_BUILD_ARG_TARGET" ] ; then
-                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --target $CARGO_TARGET"
+                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --target $RUST_TARGET"
             fi
             run cargo clean && run cargo $CARGO_BUILD_ARGS
             ;;
@@ -5116,7 +5146,7 @@ cargow() {
                 CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
             fi
             if [ -z "$CARGO_INSTALL_ARG_TARGET" ] ; then
-                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --target $CARGO_TARGET"
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --target $RUST_TARGET"
             fi
             if [ -z "$CARGO_INSTALL_ARG_PATH" ] ; then
                 CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $SOURCE_DIR"
