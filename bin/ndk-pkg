@@ -4901,8 +4901,8 @@ __config_variables_for_the_given_target() {
 
         # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
         # https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        eval export "CARGO_TARGET_${RUST_TARGET_XXX}_AR=\"$AR\""
-        eval export "CARGO_TARGET_${RUST_TARGET_XXX}_LINKER=\"$CC\""
+        eval export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR=\"$AR\""
+        eval export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER=\"$CC\""
 
         # https://libraries.io/cargo/cc
         export HOST_CC="$CC_FOR_BUILD"
