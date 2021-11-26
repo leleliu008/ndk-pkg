@@ -3215,7 +3215,9 @@ prompt_user_to_install_bat() {
 
 __fetch_sources_of_the_given_package() {
     # fetch source code if needed
-    if [ "$PACKAGE_SRC_TYPE" != 'dir' ] ; then
+    if [ "$PACKAGE_SRC_TYPE" = 'dir' ] ; then
+        note "$PACKAGE_SRC_URL is local path, no need to fetch."
+    else
         fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SUM" --output-path="$PACKAGE_SRC_PATH"
     fi
 }
@@ -3243,11 +3245,24 @@ __fetch_patches() {
 }
 
 __fetch_resources_of_the_given_package() {
-    if [ "$PACKAGE_FORMULA_LOADED" != yes ] ; then
-        __load_formula_of_the_given_package $@ || return 1
-    fi
-    __fetch_sources_of_the_given_package $@ &&
-    __fetch_patches_of_the_given_package $@
+    case $1 in
+        '')  die "__fetch_resources_of_the_given_package() no package specified." ;;
+        @all)
+            shift
+            unset STEP_NUM
+            for PKG in $(__list_available_packages)
+            do
+                step "$PKG"
+                 __load_formula_of_the_given_package "$PKG" $@ || return 1
+                __fetch_sources_of_the_given_package "$PKG" $@ || return 1
+                __fetch_patches_of_the_given_package "$PKG" $@ || return 1
+            done
+            ;;
+        *)
+             __load_formula_of_the_given_package $@ || return 1
+            __fetch_sources_of_the_given_package $@ || return 1
+            __fetch_patches_of_the_given_package $@
+    esac
 }
 
 die_if_package_is_not_specified() {
@@ -4112,8 +4127,9 @@ EOF
         run cat "$COMMON_INCLUDE_H_FILEPATH"
     fi
 
-    step "fetch resources if needed"
-    __fetch_resources_of_the_given_package "$1" || return 1
+    step "fetch sources and patches"
+    __fetch_sources_of_the_given_package "$1" || return 1
+    __fetch_patches_of_the_given_package "$1" || return 1
 
     step "unpack sources to work directory"
     case $PACKAGE_SRC_URL in
@@ -5766,18 +5782,6 @@ EOF
     fi
 }
 
-ndk_version_major() {
-    if   command -v cut > /dev/null ; then
-        printf "$ANDROID_NDK_VERSION" | cut -d. -f1
-    elif command -v awk > /dev/null ; then
-        printf "$ANDROID_NDK_VERSION" | awk -F. '{print $1}'
-    elif command -v sed > /dev/null ; then
-        printf "$ANDROID_NDK_VERSION" | sed 's/\..*//g'
-    else
-        die "please install GNU CoreUtils."
-    fi
-}
-
 is_a_valid_android_ndk_home_dir() {
     [ -d "$1" ] &&
     [ -f "$1/source.properties" ] &&
@@ -6016,7 +6020,7 @@ setup_build_toolchains_env() {
     SYSROOT="$TOOLCHAIN_ROOT/sysroot"
 
     ANDROID_NDK_VERSION="$(ndk_version)"
-    ANDROID_NDK_VERSION_MAJOR="$(ndk_version_major)"
+    ANDROID_NDK_VERSION_MAJOR="$(printf '%s\n' "$ANDROID_NDK_VERSION" | cut -d. -f1)"
 
     # Android NDK version must be r19 or newer.
     if [ "$ANDROID_NDK_VERSION_MAJOR" -lt 19 ] ; then
@@ -6358,6 +6362,9 @@ ${COLOR_GREEN}ndk-pkg info @all [--json]${COLOR_OFF}
 
 ${COLOR_GREEN}ndk-pkg fetch <PACKAGE>${COLOR_OFF}
     download formula resources of the given package to the cache.
+
+${COLOR_GREEN}ndk-pkg fetch @all${COLOR_OFF}
+    download formula resources of all available packages to the cache.
 
 ${COLOR_GREEN}ndk-pkg depends <PACKAGE>${COLOR_OFF}
     show the depends of the given package.

@@ -128,7 +128,9 @@ function _ndk_pkg() {
                                                             esac
                                                         esac
                         ;;
-                fetch|depends)
+                fetch)
+                    _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' ;;
+                depends)
                     _arguments ':package-name:_ndk_pkg_available_packages' ;;
                 pack)
                     _arguments \

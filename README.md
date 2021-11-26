@@ -91,8 +91,10 @@ ndk-pkg update
 
 *   install [Android NDK](https://developer.android.google.cn/ndk)
 
-        ndk-pkg install-android-ndk
+        ndk-pkg ndkmanager install r23e
         
+    **Note**: In general, you don't need to run this command in advance. `ndk-pkg install <PKG>` will run this command if don't find a installed `Android NDK`
+
 *   search packages can be installed
         
         ndk-pkg search curl
@@ -244,6 +246,10 @@ ndk-pkg update
         
         ndk-pkg fetch curl
         
+*   download formula resources of all available packages to the cache
+
+        ndk-pkg fetch @all
+
 *   show logs of the given installed package
         
         ndk-pkg logs curl armeabi-v7a
