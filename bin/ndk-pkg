@@ -2093,14 +2093,14 @@ EOF
         fi
 
         unset __PB_TYPE__
-        unset __PB_SHA256__
+        unset __PB_SUM__
         unset __PB_URL__
 
         __PB_TYPE__=$(printf '%s\n' "$LINE" | cut -d '|' -f7)
-        __PB_SHA256__=$(printf '%s\n' "$LINE" | cut -d '|' -f8)
+        __PB_SUM__=$(printf '%s\n' "$LINE" | cut -d '|' -f8)
         __PB_URL__=$(printf '%s\n' "$LINE" | cut -d '|' -f9)
 
-        printf "$__PB_TYPE__ $__PB_SHA256__ $__PB_URL__ $@\n"
+        printf "$__PB_TYPE__ $__PB_SUM__ $__PB_URL__ $@\n"
     done
 }
 
@@ -3553,6 +3553,7 @@ __search_packages() {
 __compare_versions_with_brew() {
     get_brew_package_name_from_my_package_name() {
         case $1 in
+            delta)    printf '%s\n' 'git-delta' ;;
             gmake)    printf '%s\n' 'make'      ;;
             gtar)     printf '%s\n' 'gnu-tar'   ;;
             libjxl)   printf '%s\n' 'jpeg-xl'   ;;
