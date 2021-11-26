@@ -4904,6 +4904,8 @@ __config_variables_for_the_given_target() {
         eval export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR=\"$AR\""
         eval export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER=\"$CC\""
 
+        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
+
         # https://libraries.io/cargo/cc
         export HOST_CC="$CC_FOR_BUILD"
         export HOST_CFLAGS="$CFLAGS_FOR_BUILD"
@@ -5042,7 +5044,9 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
         echo
-        env | grep CARGO
+        env | sed -n '/CARGO/p'
+        echo
+        env | sed -n '/RUST/p'
         echo
         cat <<EOF
     HOST_AR       = $HOST_AR
