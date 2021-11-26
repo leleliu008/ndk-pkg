@@ -5958,6 +5958,8 @@ setup_build_toolchains_env() {
         fi
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_HOME" ; then
             debug "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, which is used as the android ndk home."
+            export ANDROID_NDK_HOME="$ANDROID_NDK_HOME"
+            export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
         else
             debug "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, but it is not a valid android ndk home directory."
             unset ANDROID_NDK_HOME
@@ -5968,6 +5970,7 @@ setup_build_toolchains_env() {
         if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_ROOT" ; then
             debug "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
+            export ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT"
         else
             debug "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, but it is not a valid android ndk home directory."
             unset ANDROID_NDK_ROOT
@@ -5979,6 +5982,7 @@ setup_build_toolchains_env() {
         if is_a_valid_android_ndk_home_dir "$ANDROID_HOME/ndk-bundle" ; then
             debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
+            export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk-bundle"
         else
             debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF} direcotory is not exist."
         fi
@@ -5988,6 +5992,7 @@ setup_build_toolchains_env() {
         if is_a_valid_android_ndk_home_dir "$ANDROID_SDK_ROOT/ndk-bundle" ; then
             debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk-bundle"
+            export ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk-bundle"
         else
             debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} direcotory is not exist."
         fi
@@ -6011,23 +6016,26 @@ setup_build_toolchains_env() {
     fi
 
     if [ -z "$ANDROID_NDK_HOME" ] ; then
-        die "no proper Android NDK found."
+        die "Android NDK Not Found."
     fi
-
-    TOOLCHAIN_NAME='android-ndk'
-    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
-    TOOLCHAIN_BIND="$TOOLCHAIN_ROOT/bin"
-    SYSROOT="$TOOLCHAIN_ROOT/sysroot"
 
     ANDROID_NDK_VERSION="$(ndk_version)"
     ANDROID_NDK_VERSION_MAJOR="$(printf '%s\n' "$ANDROID_NDK_VERSION" | cut -d. -f1)"
+
+    run "env | sed -n '/ANDROID_/p'"
+    echo "ANDROID_NDK_VERSION=$ANDROID_NDK_VERSION"
 
     # Android NDK version must be r19 or newer.
     if [ "$ANDROID_NDK_VERSION_MAJOR" -lt 19 ] ; then
         die "your installed android-ndk [$ANDROID_NDK_HOME] version is $ANDROID_NDK_VERSION, please update to r19 or newer."
     fi
 
-    TOOLCHAIN_VERS=$ANDROID_NDK_VERSION
+    TOOLCHAIN_NAME='android-ndk'
+    TOOLCHAIN_VERS="$ANDROID_NDK_VERSION"
+    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    TOOLCHAIN_BIND="$TOOLCHAIN_ROOT/bin"
+
+    SYSROOT="$TOOLCHAIN_ROOT/sysroot"
 
     bppend_to_PATH "$ANDROID_NDK_HOME"
     bppend_to_PATH "$TOOLCHAIN_BIND"
@@ -6431,9 +6439,6 @@ main() {
             run "id | tr ' ' '\n'"
             echo
             setup_build_toolchains_env
-            echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}android-ndk${COLOR_OFF}"
-            echo "$ANDROID_NDK_HOME $TOOLCHAIN_VERS\n"
-            run "env | sed -n '/ANDROID_/p'"
             ;;
         target)
             shift

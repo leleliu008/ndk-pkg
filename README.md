@@ -93,7 +93,7 @@ ndk-pkg update
 
         ndk-pkg ndkmanager install r23e
         
-    **Note**: In general, you don't need to run this command in advance. `ndk-pkg install <PKG>` will run this command if don't find a installed `Android NDK`
+    **Note**: In general, you don't need to run this command in advance. `ndk-pkg install <PKG>` will run this command if [Android NDK](https://developer.android.google.cn/ndk) not found on your build machine.
 
 *   search packages can be installed
         
