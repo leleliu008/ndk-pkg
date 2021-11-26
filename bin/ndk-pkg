@@ -320,13 +320,13 @@ die_if_sha256sum_mismatch() {
 
 # $1 map_name
 __map_name_ref() {
-    printf "map_%s\n" "$(printf '%s' "$1" | md5sum)"
+    printf "map_%s\n" "$(printf '%s\n' "$1" | md5sum)"
 }
 
 # $1 map_name
 # $2 key
 __map_key_ref() {
-    printf "%s_key_%s\n" "$(__map_name_ref "$1")" "$(printf '%s' "$2" | md5sum)"
+    printf "%s_key_%s\n" "$(__map_name_ref "$1")" "$(printf '%s\n' "$2" | md5sum)"
 }
 
 # $1 map_name
@@ -5827,13 +5827,13 @@ EOF
                             [ "$__XX_VERSION__" = "$1"] || continue
                         fi
 
-                        __XX_OS_KIND__=$(printf '%s' "$LINE" | cut -d- -f4 | cut -d. -f1)
+                        __XX_OS_KIND__=$(printf '%s\n' "$LINE" | cut -d- -f4 | cut -d. -f1)
 
                         if [ -n "$__XX_OS_KIND__" ] && [ "$__XX_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
                             continue
                         fi
 
-                        __XX_OS_ARCH__=$(printf '%s' "$LINE" | cut -d- -f5 | cut -d. -f1)
+                        __XX_OS_ARCH__=$(printf '%s\n' "$LINE" | cut -d- -f5 | cut -d. -f1)
 
                         if [ -n "$__XX_OS_ARCH__" ] && [ "$__XX_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
                             continue
@@ -5854,13 +5854,13 @@ EOF
                             [ "$__XX_VERSION__" = "$1" ] || continue
                         fi
 
-                        __XX_OS_KIND__=$(printf '%s' "$LINE" | cut -d- -f4 | cut -d. -f1)
+                        __XX_OS_KIND__=$(printf '%s\n' "$LINE" | cut -d- -f4 | cut -d. -f1)
 
                         if [ -n "$__XX_OS_KIND__" ] && [ "$__XX_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
                             continue
                         fi
 
-                        __XX_OS_ARCH__=$(printf '%s' "$LINE" | cut -d- -f5 | cut -d. -f1)
+                        __XX_OS_ARCH__=$(printf '%s\n' "$LINE" | cut -d- -f5 | cut -d. -f1)
 
                         if [ -n "$__XX_OS_ARCH__" ] && [ "$__XX_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
                             continue
