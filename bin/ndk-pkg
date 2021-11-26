@@ -5003,6 +5003,7 @@ __printf_variables_for_the_given_target() {
     TOOLCHAIN_BIND = $TOOLCHAIN_BIND
 
   ANDROID_NDK_HOME = $ANDROID_NDK_HOME
+  ANDROID_NDK_ROOT = $ANDROID_NDK_ROOT
 
            SYSROOT = $SYSROOT
 
@@ -6012,11 +6013,13 @@ setup_build_toolchains_env() {
     fi
 
     if [ -z "$ANDROID_NDK_HOME" ] ; then
-        ndkmanager install r23b
-    fi
-
-    if [ -z "$ANDROID_NDK_HOME" ] ; then
-        die "Android NDK Not Found."
+        note "Android NDK Not Found on your build machine, I will install it for you."
+        if ndkmanager install r23b ; then
+            export ANDROID_NDK_HOME
+            export ANDROID_NDK_ROOT
+        else
+            die "install Android NDK failed."
+        fi
     fi
 
     ANDROID_NDK_VERSION="$(ndk_version)"
