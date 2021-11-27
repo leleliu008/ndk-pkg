@@ -2737,22 +2737,31 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
 
     # if build in source dir, otherwise in build dir
-    unset PACKAGE_BUILD_IN_SOURCE_DIR
+    PACKAGE_BUILD_IN_SOURCE_DIR=no
 
     # if build in parallel
-    unset PACKAGE_BUILD_IN_PARALLEL
+    PACKAGE_BUILD_IN_PARALLEL=yes
 
-    # dependency commands
+    # dependency commands       List
     unset PACKAGE_DEP_CMD
 
-    # dependency python modules
+    # dependency python modules List
     unset PACKAGE_DEP_PYM
 
-    # dependency perl modules
+    # dependency perl modules   List
     unset PACKAGE_DEP_PLM
 
-    # dependency packages
+    # dependency packages       List
     unset PACKAGE_DEP_PKG
+
+    # if depends on JDK
+    PACKAGE_DEP_JDK=no
+
+    # if depends on Android SDK
+    PACKAGE_DEP_SDK=no
+
+    # if depends on Android NDK
+    PACKAGE_DEP_NDK=yes
 
     unset PACKAGE_CDEFINE
     unset PACKAGE_CCFLAGS
@@ -4036,11 +4045,23 @@ __install_the_given_package() {
     step "load formula"
     __load_formula_of_the_given_package "$1"
 
-    step "find android-ndk and setup env"
-    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        ndkmanager install r21e
+    if [ "$PACKAGE_DEP_JDK" = yes ] ; then
+        step "find Java Development Kit"
+        install_jdk_if_needed
     fi
-    setup_build_toolchains_env
+
+    if [ "$PACKAGE_DEP_SDK" = yes ] ; then
+        step "find Android SDK"
+        install_android_sdk_if_needed
+    fi
+
+    if [ "$PACKAGE_DEP_NDK" = yes ] ; then
+        step "find Android NDK"
+        if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+            ndkmanager install r21e
+        fi
+        setup_build_toolchains_env
+    fi
 
     unset TARGET_OS_VERS
     TARGET_OS_VERS=$(pick_target_os_version "$PACKAGE_SDK_API" "$USER_SPECIFIED_TARGET_OS_VERS") || die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_SDK_API, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
@@ -6022,19 +6043,23 @@ setup_build_toolchains_env() {
         fi
     fi
 
-    ANDROID_NDK_VERSION="$(ndk_version)"
-    ANDROID_NDK_VERSION_MAJOR="$(printf '%s\n' "$ANDROID_NDK_VERSION" | cut -d. -f1)"
+    unset ANDROID_NDK_VERS
+    unset ANDROID_NDK_VERS_MAJOR
+
+    ANDROID_NDK_VERS="$(ndk_version)"
+    ANDROID_NDK_VERS_MAJOR="$(printf '%s\n' "$ANDROID_NDK_VERS" | cut -d. -f1)"
+
+    export ANDROID_NDK_VERS
 
     run "env | sed -n '/ANDROID_/p'"
-    echo "ANDROID_NDK_VERSION=$ANDROID_NDK_VERSION"
 
     # Android NDK version must be r19 or newer.
-    if [ "$ANDROID_NDK_VERSION_MAJOR" -lt 19 ] ; then
-        die "your installed android-ndk [$ANDROID_NDK_HOME] version is $ANDROID_NDK_VERSION, please update to r19 or newer."
+    if [ "$ANDROID_NDK_VERS_MAJOR" -lt 19 ] ; then
+        die "your installed android-ndk [$ANDROID_NDK_HOME] version is $ANDROID_NDK_VERS, please update to r19 or newer."
     fi
 
     TOOLCHAIN_NAME='android-ndk'
-    TOOLCHAIN_VERS="$ANDROID_NDK_VERSION"
+    TOOLCHAIN_VERS="$ANDROID_NDK_VERS"
     TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     TOOLCHAIN_BIND="$TOOLCHAIN_ROOT/bin"
 
@@ -6049,6 +6074,182 @@ bppend_to_PATH() {
         *:"$1":*) ;;
         *) export PATH="$1:$PATH" ;;
     esac
+}
+
+is_a_valid_android_sdk_home_dir() {
+    true
+}
+
+install_android_sdk_if_needed() {
+    set -e
+
+    # https://developer.android.com/studio/command-line/variables
+
+    if [ -n "$ANDROID_HOME" ] ; then
+        if is_a_valid_android_sdk_home_dir "$ANDROID_HOME" ; then
+            debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, which is used as the android sdk home."
+            export ANDROID_HOME
+            export ANDROID_SDK_ROOT="$ANDROID_HOME"
+        else
+            debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, but it is not a valid android sdk home."
+            unset ANDROID_HOME
+        fi
+    fi
+
+    if [ -z "$ANDROID_HOME" ] && [ -n "$ANDROID_SDK_ROOT" ] ; then
+        if is_a_valid_android_ndk_home_dir "$ANDROID_SDK_ROOT" ; then
+            debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, which is used as the android ndk home."
+            export ANDROID_SDK_ROOT
+            export ANDROID_HOME="$ANDROID_SDK_ROOT"
+        else
+            debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, but it is not a valid android sdk home."
+            unset ANDROID_SDK_ROOT
+        fi
+    fi
+
+    if [ -z "$ANDROID_SDK_ROOT" ] ; then
+        if [ -f "$MY_HOME_DIR/android-sdk/env" ] ; then
+            if is_a_valid_android_sdk_home_dir "$MY_HOME_DIR/android-sdk" ; then
+                . "$MY_HOME_DIR/android-sdk/env"
+            else
+                rm -rf "$MY_HOME_DIR/android-sdk"
+            fi
+        fi
+    fi
+
+    if [ -z "$ANDROID_SDK_ROOT" ] ; then
+        note "Android SDK Not Found on your build machine, I will install it for you."
+
+        # https://developer.android.com/studio#cmdline-tools
+        case $NATIVE_OS_KIND in
+            linux)
+                ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip'
+                ANDROID_SDK_SUM='124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf'
+                ;;
+            darwin)
+                ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip'
+                ANDROID_SDK_SUM='6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf'
+                ;;
+            windows)
+                ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-win-7583922_latest.zip'
+                ANDROID_SDK_SUM='f9e6f91743bcb1cc6905648ca751bc33975b0dd11b50d691c2085d025514278c'
+                ;;
+            *)  die "No Android SDK for $NATIVE_OS_KIND"
+        esac
+
+        ANDROID_SDK_FILENAME='android-sdk-commandline-tools.zip'
+        ANDROID_SDK_FILEPATH="$MY_HOME_DIR/$ANDROID_SDK_FILENAME"
+
+        fetch "$ANDROID_SDK_URL" --sha256="$ANDROID_SDK_SUM" --output-path="$ANDROID_SDK_FILEPATH"
+
+        run unzip "$ANDROID_SDK_FILEPATH" -d "$MY_HOME_DIR/android-sdk/cmdline-tools"
+
+        run mv "$MY_HOME_DIR/android-sdk/cmdline-tools/cmdline-tools" "$MY_HOME_DIR/android-sdk/cmdline-tools/latest"
+
+        run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-30'"
+        run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'build-tools;30.0.3'"
+        run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'platform-tools'"
+
+        cat > "$MY_HOME_DIR/android-sdk/env" <<EOF
+bppend_to_PATH() {
+    case ":${PATH}:" in
+        *:"$@":*) ;;
+        *) export PATH="$@:$PATH" ;;
+    esac
+}
+
+ANDROID_HOME="$MY_HOME_DIR/android-sdk"
+ANDROID_SDK_ROOT="$MY_HOME_DIR/android-sdk"
+
+bppend_to_PATH "$ANDROID_SDK_ROOT/cmdline-tools/tools/bin"
+bppend_to_PATH "$ANDROID_SDK_ROOT/platform-tools"
+bppend_to_PATH "$ANDROID_SDK_ROOT/build-tools/30.0.3"
+EOF
+    . "$MY_HOME_DIR/android-sdk/env"
+    fi
+
+    echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
+    echo "ANDROID_HOME     = $ANDROID_HOME"
+    echo "PATH = $PATH"
+}
+
+install_jdk_if_needed() {
+    set -e
+
+    if [ -n "$JAVA_HOME" ] ; then
+        if is_a_valid_jdk_home_dir "$JAVA_HOME" ; then
+            debug "you have set the ${COLOR_RED}JAVA_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$JAVA_HOME${COLOR_OFF}, which is used as the jdk home."
+            export JAVA_HOME
+        else
+            debug "you have set the ${COLOR_RED}JAVA_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$JAVA_HOME${COLOR_OFF}, but it is not a valid jdk home."
+            unset JAVA_HOME
+        fi
+    fi
+
+    if [ -z "$JAVA_HOME" ] ; then
+        if [ -f "$MY_HOME_DIR/jdk/env" ] ; then
+            if is_a_valid_jdk_home_dir "$MY_HOME_DIR/jdk" ; then
+                . "$MY_HOME_DIR/jdk/env"
+            else
+                rm -rf "$MY_HOME_DIR/jdk"
+            fi
+        fi
+    fi
+
+    if [ -z "$JAVA_HOME" ] ; then
+        note "JDK Not Found on your build machine, I will install it for you."
+
+        # https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html
+        case $NATIVE_OS_KIND in
+            linux)
+                JDK_URL='https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-aarch64_bin.tar.gz'
+                JDK_SUM='124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf'
+                ;;
+            darwin)
+                ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip'
+                ANDROID_SDK_SUM='6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf'
+                ;;
+            windows)
+                ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-win-7583922_latest.zip'
+                ANDROID_SDK_SUM='f9e6f91743bcb1cc6905648ca751bc33975b0dd11b50d691c2085d025514278c'
+                ;;
+            *)  die "No Android SDK for $NATIVE_OS_KIND"
+        esac
+
+        ANDROID_SDK_FILENAME='android-sdk-commandline-tools.zip'
+        ANDROID_SDK_FILEPATH="$MY_HOME_DIR/$ANDROID_SDK_FILENAME"
+
+        fetch "$ANDROID_SDK_URL" --sha256="$ANDROID_SDK_SUM" --output-path="$ANDROID_SDK_FILEPATH"
+
+        run unzip "$ANDROID_SDK_FILEPATH" -d "$MY_HOME_DIR/android-sdk/cmdline-tools"
+
+        run mv "$MY_HOME_DIR/android-sdk/cmdline-tools/cmdline-tools" "$MY_HOME_DIR/android-sdk/cmdline-tools/latest"
+
+        run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-30'"
+        run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'build-tools;30.0.3'"
+        run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'platform-tools'"
+
+        cat > "$MY_HOME_DIR/android-sdk/env" <<EOF
+bppend_to_PATH() {
+    case ":${PATH}:" in
+        *:"$@":*) ;;
+        *) export PATH="$@:$PATH" ;;
+    esac
+}
+
+ANDROID_HOME="$MY_HOME_DIR/android-sdk"
+ANDROID_SDK_ROOT="$MY_HOME_DIR/android-sdk"
+
+bppend_to_PATH "$ANDROID_SDK_ROOT/cmdline-tools/tools/bin"
+bppend_to_PATH "$ANDROID_SDK_ROOT/platform-tools"
+bppend_to_PATH "$ANDROID_SDK_ROOT/build-tools/30.0.3"
+EOF
+    . "$MY_HOME_DIR/android-sdk/env"
+    fi
+
+    echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
+    echo "ANDROID_HOME     = $ANDROID_HOME"
+    echo "PATH = $PATH"
 }
 
 inspect_install_arguments() {
@@ -6246,18 +6447,31 @@ init() {
         .   "$HOME/.cargo/env"
     fi
 
-    if [ -d "$HOME/.cargo" ] ; then
-        # http://mirrors.ustc.edu.cn/help/crates.io-index.html
-        if [ ! -f  "$HOME/.cargo/config" ] ; then
-            cat >> "$HOME/.cargo/config" <<EOF
-[source.crates-io]
-replace-with = 'ustc'
-
-[source.ustc]
-registry = "git://mirrors.ustc.edu.cn/crates.io-index"
-EOF
-        fi
-    fi
+#    if [ -d "$HOME/.cargo" ] ; then
+#        # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+#        if [ "$GITHUB_ACTIONS" = true ] ; then
+#            :
+#        else
+#            # http://mirrors.ustc.edu.cn/help/crates.io-index.html
+#            if [ ! -f  "$HOME/.cargo/config" ] ; then
+#                cat >> "$HOME/.cargo/config" <<EOF
+#    [source.crates-io]
+#    replace-with = 'ustc'
+#
+#    [source.ustc]
+#    registry = "git://mirrors.ustc.edu.cn/crates.io-index"
+#    EOF
+#                if [ "$COUNTRY" = 'china' ] ; then
+#                    if [ -z  "$CARGO_SOURCE_CRATES_IO_REPLACE_WITH" ] ; then
+#                        export CARGO_SOURCE_CRATES_IO_REPLACE_WITH='ustc'
+#                    fi
+#                    if [ -z  "$CARGO_SOURCE_USTC_REGISTRY" ] ; then
+#                        export CARGO_SOURCE_USTC_REGISTRY='git://mirrors.ustc.edu.cn/crates.io-index'
+#                    fi
+#                fi
+#            fi
+#        fi
+#    fi
 
     unset PACKAGE_FORMULA_LOADED
     unset AVAILABLE_PACKAGE_MANAGER_LIST
