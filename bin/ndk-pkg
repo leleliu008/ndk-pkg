@@ -5896,7 +5896,7 @@ EOF
             esac
             ;;
         ls-available)
-            ndkmanager config | cut -d- -f3
+            ndkmanager config | cut -d- -f3 | cut -d. -f1
             ;;
         install)
             shift
