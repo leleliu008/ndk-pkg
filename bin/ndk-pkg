@@ -2051,8 +2051,8 @@ python3   |glibc|linux |x86_64|python  |3.9.5 |tar.xz|5d9b13e38878292f18a41188bd
 git       |glibc|linux |x86_64|git     |2.30.2|tar.xz|61e545ef05e41565292c2e909e5b39e4eb8e60a4e729db06a1ddea3b44f89241|https://github.com/leleliu008/git-prebuild/releases/download/2.30.2/git-2.30.2-x86_64-linux-glibc.tar.xz
 autoconf  |glibc|linux |x86_64|autoconf|2.69  |tar.gz|3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
 autoreconf|glibc|linux |x86_64|autoconf|2.69  |tar.gz|3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
-cmake     |glibc|linux |x86_64|cmake   |3.20.2|tar.gz|3f827544f9c82e74ddf5016461fdfcfea4ede58a26f82612f473bf6bfad8bfc2|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz
-cmake     |  -  |darwin|  -   |cmake   |3.20.2|tar.gz|0100663380a3bd977b001183cd487412db7aad9de6859927bde97e1e6e44e645|https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-macos-universal.tar.gz
+cmake     |glibc|linux |x86_64|cmake   |3.21.4|tar.gz|eddba9da5b60e0b5ec5cbb1a65e504d776e247573204df14f6d004da9bc611f9|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-linux-x86_64.tar.gz
+cmake     |  -  |darwin|  -   |cmake   |3.21.4|tar.gz|f818a10fe625b215e31d0c29c19a6563fb5f51ed7cc7727e5011626c11ea321a|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-macos-universal.tar.gz
 ninja     |  -  |linux |x86_64|ninja   |1.10.2|zip   |763464859c7ef2ea3a0a10f4df40d2025d3bb9438fcb1228404640410c0ec22d|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
 ninja     |  -  |darwin|x86_64|ninja   |1.10.2|zip   |6fa359f491fac7e5185273c6421a000eea6a2f0febf0ac03ac900bd4d80ed2a5|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
 go        |  -  |linux |x86_64|golang  |1.17.2|tar.gz|f242a9db6a0ad1846de7b6d94d507915d14062660616a61ef7c808a76e4f1676|https://golang.org/dl/go1.17.2.linux-amd64.tar.gz
@@ -2097,10 +2097,10 @@ EOF
         unset __PB_URL__
 
         __PB_TYPE__=$(printf '%s\n' "$LINE" | cut -d '|' -f7)
-        __PB_SUM__=$(printf '%s\n' "$LINE" | cut -d '|' -f8)
-        __PB_URL__=$(printf '%s\n' "$LINE" | cut -d '|' -f9)
+        __PB_SUM__=$(printf  '%s\n' "$LINE" | cut -d '|' -f8)
+        __PB_URL__=$(printf  '%s\n' "$LINE" | cut -d '|' -f9)
 
-        printf "$__PB_TYPE__ $__PB_SUM__ $__PB_URL__ $@\n"
+        printf "$__PB_TYPE__ $__PB_SUM__ $__PB_URL__\n"
     done
 }
 
@@ -2110,7 +2110,7 @@ __install_command_via_fetch_prebuild_binary() {
     if [ $# -eq 0 ] ; then
         return 1
     elif [ $# -eq 1 ] || [ $# -eq 3 ] ; then
-        __install_command_via_fetch_prebuild_binary $(__get_prebuild_binary_config_by_command_name $@)
+        __install_command_via_fetch_prebuild_binary $(__get_prebuild_binary_config_by_command_name $@) $@
     elif [ $# -eq 4 ] || [ $# -eq 6 ] ; then
         case $1 in
             zip)
