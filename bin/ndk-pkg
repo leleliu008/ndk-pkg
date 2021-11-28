@@ -5377,9 +5377,13 @@ cmakew() {
         run $CMAKE --install "$NATIVE_BUILD_DIR"
     else
         # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
-        # CMAKE_HOST_SYSTEM_NAME on msys2 is not Windows
+        # CMAKE_HOST_SYSTEM_NAME on Cygwin and MSYS2 is not Windows
         if [ "$NATIVE_OS_KIND" = 'windows' ] ; then
-            sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+            if [ -f "$ANDROID_NDK_HOME/build/cmake/android-legacy.toolchain.cmake" ] ; then
+                sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android-legacy.toolchain.cmake"
+            else
+                sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+            fi
         fi
 
         case $BUILD_TYPE in
