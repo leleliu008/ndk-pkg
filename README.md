@@ -4,7 +4,7 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 ## ndk-pkg supports system
 |HostOS|SubSystem|supported|recommended|summary|
 |------|---------|---------|-----------|-------|
-[Android](https://www.android.com/)|[Termux](https://termux.com/)|✔︎|❌|[Android NDK for termux](https://github.com/Lzhiyong/termux-ndk)|
+[Android](https://www.android.com/)|[Termux](https://termux.com/)|✔︎|❌|not fully tested|
 [macOS](https://www.apple.com.cn/mac/)||✔︎|✔︎|tested with [Github Actions](https://github.com/features/actions)|
 [Ubuntu](https://ubuntu.com/)||✔︎|✔︎|tested with [Github Actions](https://github.com/features/actions)|
 [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[glibc](http://www.gnu.org/software/libc/)|✔︎|✔︎|tested with [Github Actions](https://github.com/features/actions)|
