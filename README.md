@@ -7,11 +7,11 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 [macOS](https://www.apple.com.cn/mac/)||✔︎|✔︎|tested with Github-Actions|
 [Ubuntu](https://ubuntu.com/)||✔︎|✔︎|tested with Github-Actions|
 [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[glibc](http://www.gnu.org/software/libc/)|✔︎|✔︎|tested with Github-Actions|
-[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[musl-libc](http://musl.libc.org/)|❌|❌||
+[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[musl-libc](http://musl.libc.org/)|❌|❌|no available Android NDK|
 [Android](https://www.android.com/)|[Termux](https://termux.com/)|✔︎|❌|[Android NDK for termux](https://github.com/Lzhiyong/termux-ndk)|
-[FreeBSD](https://www.freebsd.org/)||❌|❌||
-[OpenBSD](https://www.openbsd.org/)||❌|❌||
-[NetBSD](https://www.netbsd.org/)||❌|❌||
+[FreeBSD](https://www.freebsd.org/)||❌|❌|no available Android NDK|
+[OpenBSD](https://www.openbsd.org/)||❌|❌|no available Android NDK|
+[NetBSD](https://www.netbsd.org/)||❌|❌|no available Android NDK|
 [Windows](https://www.microsoft.com/en-us/windows/)|[Cygwin](http://cygwin.org/)|❌|❌||
 [Windows](https://www.microsoft.com/en-us/windows/)|[MSYS2](https://www.msys2.org/)|❌|❌||
 [Windows](https://www.microsoft.com/en-us/windows/)|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|✔︎|tested with Github-Actions|
