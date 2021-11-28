@@ -5379,41 +5379,28 @@ cmakew() {
         # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
         # CMAKE_HOST_SYSTEM_NAME on Cygwin and MSYS2 is not Windows
         if [ "$NATIVE_OS_KIND" = 'windows' ] ; then
-            if [ -f "$ANDROID_NDK_HOME/build/cmake/android-legacy.toolchain.cmake" ] ; then
-                sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android-legacy.toolchain.cmake"
-            else
-                sed_in_place 's|elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows)|else()|g' "$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
-            fi
+            CMAKE_FLAGS="$CMAKE_FLAGS -DANDROID_HOST_TAG=windows-x86_64"
         fi
 
         case $BUILD_TYPE in
-            debug)
-                CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=Debug"
-                ;;
-            release)
-                CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=Release"
-                ;;
+            debug)   CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=Debug"   ;;
+            release) CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=Release" ;;
         esac
 
         if [ "$LOG_LEVEL" = QUIET ] ; then
             CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_VERBOSE_MAKEFILE=OFF -DCMAKE_COLOR_MAKEFILE=OFF"
         else
-            CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_COLOR_MAKEFILE=ON"
+            CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_VERBOSE_MAKEFILE=ON  -DCMAKE_COLOR_MAKEFILE=ON"
         fi
 
         case $TARGET_OS_ARCH in
-            armv7a)
-                CMAKE_SYSTEM_PROCESSOR=armv7-a ;;
-            aarch64)
-                CMAKE_SYSTEM_PROCESSOR=aarch64 ;;
-            i686)
-                CMAKE_SYSTEM_PROCESSOR=i686 ;;
-            x86_64)
-                CMAKE_SYSTEM_PROCESSOR=x86_64 ;;
+            armv7a)  CMAKE_SYSTEM_PROCESSOR=armv7-a ;;
+            aarch64) CMAKE_SYSTEM_PROCESSOR=aarch64 ;;
+            i686)    CMAKE_SYSTEM_PROCESSOR=i686    ;;
+            x86_64)  CMAKE_SYSTEM_PROCESSOR=x86_64  ;;
         esac
 
-        CMAKE_FLAGS="
-        $CMAKE_FLAGS
+        CMAKE_FLAGS="$CMAKE_FLAGS
         -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
         -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR
         -DCMAKE_FIND_ROOT_PATH='$CMAKE_FIND_ROOT_PATH'
