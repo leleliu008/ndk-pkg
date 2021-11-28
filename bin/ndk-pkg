@@ -643,7 +643,7 @@ get_china_mirror_url() {
             printf "%s\n" "$1" | sed 's@githubusercontent.com/@githubusercontents.com/@'
             ;;
         *github.com/*)
-            printf "%s\n" "$1" | sed 's@github.com/@github.com.cnpm.org/@'
+            printf "%s\n" "$1" | sed 's@github.com/@hub.fastgit.org/@'
             ;;
         *)  printf '%s\n' "$1"
     esac
