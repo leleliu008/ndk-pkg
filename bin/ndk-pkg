@@ -2046,7 +2046,7 @@ __uppm_is_the_given_package_available() {
         fi
     fi
 
-    for LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
+    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
     do
         unset UPPM_PKG_OS_KIND
         unset UPPM_PKG_OS_ARCH
@@ -2055,36 +2055,36 @@ __uppm_is_the_given_package_available() {
         unset UPPM_PKG_NAME
         unset UPPM_PKG_VERS
 
-        if [ -z "$LINE" ] ; then
+        if [ -z "$UPPM_PKG_LINE" ] ; then
             continue
         fi
 
-        UPPM_PKG_OS_KIND=$(printf '%s\n' "$LINE" | cut -d '|' -f1)
+        UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
 
         if [ "$UPPM_PKG_OS_KIND" != '-' ] && [ "$UPPM_PKG_OS_KIND" != "$NATIVE_OS_KIND" ] ; then
             continue
         fi
 
-        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$LINE" | cut -d '|' -f2)
+        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
 
         if [ "$UPPM_PKG_OS_ARCH" != '-' ] && [ "$UPPM_PKG_OS_ARCH" != "$NATIVE_OS_ARCH" ] ; then
             continue
         fi
 
-        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$LINE" | cut -d '|' -f3)
+        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
 
         if [ "$UPPM_PKG_OS_LIBC" != '-' ] && [ "$UPPM_PKG_OS_LIBC" != "$NATIVE_OS_LIBC" ] ; then
             continue
         fi
 
-        UPPM_PKG_NAME=$(printf '%s\n' "$LINE" | cut -d '|' -f4)
+        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
 
         if [ "$UPPM_PKG_NAME" != "$1" ] ; then
             continue
         fi
 
         if [ $# -ge 3 ] ; then
-            UPPM_PKG_VERS=$(printf '%s\n' "$LINE" | cut -d '|' -f5)
+            UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
             if version_match "$UPPM_PKG_VERS" "$2" "$3" ; then
                 return 0
             fi
@@ -2117,7 +2117,7 @@ __uppm_list_the_available_packages() {
         fi
     fi
 
-    for LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
+    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
     do
         unset UPPM_PKG_OS_KIND
         unset UPPM_PKG_OS_ARCH
@@ -2128,48 +2128,48 @@ __uppm_list_the_available_packages() {
         unset UPPM_PKG_SUM_
         unset UPPM_PKG_URL_
 
-        if [ -z "$LINE" ] ; then
+        if [ -z "$UPPM_PKG_LINE" ] ; then
             continue
         fi
 
-        UPPM_PKG_OS_KIND=$(printf '%s\n' "$LINE" | cut -d '|' -f1)
+        UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
 
         if [ "$UPPM_PKG_OS_KIND" != '-' ] && [ "$UPPM_PKG_OS_KIND" != "$NATIVE_OS_KIND" ] ; then
             continue
         fi
 
-        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$LINE" | cut -d '|' -f2)
+        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
 
         if [ "$UPPM_PKG_OS_ARCH" != '-' ] && [ "$UPPM_PKG_OS_ARCH" != "$NATIVE_OS_ARCH" ] ; then
             continue
         fi
 
-        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$LINE" | cut -d '|' -f3)
+        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
 
         if [ "$UPPM_PKG_OS_LIBC" != '-' ] && [ "$UPPM_PKG_OS_LIBC" != "$NATIVE_OS_LIBC" ] ; then
             continue
         fi
 
-        UPPM_PKG_NAME=$(printf '%s\n' "$LINE" | cut -d '|' -f4)
-        UPPM_PKG_VERS=$(printf '%s\n' "$LINE" | cut -d '|' -f5)
-        UPPM_PKG_SUM_=$(printf '%s\n' "$LINE" | cut -d '|' -f6)
-        UPPM_PKG_URL_=$(printf '%s\n' "$LINE" | cut -d '|' -f7)
+        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
+        UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
+        UPPM_PKG_SUM_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
+        UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f7)
 
         if [ $# -eq 0 ] ; then
-            printf '%s\n' "$LINE"
+            printf '%s\n' "$UPPM_PKG_LINE"
             continue
         fi
 
         if [ $# -eq 1 ] ; then
             if [ "$UPPM_PKG_NAME" = "$1" ] ; then
-                printf '%s\n' "$LINE"
+                printf '%s\n' "$UPPM_PKG_LINE"
             fi
             continue
         fi
 
         if [ $# -eq 3 ] ; then
             if [ "$UPPM_PKG_VERS" -$2 "$3" ] ; then
-                printf '%s\n' "$LINE"
+                printf '%s\n' "$UPPM_PKG_LINE"
                 if [ "$2" = 'eq' ] ; then
                     break
                 fi
@@ -2265,10 +2265,57 @@ __uppm_install_the_given_package() {
 
     unset UPPM_PKG_LINE
 
-    UPPM_PKG_LINE=$(__uppm_list_the_available_packages $@)
+    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
+    do
+        unset UPPM_PKG_OS_KIND
+        unset UPPM_PKG_OS_ARCH
+        unset UPPM_PKG_OS_LIBC
+
+        unset UPPM_PKG_NAME
+        unset UPPM_PKG_VERS
+
+        [ -z "$UPPM_PKG_LINE" ] && continue
+
+        UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
+
+        if [ "$UPPM_PKG_OS_KIND" != '-' ] && [ "$UPPM_PKG_OS_KIND" != "$NATIVE_OS_KIND" ] ; then
+            continue
+        fi
+
+        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
+
+        if [ "$UPPM_PKG_OS_ARCH" != '-' ] && [ "$UPPM_PKG_OS_ARCH" != "$NATIVE_OS_ARCH" ] ; then
+            continue
+        fi
+
+        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
+
+        if [ "$UPPM_PKG_OS_LIBC" != '-' ] && [ "$UPPM_PKG_OS_LIBC" != "$NATIVE_OS_LIBC" ] ; then
+            continue
+        fi
+
+        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
+
+        if [ "$UPPM_PKG_NAME" != "$1" ] ; then
+            continue
+        fi
+
+        UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
+
+        if [ $# -ge 3 ] ; then
+            if version_match "$UPPM_PKG_VERS" "$2" "$3" ; then
+                break
+            else
+                continue
+            fi
+        fi
+
+        break
+    done
 
     if [ -z "$UPPM_PKG_LINE" ] ; then
-        die "no available prebuild package: $@"
+        warn "no available prebuild package: $@"
+        return 1
     fi
 
     unset UPPM_PKG_OS_KIND
@@ -4392,6 +4439,7 @@ __install_the_given_package() {
     done
 
     export PATH
+    echo "$PATH"
 
     step "view formula"
     __view_formula_of_the_given_package "$1" --paging=never
