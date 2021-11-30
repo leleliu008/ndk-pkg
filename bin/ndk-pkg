@@ -1197,6 +1197,7 @@ version_of_command() {
      xsltproc) ;;
      rst2man|rst2man.py|rst2man-3|rst2man-3.6|rst2man-3.7|rst2man-3.8|rst2man-3.9)
                "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         java) "$1"  -version 2>&1 | head -n 1 | cut -d ' ' -f3 | sed 's/"//g' ;;
          gzip) "$1" --version 2>&1 | head -n 1 | awk '{print($NF)}' ;;
          lzip) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
            xz) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
@@ -1362,15 +1363,15 @@ command_exists_in_filesystem_and_version_matched() {
 # ge  greater than or equal
 # le  less than or equal
 #
-# __pmw_is_package_available <PM> <PKG> [OP VERSION]
+# __pmw_is_the_given_package_available <PM> <PKG> [OP VERSION]
 #
-# __pmw_is_package_available apt automake eq 1.16.0
-# __pmw_is_package_available apt automake lt 1.16.0
-# __pmw_is_package_available apt automake gt 1.16.0
-# __pmw_is_package_available apt automake le 1.16.0
-# __pmw_is_package_available apt automake ge 1.16.0
-# __pmw_is_package_available apt automake
-__pmw_is_package_available() {
+# __pmw_is_the_given_package_available apt automake eq 1.16.0
+# __pmw_is_the_given_package_available apt automake lt 1.16.0
+# __pmw_is_the_given_package_available apt automake gt 1.16.0
+# __pmw_is_the_given_package_available apt automake le 1.16.0
+# __pmw_is_the_given_package_available apt automake ge 1.16.0
+# __pmw_is_the_given_package_available apt automake
+__pmw_is_the_given_package_available() {
     if [ $# -eq 2 ] ; then
         case $1 in
             pkg) pkg show "$2" > /dev/null 2>&1 ;;
@@ -1390,9 +1391,9 @@ __pmw_is_package_available() {
                 ;;
         esac
     elif [ $# -eq 4 ] ; then
-        __pmw_is_package_available "$1" "$2" && version_match "$(__pmw_get_available_package_version_by_package_name "$1" "$2")" "$3" "$4"
+        __pmw_is_the_given_package_available "$1" "$2" && version_match "$(__pmw_get_available_package_version_by_package_name "$1" "$2")" "$3" "$4"
     else
-        die "USAGE:  __pmw_is_package_available <PM> <PKG> [OP VERSION]\nACTUAL: __pmw_is_package_available $@"
+        die "USAGE:  __pmw_is_the_given_package_available <PM> <PKG> [OP VERSION]\nACTUAL: __pmw_is_the_given_package_available $@"
     fi
 }
 
@@ -1532,6 +1533,7 @@ __pmw_get_available_package_name_by_command_name_pkg() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        java) echo 'openjdk-17' ;;
          lua) echo 'lua54' ;;
          gm4) echo 'm4'    ;;
         make) echo 'gmake' ;;
@@ -1830,6 +1832,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        java) echo 'openjdk-17-jdk' ;;
          lua) echo 'lua5.3';;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
@@ -1949,7 +1952,7 @@ __pmw_install_the_given_package() {
         return 1
     fi
 
-    __pmw_is_package_available $@ || return 1
+    __pmw_is_the_given_package_available $@ || return 1
 
     case $1 in
         pip3)
@@ -1998,208 +2001,559 @@ __pmw_install_the_given_package() {
     echo
 }
 
-# __pmw_install_the_given_command <PM> <PKG> <CMD> [OP VERSION]
-# __pmw_install_the_given_command apt make make ge 3.80
-# __pmw_install_the_given_command apt make make
-__pmw_install_the_given_command() {
-    if [ "$1" = available ] ; then
-        if command_exists_in_filesystem_and_version_matched $3 $4 $5 ; then
-            return 0
-        fi
+# }}}
+##############################################################################
+# {{{ uppm => universal prebuild package manager
 
-        if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
-            AVAILABLE_PACKAGE_MANAGER_LIST=$(__pmw_get_available_pm_list | tr '\n' ' ')
-            if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
-                warn "no package manager found."
-                return 1
-            else
-                info "Found $(list_length $AVAILABLE_PACKAGE_MANAGER_LIST) package manager : ${COLOR_GREEN}$AVAILABLE_PACKAGE_MANAGER_LIST${COLOR_OFF}"
-            fi
-        fi
+__uppm_list_the_available_packages_in_the_world() {
+    cat <<EOF
+linux |x86_64|glibc|python3 |3.9.5 |5d9b13e38878292f18a41188bd530d059c7c2b1e64eed29cb5c6d38b0a94ad0a|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
 
-        for pm in $AVAILABLE_PACKAGE_MANAGER_LIST
-        do
-            if __pmw_install_the_given_command "$pm" "$(eval __pmw_get_available_package_name_by_command_name_$(printf '%s\n' "$pm" | tr - _) $3)" "$3" $4 $5 ; then
-                return 0
-            fi
-        done
-        return 1
-    else
-        if [ -z "$2" ] ; then
-            # if pacmakge name is empty, assume command name is equal to package name.
-            __pmw_is_package_available "$1" "$3" $4 $5 || return 1
-            note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
-            __pmw_install_the_given_package "$1" "$3" $4 $5
-        else
-            __pmw_is_package_available "$1" "$2" $4 $5 || return 1
-            note "${COLOR_GREEN}$(shiftn 2 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
-            __pmw_install_the_given_package "$1" "$2" $4 $5
-        fi
-    fi
+linux |x86_64|glibc|git     |2.30.2|61e545ef05e41565292c2e909e5b39e4eb8e60a4e729db06a1ddea3b44f89241|https://github.com/leleliu008/git-prebuild/releases/download/2.30.2/git-2.30.2-x86_64-linux-glibc.tar.xz
+
+linux |x86_64|glibc|autoconf|2.69  |3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
+
+linux |x86_64|glibc|cmake   |3.21.4|eddba9da5b60e0b5ec5cbb1a65e504d776e247573204df14f6d004da9bc611f9|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-linux-x86_64.tar.gz
+darwin|  -   |  -  |cmake   |3.21.4|f818a10fe625b215e31d0c29c19a6563fb5f51ed7cc7727e5011626c11ea321a|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-macos-universal.tar.gz
+
+linux |x86_64|  -  |ninja   |1.10.2|763464859c7ef2ea3a0a10f4df40d2025d3bb9438fcb1228404640410c0ec22d|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
+darwin|x86_64|  -  |ninja   |1.10.2|6fa359f491fac7e5185273c6421a000eea6a2f0febf0ac03ac900bd4d80ed2a5|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
+
+linux |x86_64|  -  |golang  |1.17.2|f242a9db6a0ad1846de7b6d94d507915d14062660616a61ef7c808a76e4f1676|https://golang.org/dl/go1.17.2.linux-amd64.tar.gz
+darwin|x86_64|  -  |golang  |1.17.2|7914497a302a132a465d33f5ee044ce05568bacdb390ab805cb75a3435a23f94|https://golang.org/dl/go1.17.2.darwin-amd64.tar.gz
+darwin|arm64 |  -  |golang  |1.17.2|ce8771bd3edfb5b28104084b56bbb532eeb47fbb7769c3e664c6223712c30904|https://golang.org/dl/go1.17.2.darwin-arm64.tar.gz
+
+linux |arm64 |glibc|jdk     |17.0.1|a5e954a4e89b50277f20345034aea0ccf06f53705d4ec586b268b14ff42468f7|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-aarch64_bin.tar.gz
+linux |x86_64|glibc|jdk     |17.0.1|6f25bcb94d3e22fb52a4632c74e03b403834e81b68701ab7ecd900fb9cd89f43|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-x64_bin.tar.gz
+darwin|arm64 |  -  |jdk     |17.0.1|8e5f240705bdf37ed831abc8c52cc05afe71721a6bc26dd977b6efd01b5ebef7|https://download.oracle.com/java/17/archive/jdk-17.0.1_macos-aarch64_bin.tar.gz
+darwin|x86_64|  -  |jdk     |17.0.1|b8905d88a14e60f873064a8b25737e2ec2e3688611adbf21f3a5dd5c8742797d|https://download.oracle.com/java/17/archive/jdk-17.0.1_macos-x64_bin.tar.gz
+EOF
 }
 
-# __get_prebuild_binary_config_by_command_name <CMD> [OP VERSION]
-# __get_prebuild_binary_config_by_command_name python3 ge 3.5
-# __get_prebuild_binary_config_by_command_name cmake
-__get_prebuild_binary_config_by_command_name() {
-    # https://github.com/leleliu008/python-prebuild
-    # https://cmake.org/download
-{
-    cat <<EOF
-python    |glibc|linux |x86_64|python  |3.9.5 |tar.xz|5d9b13e38878292f18a41188bd530d059c7c2b1e64eed29cb5c6d38b0a94ad0a|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
-python3   |glibc|linux |x86_64|python  |3.9.5 |tar.xz|5d9b13e38878292f18a41188bd530d059c7c2b1e64eed29cb5c6d38b0a94ad0a|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
-git       |glibc|linux |x86_64|git     |2.30.2|tar.xz|61e545ef05e41565292c2e909e5b39e4eb8e60a4e729db06a1ddea3b44f89241|https://github.com/leleliu008/git-prebuild/releases/download/2.30.2/git-2.30.2-x86_64-linux-glibc.tar.xz
-autoconf  |glibc|linux |x86_64|autoconf|2.69  |tar.gz|3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
-autoreconf|glibc|linux |x86_64|autoconf|2.69  |tar.gz|3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
-cmake     |glibc|linux |x86_64|cmake   |3.21.4|tar.gz|eddba9da5b60e0b5ec5cbb1a65e504d776e247573204df14f6d004da9bc611f9|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-linux-x86_64.tar.gz
-cmake     |  -  |darwin|  -   |cmake   |3.21.4|tar.gz|f818a10fe625b215e31d0c29c19a6563fb5f51ed7cc7727e5011626c11ea321a|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-macos-universal.tar.gz
-ninja     |  -  |linux |x86_64|ninja   |1.10.2|zip   |763464859c7ef2ea3a0a10f4df40d2025d3bb9438fcb1228404640410c0ec22d|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
-ninja     |  -  |darwin|x86_64|ninja   |1.10.2|zip   |6fa359f491fac7e5185273c6421a000eea6a2f0febf0ac03ac900bd4d80ed2a5|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
-go        |  -  |linux |x86_64|golang  |1.17.2|tar.gz|f242a9db6a0ad1846de7b6d94d507915d14062660616a61ef7c808a76e4f1676|https://golang.org/dl/go1.17.2.linux-amd64.tar.gz
-go        |  -  |darwin|x86_64|golang  |1.17.2|tar.gz|7914497a302a132a465d33f5ee044ce05568bacdb390ab805cb75a3435a23f94|https://golang.org/dl/go1.17.2.darwin-amd64.tar.gz
-go        |  -  |darwin|arm64 |golang  |1.17.2|tar.gz|ce8771bd3edfb5b28104084b56bbb532eeb47fbb7769c3e664c6223712c30904|https://golang.org/dl/go1.17.2.darwin-arm64.tar.gz
-EOF
-} | while read LINE
+# __uppm_is_the_given_package_available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
+__uppm_is_the_given_package_available() {
+    if [ -z "$1" ] ; then
+        die "uppm is-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], PKG-NAME must not be empty."
+    fi
+
+    if [ $# -ge 3 ] ; then
+        case $2 in
+            eq|ne|lt|ge|lt|gt) ;;
+            *) die "uppm is-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
+        esac
+        if [ -z "$3" ] ; then
+            die "uppm is-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>],  VERSION must not be empty."
+        fi
+    fi
+
+    for LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
     do
-        LINE=$(printf '%s\n' "$LINE" | sed 's/[[:space:]]//g')
+        unset UPPM_PKG_OS_KIND
+        unset UPPM_PKG_OS_ARCH
+        unset UPPM_PKG_OS_LIBC
 
-        unset __PB_COMMAND__
-        unset __PB_OS_LIBC__
-        unset __PB_OS_KIND__
-        unset __PB_OS_ARCH__
+        unset UPPM_PKG_NAME
+        unset UPPM_PKG_VERS
 
-        __PB_COMMAND__=$(printf '%s\n' "$LINE" | cut -d '|' -f1)
-
-        if [ "$__PB_COMMAND__" != "$1" ] ; then
+        if [ -z "$LINE" ] ; then
             continue
         fi
 
-        __PB_OS_LIBC__=$(printf '%s\n' "$LINE" | cut -d '|' -f2)
+        UPPM_PKG_OS_KIND=$(printf '%s\n' "$LINE" | cut -d '|' -f1)
 
-        if [ "$__PB_OS_LIBC__" != '-' ] && [ "$__PB_OS_LIBC__" != "$NATIVE_OS_LIBC" ] ; then
+        if [ "$UPPM_PKG_OS_KIND" != '-' ] && [ "$UPPM_PKG_OS_KIND" != "$NATIVE_OS_KIND" ] ; then
             continue
         fi
 
-        __PB_OS_KIND__=$(printf '%s\n' "$LINE" | cut -d '|' -f3)
+        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$LINE" | cut -d '|' -f2)
 
-        if [ "$__PB_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
+        if [ "$UPPM_PKG_OS_ARCH" != '-' ] && [ "$UPPM_PKG_OS_ARCH" != "$NATIVE_OS_ARCH" ] ; then
             continue
         fi
 
-        __PB_OS_ARCH__=$(printf '%s\n' "$LINE" | cut -d '|' -f4)
+        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$LINE" | cut -d '|' -f3)
 
-        if [ "$__PB_OS_ARCH__" != '-' ] && [ "$__PB_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
+        if [ "$UPPM_PKG_OS_LIBC" != '-' ] && [ "$UPPM_PKG_OS_LIBC" != "$NATIVE_OS_LIBC" ] ; then
             continue
         fi
 
-        unset __PB_TYPE__
-        unset __PB_SUM__
-        unset __PB_URL__
+        UPPM_PKG_NAME=$(printf '%s\n' "$LINE" | cut -d '|' -f4)
 
-        __PB_TYPE__=$(printf '%s\n' "$LINE" | cut -d '|' -f7)
-        __PB_SUM__=$(printf  '%s\n' "$LINE" | cut -d '|' -f8)
-        __PB_URL__=$(printf  '%s\n' "$LINE" | cut -d '|' -f9)
+        if [ "$UPPM_PKG_NAME" != "$1" ] ; then
+            continue
+        fi
 
-        printf "$__PB_TYPE__ $__PB_SUM__ $__PB_URL__\n"
+        if [ $# -ge 3 ] ; then
+            UPPM_PKG_VERS=$(printf '%s\n' "$LINE" | cut -d '|' -f5)
+            if version_match "$UPPM_PKG_VERS" "$2" "$3" ; then
+                return 0
+            fi
+            continue
+        fi
+    done
+    return 1
+}
+
+__uppm_is_the_given_package_installed() {
+    [ -f "$HOME/.uppm/install.d/$1/installed-metadata" ]
+}
+
+# __uppm_list_the_available_packages
+# __uppm_list_the_available_packages <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
+__uppm_list_the_available_packages() {
+    if [ $# -ge 1 ] ; then
+        if [ -z "$1" ] ; then
+            die "uppm ls-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], PKG-NAME must not be empty."
+        fi
+    fi
+
+    if [ $# -ge 3 ] ; then
+        case $2 in
+            eq|ne|lt|ge|lt|gt) ;;
+            *) die "uppm ls-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
+        esac
+        if [ -z "$3" ] ; then
+            die "uppm ls-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], VERSION must not be empty."
+        fi
+    fi
+
+    for LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
+    do
+        unset UPPM_PKG_OS_KIND
+        unset UPPM_PKG_OS_ARCH
+        unset UPPM_PKG_OS_LIBC
+
+        unset UPPM_PKG_NAME
+        unset UPPM_PKG_VERS
+        unset UPPM_PKG_SUM_
+        unset UPPM_PKG_URL_
+
+        if [ -z "$LINE" ] ; then
+            continue
+        fi
+
+        UPPM_PKG_OS_KIND=$(printf '%s\n' "$LINE" | cut -d '|' -f1)
+
+        if [ "$UPPM_PKG_OS_KIND" != '-' ] && [ "$UPPM_PKG_OS_KIND" != "$NATIVE_OS_KIND" ] ; then
+            continue
+        fi
+
+        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$LINE" | cut -d '|' -f2)
+
+        if [ "$UPPM_PKG_OS_ARCH" != '-' ] && [ "$UPPM_PKG_OS_ARCH" != "$NATIVE_OS_ARCH" ] ; then
+            continue
+        fi
+
+        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$LINE" | cut -d '|' -f3)
+
+        if [ "$UPPM_PKG_OS_LIBC" != '-' ] && [ "$UPPM_PKG_OS_LIBC" != "$NATIVE_OS_LIBC" ] ; then
+            continue
+        fi
+
+        UPPM_PKG_NAME=$(printf '%s\n' "$LINE" | cut -d '|' -f4)
+        UPPM_PKG_VERS=$(printf '%s\n' "$LINE" | cut -d '|' -f5)
+        UPPM_PKG_SUM_=$(printf '%s\n' "$LINE" | cut -d '|' -f6)
+        UPPM_PKG_URL_=$(printf '%s\n' "$LINE" | cut -d '|' -f7)
+
+        if [ $# -eq 0 ] ; then
+            printf '%s\n' "$LINE"
+            continue
+        fi
+
+        if [ $# -eq 1 ] ; then
+            if [ "$UPPM_PKG_NAME" = "$1" ] ; then
+                printf '%s\n' "$LINE"
+            fi
+            continue
+        fi
+
+        if [ $# -eq 3 ] ; then
+            if [ "$UPPM_PKG_VERS" -$2 "$3" ] ; then
+                printf '%s\n' "$LINE"
+                if [ "$2" = 'eq' ] ; then
+                    break
+                fi
+            fi
+            continue
+        fi
     done
 }
 
-# mode1:                       <CMD> [OP VERS]
-# mode2: <TYPE> <SHA256> <URL> <CMD> [OP VERS]
-__install_command_via_fetch_prebuild_binary() {
-    if [ $# -eq 0 ] ; then
-        return 1
-    elif [ $# -eq 1 ] || [ $# -eq 3 ] ; then
-        __install_command_via_fetch_prebuild_binary $(__get_prebuild_binary_config_by_command_name $@) $@
-    elif [ $# -eq 4 ] || [ $# -eq 6 ] ; then
-        case $1 in
-            zip)
-                handle_dependency required exe unzip
-                ;;
-            tar.xz)
-                handle_dependency required exe tar
-                handle_dependency required exe xz
-                ;;
-            tar.gz)
-                handle_dependency required exe tar
-                handle_dependency required exe gzip
-                ;;
-            tar.lz)
-                handle_dependency required exe tar
-                handle_dependency required exe lzip
-                ;;
-            tar.bz2)
-                handle_dependency required exe tar
-                handle_dependency required exe bzip2
-                ;;
-            tgz)
-                handle_dependency required exe tar
-                handle_dependency required exe gzip
-                ;;
-            txz)
-                handle_dependency required exe tar
-                handle_dependency required exe xz
-                ;;
-        esac
+__uppm_list_the_installed_packages() {
+    :
+}
 
-        note "${COLOR_GREEN}$(shiftn 3 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}fetch prebuild binary${COLOR_OFF}"
+# __uppm_show_infomation
+# __uppm_show_infomation <PKG-NAME>
+__uppm_show_infomation_of_the_given_package() {
+    __uppm_list_the_available_packages $@
+}
 
-        unset PREBUILD_BINARY_FILENAME_PREFIX
-        unset PREBUILD_BINARY_FILENAME
+__uppm_get_filetype_from_url() {
+    case $1 in
+        *.zip)     printf '%s\n' zip    ;;
+        *.tar.xz)  printf '%s\n' tar.xz ;;
+        *.tar.gz)  printf '%s\n' tar.gz ;;
+        *.tar.lz)  printf '%s\n' tar.lz ;;
+        *.tar.bz2) printf '%s\n' tar.bz2;;
+        *.tgz)     printf '%s\n' tar.gz ;;
+        *.txz)     printf '%s\n' tar.xz ;;
+        *.c)       printf '%s\n' c      ;;
+        *.cc)      printf '%s\n' cxx    ;;
+        *.cxx)     printf '%s\n' cxx    ;;
+        *.cpp)     printf '%s\n' cxx    ;;
+    esac
+}
 
-        PREBUILD_BINARY_FILENAME=$(basename "$3")
-        PREBUILD_BINARY_FILENAME_PREFIX=$(basename "$PREBUILD_BINARY_FILENAME" ".$1")
+# __uppm_fetch
+# __uppm_fetch <PKG-NAME>
+# __uppm_fetch <PKG-NAME> eq|ne|le|gr|lt|gt <VERSION>
+__uppm_fetch() {
+    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages $@)
+    do
+        unset UPPM_PKG_OS_KIND
+        unset UPPM_PKG_OS_ARCH
+        unset UPPM_PKG_OS_LIBC
 
-        PREBUILD_BINARY_INSTALL_DIR_PREFIX='/opt'
-        PREBUILD_BINARY_INSTALL_DIR="$PREBUILD_BINARY_INSTALL_DIR_PREFIX/$PREBUILD_BINARY_FILENAME_PREFIX"
+        unset UPPM_PKG_NAME
+        unset UPPM_PKG_VERS
+        unset UPPM_PKG_SUM_
+        unset UPPM_PKG_URL_
 
-        PREBUILD_BINARY_FILEPATH="$PREBUILD_BINARY_INSTALL_DIR/$PREBUILD_BINARY_FILENAME"
+        UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
+        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
+        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
 
-        if [ ! -d "$PREBUILD_BINARY_INSTALL_DIR" ] ; then
-            install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" 2>/dev/null || sudo install -o $(whoami) -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-        fi
+        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
+        UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
+        UPPM_PKG_SUM_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
+        UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f7)
 
-        fetch "$3" --sha256="$2" --output-path="$PREBUILD_BINARY_FILEPATH" || return 1
+        UPPM_PKG_FILETYPE=$(__uppm_get_filetype_from_url "$UPPM_PKG_URL_")
 
-        if [ -f "$PREBUILD_BINARY_INSTALL_DIR/.installed" ] ; then
-            success "$PREBUILD_BINARY_FILEPATH already have been unpacked to $PREBUILD_BINARY_INSTALL_DIR."
-        else
-            case $1 in
-                zip)
-                    run unzip  "$PREBUILD_BINARY_FILEPATH" -d "$PREBUILD_BINARY_INSTALL_DIR" || return 1
-                    run touch  "$PREBUILD_BINARY_INSTALL_DIR/.installed"
-                    ;;
-                tar.xz|tar.gz|tar.lz|tar.bz2|tgz|txz|tlz)
-                    run tar xf "$PREBUILD_BINARY_FILEPATH" -C "$PREBUILD_BINARY_INSTALL_DIR" --strip-components 1 || return 1
-                    run touch  "$PREBUILD_BINARY_INSTALL_DIR/.installed"
-                    ;;
-            esac
-        fi
+        UPPM_PKG_FILENAME="$UPPM_PKG_NAME-$UPPM_PKG_VERS"
 
-        if [ -d "$PREBUILD_BINARY_INSTALL_DIR/bin" ] ; then
-            export PATH="$PREBUILD_BINARY_INSTALL_DIR/bin:$PATH"
-        fi
+        [ "$UPPM_PKG_OS_KIND" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_KIND"
+        [ "$UPPM_PKG_OS_ARCH" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_ARCH"
+        [ "$UPPM_PKG_OS_LIBC" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_LIBC"
 
-        export PATH="$PREBUILD_BINARY_INSTALL_DIR:$PATH"
+        [ -n "$UPPM_PKG_FILETYPE" ]     && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME.$UPPM_PKG_FILETYPE"
 
-        case $4 in
-            autoconf)
-                for xx in $(grep '/root/.zpkg/install.d/autoconf' -rl "$PREBUILD_BINARY_INSTALL_DIR")
-                do
-                    sed_in_place "s|/root/.zpkg/install.d/autoconf|$PREBUILD_BINARY_INSTALL_DIR|" "$xx"
-                done
-                ;;
-        esac
-    else
-        die "__install_command_via_fetch_prebuild_binary $@ arguments not match"
+        UPPM_PKG_FILEPATH="$HOME/.uppm/downloads/$UPPM_PKG_FILENAME"
+
+        fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SUM_" --output-path="$UPPM_PKG_FILEPATH" || return 1
+    done
+}
+
+# __uppm_install_the_given_package <PKG-NAME> [eq|ne|le|ge|lt|gt <VERSION>]
+__uppm_install_the_given_package() {
+    set -e
+
+    if [ -z "$1" ] ; then
+        die "uppm install <PKG-NAME> [eq|ne|le|ge|lt|gt <VERSION>], PKG-NAME must not be empty."
     fi
+
+    if [ $# -ge 3 ] ; then
+        case $2 in
+            eq|ne|lt|ge|lt|gt) ;;
+            *) die "uppm install <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
+        esac
+        if [ -z "$3" ] ; then
+            die "uppm install <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], VERSION must not be empty."
+        fi
+    fi
+
+    unset UPPM_PKG_LINE
+
+    UPPM_PKG_LINE=$(__uppm_list_the_available_packages $@)
+
+    if [ -z "$UPPM_PKG_LINE" ] ; then
+        die "no available prebuild package: $@"
+    fi
+
+    unset UPPM_PKG_OS_KIND
+    unset UPPM_PKG_OS_ARCH
+    unset UPPM_PKG_OS_LIBC
+
+    unset UPPM_PKG_NAME
+    unset UPPM_PKG_VERS
+    unset UPPM_PKG_SUM_
+    unset UPPM_PKG_URL_
+
+    UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
+    UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
+    UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
+
+    UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
+    UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
+    UPPM_PKG_SUM_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
+    UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f7)
+
+    UPPM_PKG_FILETYPE=$(__uppm_get_filetype_from_url "$UPPM_PKG_URL_")
+
+    UPPM_PKG_FILENAME="$UPPM_PKG_NAME-$UPPM_PKG_VERS"
+
+    [ "$UPPM_PKG_OS_KIND" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_KIND"
+    [ "$UPPM_PKG_OS_ARCH" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_ARCH"
+    [ "$UPPM_PKG_OS_LIBC" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_LIBC"
+
+    [ -n "$UPPM_PKG_FILETYPE" ]     && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME.$UPPM_PKG_FILETYPE"
+
+    UPPM_PKG_FILEPATH="$HOME/.uppm/downloads/$UPPM_PKG_FILENAME"
+
+    fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SUM_" --output-path="$UPPM_PKG_FILEPATH" || return 1
+
+    case $UPPM_PKG_FILETYPE in
+        zip)
+            handle_dependency required exe unzip
+            ;;
+        tar.xz)
+            handle_dependency required exe tar
+            handle_dependency required exe xz
+            ;;
+        tar.gz)
+            handle_dependency required exe tar
+            handle_dependency required exe gzip
+            ;;
+        tar.lz)
+            handle_dependency required exe tar
+            handle_dependency required exe lzip
+            ;;
+        tar.bz2)
+            handle_dependency required exe tar
+            handle_dependency required exe bzip2
+            ;;
+        tgz)
+            handle_dependency required exe tar
+            handle_dependency required exe gzip
+            ;;
+        txz)
+            handle_dependency required exe tar
+            handle_dependency required exe xz
+            ;;
+    esac
+
+    if [ -z "$UPPM_PKG_INSTALLD_PREFIX" ] ; then
+        UPPM_PKG_INSTALLD_PREFIX="$HOME/.uppm/install.d"
+    fi
+
+    UPPM_PKG_INSTALLD="$UPPM_PKG_INSTALLD_PREFIX/$UPPM_PKG_NAME"
+
+    UPPM_PKG_INSTALLED_METADATA_FILEPATH="$UPPM_PKG_INSTALLD/installed-metadata"
+
+    if [ -f "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" ] ; then
+        if [ $# -ge 3 ] ; then
+            if version_match "$(. "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" && printf '%s\n' "$INSTALLED_PKG_VERS")" "$2" "$3" ; then
+                success "$UPPM_PKG_FILEPATH already have been unpacked to $UPPM_PKG_INSTALLD."
+            else
+                run rm -rf "$UPPM_PKG_INSTALLD"
+            fi
+        elif [ $# -ge 1 ] ; then
+            success "$UPPM_PKG_FILEPATH already have been unpacked to $UPPM_PKG_INSTALLD."
+        fi
+    fi
+
+    if [ ! -f "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" ] ; then
+        if [ ! -d "$UPPM_PKG_INSTALLD" ] ; then
+            install -o $(whoami) -d "$UPPM_PKG_INSTALLD" 2>/dev/null || sudo install -o $(whoami) -d "$UPPM_PKG_INSTALLD" || return 1
+        fi
+        case $UPPM_PKG_FILETYPE in
+            zip)
+                run unzip  "$UPPM_PKG_FILEPATH" -d "$UPPM_PKG_INSTALLD" || return 1
+                ;;
+            tar.xz|tar.gz|tar.lz|tar.bz2|tgz|txz|tlz)
+                run tar xf "$UPPM_PKG_FILEPATH" -C "$UPPM_PKG_INSTALLD" --strip-components 1 || return 1
+                ;;
+        esac
+
+        cat > "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" <<EOF
+INSTALLED_DATETIME='$(date +%s)'
+INSTALLED_PKG_NAME='$UPPM_PKG_NAME'
+INSTALLED_PKG_VERS='$UPPM_PKG_VERS'
+INSTALLED_PKG_URL_='$UPPM_PKG_URL_'
+INSTALLED_PKG_SUM_='$UPPM_PKG_SUM_'
+EOF
+    fi
+
+    if [ -d "$UPPM_PKG_INSTALLD/bin" ] ; then
+        bppend_to_PATH "$UPPM_PKG_INSTALLD/bin"
+    fi
+
+    bppend_to_PATH "$UPPM_PKG_INSTALLD"
+
+    case $UPPM_PKG_NAME in
+        autoconf)
+            for xx in $(grep '/root/.zpkg/install.d/autoconf' -rl "$UPPM_PKG_INSTALLD")
+            do
+                sed_in_place "s|/root/.zpkg/install.d/autoconf|$UPPM_PKG_INSTALLD|" "$xx"
+            done
+            ;;
+        jdk)
+            cat > "$UPPM_PKG_INSTALLD/env" <<EOF
+bppend_to_PATH() {
+    case ":\${PATH}:" in
+        *:"\$@":*) ;;
+        *) export PATH="\$@:\$PATH" ;;
+    esac
+}
+
+JAVA_HOME="$UPPM_PKG_INSTALLD"
+
+bppend_to_PATH "$UPPM_PKG_INSTALLD/bin"
+EOF
+            . "$UPPM_PKG_INSTALLD/env"
+
+    esac
+}
+
+__uppm_help() {
+    echo "
+    uppm (universal prebuild package manager)
+
+    uppm <ACTION> <ARGUMENT>...
+
+    uppm -h
+    uppm --help
+
+    uppm -V
+    uppm --version
+
+    uppm ls-available
+    uppm ls-installed
+
+    uppm is-available <PKG-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
+    uppm is-installed <PKG-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
+
+    uppm search       <keyword>
+
+    uppm info         [PKG-NAME]
+
+    uppm fetch        <PKG-NAME> [OUTPUT-DIR]
+
+    uppm install      <PKG-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
+    "
+}
+
+uppm() {
+    set -e
+
+    case $1 in
+        -h|--help|'')
+            __uppm_help
+            ;;
+        -V|--version)
+            printf "0.0.1"
+            ;;
+        ls-available)
+            shift
+            __uppm_list_the_available_packages
+            ;;
+        ls-installed)
+            shift
+            __uppm_list_the_installed_packages
+            ;;
+        is-available)
+            shift
+            __uppm_is_the_given_package_available $@
+            ;;
+        is-installed)
+            shift
+            __uppm_is_the_given_package_installed $@
+            ;;
+        install)
+            shift
+            __uppm_install_the_given_package $@
+            ;;
+        *)  error "uppm unrecognized ACTION: $1"
+            __uppm_help
+            exit 1
+    esac
+}
+
+__uppm_get_package_name_by_command_name() {
+    if [ -z "$1" ] ; then
+        die "__uppm_get_package_name_by_command_name <CMD>, CMD must not be empty."
+    fi
+
+    case $1 in
+        python|python3) printf '%s\n' 'python3' ;;
+        autoconf)       printf '%s\n' 'autoconf';;
+        autoreconf)     printf '%s\n' 'autoconf';;
+        go)             printf '%s\n' 'golang'  ;;
+        git)            printf '%s\n' 'git'     ;;
+        java)           printf '%s\n' 'jdk'     ;;
+        cmake)          printf '%s\n' 'cmake'   ;;
+        ninja)          printf '%s\n' 'ninja'   ;;
+        *)              printf '%s\n' "$1"
+    esac
+}
+
+# __install_command_via_uppm <CMD> [eq|ne|le|ge|lt|gt <VERSION>]
+__install_command_via_uppm() {
+    if [ -z "$1" ] ; then
+        die "__install_command_via_uppm <CMD>, CMD must not be empty."
+    fi
+
+    if command_exists_in_filesystem_and_version_matched $@ ; then
+        return 0
+    fi
+
+    UPPM_PKG_NAME=$(__uppm_get_package_name_by_command_name "$1")
+    if  uppm is-available "$UPPM_PKG_NAME" $2 $3 ; then
+        note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}uppm${COLOR_OFF}"
+        uppm install      "$UPPM_PKG_NAME"
+    else
+        return 1
+    fi
+}
+
+# __install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>]
+__install_command_via_pmw() {
+    if [ -z "$1" ] ; then
+        die "__install_command_via_pmw <CMD>, CMD must not be empty."
+    fi
+
+    if command_exists_in_filesystem_and_version_matched $@ ; then
+        return 0
+    fi
+
+    if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
+        AVAILABLE_PACKAGE_MANAGER_LIST=$(__pmw_get_available_pm_list | tr '\n' ' ')
+        if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
+            warn "no package manager found."
+            return 1
+        else
+            info "Found $(list_length $AVAILABLE_PACKAGE_MANAGER_LIST) package manager : ${COLOR_GREEN}$AVAILABLE_PACKAGE_MANAGER_LIST${COLOR_OFF}"
+        fi
+    fi
+
+    for pm in $AVAILABLE_PACKAGE_MANAGER_LIST
+    do
+        unset PMW_PM__NAME_UNDERSCORE
+        unset PMW_PKG_NAME
+
+        PMW_PM__NAME_UNDERSCORE="$(printf '%s\n' "$pm" | tr - _)"
+        PMW_PKG_NAME="$(eval __pmw_get_available_package_name_by_command_name_$PMW_PM__NAME_UNDERSCORE $1)"
+
+        # if pacmakge name is empty, I assume that command name is equal to package name.
+        if [ -z "$PMW_PKG_NAME" ] ; then
+            PMW_PKG_NAME="$1"
+        fi
+
+        __pmw_is_the_given_package_available "$pm" "$PMW_PKG_NAME" $2 $3 || return 1
+
+        note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$pm${COLOR_OFF}"
+
+        __pmw_install_the_given_package "$pm" "$PMW_PKG_NAME" $2 $3 || return 1
+    done
+    return 1
 }
 
 __install_command_via_run_install_script() {
     case $1 in
         rustup)
             # https://www.rust-lang.org/tools/install
-            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running shell script.${COLOR_OFF}"
+            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
 
             handle_dependency required exe bash:zsh:dash:ash
 
@@ -2216,7 +2570,7 @@ __install_command_via_run_install_script() {
             ;;
         nvm)
             # https://github.com/nvm-sh/nvm
-            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found, I will install it via running bash shell script.${COLOR_OFF}"
+            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running bash shell script.${COLOR_OFF}"
 
             handle_dependency required exe bash:zsh
 
@@ -2270,11 +2624,11 @@ __install_command() {
         return 0
     fi
 
-    if __pmw_install_the_given_command available available $@ ; then
+    if __install_command_via_pmw $@ ; then
         return 0
     fi
 
-    if __install_command_via_fetch_prebuild_binary $@ ; then
+    if __install_command_via_uppm $@ ; then
         return 0
     fi
 
@@ -2283,7 +2637,7 @@ __install_command() {
 }
 
 # usage:
-# handle_depnedency <required|optional> <exe|pym|plm> [<eq ne ge lt gt lt> <VERSION>]
+# handle_depnedency <required|optional> <exe|pym|plm> [eq|ne|ge|lt|gt|lt <VERSION>]
 #
 # examples:
 # handle_dependency required exe python      ge 3.5
@@ -2303,17 +2657,17 @@ handle_dependency() {
             shift
             case $1 in
                 *:*)
-                    for command in $(echo "$1" | tr ':' ' ')
+                    for CMD in $(echo "$1" | tr ':' ' ')
                     do
-                        if command_exists_in_filesystem_and_version_matched "$command" $2 $3 ; then
-                            map_set MAP_REQUIRED_DEPENDENCIES "$1" "$command"
+                        if command_exists_in_filesystem_and_version_matched "$CMD" $2 $3 ; then
+                            map_set MAP_REQUIRED_DEPENDENCIES "$1" "$CMD"
                             return 0
                         fi
                     done
-                    for command in $(echo "$1" | tr ':' ' ')
+                    for CMD in $(echo "$1" | tr ':' ' ')
                     do
-                        if __install_command "$command" $2 $3 ; then
-                            map_set MAP_REQUIRED_DEPENDENCIES "$1" "$command"
+                        if __install_command "$CMD" $2 $3 ; then
+                            map_set MAP_REQUIRED_DEPENDENCIES "$1" "$CMD"
                             return 0
                         fi
                     done
@@ -2466,7 +2820,7 @@ python_module() {
                 die "please specify a python module name."
             fi
             if ! python_module is installed "$2" ; then
-                note "${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
+                note "${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
                 run "$__PIP_COMMAND__" install -U pip  || return 1
                 run "$__PIP_COMMAND__" install -U "$2" || return 1
             fi
@@ -2514,10 +2868,10 @@ perl_module() {
             perl_module is-installed "$1" && return 0
 
             if command_exists_in_filesystem cpan  ; then
-                note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}perl module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}cpan${COLOR_OFF}"
+                note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}perl module is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}cpan${COLOR_OFF}"
                 run cpan -i "$1"
             elif command_exists_in_filesystem cpanm ; then
-                note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}perl module is required, but it is not found, I will install it via${COLOR_OFF} ${COLOR_GREEN}cpanm${COLOR_OFF}"
+                note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}perl module is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}cpanm${COLOR_OFF}"
                 run cpanm "$1"
             else
                 handle_dependency required exe cpan:cpanm
@@ -4027,7 +4381,7 @@ __install_the_given_package() {
     unset CONFIG_XX_UPDATED
     unset STEP_NUM
 
-    for bindir in "$MY_HOME_DIR/native" /opt
+    for bindir in "$MY_HOME_DIR/native" "$HOME/.uppm/install.d" /opt
     do
         if [ -d "$bindir" ] ; then
             for item in $(find "$bindir" -maxdepth 2 -type d -name bin)
@@ -4069,15 +4423,15 @@ __install_the_given_package() {
     step "handle required dependencies"
     for item in $PACKAGE_DEP_CMD
     do
-        handle_dependency $(__parse_require_dependency_item exe "$item")
+        handle_dependency $(__parse_require_dependency_item exe "$item") || return 1
     done
     for item in $PACKAGE_DEP_PYM
     do
-        handle_dependency $(__parse_require_dependency_item pym "$item")
+        handle_dependency $(__parse_require_dependency_item pym "$item") || return 1
     done
     for item in $PACKAGE_DEP_PLM
     do
-        handle_dependency $(__parse_require_dependency_item plm "$item")
+        handle_dependency $(__parse_require_dependency_item plm "$item") || return 1
     done
 
     step "printf required dependencies"
@@ -6128,6 +6482,8 @@ install_android_sdk_if_needed() {
 
         fetch "$ANDROID_SDK_URL" --sha256="$ANDROID_SDK_SUM" --output-path="$ANDROID_SDK_FILEPATH"
 
+        run install -d "$MY_HOME_DIR/android-sdk/cmdline-tools"
+
         run unzip "$ANDROID_SDK_FILEPATH" -d "$MY_HOME_DIR/android-sdk/cmdline-tools"
 
         run mv "$MY_HOME_DIR/android-sdk/cmdline-tools/cmdline-tools" "$MY_HOME_DIR/android-sdk/cmdline-tools/latest"
@@ -6138,9 +6494,9 @@ install_android_sdk_if_needed() {
 
         cat > "$MY_HOME_DIR/android-sdk/env" <<EOF
 bppend_to_PATH() {
-    case ":${PATH}:" in
-        *:"$@":*) ;;
-        *) export PATH="$@:$PATH" ;;
+    case ":\${PATH}:" in
+        *:"\$@":*) ;;
+        *) export PATH="\$@:\$PATH" ;;
     esac
 }
 
@@ -6157,6 +6513,10 @@ EOF
     echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
     echo "ANDROID_HOME     = $ANDROID_HOME"
     echo "PATH = $PATH"
+}
+
+is_a_valid_jdk_home_dir() {
+    true
 }
 
 install_jdk_if_needed() {
@@ -6166,76 +6526,45 @@ install_jdk_if_needed() {
         if is_a_valid_jdk_home_dir "$JAVA_HOME" ; then
             debug "you have set the ${COLOR_RED}JAVA_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$JAVA_HOME${COLOR_OFF}, which is used as the jdk home."
             export JAVA_HOME
+            bppend_to_PATH "$JAVA_HOME/bin"
+            run java -version
+            return 0
         else
             debug "you have set the ${COLOR_RED}JAVA_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$JAVA_HOME${COLOR_OFF}, but it is not a valid jdk home."
             unset JAVA_HOME
         fi
     fi
 
-    if [ -z "$JAVA_HOME" ] ; then
-        if [ -f "$MY_HOME_DIR/jdk/env" ] ; then
-            if is_a_valid_jdk_home_dir "$MY_HOME_DIR/jdk" ; then
-                . "$MY_HOME_DIR/jdk/env"
-            else
-                rm -rf "$MY_HOME_DIR/jdk"
-            fi
+    if [ -f "$HOME/.uppm/install.d/jdk/installed-metadata" ] && [ -f "$HOME/.uppm/install.d/jdk/env" ] ; then
+        if is_a_valid_jdk_home_dir "$HOME/.uppm/install.d/jdk" ; then
+            . "$HOME/.uppm/install.d/jdk/env"
+            run java -version
+            return 0
         fi
     fi
 
-    if [ -z "$JAVA_HOME" ] ; then
-        note "JDK Not Found on your build machine, I will install it for you."
-
-        # https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html
-        case $NATIVE_OS_KIND in
-            linux)
-                JDK_URL='https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-aarch64_bin.tar.gz'
-                JDK_SUM='124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf'
-                ;;
-            darwin)
-                ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip'
-                ANDROID_SDK_SUM='6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf'
-                ;;
-            windows)
-                ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-win-7583922_latest.zip'
-                ANDROID_SDK_SUM='f9e6f91743bcb1cc6905648ca751bc33975b0dd11b50d691c2085d025514278c'
-                ;;
-            *)  die "No Android SDK for $NATIVE_OS_KIND"
-        esac
-
-        ANDROID_SDK_FILENAME='android-sdk-commandline-tools.zip'
-        ANDROID_SDK_FILEPATH="$MY_HOME_DIR/$ANDROID_SDK_FILENAME"
-
-        fetch "$ANDROID_SDK_URL" --sha256="$ANDROID_SDK_SUM" --output-path="$ANDROID_SDK_FILEPATH"
-
-        run unzip "$ANDROID_SDK_FILEPATH" -d "$MY_HOME_DIR/android-sdk/cmdline-tools"
-
-        run mv "$MY_HOME_DIR/android-sdk/cmdline-tools/cmdline-tools" "$MY_HOME_DIR/android-sdk/cmdline-tools/latest"
-
-        run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-30'"
-        run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'build-tools;30.0.3'"
-        run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'platform-tools'"
-
-        cat > "$MY_HOME_DIR/android-sdk/env" <<EOF
-bppend_to_PATH() {
-    case ":${PATH}:" in
-        *:"$@":*) ;;
-        *) export PATH="$@:$PATH" ;;
-    esac
-}
-
-ANDROID_HOME="$MY_HOME_DIR/android-sdk"
-ANDROID_SDK_ROOT="$MY_HOME_DIR/android-sdk"
-
-bppend_to_PATH "$ANDROID_SDK_ROOT/cmdline-tools/tools/bin"
-bppend_to_PATH "$ANDROID_SDK_ROOT/platform-tools"
-bppend_to_PATH "$ANDROID_SDK_ROOT/build-tools/30.0.3"
-EOF
-    . "$MY_HOME_DIR/android-sdk/env"
+    if command -v java > /dev/null ; then
+        run java -version
+        return 0
     fi
 
-    echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
-    echo "ANDROID_HOME     = $ANDROID_HOME"
-    echo "PATH = $PATH"
+    note "JDK Not Found on your build machine, I will install it for you."
+    handle_dependency required exe java
+
+    if [ -f "$HOME/.uppm/install.d/jdk/installed-metadata" ] && [ -f "$HOME/.uppm/install.d/jdk/env" ] ; then
+        if is_a_valid_jdk_home_dir "$HOME/.uppm/install.d/jdk" ; then
+            . "$HOME/.uppm/install.d/jdk/env"
+            run java -version
+            return 0
+        fi
+    fi
+
+    if command -v java > /dev/null ; then
+        run java -version
+        return 0
+    else
+        die "no JDK Found"
+    fi
 }
 
 inspect_install_arguments() {
