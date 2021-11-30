@@ -2085,12 +2085,12 @@ __uppm_is_the_given_package_available() {
 
         if [ $# -ge 3 ] ; then
             UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
-            if version_match "$UPPM_PKG_VERS" "$2" "$3" ; then
-                return 0
-            fi
-            continue
+            version_match "$UPPM_PKG_VERS" "$2" "$3" || continue
         fi
+
+        return 0
     done
+
     return 1
 }
 
