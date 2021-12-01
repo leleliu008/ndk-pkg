@@ -8,35 +8,35 @@ COLOR_PURPLE='\033[0;35m'       # Purple
 COLOR_OFF='\033[0m'             # Reset
 
 print() {
-    printf "%b" "$*"
+    printf '%b' "$*"
 }
 
 echo() {
-    print "$*\n"
+    printf '%b\n' "$*"
 }
 
 info() {
-    print "💠  $*\n"
+    printf '%b\n' "💠  $*"
 }
 
 note() {
-    print "${COLOR_YELLOW}🔔  $*${COLOR_OFF}\n" >&2
+    printf '%b\n' "${COLOR_YELLOW}🔔  $*${COLOR_OFF}" >&2
 }
 
 warn() {
-    print "${COLOR_YELLOW}🔥  $*${COLOR_OFF}\n" >&2
+    printf '%b\n' "${COLOR_YELLOW}🔥  $*${COLOR_OFF}" >&2
 }
 
 success() {
-    print "${COLOR_GREEN}[✔] $*${COLOR_OFF}\n"
+    printf '%b\n' "${COLOR_GREEN}[✔] $*${COLOR_OFF}"
 }
 
 error() {
-    print "${COLOR_RED}💔  $*${COLOR_OFF}\n" >&2
+    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
 }
 
 die() {
-    print "${COLOR_RED}💔  $*${COLOR_OFF}\n" >&2
+    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
     exit 1
 }
 

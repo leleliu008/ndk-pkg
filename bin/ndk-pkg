@@ -4014,6 +4014,9 @@ __compare_versions_with_brew() {
             libjxl)   printf '%s\n' 'jpeg-xl'   ;;
             blake3)   printf '%s\n' 'b3sum'     ;;
             libwebp)  printf '%s\n' 'webp'      ;;
+            freetype2)printf '%s\n' 'freetype'  ;;
+            freetype2-with-harfbuzz)
+                      printf '%s\n' 'freetype'  ;;
             gnu-coreutils)
                       printf '%s\n' 'coreutils' ;;
             libmediainfo|mediainfo)
