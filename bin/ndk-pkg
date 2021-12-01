@@ -467,9 +467,6 @@ fetch() {
         case $1 in
             --sha256=*)
                 FETCH_SHA256=$(getvalue "$1")
-                if [ -z "$FETCH_SHA256" ] ; then
-                    die "fetch <URL> --sha256=SHA256 , SHA256 must not be empty."
-                fi
                 ;;
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
