@@ -36,7 +36,7 @@ autoload -U compinit && compinit
 # update the ndk-pkg formula repositories
 ndk-pkg update
 ```
-**Note**: **CHINESE USER IF NO VPN OPENED**, please replace `githubusercontent` with `githubusercontents`
+**CHINESE USER IF NO VPN OPENED**, please replace `githubusercontent` with `githubusercontents`
 
 ## ndk-pkg command usage
 *   show help of this command
