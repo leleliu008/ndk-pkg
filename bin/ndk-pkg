@@ -657,12 +657,12 @@ get_china_mirror_url() {
 ##############################################################################
 # {{{ __upgrade_self
 
-# __upgrade_self <UPGRAGE_URL> [-x | --china]
+# __upgrade_self <URL> [--china] [-x]
 __upgrade_self() {
     set -e
 
     if [ -z "$1" ] ; then
-        die "__upgrade_self() please specify a url."
+        die "__upgrade_self <URL> [--china] [-x] , URL must not be empty."
     fi
 
     unset XTRACE
@@ -671,9 +671,14 @@ __upgrade_self() {
     for arg in $@
     do
         case $arg in
-            --xtrace|-x) XTRACE=yes; set -x ;;
-            --china)     COUNTRY=china ;;
-            *) [ "$XTRACE" = yes ] && [ -n "$COUNTRY" ] && break
+            --xtrace|-x)
+                XTRACE=yes
+                set -x
+                ;;
+            --china)
+                COUNTRY=china
+                ;;
+            *)  die "__upgrade_self <URL> [--china] [-x] , unrecognized argument: $arg"
         esac
     done
 
@@ -6801,11 +6806,13 @@ inspect_install_arguments() {
 init() {
     # MY represents this software's
 
-    MY_VERSION=0.1.14
-    MY_HOME_PAGE='https://github.com/leleliu008/ndk-pkg'
+    MY_VERSION=0.1.15
+
+    MY_HOME_PAGE='https://github.com/leleliu008/ndk-pkg.git'
     MY_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository.git'
-    MY_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg'
-    MY_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/zsh-completion/_ndk-pkg'
+
+    MY_UPGRAGE_URL="https://github.com/leleliu008/ndk-pkg/releases/download/v${MY_VERSION}/ndk-pkg"
+    MY_ZSH_COMPLETION_SCRIPT_URL="https://github.com/leleliu008/ndk-pkg/releases/download/v${MY_VERSION}/_ndk-pkg"
 
     MY_HOME_DIR="$HOME/.ndk-pkg"
     MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
