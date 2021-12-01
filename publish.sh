@@ -204,7 +204,6 @@ main() {
     RELEASE_VERSION="$RELEASE_VERSION_MAJOR.$RELEASE_VERSION_MINOR.$RELEASE_VERSION_PATCH"
 
     sed_in_place "s|MY_VERSION=[0-9]\+.[0-9]\+.[0-9]\+|MY_VERSION=$RELEASE_VERSION|" bin/ndk-pkg
-    sed_in_place "s|RELEASE_VERSION='[0-9]\+.[0-9]\+.[0-9]\+'|RELEASE_VERSION='$RELEASE_VERSION'|" install.sh
 
     unset RELEASE_FILE_NAME
     RELEASE_FILE_NAME="ndk-pkg-$RELEASE_VERSION.tar.gz"
@@ -216,7 +215,7 @@ main() {
 
     success "sha256sum($RELEASE_FILE_NAME)=$RELEASE_FILE_SHA256SUM"
 
-    run git add bin/ndk-pkg install.sh
+    run git add bin/ndk-pkg
     run git commit -m "'publish new version $RELEASE_VERSION'"
     run git push origin master
 
@@ -227,7 +226,7 @@ main() {
     run cd homebrew-fpliu
 
     sed_in_place "/sha256   /c \  sha256   \"$RELEASE_FILE_SHA256SUM\"" Formula/ndk-pkg.rb
-    sed_in_place "s@[0-9]\+\.[0-9]\+\.[0-9]\+@$RELEASE_VERSION@g" Formula/ndk-pkg.rb
+    sed_in_place "s@[0-9]\+\.[0-9]\+\.[0-9]\+@$RELEASE_VERSION@g"       Formula/ndk-pkg.rb
 
     run git add Formula/ndk-pkg.rb
     run git commit -m "'publish new version $RELEASE_VERSION'"
