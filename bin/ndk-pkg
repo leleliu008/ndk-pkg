@@ -441,6 +441,7 @@ die_if_map_key__is_not_specified() {
 # fetch <URL> [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
 # fetch <URL> [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
 # fetch <URL> [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
+# fetch <URL> [--pipe=CMD]
 fetch() {
     unset FETCH_URL
     unset FETCH_SHA256
@@ -450,7 +451,7 @@ fetch() {
     unset FETCH_PIPE_TO_CMD
 
     if [ -z "$1" ] ; then
-        die "fetch() please specify a url."
+        die "fetch <URL> [OPTION]... , URL must not empty."
     else
         if [ "$COUNTRY" = 'china' ] ; then
             FETCH_URL="$(get_china_mirror_url "$1")"
@@ -466,29 +467,32 @@ fetch() {
         case $1 in
             --sha256=*)
                 FETCH_SHA256=$(getvalue "$1")
+                if [ -z "$FETCH_SHA256" ] ; then
+                    die "fetch <URL> --sha256=SHA256 , SHA256 must not be empty."
+                fi
                 ;;
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    die "fetch() --output-dir argument's value must not be empty."
+                    die "fetch <URL> --output-dir=DIR , DIR must not be empty."
                 fi
                 ;;
             --output-name=*)
                 FETCH_OUTPUT_NAME=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                    die "fetch() --output-name argument's value must not be empty."
+                    die "fetch <URL> --output-name=NAME , NAME must not be empty."
                 fi
                 ;;
             --output-path=*)
                 FETCH_OUTPUT_PATH=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-                    die "fetch() --output-path argument's value must not be empty."
+                    die "fetch <URL> --output-path=FILEPATH , FILEPATH must not be empty."
                 fi
                 ;;
             --pipe=*)
                 FETCH_PIPE_TO_CMD=$(getvalue "$1")
                 if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
-                    die "fetch() --pipe=CMD argument's value must not be empty."
+                    die "fetch <URL> --pipe=CMD , CMD must not be empty."
                 fi
         esac
         shift
@@ -561,8 +565,11 @@ fetch() {
             done
 
             if [ -z "$FETCH_TOOL" ] ; then
-                handle_dependency required exe curl
-                FETCH_TOOL=curl
+                if handle_dependency required exe curl ; then
+                    FETCH_TOOL=curl
+                else
+                    return 1
+                fi
             fi
 
             case $FETCH_TOOL in
@@ -2587,6 +2594,18 @@ __install_command_via_pmw() {
             PMW_PKG_NAME="$1"
         fi
 
+        if [ "$PMW_PM_UPDATED" != 'yes' ] ; then
+            case $1 in
+                apt-get) run $sudo apt-get -y update ;;
+                apt)     run $sudo apt     -y update ;;
+                dnf)     run $sudo dnf     -y update ;;
+                yum)     run $sudo yum     -y update ;;
+                zypper)  run $sudo zypper  -y update ;;
+                apk)     run $sudo apk        update ;;
+            esac
+            PMW_PM_UPDATED=yes
+        fi
+
         __pmw_is_the_given_package_available "$pm" "$PMW_PKG_NAME" $2 $3 || return 1
 
         note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$pm${COLOR_OFF}"
@@ -4439,7 +4458,6 @@ __install_the_given_package() {
     done
 
     export PATH
-    echo "$PATH"
 
     step "view formula"
     __view_formula_of_the_given_package "$1" --paging=never
