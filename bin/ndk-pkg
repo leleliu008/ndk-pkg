@@ -663,7 +663,11 @@ __upgrade_self() {
 
     if [ -z "$1" ] ; then
         die "__upgrade_self <URL> [--china] [-x] , URL must not be empty."
+    else
+        UPGRADE_SELF_URL="$1"
     fi
+
+    shift
 
     unset XTRACE
     unset COUNTRY
@@ -704,7 +708,7 @@ __upgrade_self() {
 
     run cd $WORK_DIR
 
-    fetch "$1" --output-path="$WORK_DIR/self"
+    fetch "$UPGRADE_SELF_URL" --output-path="$WORK_DIR/self"
 
     __upgrade_self_exit() {
         if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
@@ -723,13 +727,17 @@ __upgrade_self() {
 ##############################################################################
 # {{{ __integrate_zsh_completions
 
-# __integrate_zsh_completions <ZSH_COMPLETIONS_SCRIPT_URL> [-x | --china]
+# __integrate_zsh_completions <URL> [--china] [-x]
 __integrate_zsh_completions() {
     set -e
 
     if [ -z "$1" ] ; then
-        die "__integrate_zsh_completions() please specify a url."
+        die "__integrate_zsh_completions <URL> [--china] [-x] , URL must not be empty."
+    else
+        ZSH_COMPLETIONS_SCRIPT_URL="$1"
     fi
+
+    shift
 
     unset XTRACE
     unset COUNTRY
@@ -737,9 +745,14 @@ __integrate_zsh_completions() {
     for arg in $@
     do
         case $arg in
-            --xtrace|-x) XTRACE=yes; set -x ;;
-            --china)     COUNTRY=china ;;
-            *) [ "$XTRACE" = yes ] && [ -n "$COUNTRY" ] && break
+            --xtrace|-x)
+                XTRACE=yes
+                set -x
+                ;;
+            --china)
+                COUNTRY=china
+                ;;
+            *)  die "__upgrade_self <URL> [--china] [-x] , unrecognized argument: $arg"
         esac
     done
 
@@ -769,7 +782,7 @@ __integrate_zsh_completions() {
 
     run cd $WORK_DIR
 
-    fetch "$1" --output-path="$WORK_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    fetch "$MY_ZSH_COMPLETION_SCRIPT_URL" --output-path="$WORK_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
@@ -791,7 +804,7 @@ __integrate_zsh_completions() {
 
     run rm -rf $WORK_DIR
 
-    echo '\n'
+    printf '\n'
     note "${COLOR_YELLOW}you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
 }
 
@@ -6806,7 +6819,7 @@ inspect_install_arguments() {
 init() {
     # MY represents this software's
 
-    MY_VERSION=0.1.15
+    MY_VERSION=0.1.16
 
     MY_HOME_PAGE='https://github.com/leleliu008/ndk-pkg.git'
     MY_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository.git'
