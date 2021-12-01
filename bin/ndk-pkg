@@ -3253,7 +3253,6 @@ __load_formula_of_the_given_package() {
             else
                 PACKAGE_SRC_PATH=$(expr substr "$PACKAGE_SRC_URL" 7 ${#PACKAGE_SRC_URL})
             fi
-            [ -d "$PACKAGE_SRC_PATH" ] || die "src.url point to dir is not exist."
             ;;
         git)
             PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
@@ -4575,7 +4574,11 @@ EOF
             if command -v git > /dev/null ; then
                 PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h 2>/dev/null || true)
             fi
-            run cp -r "$PACKAGE_SRC_PATH/." "$WORK_DIR" || return 1
+            if [ -d "$PACKAGE_SRC_PATH" ] ; then
+                run cp -r "$PACKAGE_SRC_PATH/." "$WORK_DIR" || return 1
+            else
+                die "src.url point to dir is not exist."
+            fi
             ;;
         *.git)
             PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h) || return 1
