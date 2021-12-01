@@ -1190,6 +1190,7 @@ version_of_command() {
         patch) "$1" --version 2> /dev/null | head -n 1 | awk '{print($NF)}' ;;
         gperf) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
         groff) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+     makeinfo) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      help2man) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
  sphinx-build) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
  glib-mkenums) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
@@ -1440,6 +1441,7 @@ __pmw_get_available_package_name_by_command_name_choco() {
      objcopy) echo 'binutils' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    makeinfo) echo 'texinfo'  ;;
     sphinx-build) echo 'python38-sphinx' ;;
     glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
@@ -1474,6 +1476,7 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     pip3|pip) echo 'py3-pip' ;;
+    makeinfo) echo 'texinfo' ;;
     libtool|libtoolize|glibtool|glibtoolize)
               echo "libtool" ;;
     autoreconf|autoconf|autoreconf-2.69|autoconf-2.69)
@@ -1513,7 +1516,8 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-    pip3|pip) echo 'py38-pip'  ;;
+    makeinfo) echo 'texinfo'  ;;
+    pip3|pip) echo 'py38-pip' ;;
     python3)  echo 'python38' ;;
     glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
@@ -1549,6 +1553,7 @@ __pmw_get_available_package_name_by_command_name_pkg() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    makeinfo) echo 'texinfo'  ;;
     pip3|pip) echo 'py38-pip' ;;
     glib-mkenums) echo 'glib' ;;
     libtool|libtoolize|glibtool|glibtoolize)
@@ -1579,9 +1584,10 @@ __pmw_get_available_package_name_by_command_name_emerge() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-      xz)     echo 'xz-utils' ;;
-      tree)   echo 'app-text/tree' ;;
-      rst2man|rst2html)
+    makeinfo) echo 'texinfo'  ;;
+    xz)       echo 'xz-utils' ;;
+    tree)     echo 'app-text/tree' ;;
+    rst2man|rst2html)
                   echo "docutils" ;;
     sphinx-build) echo "sphinx" ;;
     pip3|pip)     echo "dev-python/pip" ;;
@@ -1614,7 +1620,8 @@ __pmw_get_available_package_name_by_command_name_pacman() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-      rst2man|rst2html)
+    makeinfo) echo 'texinfo'  ;;
+    rst2man|rst2html)
                   echo "python-docutils" ;;
     sphinx-build) echo "python-sphinx" ;;
     pip3|pip)     echo "python-pip" ;;
@@ -1675,6 +1682,7 @@ __pmw_get_available_package_name_by_command_name_xbps() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    makeinfo) echo 'texinfo'  ;;
     pip|pip3) echo "python3-pip" ;;
     rst2man|rst2html)
               echo "python3-docutils" ;;
@@ -1708,7 +1716,8 @@ __pmw_get_available_package_name_by_command_name_apk() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-    pip3|pip) echo 'py3-pip' ;;
+    makeinfo) echo 'texinfo'  ;;
+    pip3|pip) echo 'py3-pip'  ;;
     rst2man|rst2html)
               echo "py3-docutils" ;;
     sphinx-build) echo "sphinx" ;;
@@ -1742,7 +1751,8 @@ __pmw_get_available_package_name_by_command_name_zypper() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-      rst2man|rst2html)
+    makeinfo) echo 'texinfo'  ;;
+    rst2man|rst2html)
                   echo "python3-docutils" ;;
     sphinx-build) echo "python3-Sphinx" ;;
     pip3|pip)     echo "python3-pip" ;;
@@ -1777,7 +1787,8 @@ __pmw_get_available_package_name_by_command_name_dnf() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-      rst2man|rst2html)
+    makeinfo) echo 'texinfo'  ;;
+    rst2man|rst2html)
                   echo "python3-docutils" ;;
     sphinx-build) echo "python3-sphinx" ;;
     glib-mkenums) echo 'glib' ;;
@@ -1810,6 +1821,7 @@ __pmw_get_available_package_name_by_command_name_yum() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    makeinfo) echo 'texinfo'  ;;
     sphinx-build) echo "python-sphinx" ;;
     glib-mkenums) echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
@@ -1848,6 +1860,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    makeinfo) echo 'texinfo'  ;;
     pip3|pip) echo "python3-pip" ;;
     rst2man|rst2html)
               echo "python3-docutils" ;;
@@ -1857,8 +1870,9 @@ __pmw_get_available_package_name_by_command_name_apt() {
               echo "libgrpc" ;;
     glib-mkenums)
               echo 'libglib2.0-dev' ;;
-    glibtool|libtoolize|glibtoolize)
+    libtoolize|glibtoolize)
                 echo "libtool"  ;;
+    libtool)    echo "libtool-bin" ;;
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
@@ -1892,7 +1906,8 @@ __pmw_get_available_package_name_by_command_name_brew() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-     rst2man.py|rst2html.py)
+    makeinfo) echo 'texinfo'  ;;
+    rst2man.py|rst2html.py)
               echo "docutils" ;;
     grpc_cpp_plugin)
               echo "grpc" ;;
@@ -3998,8 +4013,11 @@ __compare_versions_with_brew() {
             gtar)     printf '%s\n' 'gnu-tar'   ;;
             libjxl)   printf '%s\n' 'jpeg-xl'   ;;
             blake3)   printf '%s\n' 'b3sum'     ;;
+            libwebp)  printf '%s\n' 'webp'      ;;
             gnu-coreutils)
                       printf '%s\n' 'coreutils' ;;
+            libmediainfo|mediainfo)
+                      printf '%s\n' 'media-info';;
             tcl-core) printf '%s\n' 'tcl-tk'    ;;
             *)        printf '%s\n' "$1"
         esac
