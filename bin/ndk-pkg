@@ -2561,7 +2561,7 @@ __install_command_via_uppm() {
 # __install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>]
 __install_command_via_pmw() {
     if [ -z "$1" ] ; then
-        die "__install_command_via_pmw <CMD>, CMD must not be empty."
+        die "__install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>] , CMD must not be empty."
     fi
 
     if command_exists_in_filesystem_and_version_matched $@ ; then
@@ -2592,7 +2592,7 @@ __install_command_via_pmw() {
         fi
 
         if [ "$PMW_PM_UPDATED" != 'yes' ] ; then
-            case $1 in
+            case $pm in
                 apt-get) run $sudo apt-get -y update ;;
                 apt)     run $sudo apt     -y update ;;
                 dnf)     run $sudo dnf     -y update ;;
