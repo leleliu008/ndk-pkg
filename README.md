@@ -23,18 +23,7 @@ brew tap leleliu008/fpliu
 brew install ndk-pkg
 ```
 
-## Install ndk-pkg via running shell script
-```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/install.sh)"
-```
-**CHINESE USER IF NO VPN**, please try following instructions:
-```bash
-curl -LO https://raw.githubusercontents.com/leleliu008/ndk-pkg/master/install.sh
-chmod +x install.sh
-./install.sh --china
-```
-
-## Install ndk-pkg from github repository master branch HEAD
+## Install ndk-pkg via cURL
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
@@ -47,6 +36,7 @@ autoload -U compinit && compinit
 # update the ndk-pkg formula repositories
 ndk-pkg update
 ```
+**Note**: **CHINESE USER IF NO VPN OPENED**, please replace `githubusercontent` with `githubusercontents`
 
 ## ndk-pkg command usage
 *   show help of this command
