@@ -36,7 +36,6 @@ autoload -U compinit && compinit
 # update the ndk-pkg formula repositories
 ndk-pkg update
 ```
-**CHINESE USER IF NO VPN OPENED**, please replace `githubusercontent` with `githubusercontents`
 
 ## Install ndk-pkg on Windows in PowerShell
 ```bash
@@ -45,9 +44,9 @@ Invoke-WebRequest -OutFile ndk-pkg https://raw.githubusercontent.com/leleliu008/
 # update the ndk-pkg formula repositories
 wsl ./ndk-pkg update
 ```
-**CHINESE USER IF NO VPN OPENED**, please replace `githubusercontent` with `githubusercontents`
 
 **Note**: I assume that wsl has been installed on your Windows, if not, you can follow the step-by-step instructions to install it. [How to Install WSL 2 on Windows 10](https://www.omgubuntu.co.uk/how-to-install-wsl2-on-windows-10)
+
 
 ## ndk-pkg command usage
 *   show help of this command
