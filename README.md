@@ -23,7 +23,7 @@ brew tap leleliu008/fpliu
 brew install ndk-pkg
 ```
 
-## Install ndk-pkg via cURL
+## Install ndk-pkg on UNIX via cURL
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
@@ -37,6 +37,17 @@ autoload -U compinit && compinit
 ndk-pkg update
 ```
 **CHINESE USER IF NO VPN OPENED**, please replace `githubusercontent` with `githubusercontents`
+
+## Install ndk-pkg on Windows in PowerShell
+```bash
+Invoke-WebRequest -OutFile ndk-pkg "https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg"
+
+# update the ndk-pkg formula repositories
+wsl ./ndk-pkg update
+```
+**CHINESE USER IF NO VPN OPENED**, please replace `githubusercontent` with `githubusercontents`
+
+**Note**: I assume that wsl have been installed on your Windows, if not, please look at [How to Install WSL 2 on Windows 10](https://www.omgubuntu.co.uk/how-to-install-wsl2-on-windows-10)
 
 ## ndk-pkg command usage
 *   show help of this command

@@ -1461,6 +1461,7 @@ __pmw_get_available_package_name_by_command_name_choco() {
      objcopy) echo 'binutils' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     makeinfo) echo 'texinfo'  ;;
     sphinx-build) echo 'python38-sphinx' ;;
     glib-mkenums) echo 'glib' ;;
@@ -1497,6 +1498,7 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     pip3|pip) echo 'py3-pip' ;;
     makeinfo) echo 'texinfo' ;;
     libtool|libtoolize|glibtool|glibtoolize)
@@ -1540,6 +1542,7 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     makeinfo) echo 'texinfo'  ;;
     pip3|pip) echo 'py38-pip' ;;
     python3)  echo 'python38' ;;
@@ -1579,6 +1582,7 @@ __pmw_get_available_package_name_by_command_name_pkg() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     makeinfo) echo 'texinfo'  ;;
     pip3|pip) echo 'py38-pip' ;;
     glib-mkenums) echo 'glib' ;;
@@ -1612,6 +1616,7 @@ __pmw_get_available_package_name_by_command_name_emerge() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     makeinfo) echo 'texinfo'  ;;
     xz)       echo 'xz-utils' ;;
     tree)     echo 'app-text/tree' ;;
@@ -1650,6 +1655,7 @@ __pmw_get_available_package_name_by_command_name_pacman() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     makeinfo) echo 'texinfo'  ;;
     rst2man|rst2html)
                   echo "python-docutils" ;;
@@ -1714,6 +1720,7 @@ __pmw_get_available_package_name_by_command_name_xbps() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     makeinfo) echo 'texinfo'  ;;
     pip|pip3) echo "python3-pip" ;;
     rst2man|rst2html)
@@ -1750,6 +1757,7 @@ __pmw_get_available_package_name_by_command_name_apk() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     makeinfo) echo 'texinfo'  ;;
     pip3|pip) echo 'py3-pip'  ;;
     rst2man|rst2html)
@@ -1787,6 +1795,7 @@ __pmw_get_available_package_name_by_command_name_zypper() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     makeinfo) echo 'texinfo'  ;;
     rst2man|rst2html)
                   echo "python3-docutils" ;;
@@ -1825,6 +1834,7 @@ __pmw_get_available_package_name_by_command_name_dnf() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie-devel' ;;
     makeinfo) echo 'texinfo'  ;;
     rst2man|rst2html)
                   echo "python3-docutils" ;;
@@ -1861,6 +1871,7 @@ __pmw_get_available_package_name_by_command_name_yum() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie-devel' ;;
     makeinfo) echo 'texinfo'  ;;
     sphinx-build) echo "python-sphinx" ;;
     glib-mkenums) echo 'glib2-devel' ;;
@@ -1902,6 +1913,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie1-bin' ;;
     makeinfo) echo 'texinfo'  ;;
     pip3|pip) echo "python3-pip" ;;
     rst2man|rst2html)
@@ -1950,6 +1962,7 @@ __pmw_get_available_package_name_by_command_name_brew() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
+    trietool) echo 'libdatrie';;
     makeinfo) echo 'texinfo'  ;;
     rst2man.py|rst2html.py)
               echo "docutils" ;;
