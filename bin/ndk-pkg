@@ -1914,7 +1914,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
   7z|7za|7zr) echo 'p7zip' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
-    hexdump)  echo 'util-linux' ;;
+    hexdump)  echo 'bsdmainutils';;
     makeinfo) echo 'texinfo'  ;;
     pip3|pip) echo "python3-pip" ;;
     rst2man|rst2html)
