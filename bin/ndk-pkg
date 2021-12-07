@@ -4485,10 +4485,7 @@ __install_the_given_packages() {
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
             fi
         else
-            unset WORK_DIR
-            WORK_DIR=$(mktemp -d) || die "create work directory for $INSTALLING_PACKAGE failed."
-            run install -d "$WORK_DIR/$TIMESTAMP_UNIX"
-            (__install_the_given_package "$INSTALLING_PACKAGE") || die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
+            (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
         fi
     done
 }
@@ -4502,6 +4499,7 @@ __install_the_given_package() {
     # beacuse previous package's work direcotory is deleted.
     cd ~ || return 1
 
+    unset WORK_DIR
     unset SOURCE_DIR
     unset BUILD_DIR
 
@@ -4510,6 +4508,25 @@ __install_the_given_package() {
 
     unset CONFIG_XX_UPDATED
     unset STEP_NUM
+
+    unset TARGET_INDEX
+    unset TARGET_ITEM
+
+    __install_the_given_package_on_exit() {
+        is_package_installed "$INSTALLING_PACKAGE" && return 0
+
+        if [ -z "$WORK_DIR" ] ; then
+            die "install $INSTALLING_PACKAGE failed!"
+        else
+            if [ -z "$TARGET_ITEM" ] ; then
+                die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
+            else
+                die "install $INSTALLING_PACKAGE/$TARGET_ITEM failed! you can go to $WORK_DIR to see see."
+            fi
+        fi
+    }
+
+    trap __install_the_given_package_on_exit EXIT
 
     for bindir in "$MY_HOME_DIR/native" "$HOME/.uppm/install.d" /opt
     do
@@ -4590,6 +4607,12 @@ __install_the_given_package() {
     CMAKE=$(command -v cmake || true)
     GMAKE=$(command -v gmake || command -v make || true)
     NINJA=$(command -v ninja || true)
+
+    step "create work directory"
+    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    WORK_DIR=$(mktemp -d) || die "create work directory failed."
+
+    run install -d "$WORK_DIR/$TIMESTAMP_UNIX"
 
     step "calculate dependency packages"
     unset DEPENDENCY_PACKAGE_LIST
@@ -4782,7 +4805,6 @@ EOF
         esac
     fi
 
-    unset TARGET_INDEX
     unset TARGET_LIST
     TARGET_LIST="$(__list_supported_target_abis)"
 
@@ -4790,7 +4812,7 @@ EOF
     do
         TARGET_INDEX=$(expr ${TARGET_INDEX-0} + 1)
         step "${COLOR_PURPLE}Installing ${COLOR_OFF}${COLOR_GREEN}$1 $TARGET_ITEM${COLOR_OFF}"
-        (__install_the_given_package_for_the_given_target "$1" "$TARGET_ITEM") || die "install $1/$TARGET_ITEM failed! you can go to $WORK_DIR to see see."
+        (__install_the_given_package_for_the_given_target "$1" "$TARGET_ITEM") || return 1
     done
 
     step "record installed abis"
