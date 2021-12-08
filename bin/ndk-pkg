@@ -3123,21 +3123,21 @@ package() {
             shift
             __PACKAGE_KEY__="$1"
             shift
-            __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr - _  | tr . _ | tr a-z A-Z)"
+            __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr '+-.' '_' | tr a-z A-Z)"
             eval "PACKAGE_$__PACKAGE_KEY__=\"$@\"" || exit 1
             ;;
         get)
             shift
             __load_formula_of_the_given_package "$1"
             shift
-            __PACKAGE_KEY__="$(echo "$1" | tr - _  | tr . _ | tr a-z A-Z)"
+            __PACKAGE_KEY__="$(echo "$1" | tr '+-.' '_' | tr a-z A-Z)"
             eval echo \$PACKAGE_$__PACKAGE_KEY__ || exit 1
             ;;
         add)
             shift
             __PACKAGE_KEY__="$1"
             shift
-            __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr - _  | tr . _ | tr a-z A-Z)"
+            __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr '+-.' '_' | tr a-z A-Z)"
             __PACKAGE_VAL__="$(eval echo \$PACKAGE_$__PACKAGE_KEY__)"
             eval "PACKAGE_$__PACKAGE_KEY__=\"$__PACKAGE_VAL__ $@\"" || exit 1
             ;;
@@ -5380,7 +5380,7 @@ __config_variables_for_the_given_target() {
 
     for PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
-        PKG=$(printf "$PACKAGE" | tr '-' '_')
+        PKG=$(printf '%s\n' "$PACKAGE" | tr '+-.' '_')
 
         ABI_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE/$TARGET_OS_ABI"
         ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
