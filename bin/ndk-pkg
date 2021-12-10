@@ -1377,77 +1377,6 @@ command_exists_in_filesystem_and_version_matched() {
 ##############################################################################
 # {{{ package manager wrapper, aka pmw
 
-# check if the give package specification is available in specified package manager's repo
-#
-# package specification's form: <PKG> [OP VERSION]
-#
-# OP:
-# eq  equal
-# ne  not equal
-# gt  greater than
-# lt  less than
-# ge  greater than or equal
-# le  less than or equal
-#
-# __pmw_is_the_given_package_available <PM> <PKG> [OP VERSION]
-#
-# __pmw_is_the_given_package_available apt automake eq 1.16.0
-# __pmw_is_the_given_package_available apt automake lt 1.16.0
-# __pmw_is_the_given_package_available apt automake gt 1.16.0
-# __pmw_is_the_given_package_available apt automake le 1.16.0
-# __pmw_is_the_given_package_available apt automake ge 1.16.0
-# __pmw_is_the_given_package_available apt automake
-__pmw_is_the_given_package_available() {
-    if [ $# -eq 2 ] ; then
-        case $1 in
-            pkg) pkg show "$2" > /dev/null 2>&1 ;;
-            apt) apt show "$2" > /dev/null 2>&1 ;;
-            apk) apk info "$2" > /dev/null 2>&1 ;;
-            yum) yum info "$2" > /dev/null 2>&1 ;;
-            dnf) dnf info "$2" > /dev/null 2>&1 ;;
-            brew) brew info "$2" > /dev/null 2>&1 ;;
-            xbps) xbps-query -R "$2" > /dev/null 2>&1 ;;
-            pacman) pacman -Ss "^$2$" > /dev/null 2>&1 ;;
-            zypper) [ "$(zypper info "$2" 2>&1 | tail -n 1)" != "package '$2' not found." ] ;;
-            emerge)
-                case $2 in
-                    */*) [ "$(emerge -s "%@^$2$" 2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ] ;;
-                    *)   [ "$(emerge -s "%^$2$"  2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ]
-                esac
-                ;;
-        esac
-    elif [ $# -eq 4 ] ; then
-        __pmw_is_the_given_package_available "$1" "$2" && version_match "$(__pmw_get_available_package_version_by_package_name "$1" "$2")" "$3" "$4"
-    else
-        die "USAGE:  __pmw_is_the_given_package_available <PM> <PKG> [OP VERSION]\nACTUAL: __pmw_is_the_given_package_available $@"
-    fi
-}
-
-# __pmw_get_available_package_version_by_package_name <PM> <PKG>
-# __pmw_get_available_package_version_by_package_name apt automake
-__pmw_get_available_package_version_by_package_name() {
-    case $1 in
-        pkg) pkg show "$2" 2> /dev/null | grep 'Version: ' | head -n 1 | cut -d ' ' -f2 | cut -d- -f1  | cut -d~ -f1 | sed 's/[0-9]://' ;;
-        apt) apt show "$2" 2> /dev/null | grep 'Version: ' | head -n 1 | cut -d ' ' -f2 | cut -d- -f1  | cut -d~ -f1 | sed 's/[0-9]://' ;;
-        apk) apk info "$2" 2> /dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
-        yum) yum info "$2" 2> /dev/null | grep 'Version     :'  | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
-        dnf) dnf info "$2" 2> /dev/null | grep 'Version      :' | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
-        brew) brew info "$2" 2> /dev/null | grep "$2: " | cut -d ' ' -f3 ;;
-        xbps) xbps-query -R --property=pkgver "$2" | cut -d- -f2 | cut -d_ -f1 ;;
-        pacman) pacman -Ss "^$2$" 2> /dev/null | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
-        zyyper) zyyper info "$2" 2> /dev/null | sed -n '/Version        :/p' | sed 's/Version        : \(.*\)/\1/' | cut -d- -f1 ;;
-        emerge)
-            case $2 in
-                */*) emerge -s "%@^$2$" 2> /dev/null | sed -n '/Latest version available:/p' | cut -d: -f2 ;;
-                *)   emerge -s "%^$2$"  2> /dev/null | sed -n '/Latest version available:/p' | cut -d: -f2 ;;
-            esac
-    esac
-}
-
-# }}}
-##############################################################################
-# {{{ __pmw_get_available_package_name_by_command_name_XX
-
 # https://cygwin.com/packages/package_list.html
 __pmw_get_available_package_name_by_command_name_choco() {
     case $1 in
@@ -2023,15 +1952,29 @@ __pmw_get_available_pm_list() {
     done
 }
 
-# __pmw_install_the_given_package <PM> <PKG> [OP VERSION]
+# __pmw_install_the_given_package <PM> <PKG> [eq|ne|le|ge|lt|gt <VERSION>]
 # __pmw_install_the_given_package apt make ge 3.80
 # __pmw_install_the_given_package apt make
 __pmw_install_the_given_package() {
-    if [ -z "$2" ] ; then
-        return 1
+    [ -z "$1" ] && die "USAGE: __pmw_install_the_given_package <PM> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PM must not be empty."
+    [ -z "$2" ] && die "USAGE: __pmw_install_the_given_package <PM> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG must not be empty."
+
+    if [ "$PMW_PM_UPDATED" != 'yes' ] ; then
+        case $pm in
+            apt-get) run $sudo apt-get -y update ;;
+            apt)     run $sudo apt     -y update ;;
+            dnf)     run $sudo dnf     -y update ;;
+            yum)     run $sudo yum     -y update ;;
+            zypper)  run $sudo zypper  -y update ;;
+            apk)     run $sudo apk        update ;;
+            pacman)  run $sudo pacman -Syy --noconfirm ;;
+        esac
+        PMW_PM_UPDATED=yes
     fi
 
     __pmw_is_the_given_package_available $@ || return 1
+
+    note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
 
     case $1 in
         pip3)
@@ -2060,14 +2003,8 @@ __pmw_install_the_given_package() {
         pkg)     run $sudo pkg install -y "$2" ;;
         pkgin)   run $sudo pkgin -y install "$2" ;;
         pkg_add) run $sudo pkg_add "$2" ;;
-        apt)
-            run $sudo apt -y update &&
-            run $sudo apt -y install "$2"
-            ;;
-        apt-get)
-            run $sudo apt-get -y update &&
-            run $sudo apt-get -y install "$2"
-            ;;
+        apt)     run $sudo apt -y install "$2" ;;
+        apt-get) run $sudo apt-get -y install "$2" ;;
         dnf)     run $sudo dnf -y install "$2" ;;
         yum)     run $sudo yum -y install "$2" ;;
         zypper)  run $sudo zypper install -y "$2" ;;
@@ -2078,6 +2015,73 @@ __pmw_install_the_given_package() {
         choco)   run choco install -y --source cygwin "$2" ;;
     esac
     echo
+}
+
+# check if the give package specification is available in specified package manager's repo
+#
+# package specification's form: <PKG> [OP VERSION]
+#
+# OP:
+# eq  equal
+# ne  not equal
+# gt  greater than
+# lt  less than
+# ge  greater than or equal
+# le  less than or equal
+#
+# __pmw_is_the_given_package_available <PM> <PKG> [OP VERSION]
+#
+# __pmw_is_the_given_package_available apt automake eq 1.16.0
+# __pmw_is_the_given_package_available apt automake lt 1.16.0
+# __pmw_is_the_given_package_available apt automake gt 1.16.0
+# __pmw_is_the_given_package_available apt automake le 1.16.0
+# __pmw_is_the_given_package_available apt automake ge 1.16.0
+# __pmw_is_the_given_package_available apt automake
+__pmw_is_the_given_package_available() {
+    if [ $# -eq 2 ] ; then
+        case $1 in
+            pkg) pkg show "$2" > /dev/null 2>&1 ;;
+            apt) apt show "$2" > /dev/null 2>&1 ;;
+            apk) apk info "$2" > /dev/null 2>&1 ;;
+            yum) yum info "$2" > /dev/null 2>&1 ;;
+            dnf) dnf info "$2" > /dev/null 2>&1 ;;
+            brew) brew info "$2" > /dev/null 2>&1 ;;
+            xbps) xbps-query -R "$2" > /dev/null 2>&1 ;;
+            pacman) pacman -Ss "^$2$" > /dev/null 2>&1 ;;
+            zypper) [ "$(zypper info "$2" 2>&1 | tail -n 1)" != "package '$2' not found." ] ;;
+            emerge)
+                case $2 in
+                    */*) [ "$(emerge -s "%@^$2$" 2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ] ;;
+                    *)   [ "$(emerge -s "%^$2$"  2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ]
+                esac
+                ;;
+        esac
+    elif [ $# -eq 4 ] ; then
+        __pmw_is_the_given_package_available "$1" "$2" && version_match "$(__pmw_get_available_package_version_by_package_name "$1" "$2")" "$3" "$4"
+    else
+        die "USAGE:  __pmw_is_the_given_package_available <PM> <PKG> [OP VERSION]\nACTUAL: __pmw_is_the_given_package_available $@"
+    fi
+}
+
+# __pmw_get_available_package_version_by_package_name <PM> <PKG>
+# __pmw_get_available_package_version_by_package_name apt automake
+__pmw_get_available_package_version_by_package_name() {
+    case $1 in
+        pkg) pkg show "$2" 2> /dev/null | grep 'Version: ' | head -n 1 | cut -d ' ' -f2 | cut -d- -f1  | cut -d~ -f1 | sed 's/[0-9]://' ;;
+        apt) apt show "$2" 2> /dev/null | grep 'Version: ' | head -n 1 | cut -d ' ' -f2 | cut -d- -f1  | cut -d~ -f1 | sed 's/[0-9]://' ;;
+        apk) apk info "$2" 2> /dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
+        yum) yum info "$2" 2> /dev/null | grep 'Version     :'  | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
+        dnf) dnf info "$2" 2> /dev/null | grep 'Version      :' | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
+        brew) brew info "$2" 2> /dev/null | grep "$2: " | cut -d ' ' -f3 ;;
+        xbps) xbps-query -R --property=pkgver "$2" | cut -d- -f2 | cut -d_ -f1 ;;
+        pacman) pacman -Ss "^$2$" 2> /dev/null | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
+        zyyper) zyyper info "$2" 2> /dev/null | sed -n '/Version        :/p' | sed 's/Version        : \(.*\)/\1/' | cut -d- -f1 ;;
+        emerge)
+            case $2 in
+                */*) emerge -s "%@^$2$" 2> /dev/null | sed -n '/Latest version available:/p' | cut -d: -f2 ;;
+                *)   emerge -s "%^$2$"  2> /dev/null | sed -n '/Latest version available:/p' | cut -d: -f2 ;;
+            esac
+    esac
 }
 
 # }}}
@@ -2665,24 +2669,7 @@ __install_command_via_pmw() {
         if [ -z "$PMW_PKG_NAME" ] ; then
             PMW_PKG_NAME="$1"
         fi
-
-        if [ "$PMW_PM_UPDATED" != 'yes' ] ; then
-            case $pm in
-                apt-get) run $sudo apt-get -y update ;;
-                apt)     run $sudo apt     -y update ;;
-                dnf)     run $sudo dnf     -y update ;;
-                yum)     run $sudo yum     -y update ;;
-                zypper)  run $sudo zypper  -y update ;;
-                apk)     run $sudo apk        update ;;
-            esac
-            PMW_PM_UPDATED=yes
-        fi
-
-        __pmw_is_the_given_package_available "$pm" "$PMW_PKG_NAME" $2 $3 || return 1
-
-        note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$pm${COLOR_OFF}"
-
-        __pmw_install_the_given_package "$pm" "$PMW_PKG_NAME" $2 $3 || return 1
+        __pmw_install_the_given_package "$pm" "$PMW_PKG_NAME" $2 $3 && return 0
     done
     return 1
 }
