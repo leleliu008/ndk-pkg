@@ -1255,6 +1255,7 @@ version_of_command() {
           zsh) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          bash) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
        base64) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+      sqlite3) "$1"  -version 2> /dev/null | head -n 1 | cut -d ' ' -f1 ;;
       hexdump) "$1" -V        2> /dev/null | head -n 1 ;;
             *) "$1" --version 2> /dev/null | head -n 1
     esac
