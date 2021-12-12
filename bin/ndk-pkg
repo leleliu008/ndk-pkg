@@ -7230,7 +7230,7 @@ main() {
         test)
             __compare_versions_with_brew
             ;;
-        *) help 1
+        *)  die "unrecognized argument: $1"
     esac
 }
 
