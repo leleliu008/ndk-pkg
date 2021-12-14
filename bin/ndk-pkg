@@ -5008,6 +5008,11 @@ install_bins() {
     install -v -m 755 $@ "$ABI_BINARY__DIR"
 }
 
+install_etcs() {
+    install -v -d        "$ABI_INSTALL_DIR/etc" &&
+    install -v -m 644 $@ "$ABI_INSTALL_DIR/etc"
+}
+
 install_mans() {
     for item in $@
     do
