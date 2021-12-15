@@ -1210,6 +1210,7 @@ version_of_command() {
         groff) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      makeinfo) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      help2man) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+    gtkdocize) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
  sphinx-build) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
  glib-mkenums) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
  glib-compile-resources)
@@ -4561,9 +4562,9 @@ __install_the_given_package() {
 
     if [ "$PACKAGE_DEP_NDK" = yes ] ; then
         step "find Android NDK"
-        if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-            ndkmanager install r21e
-        fi
+        #if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        #    ndkmanager install r21e
+        #fi
         setup_build_toolchains_env
     fi
 
@@ -4627,6 +4628,12 @@ __install_the_given_package() {
         if [ -f "$DEPENDENCIES_TXT" ] ; then
             cat "$DEPENDENCIES_TXT"
         fi
+    fi
+
+    step "create common linker script"
+    run "printf '%s\n' 'INPUT(-lc)' > $WORK_DIR/$TIMESTAMP_UNIX/libpthread.a"
+    if [ "$ANDROID_NDK_VERS_MAJOR" -ge 23 ] ; then
+        run "printf '%s\n' 'INPUT(-lunwind)' > $WORK_DIR/$TIMESTAMP_UNIX/libgcc.a"
     fi
 
     step "create common include.h"
@@ -5334,7 +5341,7 @@ __config_variables_for_the_given_target() {
     # https://gcc.gnu.org/onlinedocs/gcc/Invoking-GCC.html#Invoking-GCC
      CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -fpic -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
-     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
+     LDFLAGS="--sysroot $SYSROOT -L$WORK_DIR/$TIMESTAMP_UNIX -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
 
     if [ "$BUILD_TYPE" = release ] ; then
         CCFLAGS="$CCFLAGS -Wl,--strip-debug -Os -DNDEBUG"
@@ -5461,6 +5468,8 @@ __config_variables_for_the_given_target() {
         eval export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER=\"$CC\""
 
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
+
+        export RUSTFLAGS="-Clink-arg=-L$WORK_DIR/$TIMESTAMP_UNIX"
 
         # https://libraries.io/cargo/cc
         export HOST_CC="$CC_FOR_BUILD"
