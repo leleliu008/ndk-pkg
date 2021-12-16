@@ -4532,6 +4532,18 @@ __install_the_given_package() {
 
     trap __install_the_given_package_on_exit EXIT
 
+    command_exists_in_filesystem perl && {
+        for item in $(perl -V:config_args)
+        do
+            case $item in
+                -Dprefix=*)
+                    PERL_HOME="$(getvalue "$item")"
+                    PATH="$PERL_HOME/bin:$PATH"
+                    break
+            esac
+        done
+    }
+
     for bindir in "$MY_HOME_DIR/native" "$HOME/.uppm/install.d" /opt
     do
         if [ -d "$bindir" ] ; then
