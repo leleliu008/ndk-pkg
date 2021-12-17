@@ -4539,6 +4539,8 @@ __install_the_given_package() {
 
     trap __install_the_given_package_on_exit EXIT
 
+    __setup_PATH_env
+
     step "view formula"
     __view_formula_of_the_given_package "$1" --paging=never
 
@@ -6920,6 +6922,23 @@ init() {
         sudo=sudo
     fi
 
+    unset PACKAGE_FORMULA_LOADED
+    unset AVAILABLE_PACKAGE_MANAGER_LIST
+
+    TIMESTAMP_UNIX="$(date +%s)"
+
+    # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+    # https://github.com/actions/virtual-environments/blob/ubuntu18/20211212.1/images/linux/Ubuntu1804-README.md
+    if [ "$GITHUB_ACTIONS" = true ] ; then
+        if [ -n "$ANDROID_NDK_LATEST_HOME" ] ; then
+            export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+        fi
+    fi
+
+    __setup_PATH_env
+}
+
+__setup_PATH_env() {
     # pip install --user <PKG>
     bppend_to_PATH "$HOME/.local/bin"
 
@@ -6952,44 +6971,10 @@ init() {
     # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
     # https://github.com/actions/virtual-environments/blob/ubuntu18/20211212.1/images/linux/Ubuntu1804-README.md
     if [ "$GITHUB_ACTIONS" = true ] ; then
-        if [ -n "$ANDROID_NDK_LATEST_HOME" ] ; then
-            export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
-        fi
         if [ -n "$GOROOT_1_17_X64" ] && [ -d "$GOROOT_1_17_X64/bin" ] ; then
             bppend_to_PATH "$GOROOT_1_17_X64/bin"
         fi
     fi
-
-#    if [ -d "$HOME/.cargo" ] ; then
-#        # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
-#        if [ "$GITHUB_ACTIONS" = true ] ; then
-#            :
-#        else
-#            # http://mirrors.ustc.edu.cn/help/crates.io-index.html
-#            if [ ! -f  "$HOME/.cargo/config" ] ; then
-#                cat >> "$HOME/.cargo/config" <<EOF
-#    [source.crates-io]
-#    replace-with = 'ustc'
-#
-#    [source.ustc]
-#    registry = "git://mirrors.ustc.edu.cn/crates.io-index"
-#    EOF
-#                if [ "$COUNTRY" = 'china' ] ; then
-#                    if [ -z  "$CARGO_SOURCE_CRATES_IO_REPLACE_WITH" ] ; then
-#                        export CARGO_SOURCE_CRATES_IO_REPLACE_WITH='ustc'
-#                    fi
-#                    if [ -z  "$CARGO_SOURCE_USTC_REGISTRY" ] ; then
-#                        export CARGO_SOURCE_USTC_REGISTRY='git://mirrors.ustc.edu.cn/crates.io-index'
-#                    fi
-#                fi
-#            fi
-#        fi
-#    fi
-
-    unset PACKAGE_FORMULA_LOADED
-    unset AVAILABLE_PACKAGE_MANAGER_LIST
-
-    TIMESTAMP_UNIX="$(date +%s)"
 }
 
 help() {
