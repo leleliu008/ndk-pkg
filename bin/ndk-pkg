@@ -55,6 +55,13 @@ die() {
     exit 1
 }
 
+bppend_to_PATH() {
+    case ":${PATH}:" in
+        *:"$1":*) ;;
+        *) export PATH="$1:$PATH" ;;
+    esac
+}
+
 # check if file exists
 # $1 FILEPATH
 file_exists() {
@@ -5642,18 +5649,19 @@ EOF
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
-        cat <<EOF
-     GOOS        = $GOOS
-     GOARCH      = $GOARCH
-     GO111MODULE = $GO111MODULE
-     GOPROXY     = $GOPROXY
+        echo
+        for item_ in $(go env | tr ' ' '|')
+        do
+            unset item0
+            unset item1
+            unset item2
 
-    CGO_ENABLED  = $CGO_ENABLED
-    CGO_CFLAGS   = $CGO_CFLAGS
-    CGO_CXXFLAGS = $CGO_CXXFLAGS
-    CGO_CPPFLAGS = $CGO_CPPFLAGS
-    CGO_LDFLAGS  = $CGO_LDFLAGS
-EOF
+            item0=$(printf '%s\n' "$item_" | tr '|' ' ')
+            item1=$(printf '%s\n' "$item0" | cut -d= -f1)
+            item2=$(printf '%s\n' "$item0" | cut -d= -f2)
+
+            printf '%18s = %s\n' "$item1" "$item2"
+        done
     fi
 
     echo "
@@ -5662,6 +5670,7 @@ EOF
         SOURCE_DIR = $SOURCE_DIR
          BUILD_DIR = $BUILD_DIR
                PWD = $PWD
+
    PKG_INSTALL_DIR = $PKG_INSTALL_DIR
    ABI_INSTALL_DIR = $ABI_INSTALL_DIR
    ABI_BINARY__DIR = $ABI_BINARY__DIR
@@ -6594,13 +6603,6 @@ setup_build_toolchains_env() {
     bppend_to_PATH "$TOOLCHAIN_BIND"
 }
 
-bppend_to_PATH() {
-    case ":${PATH}:" in
-        *:"$1":*) ;;
-        *) export PATH="$1:$PATH" ;;
-    esac
-}
-
 is_a_valid_android_sdk_home_dir() {
     true
 }
@@ -6940,6 +6942,14 @@ init() {
 
     if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
         sudo=sudo
+    fi
+
+    # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+    # https://github.com/actions/virtual-environments/blob/ubuntu18/20211212.1/images/linux/Ubuntu1804-README.md
+    if [ "$GITHUB_ACTIONS" = true ] ; then
+        if [ -n "$GOROOT_1_17_X64" ] && [ -d "$GOROOT_1_17_X64/bin" ] ; then
+            export PATH="$GOROOT_1_17_X64/bin:$PATH"
+        fi
     fi
 
     # pip install --user <PKG>
