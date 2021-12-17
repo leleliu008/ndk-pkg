@@ -4539,30 +4539,6 @@ __install_the_given_package() {
 
     trap __install_the_given_package_on_exit EXIT
 
-    command_exists_in_filesystem perl && {
-        for item in $(perl -V:config_args)
-        do
-            case $item in
-                -Dprefix=*)
-                    PERL_HOME="$(getvalue "$item")"
-                    PATH="$PERL_HOME/bin:$PATH"
-                    break
-            esac
-        done
-    }
-
-    for bindir in "$MY_HOME_DIR/native" "$HOME/.uppm/install.d" /opt
-    do
-        if [ -d "$bindir" ] ; then
-            for item in $(find "$bindir" -maxdepth 2 -type d -name bin)
-            do
-                PATH="$item:$PATH"
-            done
-        fi
-    done
-
-    export PATH
-
     step "view formula"
     __view_formula_of_the_given_package "$1" --paging=never
 
@@ -6945,7 +6921,29 @@ init() {
     fi
 
     # pip install --user <PKG>
-    export PATH="$HOME/.local/bin:$PATH"
+    bppend_to_PATH "$HOME/.local/bin"
+
+    command_exists_in_filesystem perl && {
+        for item in $(perl -V:config_args)
+        do
+            case $item in
+                -Dprefix=*)
+                    PERL_HOME="$(getvalue "$item")"
+                    bppend_to_PATH "$PERL_HOME/bin"
+                    break
+            esac
+        done
+    }
+
+    for bindir in "$MY_HOME_DIR/native" "$HOME/.uppm/install.d" /opt
+    do
+        if [ -d "$bindir" ] ; then
+            for item in $(find "$bindir" -maxdepth 2 -type d -name bin)
+            do
+                bppend_to_PATH "$item"
+            done
+        fi
+    done
 
     if [ -f "$HOME/.cargo/env" ] ; then
         .   "$HOME/.cargo/env"
@@ -6958,7 +6956,7 @@ init() {
             export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
         fi
         if [ -n "$GOROOT_1_17_X64" ] && [ -d "$GOROOT_1_17_X64/bin" ] ; then
-            export PATH="$GOROOT_1_17_X64/bin:$PATH"
+            bppend_to_PATH "$GOROOT_1_17_X64/bin"
         fi
     fi
 
