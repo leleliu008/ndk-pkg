@@ -6944,6 +6944,13 @@ init() {
         sudo=sudo
     fi
 
+    # pip install --user <PKG>
+    export PATH="$HOME/.local/bin:$PATH"
+
+    if [ -f "$HOME/.cargo/env" ] ; then
+        .   "$HOME/.cargo/env"
+    fi
+
     # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
     # https://github.com/actions/virtual-environments/blob/ubuntu18/20211212.1/images/linux/Ubuntu1804-README.md
     if [ "$GITHUB_ACTIONS" = true ] ; then
@@ -6953,13 +6960,6 @@ init() {
         if [ -n "$GOROOT_1_17_X64" ] && [ -d "$GOROOT_1_17_X64/bin" ] ; then
             export PATH="$GOROOT_1_17_X64/bin:$PATH"
         fi
-    fi
-
-    # pip install --user <PKG>
-    export PATH="$HOME/.local/bin:$PATH"
-
-    if [ -f "$HOME/.cargo/env" ] ; then
-        .   "$HOME/.cargo/env"
     fi
 
 #    if [ -d "$HOME/.cargo" ] ; then
