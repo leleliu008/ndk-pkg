@@ -6947,6 +6947,9 @@ init() {
     # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
     # https://github.com/actions/virtual-environments/blob/ubuntu18/20211212.1/images/linux/Ubuntu1804-README.md
     if [ "$GITHUB_ACTIONS" = true ] ; then
+        if [ -n "$ANDROID_NDK_LATEST_HOME" ] ; then
+            export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+        fi
         if [ -n "$GOROOT_1_17_X64" ] && [ -d "$GOROOT_1_17_X64/bin" ] ; then
             export PATH="$GOROOT_1_17_X64/bin:$PATH"
         fi
