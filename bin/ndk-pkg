@@ -1398,6 +1398,7 @@ __pmw_get_available_package_name_by_command_name_choco() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1434,7 +1435,8 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
         diff) echo 'diffutils';;
     realpath) echo 'coreutils';;
      objcopy) echo 'binutils' ;;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1478,7 +1480,8 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1518,7 +1521,8 @@ __pmw_get_available_package_name_by_command_name_pkg() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1552,7 +1556,8 @@ __pmw_get_available_package_name_by_command_name_emerge() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1591,7 +1596,8 @@ __pmw_get_available_package_name_by_command_name_pacman() {
         find) echo 'findutils';;
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     makeinfo) echo 'texinfo'  ;;
@@ -1656,7 +1662,8 @@ __pmw_get_available_package_name_by_command_name_xbps() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1693,7 +1700,8 @@ __pmw_get_available_package_name_by_command_name_apk() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1731,7 +1739,8 @@ __pmw_get_available_package_name_by_command_name_zypper() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1770,7 +1779,8 @@ __pmw_get_available_package_name_by_command_name_dnf() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1807,7 +1817,8 @@ __pmw_get_available_package_name_by_command_name_yum() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -1898,7 +1909,8 @@ __pmw_get_available_package_name_by_command_name_brew() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
-  7z|7za|7zr) echo 'p7zip' ;;
+  7z|7za|7zr) echo 'p7zip'    ;;
+    xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
@@ -4877,6 +4889,8 @@ __install_the_given_package_for_the_given_target() {
         run install -d "$BUILD_DIR" || return 1
         run cd "$BUILD_DIR" || return 1
     fi
+
+    [ -d "$ABI_INSTALL_DIR" ] && run rm -rf "$ABI_INSTALL_DIR"
 
     if command -v build > /dev/null ; then
         step2 "build for ${COLOR_GREEN}$@${COLOR_OFF}"
