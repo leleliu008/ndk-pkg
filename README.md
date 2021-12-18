@@ -48,6 +48,26 @@ wsl ./ndk-pkg update
 **Note**: I assume that wsl has been installed on your Windows, if not, you can follow the step-by-step instructions to install it. [How to Install WSL 2 on Windows 10](https://www.omgubuntu.co.uk/how-to-install-wsl2-on-windows-10)
 
 
+## integrate with CMake
+step1: fetch `ndk-pkg.cmake` to `~/.ndk-pkg`
+```bash
+ndk-pkg integrate cmake
+```
+
+step2: add following code to your Android project's CMakeLists.txt
+```
+include($ENV{HOME}/.ndk-pkg/ndk-pkg.cmake)
+```
+
+step3: invoke `find_package(PKG [RQUIRED])` command
+```
+find_package(curl)
+if (curl_FOUND)
+    target_include_directories(xx PRIVATE ${CURL_INCLUDE_DIR})
+    target_link_libraries     (xx PRIVATE ${CURL_LIBRARY})
+endif()
+```
+
 ## ndk-pkg command usage
 *   show help of this command
         

@@ -27,7 +27,7 @@ _commands=(
     'upgrade:upgrade the outdated packages or this software.'
     'fetch:download formula resources of the given package to the cache.'
     'homepage:show or open the homepage of the given package or the this project.'
-    'integrate:integrate zsh completions.'
+    'integrate:integrate zsh completions and cmake support.'
     'env:show current machine os and android-ndk toolchain info.'
     'depends:show the depends of the given package.'
     'pack:pack the given installed package.'
@@ -112,7 +112,7 @@ function _ndk_pkg() {
                     ;;
                 integrate)
                     _arguments \
-                        '1:what:(zsh)' \
+                        '1:what:(zsh cmake)' \
                         '-x[trace execution of commands]' \
                         '--china[use china mirror url]'
                     ;;

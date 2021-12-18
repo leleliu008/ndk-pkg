@@ -7013,8 +7013,11 @@ ${COLOR_GREEN}ndk-pkg --homepage${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
     show current machine os and android-ndk toolchain info.
 
-${COLOR_GREEN}ndk-pkg integrate zsh [-x | --china]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg integrate zsh   [-x | --china]${COLOR_OFF}
     download a zsh-completion script file to a approprivate location.
+
+${COLOR_GREEN}ndk-pkg integrate cmake [-x | --china]${COLOR_OFF}
+    download ndk-pkg.cmake to a approprivate location.
 
 ${COLOR_GREEN}ndk-pkg update${COLOR_OFF}
     update the formula repositories.
@@ -7232,6 +7235,28 @@ main() {
                 zsh)
                     shift
                     __integrate_zsh_completions "$MY_ZSH_COMPLETION_SCRIPT_URL" $@
+                    ;;
+                cmake)
+                    shift
+
+                    unset XTRACE
+                    unset COUNTRY
+
+                    for arg in $@
+                    do
+                        case $arg in
+                            --xtrace|-x)
+                                XTRACE=yes
+                                set -x
+                                ;;
+                            --china)
+                                COUNTRY=china
+                                ;;
+                            *)  die "ndk-pkg integrate cmake [--china] [-x] , unrecognized argument: $arg"
+                        esac
+                    done
+
+                    fetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake' --output-dir="$MY_HOME_DIR"
                     ;;
                 *)  die "ndk-pkg integrate $1: not support."
             esac
