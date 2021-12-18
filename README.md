@@ -49,7 +49,7 @@ wsl ./ndk-pkg update
 
 
 ## Integrate with CMake
-**step1** : fetch `ndk-pkg.cmake` to `~/.ndk-pkg`
+**step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to `~/.ndk-pkg`
 ```bash
 ndk-pkg integrate cmake
 ```
