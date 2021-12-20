@@ -1977,7 +1977,7 @@ __pmw_get_available_pm_list() {
 # __pmw_install_the_given_package apt make ge 3.80
 # __pmw_install_the_given_package apt make
 __pmw_install_the_given_package() {
-    [ -z "$1" ] && die "USAGE: __pmw_install_the_given_package <PM> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PM must not be empty."
+    [ -z "$1" ] && die "USAGE: __pmw_install_the_given_package <PM> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PM  must not be empty."
     [ -z "$2" ] && die "USAGE: __pmw_install_the_given_package <PM> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG must not be empty."
 
     if [ "$PMW_PM_UPDATED" != 'yes' ] ; then
@@ -4571,9 +4571,6 @@ __install_the_given_package() {
 
     if [ "$PACKAGE_DEP_NDK" = yes ] ; then
         step "find Android NDK"
-        #if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        #    ndkmanager install r21e
-        #fi
         setup_build_toolchains_env
     fi
 
@@ -4620,6 +4617,11 @@ __install_the_given_package() {
     CMAKE=$(command -v cmake || true)
     GMAKE=$(command -v gmake || command -v make || true)
     NINJA=$(command -v ninja || true)
+
+    PERL_HOME=$(__get_perl_home)
+    if [ -n "$PERL_HOME" ] ; then
+        bppend_to_PATH "$PERL_HOME/bin"
+    fi
 
     step "create work directory"
     echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
@@ -6952,23 +6954,34 @@ init() {
     __setup_PATH_env
 }
 
+__get_perl_home() {
+    if [ -z "$1" ] ; then
+        if command_exists_in_filesystem perl ; then
+            __get_perl_home perl
+        fi
+    else
+        for item in $($1 -V:config_args)
+        do
+            case $item in
+                -Dprefix=*) getvalue "$item"; break
+            esac
+        done
+    fi
+}
+
 __setup_PATH_env() {
     # pip install --user <PKG>
     bppend_to_PATH "$HOME/.local/bin"
 
-    command_exists_in_filesystem perl && {
-        for item in $(perl -V:config_args)
-        do
-            case $item in
-                -Dprefix=*)
-                    PERL_HOME="$(getvalue "$item")"
-                    bppend_to_PATH "$PERL_HOME/bin"
-                    break
-            esac
-        done
-    }
+    # cpan install to default local location
+    bppend_to_PATH "$HOME/perl5/bin"
 
-    for bindir in "$MY_HOME_DIR/native" "$HOME/.uppm/install.d" /opt
+    PERL_HOME=$(__get_perl_home)
+    if [ -n "$PERL_HOME" ] ; then
+        bppend_to_PATH "$PERL_HOME/bin"
+    fi
+
+    for bindir in /opt "$HOME/.uppm/install.d" "$MY_HOME_DIR/native"
     do
         if [ -d "$bindir" ] ; then
             for item in $(find "$bindir" -maxdepth 2 -type d -name bin)
