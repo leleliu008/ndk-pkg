@@ -4446,46 +4446,33 @@ __gen_dependency_package_tree_of_the_given_package() {
         "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
 }
 
-__config_global_installation_variables() {
-    for tool in $(list_tools_in_the_toolchain)
+__config_native_toolchain_environment_variables() {
+    for TOOLNAME in $(list_tools_in_the_toolchain)
     do
-        unset TOOL_PATH
-        case $tool in
-            cc)
-                if [ -z "$CC" ] ; then
-                    TOOL_PATH=$(command -v cc || command -v gcc || command -v clang || true)
-                else
-                    TOOL_PATH="$CC"
-                fi
-                ;;
-            cxx)
-                if [ -z "$CXX" ] ; then
-                    TOOL_PATH=$(command -v c++ || command -v g++ || command -v clang++ || true)
-                else
-                    TOOL_PATH="$CXX"
-                fi
-                ;;
-            *)  TOOL_PATH=$(command -v "$tool" || true)
+        unset TOOLPATH
+
+        case $TOOLNAME in
+            cc)  TOOLPATH="$(command -v cc  || command -v gcc || command -v clang   || true)" ;;
+            cxx) TOOLPATH="$(command -v c++ || command -v g++ || command -v clang++ || true)" ;;
+            *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
         esac
 
-        unset TOOL_UPPER
-        TOOL_UPPER=$(echo "$tool" | tr a-z A-Z)
+        unset TOOLNAME_UPPERCASE
+        TOOLNAME_UPPERCASE=$(printf '%s\n' "$TOOLNAME" | tr a-z A-Z)
 
-        eval $TOOL_UPPER=$TOOL_PATH
-        eval export "${TOOL_UPPER}_FOR_BUILD=\"$TOOL_PATH\""
+        eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
+        eval export "${TOOLNAME_UPPERCASE}_FOR_BUILD='$TOOLPATH'"
+
+        unset TOOLNAME_UPPERCASE
+        unset TOOLNAME
+        unset TOOLPATH
     done
-    unset TOOL_PATH
-    unset TOOL_UPPER
 
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
         eval export "${FLAG}_FOR_BUILD=\"\$$FLAG\""
     done
     unset FLAG
-
-    if [ "$LOG_LEVEL" = DEBUG ] ; then
-        export PKG_CONFIG_DEBUG_SPEW=set
-    fi
 }
 
 __install_the_given_packages() {
@@ -4493,7 +4480,7 @@ __install_the_given_packages() {
 
     die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
 
-    __config_global_installation_variables
+    __config_native_toolchain_environment_variables
 
     __gen_dependency_package_list_of_the_given_package || return 1
 
@@ -4742,13 +4729,12 @@ EOF
 
             printf "%18s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
 
-            echo "
-            PKG_CONFIG = $PKG_CONFIG
-                 MESON = $MESON
-                 CMAKE = $CMAKE
-                 GMAKE = $GMAKE
-                 NINJA = $NINJA
-                "
+            for TOOL in PKG_CONFIG MESON CMAKE GMAKE NINJA
+            do
+                printf "%18s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+            done
+
+            echo
 
             for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
             do
@@ -4836,6 +4822,8 @@ EOF
         (__install_the_given_package_for_the_given_target "$1" "$TARGET_ITEM") || return 1
     done
 
+    [ "$DRYRUN" = yes ] && exit
+
     step "record installed abis"
     run cp "$WORK_DIR/$TIMESTAMP_UNIX/installed-abis" "$MY_INSTALL_DIR/$1/installed-abis"
 
@@ -4879,7 +4867,7 @@ __install_the_given_package_for_the_given_target() {
 
     [ "$DRYRUN" = yes ] && {
         [ -z "$SHELL" ] && SHELL=$(command -v zsh || command -v bash || command -v sh)
-
+        [ -z "$SHELL" ] && SHELL=sh
         exec "$SHELL" || return 1
     }
 
@@ -4908,7 +4896,7 @@ __install_the_given_package_for_the_given_target() {
                 ninja)     ninja clean && ninja && ninja install ;;
                 make)      makew clean && makew && makew install ;;
                 cargo)     cargow install ;;
-                go)        run go build -v -trimpath ;;
+                go)        run go build -v -trimpath -ldflags="'-s -w'" ;;
             esac
         } || return 1
     fi
@@ -6888,6 +6876,10 @@ inspect_install_arguments() {
     if [ "$LOG_LEVEL" = QUIET ] ; then
         exec 1>/dev/null
         exec 2>&1
+    fi
+
+    if [ "$LOG_LEVEL" = DEBUG ] ; then
+        export PKG_CONFIG_DEBUG_SPEW=set
     fi
 }
 
