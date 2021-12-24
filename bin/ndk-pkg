@@ -2012,7 +2012,7 @@ __pmw_install_the_given_package() {
             ;;
         brew)
             if run brew install "$2" ; then
-                if [ "$(brew info --json=v2 "$2" | grep keg_only | sed 's/ //g' | cut -d: -f2 | sed 's/,//')" = 'true' ] ; then
+                if [ "$(brew info --json=v2 "$2" | sed -n '/"keg_only":/p' | sed 's/ //g' | cut -d: -f2 | sed 's/,//')" = 'true' ] ; then
                     if [ -d "$(brew --prefix "$2")/bin" ] ; then
                         export PATH="$(brew --prefix "$2")/bin:$PATH"
                     fi
