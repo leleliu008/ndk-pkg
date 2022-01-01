@@ -3103,11 +3103,18 @@ regist_dependency() {
 # set package informations
 # 
 # examples:
-# package set|add summary "JPEG image codec that aids compression and decompression"
-# package set|add webpage "https://www.libjpeg-turbo.org"
-# package set|add src.git "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
-# package set|add src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.0.6.tar.gz"
-# package set|add src.sum "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
+# package set     summary "JPEG image codec that aids compression and decompression"
+# package set     webpage "https://www.libjpeg-turbo.org"
+
+# package set     git.url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
+# package set     git.rev "5db6aa6cab1b146e07b60cc1736a01f21da01154"
+
+# package set     src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
+# package add     src.url "https://fossies.org/linux/misc/libjpeg-turbo-2.1.2.tar.gz"
+# package set     src.sum "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
+
+# package set     version "1.0.0"
+
 # package set|add license "IJG"
 # package set|add dep.cmd "nasm"
 # package set|add dep.pkg "libxx"
@@ -3208,12 +3215,18 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_NAME
     unset PACKAGE_SUMMARY
     unset PACKAGE_WEBPAGE
-    unset PACKAGE_SRC_GIT
+
+    unset PACKAGE_GIT_URL
+    unset PACKAGE_GIT_REV
+    unset PACKAGE_GIT_TAG
+
     unset PACKAGE_SRC_URL
     unset PACKAGE_SRC_SUM
+
     unset PACKAGE_SRC_NAME
     unset PACKAGE_SRC_PATH
     unset PACKAGE_SRC_TYPE
+
     unset PACKAGE_VERSION
     unset PACKAGE_LICENSE
     unset PACKAGE_PATCHES
@@ -3295,7 +3308,7 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ -z "$PACKAGE_WEBPAGE" ] ; then
-        PACKAGE_WEBPAGE="$PACKAGE_SRC_GIT"
+        PACKAGE_WEBPAGE="$PACKAGE_GIT_URL"
     fi
 
     if [ -z "$PACKAGE_WEBPAGE" ] ; then
@@ -3303,7 +3316,7 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ -z "$PACKAGE_SRC_URL" ] ; then
-        PACKAGE_SRC_URL="$PACKAGE_SRC_GIT"
+        PACKAGE_SRC_URL="$PACKAGE_GIT_URL"
     fi
 
     if [ -z "$PACKAGE_SRC_URL" ] ; then
@@ -3722,13 +3735,54 @@ prompt_user_to_install_bat() {
     note "${COLOR_YELLOW}if you want to have a better experience, I strongly recommend you to install${COLOR_OFF} ${COLOR_GREEN}bat${COLOR_OFF} ${COLOR_YELLOW}on this machine. For more details, please visit website${COLOR_OFF} ${COLOR_GREEN}https://github.com/sharkdp/bat${COLOR_OFF}"
 }
 
+# fetch source code if needed
 __fetch_sources_of_the_given_package() {
-    # fetch source code if needed
-    if [ "$PACKAGE_SRC_TYPE" = 'dir' ] ; then
-        note "$PACKAGE_SRC_URL is local path, no need to fetch."
-    else
-        fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SUM" --output-path="$PACKAGE_SRC_PATH"
-    fi
+    case $PACKAGE_SRC_TYPE in
+        git)
+            if [ -d "$PACKAGE_SRC_PATH" ] ; then
+                run cd  "$PACKAGE_SRC_PATH" || return 1
+                if git rev-parse 2> /dev/null ; then
+                    if [ -n "$PACKAGE_GIT_REV" ] ; then
+                        [ "$PACKAGE_GIT_REV" = "$(git rev-parse HEAD)" ] && return 0
+                        run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_REV:refs/remotes/origin/master &&
+                        run git checkout --progress --force -B master refs/remotes/origin/master
+                    else
+                        run git pull &&
+                        run git submodule update --recursive
+                    fi
+                else
+                    if [ -n "$PACKAGE_GIT_REV" ] ; then
+                        run rm -rf * &&
+                        run git init &&
+                        run git remote add origin "$PACKAGE_SRC_URL" &&
+                        run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_REV:refs/remotes/origin/master &&
+                        run git checkout --progress --force -B master refs/remotes/origin/master
+                    else
+                        run cd .. &&
+                        run rm -rf "$PACKAGE_SRC_NAME" &&
+                        run git clone --recursive "$PACKAGE_SRC_URL" "$PACKAGE_SRC_NAME"
+                    fi
+                fi
+            else
+                if [ -n "$PACKAGE_GIT_REV" ] ; then
+                    run install -d "$PACKAGE_SRC_PATH" &&
+                    run cd         "$PACKAGE_SRC_PATH" &&
+                    run git init &&
+                    run git remote add origin "$PACKAGE_SRC_URL" &&
+                    run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_REV:refs/remotes/origin/master &&
+                    run git checkout --progress --force -B master refs/remotes/origin/master
+                else
+                    if [ ! -d "$MY_SOURCE_DIR" ] ; then
+                        run install -d "$MY_SOURCE_DIR" || return 1
+                    fi
+                    run cd "$MY_SOURCE_DIR" &&
+                    run git clone --recursive "$PACKAGE_SRC_URL" "$PACKAGE_SRC_NAME"
+                fi
+            fi
+            ;;
+        dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
+        *)  fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SUM" --output-path="$PACKAGE_SRC_PATH"
+    esac
 }
 
 __fetch_patches_of_the_given_package() {
@@ -4671,7 +4725,7 @@ EOF
     case $PACKAGE_SRC_URL in
         dir://*)
             if command -v git > /dev/null ; then
-                PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h 2>/dev/null || true)
+                PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
             fi
             if [ -d "$PACKAGE_SRC_PATH" ] ; then
                 run cp -r "$PACKAGE_SRC_PATH/." "$WORK_DIR" || return 1
@@ -4680,7 +4734,9 @@ EOF
             fi
             ;;
         *.git)
-            PACKAGE_VERSION=$(cd "$PACKAGE_SRC_PATH" && git log -1 --pretty=format:%h) || return 1
+            if [ -z "$PACKAGE_GIT_REV" ] ; then
+                PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD) || return 1
+            fi
             run cp -r "$PACKAGE_SRC_PATH/." "$WORK_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
@@ -5073,9 +5129,9 @@ __show_infomation_of_all_available_packages() {
             fi
 
             if [ "$I" -eq "$PACKAGE_LIST_LENGTH" ] ; then
-                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
             else
-                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"},\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"},\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
             fi
         done
     else
@@ -5112,7 +5168,7 @@ __show_infomation_of_the_given_package() {
         case $2 in
             --json)
                 __load_formula_of_the_given_package "$1"
-                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_SRC_GIT"
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
                 ;;
             installed-dir)
                 die_if_package_is_not_installed "$1"
@@ -5423,6 +5479,7 @@ __config_variables_for_the_given_target() {
 
     if [ "$LOG_LEVEL" = VERBOSE ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
+        LDFLAGS="$LDFLAGS -v -Wl,-v"
     fi
 
       CFLAGS="$CCFLAGS"
