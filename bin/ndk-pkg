@@ -3312,7 +3312,7 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ -z "$PACKAGE_WEBPAGE" ] ; then
-        die "webpage or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
+        die "webpage or git.url must be configed in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     if [ -z "$PACKAGE_SRC_URL" ] ; then
@@ -3320,7 +3320,7 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ -z "$PACKAGE_SRC_URL" ] ; then
-        die "src.url or src.git must be configed in $PACKAGE_FORMULA_FILEPATH"
+        die "src.url or git.url must be configed in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     case $PACKAGE_SRC_URL in
@@ -5129,9 +5129,9 @@ __show_infomation_of_all_available_packages() {
             fi
 
             if [ "$I" -eq "$PACKAGE_LIST_LENGTH" ] ; then
-                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"git_url\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
             else
-                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"},\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"git_url\":\"%s\"},\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
             fi
         done
     else
@@ -5168,7 +5168,7 @@ __show_infomation_of_the_given_package() {
         case $2 in
             --json)
                 __load_formula_of_the_given_package "$1"
-                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"src_git\":\"%s\"}\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
+                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"git_url\":\"%s\"}\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
                 ;;
             installed-dir)
                 die_if_package_is_not_installed "$1"

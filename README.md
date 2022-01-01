@@ -126,7 +126,8 @@ endif()
         ndk-pkg info curl version
         ndk-pkg info curl summary
         ndk-pkg info curl webpage
-        ndk-pkg info curl src.git
+        ndk-pkg info curl git.url
+        ndk-pkg info curl src.url
         ndk-pkg info curl installed-dir
         ndk-pkg info curl installed-metadata
         ndk-pkg info curl installed-datetime-unix
