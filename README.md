@@ -47,6 +47,33 @@ wsl ./ndk-pkg update
 
 **Note**: I assume that wsl has been installed on your Windows, if not, you can follow the step-by-step instructions to install it. [How to Install WSL 2 on Windows 10](https://www.omgubuntu.co.uk/how-to-install-wsl2-on-windows-10)
 
+## ndk-pkg Docker image
+**build from Dockerfile**:
+```bash
+docker build -t ndk-pkg .
+
+# chinese user use following command
+docker build -t ndk-pkg:china -f Dockerfile-china .
+```
+
+**run a container**:
+```bash
+mkdir -p ~/.ndk-pkg
+
+docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg ndk-pkg ndk-pkg --help
+docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg ndk-pkg ndk-pkg update
+docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg ndk-pkg ndk-pkg install curl
+```
+
+chinese user use following command:
+```bash
+mkdir -p ~/.ndk-pkg
+
+docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg ndk-pkg:china ndk-pkg --help
+docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg ndk-pkg:china ndk-pkg update
+docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg ndk-pkg:china ndk-pkg install curl
+```
+
 
 ## Integrate with CMake
 **step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to `~/.ndk-pkg`
