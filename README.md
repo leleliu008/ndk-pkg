@@ -47,8 +47,9 @@ wsl ./ndk-pkg update
 
 **Note**: I assume that wsl has been installed on your Windows, if not, you can follow the step-by-step instructions to install it. [How to Install WSL 2 on Windows 10](https://www.omgubuntu.co.uk/how-to-install-wsl2-on-windows-10)
 <br>
+<br>
 
-## ndk-pkg Docker Image [link](https://hub.docker.com/r/fpliu/ndk-pkg/tags)
+## Docker Image [link](https://hub.docker.com/r/fpliu/ndk-pkg/tags)
 ```bash
 mkdir -p ~/.ndk-pkg
 
@@ -57,6 +58,7 @@ docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg
 docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg install curl
 ```
 **Note**: CHINESE USER IF NO VPN, please use `fpliu/ndk-pkg:china` image
+<br>
 <br>
 
 ## Integrate with CMake
