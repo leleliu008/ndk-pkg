@@ -46,26 +46,28 @@ wsl ./ndk-pkg update
 ```
 
 **Note**: I assume that wsl has been installed on your Windows, if not, you can follow the step-by-step instructions to install it. [How to Install WSL 2 on Windows 10](https://www.omgubuntu.co.uk/how-to-install-wsl2-on-windows-10)
+<br>
 
-## ndk-pkg Docker Image [link](https://hub.docker.com/r/fpliu/ndk-pkg)
+## ndk-pkg Docker Image [link](https://hub.docker.com/r/fpliu/ndk-pkg/tags)
 ```bash
 mkdir -p ~/.ndk-pkg
 
-docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg --help
-docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg update
-docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg install curl
-
-# chinese user use following commands
-docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg:china ndk-pkg --help
-docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg:china ndk-pkg update
-docker run -it --rm -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg:china ndk-pkg install curl
+docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg --help
+docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg update
+docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg install curl
 ```
-
+**Note**: CHINESE USER IF NO VPN, please use `fpliu/ndk-pkg:china` image
+<br>
 
 ## Integrate with CMake
 **step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to `~/.ndk-pkg`
 ```bash
 ndk-pkg integrate cmake
+```
+or
+```bash
+install -d ~/.ndk-pkg
+curl -L -o ~/.ndk-pkg/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
 ```
 
 **step2** : add following code to your Android project's CMakeLists.txt
@@ -81,6 +83,7 @@ if (curl_FOUND)
     target_link_libraries     (xx PRIVATE ${CURL_LIBRARY})
 endif()
 ```
+<br>
 
 ## ndk-pkg command usage
 *   show help of this command

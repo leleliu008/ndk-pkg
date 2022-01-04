@@ -4131,6 +4131,7 @@ __search_packages() {
 __compare_versions_with_brew() {
     get_brew_package_name_from_my_package_name() {
         case $1 in
+            file)     printf '%s\n' 'file-formula' ;;
             delta)    printf '%s\n' 'git-delta' ;;
             gmake)    printf '%s\n' 'make'      ;;
             gtar)     printf '%s\n' 'gnu-tar'   ;;
