@@ -53,7 +53,6 @@ wsl ./ndk-pkg update
 ```bash
 mkdir -p ~/.ndk-pkg
 
-docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg --help
 docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg update
 docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg install curl
 ```
@@ -62,19 +61,23 @@ docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg
 <br>
 
 ## Integrate with CMake
-**step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to `~/.ndk-pkg`
-```bash
-ndk-pkg integrate cmake
-```
-or
-```bash
-install -d ~/.ndk-pkg
-curl -L -o ~/.ndk-pkg/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
-```
+**step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to the directory where your Android project's CMakeLists.txt is located in
+*   method1
+        
+        ndk-pkg integrate cmake /path/of/your/android/project
+
+*   method2
+        
+        curl -L -o /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
+
+*   method3
+        
+        Invoke-WebRequest -OutFile /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
+
 
 **step2** : add following code to your Android project's CMakeLists.txt
 ```cmake
-include($ENV{HOME}/.ndk-pkg/ndk-pkg.cmake)
+include(ndk-pkg.cmake)
 ```
 
 **step3** : invoke [find_package(PKG)](https://cmake.org/cmake/help/latest/command/find_package.html) command
