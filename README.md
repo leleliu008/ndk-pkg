@@ -46,11 +46,11 @@ mv ndk-pkg /data/data/com.termux/files/usr/bin/
 
 - `HomeBrew` package manager is recommended. [HomeBrew homepage](https://brew.sh/)
 
-- DO NOT RUN AS `root`. Because Running software as root is extremely dangerous. Homebrew does not run as root.
+- DO NOT RUN AS `root`. Running as root is extremely dangerous. Homebrew does not run as root.
 
 - I assume that `WSL` has been installed, if not, you can follow the step-by-step instructions to install it. [Install WSL](https://docs.microsoft.com/en-us/windows/wsl/install)
 
-**instructions installing ndk-pkg on WSL is same as described in section [Install ndk-pkg via HomeBrew](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-homebrew) and [Install ndk-pkg via cURL on UNIX](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-curl-on-unix)**
+_instructions installing ndk-pkg on WSL is same as described in section [Install ndk-pkg via HomeBrew](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-homebrew) and [Install ndk-pkg via cURL on UNIX](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-curl-on-unix)_
 
 **Things You Should Do Immediately After Installing ndk-pkg on WSL** :
 ```bash
