@@ -28,24 +28,29 @@ brew install ndk-pkg
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
 mv ndk-pkg /usr/local/bin/
-
-# following instructions is optional, and these instructions only worked in zsh
-ndk-pkg integrate zsh
-autoload -U compinit && compinit
-
-# update the ndk-pkg formula repositories
-ndk-pkg update
 ```
 
-## Install ndk-pkg on Windows in PowerShell
+## Install ndk-pkg on WSL
+
+**Note**:
+- WSL2 is recommended. [Comparing WSL 1 and WSL 2](https://docs.microsoft.com/en-us/windows/wsl/compare-versions)
+
+- Ubuntu-20.04 distrbution is recommended. [Available WSL distribution](https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions)
+
+- HomeBrew package manager is recommended. [HomeBrew homepage](https://brew.sh/)
+
+- DO NOT RUN AS `root`. Because Running software as root is extremely dangerous. Homebrew does not run as root.
+
+- I assume that wsl has been installed, if not, you can follow the step-by-step instructions to install it. [Install WSL](https://docs.microsoft.com/en-us/windows/wsl/install)
+
+**instructions installing ndk-pkg on WSL is same as described in section `Install ndk-pkg via HomeBrew` and `Install ndk-pkg on UNIX via cURL`**
+
+**Things You Should Do Immediately After Installing ndk-pkg on WSL** :
 ```bash
-Invoke-WebRequest -OutFile ndk-pkg https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
-
-# update the ndk-pkg formula repositories
-wsl ./ndk-pkg update
+sudo install -o $(whoami) -d /mnt/d/ndk-pkg
+ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
 ```
 
-**Note**: I assume that wsl has been installed on your Windows, if not, you can follow the step-by-step instructions to install it. [How to Install WSL 2 on Windows 10](https://www.omgubuntu.co.uk/how-to-install-wsl2-on-windows-10)
 <br>
 <br>
 
@@ -62,18 +67,16 @@ docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg
 
 ## Integrate with CMake
 **step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to the directory where your Android project's CMakeLists.txt is located in
-*   **METHOD1**
-        
-        ndk-pkg integrate cmake /path/of/your/android/project
+```bash
+#method1
+ndk-pkg integrate cmake /path/of/your/android/project
 
-*   **METHOD2**
-        
-        curl -L -o /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
+#method2
+curl -L -o /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
 
-*   **METHOD3**
-        
-        Invoke-WebRequest -OutFile /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
-
+#method3
+Invoke-WebRequest -OutFile /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
+```
 
 **step2** : add following code to your Android project's CMakeLists.txt
 ```cmake
