@@ -23,35 +23,40 @@ brew tap leleliu008/fpliu
 brew install ndk-pkg
 ```
 
-## Install ndk-pkg on UNIX via cURL
+## Install ndk-pkg via cURL on UNIX
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
 mv ndk-pkg /usr/local/bin/
 ```
 
+## Install ndk-pkg via cURL on Termux
+```bash
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
+chmod a+x ndk-pkg
+mv ndk-pkg /data/data/com.termux/files/usr/bin/
+```
+
 ## Install ndk-pkg on WSL
 
 **Note**:
-- WSL2 is recommended. [Comparing WSL 1 and WSL 2](https://docs.microsoft.com/en-us/windows/wsl/compare-versions)
+- `WSL2` is recommended. [Comparing WSL 1 and WSL 2](https://docs.microsoft.com/en-us/windows/wsl/compare-versions)
 
-- Ubuntu-20.04 distrbution is recommended. [Available WSL distribution](https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions)
+- `Ubuntu-20.04` distrbution is recommended. [Available WSL distribution](https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions)
 
-- HomeBrew package manager is recommended. [HomeBrew homepage](https://brew.sh/)
+- `HomeBrew` package manager is recommended. [HomeBrew homepage](https://brew.sh/)
 
 - DO NOT RUN AS `root`. Because Running software as root is extremely dangerous. Homebrew does not run as root.
 
-- I assume that wsl has been installed, if not, you can follow the step-by-step instructions to install it. [Install WSL](https://docs.microsoft.com/en-us/windows/wsl/install)
+- I assume that `WSL` has been installed, if not, you can follow the step-by-step instructions to install it. [Install WSL](https://docs.microsoft.com/en-us/windows/wsl/install)
 
-**instructions installing ndk-pkg on WSL is same as described in section `Install ndk-pkg via HomeBrew` and `Install ndk-pkg on UNIX via cURL`**
+**instructions installing ndk-pkg on WSL is same as described in section [Install ndk-pkg via HomeBrew](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-homebrew) and [Install ndk-pkg via cURL on UNIX](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-curl-on-unix)**
 
 **Things You Should Do Immediately After Installing ndk-pkg on WSL** :
 ```bash
 sudo install -o $(whoami) -d /mnt/d/ndk-pkg
 ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
 ```
-
-<br>
 <br>
 
 ## Docker Image [link](https://hub.docker.com/r/fpliu/ndk-pkg/tags)
