@@ -478,25 +478,25 @@ fetch() {
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    die "fetch <URL> --output-dir=DIR , DIR must not be empty."
+                    die "fetch <URL> --output-dir=<DIR> , DIR must not be empty."
                 fi
                 ;;
             --output-name=*)
                 FETCH_OUTPUT_NAME=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                    die "fetch <URL> --output-name=NAME , NAME must not be empty."
+                    die "fetch <URL> --output-name=<NAME> , NAME must not be empty."
                 fi
                 ;;
             --output-path=*)
                 FETCH_OUTPUT_PATH=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-                    die "fetch <URL> --output-path=FILEPATH , FILEPATH must not be empty."
+                    die "fetch <URL> --output-path=<FILEPATH> , FILEPATH must not be empty."
                 fi
                 ;;
             --pipe=*)
                 FETCH_PIPE_TO_CMD=$(getvalue "$1")
                 if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
-                    die "fetch <URL> --pipe=CMD , CMD must not be empty."
+                    die "fetch <URL> --pipe=<CMD> , CMD must not be empty."
                 fi
         esac
         shift
@@ -1187,6 +1187,7 @@ version_of_python_module() {
 version_of_command() {
     case $(basename "$1") in
         cmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         rake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          make) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
         gmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
        rustup) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
@@ -1194,6 +1195,7 @@ version_of_command() {
            go) "$1"   version | cut -d ' ' -f3 | cut -c3- ;;
          tree) "$1" --version | cut -d ' ' -f2 | cut -c2- ;;
    pkg-config) "$1" --version 2> /dev/null | head -n 1 ;;
+     patchelf) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
        m4|gm4) "$1" --version 2> /dev/null | head -n 1 | awk '{print($NF)}';;
     autopoint) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
      xgettext) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
@@ -1263,8 +1265,8 @@ version_of_command() {
           zsh) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
          bash) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 | cut -d '(' -f1 ;;
        base64) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
+      hexdump) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
       sqlite3) "$1"  -version 2> /dev/null | head -n 1 | cut -d ' ' -f1 ;;
-      hexdump) "$1" -V        2> /dev/null | head -n 1 ;;
             *) "$1" --version 2> /dev/null | head -n 1
     esac
 }
@@ -1417,6 +1419,8 @@ __pmw_get_available_package_name_by_command_name_choco() {
     gtkdocize)  echo "gtk-doc"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -1463,6 +1467,8 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
     pkg-config)   echo "pkgconf" ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *) echo "$1"
     esac
 }
@@ -1502,6 +1508,8 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
     pkg-config) echo "pkgconf"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -1542,6 +1550,8 @@ __pmw_get_available_package_name_by_command_name_pkg() {
     pkg-config) echo "pkgconf"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -1582,6 +1592,8 @@ __pmw_get_available_package_name_by_command_name_emerge() {
     pkg-config) echo "pkgconf"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -1620,6 +1632,8 @@ __pmw_get_available_package_name_by_command_name_pacman() {
     pkg-config) echo "pkgconf"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -1685,6 +1699,8 @@ __pmw_get_available_package_name_by_command_name_xbps() {
     pkg-config) echo "pkgconf"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -1724,6 +1740,8 @@ __pmw_get_available_package_name_by_command_name_apk() {
     pkg-config) echo "pkgconf"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *) echo "$1"
     esac
 }
@@ -1763,6 +1781,8 @@ __pmw_get_available_package_name_by_command_name_zypper() {
     gtkdocize)  echo "gtk-doc"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -1801,6 +1821,8 @@ __pmw_get_available_package_name_by_command_name_dnf() {
     gtkdocize)  echo "gtk-doc"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -1837,6 +1859,8 @@ __pmw_get_available_package_name_by_command_name_yum() {
     gtkdocize)  echo "gtk-doc"  ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -1887,6 +1911,8 @@ __pmw_get_available_package_name_by_command_name_apt() {
     gtkdocize)  echo "gtk-doc-tools" ;;
     gdk-pixbuf-query-loaders)
                 echo 'libgdk-pixbuf2.0-bin' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         ninja)
             if [ "$NATIVE_OS_SUBS" = termux ] ; then
                 echo ninja
@@ -1935,6 +1961,8 @@ __pmw_get_available_package_name_by_command_name_brew() {
                 echo 'python@3.9' ;;
     gdk-pixbuf-query-loaders)
                 echo 'gdk-pixbuf' ;;
+    gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
+                echo 'gputils' ;;
         *)      echo "$1"
     esac
 }
@@ -3100,35 +3128,49 @@ regist_dependency() {
 ##############################################################################
 # {{{ define formula syntax
 
-# set package informations
-# 
-# examples:
-# package set     summary "JPEG image codec that aids compression and decompression"
-# package set     webpage "https://www.libjpeg-turbo.org"
-
-# package set     git.url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
-# package set     git.rev "5db6aa6cab1b146e07b60cc1736a01f21da01154"
-
-# package set     src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
-# package add     src.url "https://fossies.org/linux/misc/libjpeg-turbo-2.1.2.tar.gz"
-# package set     src.sum "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
-
-# package set     version "1.0.0"
-
-# package set|add license "IJG"
-# package set|add dep.cmd "nasm"
-# package set|add dep.pkg "libxx"
-# package set|add bsystem "cmake"
-# package set     binsrcd 'yes|no'
-# package set     sourced 'src'
-# package set     sdk.api '23'
+# set/add/get the given package's information
 #
-# package get PACKAGE KEY
+# USAGE:
+# package set <KEY> <VALUE>
+# package add <KEY> <VALUE>
+#
+# package get <PKG> <KEY>
+# 
+# EXAMPLES:
+# package set summary "JPEG image codec that aids compression and decompression"
+# package set webpage "https://www.libjpeg-turbo.org"
+
+# package set git.url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
+# package set git.rev "5db6aa6cab1b146e07b60cc1736a01f21da01154"
+
+# package set src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
+# package set src.sum "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
+
+# package set version "1.0.0"
+
+# package set license "IJG"
+
+# package set dep.cmd "nasm"
+# package set dep.cmd "nasm flex bison"
+# package add dep.cmd "flex bison"
+
+# package set dep.pkg "openssl"
+# package set dep.pkg "openssl zlib"
+# package add dep.pkg "openssl zlib"
+
+# package set bsystem "cmake"
+
+# package set binsrcd 'yes'
+# package set binsrcd 'no'
+
+# package set sourced 'src'
+
+# package set sdk.api '23'
 package() {
     unset __PACKAGE_KEY__
 
     if [ $# -lt 2 ] ; then
-        die "package <set|add|get> <key> [value]..."
+        die "package <set|add|get> <KEY> [VALUE]..."
     fi
     if [ -z "$2" ] ; then
         die "key can not be empty."
@@ -3222,7 +3264,6 @@ __load_formula_of_the_given_package() {
 
     unset PACKAGE_SRC_URL
     unset PACKAGE_SRC_SUM
-
     unset PACKAGE_SRC_NAME
     unset PACKAGE_SRC_PATH
     unset PACKAGE_SRC_TYPE
@@ -3239,6 +3280,7 @@ __load_formula_of_the_given_package() {
 
     unset PACKAGE_BUILD_SYSTEM
     unset PACKAGE_BUILD_SYSTEM_GO
+    unset PACKAGE_BUILD_SYSTEM_RAKE
     unset PACKAGE_BUILD_SYSTEM_NINJA
     unset PACKAGE_BUILD_SYSTEM_GMAKE
     unset PACKAGE_BUILD_SYSTEM_CMAKE
@@ -3342,13 +3384,7 @@ __load_formula_of_the_given_package() {
 
     case $PACKAGE_SRC_TYPE in
         dir)
-            if command -v cut > /dev/null ; then
-                PACKAGE_SRC_PATH=$(echo $PACKAGE_SRC_URL | cut -c7-${#PACKAGE_SRC_URL})
-            elif command -v awk > /dev/null ; then
-                PACKAGE_SRC_PATH=$(echo $PACKAGE_SRC_URL | awk '{print(substr($0, 7))}')
-            else
-                PACKAGE_SRC_PATH=$(expr substr "$PACKAGE_SRC_URL" 7 ${#PACKAGE_SRC_URL})
-            fi
+            PACKAGE_SRC_PATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c7-)
             ;;
         git)
             PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
@@ -3360,19 +3396,10 @@ __load_formula_of_the_given_package() {
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr _ - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
-                if [ -z "$PACKAGE_VERSION" ] ; then
-                    die "version is not configed in $PACKAGE_FORMULA_FILEPATH"
-                else
-                    case $PACKAGE_VERSION in
-                        v*) if command -v cut > /dev/null ; then
-                                PACKAGE_VERSION=$(echo $PACKAGE_VERSION | cut -c2-${#PACKAGE_VERSION})
-                            elif command -v awk > /dev/null ; then
-                                PACKAGE_VERSION=$(echo $PACKAGE_VERSION | awk '{print(substr($0, 2))}')
-                            else
-                                PACKAGE_VERSION=$(expr substr "$PACKAGE_VERSION" 2 ${#PACKAGE_VERSION})
-                            fi
-                    esac
-                fi
+                case $PACKAGE_VERSION in
+                    '') die "version is not configed in $PACKAGE_FORMULA_FILEPATH" ;;
+                    v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
+                esac
             fi
             PACKAGE_SRC_NAME="$PACKAGE_NAME-$PACKAGE_VERSION.$PACKAGE_SRC_TYPE"
             PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
@@ -3389,8 +3416,9 @@ __load_formula_of_the_given_package() {
             cmake-make)  PACKAGE_BUILD_SYSTEM_CMAKE=yes ;;
             cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes ;;
             meson)       PACKAGE_BUILD_SYSTEM_MESON=yes ;;
-            make)        PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
             ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            make)        PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            rake)        PACKAGE_BUILD_SYSTEM_RAKE=yes  ;;
             cargo)       PACKAGE_BUILD_SYSTEM_CARGO=yes ;;
             go)          PACKAGE_BUILD_SYSTEM_GO=yes    ;;
         esac
@@ -3407,8 +3435,9 @@ __load_formula_of_the_given_package() {
             cmake-make)  package add dep.cmd 'cmake>=3.19.0' make  ;;
             cmake-ninja) package add dep.cmd 'cmake>=3.19.0' ninja ;;
             meson)       package add dep.cmd meson ninja ;;
-            make)        package add dep.cmd make  ;;
             ninja)       package add dep.cmd ninja ;;
+            make)        package add dep.cmd make  ;;
+            rake)        package add dep.cmd ruby gem rake ;;
             cargo)       package add dep.cmd rustup cargo ;;
             go)          package add dep.cmd 'go>=1.17' ;;
         esac
@@ -3809,7 +3838,7 @@ __fetch_patches() {
 
 __fetch_resources_of_the_given_package() {
     case $1 in
-        '')  die "__fetch_resources_of_the_given_package() no package specified." ;;
+        '') die "$_0 fetch <PKG> , PKG must not be empty." ;;
         @all)
             shift
             unset STEP_NUM
@@ -3907,7 +3936,7 @@ __gen_github_workflows() {
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
                 case "$OUTPUT_DIR" in
-                    '') die "--output-dir=DIR, DIR must not be empty." ;;
+                    '') die "--output-dir=<DIR>, DIR must not be empty." ;;
                     /*) ;;
                     \~|\~/) OUTPUT_DIR="${HOME}" ;;
                     \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | awk '{print(substr($0, 2))}')" ;;
@@ -4318,7 +4347,7 @@ __pack_the_given_installed_package() {
             --type=*)
                 PACKED_FILE_SUFFIX=$(getvalue $arg)
                 if [ -z "$PACKED_FILE_SUFFIX" ] ; then
-                    die "--type=VALUE : VALUE must not be empty."
+                    die "--type=<VALUE> , VALUE must not be empty."
                 fi
                 ;;
             *)  die "unrecognized argument: $arg"
@@ -4583,6 +4612,9 @@ __install_the_given_package() {
         if [ -z "$WORK_DIR" ] ; then
             die "install $INSTALLING_PACKAGE failed!"
         else
+            if [ "$DRYRUN" = yes ] ; then
+                return 0
+            fi
             if [ -z "$TARGET_ITEM" ] ; then
                 die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
             else
@@ -4963,34 +4995,50 @@ __install_the_given_package_for_the_given_target() {
         return 1
     }
 
-    if [ "$BUILD_TYPE" = release ] ; then
-        step "strip ELF file"
-        for x in bin sbin lib
-        do
-            if [ -d "$ABI_INSTALL_DIR/$x" ] ; then
-                for y in $(ls "$ABI_INSTALL_DIR/$x")
-                do
-                    if [ -d "$ABI_INSTALL_DIR/$x/$y" ] ; then
-                        continue
-                    fi
-                    if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$ABI_INSTALL_DIR/$x/$y")" = '7F454C46' ] ; then
-                        run "$STRIP" "$ABI_INSTALL_DIR/$x/$y" || true
-                    fi
-                done
-            fi
-        done
-    fi
+    step2 "justfy ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
+    __justfy_elf_files_for_the_given_target $@ || return 1
 
-    step2 "justfy la files for ${COLOR_GREEN}$@${COLOR_OFF}"
+    step2 "justfy .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
     __justfy_la_files_for_the_given_target $@ || return 1
 
-    step2 "justfy pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
+    step2 "justfy .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
     __justfy_pc_files_for_the_given_target $@ || return 1
 
     step2 "install logs for ${COLOR_GREEN}$@${COLOR_OFF}"
     __install_logs_for_the_given_target $@ || return 1
 
     run "printf '%s\n' '$TARGET_OS_ABI' >> $WORK_DIR/$TIMESTAMP_UNIX/installed-abis"
+}
+
+__justfy_elf_files_for_the_given_target() {
+    for x in bin sbin lib
+    do
+        if [ -d "$ABI_INSTALL_DIR/$x" ] ; then
+            for y in $(ls "$ABI_INSTALL_DIR/$x")
+            do
+                if [ -d "$ABI_INSTALL_DIR/$x/$y" ] ; then
+                    continue
+                fi
+                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$ABI_INSTALL_DIR/$x/$y")" = '7F454C46' ] ; then
+                    #OLD_SONAME="$($READELF -d "$ABI_INSTALL_DIR/$x/$y" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
+                    #if [ -n "$OLD_SONAME" ] ; then
+                    #    NEW_SONAME="$(printf '%s\n' "$OLD_SONAME" | sed 's|\.[0-9].*||g')"
+                    #    run patchelf --set-soname "$NEW_SONAME" "$ABI_INSTALL_DIR/$x/$y"
+                    #fi
+                    #for soname in $($READELF -d "$ABI_INSTALL_DIR/$x/$y" | sed -n '/NEEDED/p' | cut -d '[' -f2 | sed 's/]//')
+                    #do
+                    #    case $soname in
+                    #        lib*.so) ;;
+                    #        *) run patchelf --replace-needed "$soname" "$(printf '%s\n' "$soname" | sed 's|\.[0-9].*||g')" "$ABI_INSTALL_DIR/$x/$y"
+                    #    esac
+                    #done
+                    if [ "$BUILD_TYPE" = release ] ; then
+                        run "$STRIP" "$ABI_INSTALL_DIR/$x/$y" || true
+                    fi
+                fi
+            done
+        fi
+    done
 }
 
 __justfy_la_files_for_the_given_target() {
@@ -6874,16 +6922,16 @@ inspect_install_arguments() {
                     7z|zip|tar.gz|tar.xz|tar.bz2)
                         PACK_ARGS="--type=$PACK_TYPE"
                         ;;
-                    '') die "--pack-type=VALUE VALUE must not be empty." ;;
-                    *)  die "--pack-type=VALUE VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
+                    '') die "--pack-type=<VALUE>, VALUE must not be empty." ;;
+                    *)  die "--pack-type=<VALUE>, VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
                 esac
                 ;;
             --build-type=*)
                 BUILD_TYPE=$(getvalue "$1")
                 case $BUILD_TYPE in
                     debug|release) ;;
-                    '') die "--build-type=VALUE VALUE must not be empty." ;;
-                    *)  die "--build-type=VALUE VALUE must be one of debug release"
+                    '') die "--build-type=<VALUE>, VALUE must not be empty." ;;
+                    *)  die "--build-type=<VALUE>, VALUE must be one of debug release"
                 esac
                 ;;
             --install-doc)
@@ -6899,16 +6947,16 @@ inspect_install_arguments() {
                 INSTALL_LIB=$(getvalue "$1")
                 case $INSTALL_LIB in
                     static|shared|both|yes|no) ;;
-                    '') die "--install-lib=VALUE VALUE must not be empty." ;;
-                    *)  die "--install-lib=VALUE VALUE must be one of static shared both yes no"
+                    '') die "--install-lib=<VALUE>, VALUE must not be empty." ;;
+                    *)  die "--install-lib=<VALUE>, VALUE must be one of static shared both yes no"
                 esac
                 ;;
             --link-type=*)
                 LINK_TYPE=$(getvalue "$1")
                 case $LINK_TYPE in
                     static-only|shared-only|static-prefered|shared-prefered) ;;
-                    '') die "--link-type=VALUE VALUE must not be empty." ;;
-                    *)  die "--link-type=VALUE VALUE must be one of static-only shared-only static-prefered shared-prefered"
+                    '') die "--link-type=<VALUE>, VALUE must not be empty." ;;
+                    *)  die "--link-type=<VALUE>, VALUE must be one of static-only shared-only static-prefered shared-prefered"
                 esac
                 ;;
             --jobs=*)
