@@ -57,21 +57,23 @@ _instructions installing ndk-pkg on WSL is same as described in section [Install
 sudo install -o $(whoami) -d /mnt/d/ndk-pkg
 ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
 ```
-<br>
+
 
 ## Running ndk-pkg in Docker
 ```bash
 mkdir -p ~/.ndk-pkg
+
 docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg
+
+# CHINESE USER IF NO VPN, please use fowlling instruction
+docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg:china
 
 docker start ndk-pkg
 
 docker exec -it ndk-pkg ndk-pkg update
 docker exec -it ndk-pkg ndk-pkg install curl
 ```
-**Note**: CHINESE USER IF NO VPN, please use `fpliu/ndk-pkg:china` image
-<br>
-<br>
+
 
 ## Integrate with CMake
 **step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to the directory where your Android project's CMakeLists.txt is located in
@@ -99,7 +101,7 @@ if (curl_FOUND)
     target_link_libraries     (xx PRIVATE ${CURL_LIBRARY})
 endif()
 ```
-<br>
+
 
 ## ndk-pkg command usage
 *   show help of this command
