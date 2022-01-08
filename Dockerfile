@@ -4,4 +4,4 @@ MAINTAINER leleliu008@gmail.com
 
 ADD bin/ndk-pkg /usr/bin/
 
-CMD ["ndk-pkg"]
+ENTRYPOINT [ "/bin/bash", "-l" ]

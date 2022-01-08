@@ -59,12 +59,15 @@ ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
 ```
 <br>
 
-## Docker Image [link](https://hub.docker.com/r/fpliu/ndk-pkg/tags)
+## Running ndk-pkg in Docker
 ```bash
 mkdir -p ~/.ndk-pkg
+docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg
 
-docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg update
-docker run -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg ndk-pkg install curl
+docker start ndk-pkg
+
+docker exec -it ndk-pkg ndk-pkg update
+docker exec -it ndk-pkg ndk-pkg install curl
 ```
 **Note**: CHINESE USER IF NO VPN, please use `fpliu/ndk-pkg:china` image
 <br>
