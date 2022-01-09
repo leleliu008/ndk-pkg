@@ -79,7 +79,7 @@ docker exec -it ndk-pkg ndk-pkg install curl
 **step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to the directory where your Android project's CMakeLists.txt is located in
 ```bash
 #method1
-ndk-pkg integrate cmake /path/of/your/android/project
+ndk-pkg integrate cmake --output-dir=/path/of/your/android/project
 
 #method2
 curl -L -o /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
@@ -129,6 +129,7 @@ endif()
 *   integrate `zsh-completion` script
 
         ndk-pkg integrate zsh
+        ndk-pkg integrate zsh --output-dir=/usr/local/share/zsh/site-functions
         ndk-pkg integrate zsh -x
         ndk-pkg integrate zsh --china
         ndk-pkg integrate zsh --china -x

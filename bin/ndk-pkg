@@ -135,6 +135,14 @@ shiftn() {
     shift "$1" && shift && echo "$@"
 }
 
+globing() {
+    case $1 in
+        '')   ;;
+        \~/*) printf '%s\n' "$HOME/$(printf '%s\n' "$1" | cut -c3-)" ;;
+        *)    printf '%s\n' "$1"
+    esac
+}
+
 sed_in_place() {
     if command -v gsed > /dev/null ; then
         unset SED_IN_PLACE_ACTION
@@ -734,12 +742,12 @@ __upgrade_self() {
 ##############################################################################
 # {{{ __integrate_zsh_completions
 
-# __integrate_zsh_completions <URL> [--china] [-x]
+# __integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x]
 __integrate_zsh_completions() {
     set -e
 
     if [ -z "$1" ] ; then
-        die "__integrate_zsh_completions <URL> [--china] [-x] , URL must not be empty."
+        die "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , URL must not be empty."
     else
         ZSH_COMPLETIONS_SCRIPT_URL="$1"
     fi
@@ -748,6 +756,7 @@ __integrate_zsh_completions() {
 
     unset XTRACE
     unset COUNTRY
+    unset OUTPUT_DIR
 
     for arg in $@
     do
@@ -759,13 +768,22 @@ __integrate_zsh_completions() {
             --china)
                 COUNTRY=china
                 ;;
-            *)  die "__upgrade_self <URL> [--china] [-x] , unrecognized argument: $arg"
+            --output-dir=*)
+                OUTPUT_DIR=$(getvalue "$1")
+                if [ -z "$OUTPUT_DIR" ] ; then
+                    die "__upgrade_self <URL> [--output-dir=<DIR>] , DIR must not be empty."
+                fi
+                OUTPUT_DIR=$(globing "$OUTPUT_DIR")
+                ;;
+            *)  die "__upgrade_self <URL> [--output-dir=<DIR>] [--china] [-x] , unrecognized argument: $arg"
         esac
     done
 
     ZSH_COMPLETIONS_SCRIPT_FILENAME="_$CURRENT_SCRIPT_FILENAME"
 
-    if [ "$(uname)" = Linux ] && command -v termux-info > /dev/null && [ "$HOME" = '/data/data/com.termux/files/home' ] ; then
+    if [ -n "$OUTPUT_DIR" ] ; then
+        ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="$OUTPUT_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    elif [ "$(uname)" = Linux ] && command -v termux-info > /dev/null && [ "$HOME" = '/data/data/com.termux/files/home' ] ; then
         ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="/data/data/com.termux/files/usr/share/zsh/site-functions/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
     else
         ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="/usr/local/share/zsh/site-functions/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
@@ -7124,10 +7142,10 @@ ${COLOR_GREEN}ndk-pkg --homepage${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
     show current machine os and android-ndk toolchain info.
 
-${COLOR_GREEN}ndk-pkg integrate zsh   [-x | --china]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg integrate zsh   [--output-dir=<DIR>] [-x | --china]${COLOR_OFF}
     download a zsh-completion script file to a approprivate location.
 
-${COLOR_GREEN}ndk-pkg integrate cmake [-x | --china]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg integrate cmake [--output-dir=<DIR>] [-x | --china]${COLOR_OFF}
     download ndk-pkg.cmake to a approprivate location.
 
 ${COLOR_GREEN}ndk-pkg update${COLOR_OFF}
@@ -7352,6 +7370,7 @@ main() {
 
                     unset XTRACE
                     unset COUNTRY
+                    unset OUTPUT_DIR
 
                     for arg in $@
                     do
@@ -7363,11 +7382,20 @@ main() {
                             --china)
                                 COUNTRY=china
                                 ;;
-                            *)  die "ndk-pkg integrate cmake [--china] [-x] , unrecognized argument: $arg"
+                            --output-dir=*)
+                                OUTPUT_DIR=$(getvalue "$1")
+                                if [ -z "$OUTPUT_DIR" ] ; then
+                                    die "ndk-pkg integrate cmake [--output-dir=<DIR>] , DIR must not be empty."
+                                fi
+                                OUTPUT_DIR=$(globing "$OUTPUT_DIR")
+                                ;;
+                            *)  die "ndk-pkg integrate cmake [--output-dir=<DIR>] [--china] [-x] , unrecognized argument: $arg"
                         esac
                     done
 
-                    fetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake' --output-dir="$MY_HOME_DIR"
+                    [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=$MY_HOME_DIR
+
+                    fetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake' --output-dir="$OUTPUT_DIR"
                     ;;
                 *)  die "ndk-pkg integrate $1: not support."
             esac

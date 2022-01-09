@@ -113,6 +113,7 @@ function _ndk_pkg() {
                 integrate)
                     _arguments \
                         '1:what:(zsh cmake)' \
+                        '--output-dir=-[set the output dir]:output-dir:{_files -/}' \
                         '-x[trace execution of commands]' \
                         '--china[use china mirror url]'
                     ;;
