@@ -50,6 +50,19 @@ mv ndk-pkg /data/data/com.termux/files/usr/bin/
 
 - I assume that `WSL` has been installed, if not, you can follow the step-by-step instructions to install it. [Install WSL](https://docs.microsoft.com/en-us/windows/wsl/install)
 
+**/etc/wsl.conf**
+```
+[network]
+hostname = ubuntu
+generateHosts = false
+
+[automount]
+enabled = true
+root = /mnt/
+options = "metadata,umask=22,fmask=11"
+mountFsTab = true
+```
+
 _instructions installing ndk-pkg on WSL is same as described in section [Install ndk-pkg via HomeBrew](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-homebrew) and [Install ndk-pkg via cURL on UNIX](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-curl-on-unix)_
 
 **Things You Should Do Immediately After Installing ndk-pkg on WSL** :
