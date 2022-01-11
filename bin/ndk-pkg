@@ -3790,7 +3790,10 @@ __fetch_sources_of_the_given_package() {
                 run cd  "$PACKAGE_SRC_PATH" || return 1
                 if git rev-parse 2> /dev/null ; then
                     if [ -n "$PACKAGE_GIT_REV" ] ; then
-                        [ "$PACKAGE_GIT_REV" = "$(git rev-parse HEAD)" ] && return 0
+                        if [ "$PACKAGE_GIT_REV" = "$(git rev-parse HEAD)" ] ; then
+                            success "$PACKAGE_SRC_PATH already have been fetched."
+                            return 0
+                        fi
                         run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_REV:refs/remotes/origin/master &&
                         run git checkout --progress --force -B master refs/remotes/origin/master
                     else
@@ -4734,9 +4737,11 @@ __install_the_given_package() {
     fi
 
     step "create common linker script"
-    run "printf '%s\n' 'INPUT(-lc)' > $WORK_DIR/$TIMESTAMP_UNIX/libpthread.a"
+    # https://developer.android.com/ndk/guides/stable_apis#c_library
+    run "echo 'INPUT(-lc)' > $WORK_DIR/$TIMESTAMP_UNIX/libpthread.a"
+    run "echo 'INPUT(-lc)' > $WORK_DIR/$TIMESTAMP_UNIX/librt.a"
     if [ "$ANDROID_NDK_VERS_MAJOR" -ge 23 ] ; then
-        run "printf '%s\n' 'INPUT(-lunwind)' > $WORK_DIR/$TIMESTAMP_UNIX/libgcc.a"
+        run "echo 'INPUT(-lunwind)' > $WORK_DIR/$TIMESTAMP_UNIX/libgcc.a"
     fi
 
     step "create common include.h"
@@ -5025,7 +5030,7 @@ __install_the_given_package_for_the_given_target() {
     step2 "install logs for ${COLOR_GREEN}$@${COLOR_OFF}"
     __install_logs_for_the_given_target $@ || return 1
 
-    run "printf '%s\n' '$TARGET_OS_ABI' >> $WORK_DIR/$TIMESTAMP_UNIX/installed-abis"
+    run "echo '$TAuGET_OS_ABI' >> $WORK_DIR/$TIMESTAMP_UNIX/installed-abis"
 }
 
 __justfy_elf_files_for_the_given_target() {
