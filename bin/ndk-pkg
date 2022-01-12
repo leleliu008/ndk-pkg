@@ -5030,7 +5030,7 @@ __install_the_given_package_for_the_given_target() {
     step2 "install logs for ${COLOR_GREEN}$@${COLOR_OFF}"
     __install_logs_for_the_given_target $@ || return 1
 
-    run "echo '$TAuGET_OS_ABI' >> $WORK_DIR/$TIMESTAMP_UNIX/installed-abis"
+    run "echo '$TARGET_OS_ABI' >> $WORK_DIR/$TIMESTAMP_UNIX/installed-abis"
 }
 
 __justfy_elf_files_for_the_given_target() {
