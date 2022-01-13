@@ -5618,6 +5618,11 @@ __config_variables_for_the_given_target() {
 
         export TARGET_AR="$AR"
 
+        # https://github.com/alexcrichton/cmake-rs/blob/master/src/lib.rs
+        # https://docs.rs/cmake/latest/cmake/
+        # this variable is not motioned in their document. you must read the source code of cmake-rs crate.
+        export TARGET_CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+
         for item in $DEPENDENCY_PACKAGE_LIST
         do
             case $item in
