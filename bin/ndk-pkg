@@ -2141,17 +2141,20 @@ __pmw_install_the_given_package() {
             ;;
         brew)
             if run brew install "$2" ; then
+                unset __HOMEBREW_PKG_PREFIX__
+                __HOMEBREW_PKG_PREFIX__="$(brew --prefix "$2")"
                 if [ "$(brew info --json=v2 "$2" | sed -n '/"keg_only":/p' | sed 's/ //g' | cut -d: -f2 | sed 's/,//')" = 'true' ] ; then
-                    unset __HOMEBREW_PKG_PREFIX__
-                    __HOMEBREW_PKG_PREFIX__="$(brew --prefix "$2")"
                     if [ -d "$__HOMEBREW_PKG_PREFIX__/bin" ] ; then
                         export PATH="$__HOMEBREW_PKG_PREFIX__/bin:$PATH"
                     fi
-                    if [ -d "$__HOMEBREW_PKG_PREFIX__/libexec/gnubin" ] ; then
-                        export PATH="$__HOMEBREW_PKG_PREFIX__/libexec/gnubin:$PATH"
+                    if [ -d "$__HOMEBREW_PKG_PREFIX__/sbin" ] ; then
+                        export PATH="$__HOMEBREW_PKG_PREFIX__/sbin:$PATH"
                     fi
-                    unset __HOMEBREW_PKG_PREFIX__
                 fi
+                if [ -d "$__HOMEBREW_PKG_PREFIX__/libexec/gnubin" ] ; then
+                    export PATH="$__HOMEBREW_PKG_PREFIX__/libexec/gnubin:$PATH"
+                fi
+                unset __HOMEBREW_PKG_PREFIX__
             else
                 return 1
             fi
