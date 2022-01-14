@@ -2116,9 +2116,15 @@ __pmw_install_the_given_package() {
         brew)
             if run brew install "$2" ; then
                 if [ "$(brew info --json=v2 "$2" | sed -n '/"keg_only":/p' | sed 's/ //g' | cut -d: -f2 | sed 's/,//')" = 'true' ] ; then
-                    if [ -d "$(brew --prefix "$2")/bin" ] ; then
-                        export PATH="$(brew --prefix "$2")/bin:$PATH"
+                    unset __HOMEBREW_PKG_PREFIX__
+                    __HOMEBREW_PKG_PREFIX__="$(brew --prefix "$2")"
+                    if [ -d "$__HOMEBREW_PKG_PREFIX__/bin" ] ; then
+                        export PATH="$__HOMEBREW_PKG_PREFIX__/bin:$PATH"
                     fi
+                    if [ -d "$__HOMEBREW_PKG_PREFIX__/libexec/gnubin" ] ; then
+                        export PATH="$__HOMEBREW_PKG_PREFIX__/libexec/gnubin:$PATH"
+                    fi
+                    unset __HOMEBREW_PKG_PREFIX__
                 fi
             else
                 return 1
@@ -7204,13 +7210,13 @@ __setup_PATH_env() {
     fi
 
     if command -v brew > /dev/null ; then
-        unset HOMEBREW_PKG_PREFIX
-        HOMEBREW_PKG_PREFIX="$(brew --prefix gnu-sed)"
-        if [ -d "$HOMEBREW_PKG_PREFIX/libexec/gnubin" ] ; then
-            bppend_to_PATH "$HOMEBREW_PKG_PREFIX/libexec/gnubin"
+        unset __HOMEBREW_PKG_PREFIX__
+        __HOMEBREW_PKG_PREFIX__="$(brew --prefix gnu-sed)"
+        if [ -d "$__HOMEBREW_PKG_PREFIX__/libexec/gnubin" ] ; then
+            bppend_to_PATH "$__HOMEBREW_PKG_PREFIX__/libexec/gnubin"
         fi
     fi
-    unset HOMEBREW_PKG_PREFIX
+    unset __HOMEBREW_PKG_PREFIX__
 }
 
 help() {
