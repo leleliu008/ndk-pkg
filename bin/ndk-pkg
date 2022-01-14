@@ -7206,11 +7206,8 @@ __setup_PATH_env() {
     if command -v brew > /dev/null ; then
         unset HOMEBREW_PKG_PREFIX
         HOMEBREW_PKG_PREFIX="$(brew --prefix gnu-sed)"
-        if [ -d "$HOMEBREW_PKG_PREFIX/bin" ] ; then
-            bppend_to_PATH "$HOMEBREW_PKG_PREFIX/bin"
-        fi
-        if [ -d "$HOMEBREW_PKG_PREFIX/sbin" ] ; then
-            bppend_to_PATH "$HOMEBREW_PKG_PREFIX/sbin"
+        if [ -d "$HOMEBREW_PKG_PREFIX/libexec/gnubin" ] ; then
+            bppend_to_PATH "$HOMEBREW_PKG_PREFIX/libexec/gnubin"
         fi
     fi
     unset HOMEBREW_PKG_PREFIX
