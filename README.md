@@ -87,6 +87,9 @@ docker exec -it ndk-pkg ndk-pkg update
 docker exec -it ndk-pkg ndk-pkg install curl
 ```
 
+**It is strongly recommended to run `ndk-pkg` in docker container to keep your host environment clean.**
+
+
 
 ## Integrate with CMake
 **step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to the directory where your Android project's CMakeLists.txt is located in
