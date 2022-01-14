@@ -255,6 +255,63 @@ format_unix_timestamp() {
    date -d      "@$1" "$2"
 }
 
+# https://equa.space/sh/lolcat/
+lolcat_awk() {
+    awk -v angle=45 -v angle_phase=40 -v reverse=0 -v offset=195 -v offset_phase=0 -v width=100 -v width_phase=8 "$@" '
+    function put_rgb(color) {
+        printf "\033[%s38;2;%d;%d;%dm", reverse ? "7;" : "", int(color[1] * 255), int(color[2] * 255), int(color[3] * 255);
+    }
+
+    function hsv_to_rgb(hsv, rgb, c, h2, x) {
+        c = hsv[2] * hsv[3];
+        h2 = hsv[1] * 6;
+        x = c * (1 - ((h2 % 2) - 1 > 0 ? (h2 % 2) - 1 : 1 - (h2 % 2)));
+        if (int(h2) % 6 == 0) {
+            rgb[1] = c; rgb[2] = x; rgb[3] = 0;
+        } else if (int(h2) % 6 == 1) {
+            rgb[1] = x; rgb[2] = c; rgb[3] = 0;
+        } else if (int(h2) % 6 == 2) {
+            rgb[1] = 0; rgb[2] = c; rgb[3] = x;
+        } else if (int(h2) % 6 == 3) {
+            rgb[1] = 0; rgb[2] = x; rgb[3] = c;
+        } else if (int(h2) % 6 == 4) {
+            rgb[1] = x; rgb[2] = 0; rgb[3] = c;
+        } else if (int(h2) % 6 == 5) {
+            rgb[1] = c; rgb[2] = 0; rgb[3] = x;
+        }
+
+        rgb[1] += hsv[2] - c;
+        rgb[2] += hsv[2] - c;
+        rgb[3] += hsv[2] - c;
+    }
+
+    BEGIN {
+        srand();
+        if (offset == "") offset = rand() * 360;
+    }
+
+    {
+        y = NR - 1;
+        for (x = 0; x < length($0); x++) {
+            for (i = 0; i < 3; i++) {
+                mult_x = cos((angle + i * angle_phase) / 57.2976);
+                mult_y = sin((angle + i * angle_phase) / 57.2976);
+                hsv[1] = (((x * mult_x + y * mult_y) / (width + width_phase * i)) % 1 + 1 + (offset + offset_phase * i) / 360) % 1;
+                hsv[2] = 0.8;
+                hsv[3] = 0.9;
+
+                hsv_to_rgb(hsv, trgb);
+                rgb[i + 1] = trgb[i + 1];
+            }
+
+            put_rgb(rgb);
+            printf("%s", substr($0, x + 1, 1));
+        }
+        print "\033[0m";
+    }
+    '
+}
+
 # }}}
 ##############################################################################
 # {{{ md5sum
@@ -5999,6 +6056,7 @@ makew() {
 # https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
 # https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
+# https://developer.android.com/ndk/guides/cmake
 # run in a subshell
 cmakew() {
     CMAKE_FLAGS="
@@ -7144,10 +7202,39 @@ __setup_PATH_env() {
             bppend_to_PATH "$GOROOT_1_17_X64/bin"
         fi
     fi
+
+    if command -v brew > /dev/null ; then
+        unset HOMEBREW_PKG_PREFIX
+        HOMEBREW_PKG_PREFIX="$(brew --prefix gnu-sed)"
+        if [ -d "$HOMEBREW_PKG_PREFIX/bin" ] ; then
+            bppend_to_PATH "$HOMEBREW_PKG_PREFIX/bin"
+        fi
+        if [ -d "$HOMEBREW_PKG_PREFIX/sbin" ] ; then
+            bppend_to_PATH "$HOMEBREW_PKG_PREFIX/sbin"
+        fi
+    fi
+    unset HOMEBREW_PKG_PREFIX
 }
 
 help() {
-    echo "${COLOR_GREEN}$_0 $MY_VERSION is a package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}
+    if command -v base64 > /dev/null ; then
+        LOGO_BASE64_ENCODED='ICAgICAgICAgICBfIF8gICAgICAgICAgICAgICBfICAgICAgICAgCiBfIF9fICAgX198IHwgfCBf
+XyAgICAgXyBfXyB8IHwgX19fXyBfIAp8ICdfIFwgLyBfYCB8IHwvIC9fX19ffCAnXyBcfCB8LyAv
+IF9gIHwKfCB8IHwgfCAoX3wgfCAgIDxfX19fX3wgfF8pIHwgICA8IChffCB8CnxffCB8X3xcX18s
+X3xffFxfXCAgICB8IC5fXy98X3xcX1xfXywgfAogICAgICAgICAgICAgICAgICAgICAgfF98ICAg
+ICAgICB8X19fLyAK'
+
+        if command -v lolcat > /dev/null ; then
+            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat -S 350
+        elif command -v awk > /dev/null ; then
+            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat_awk
+        else
+            printf '%b\n' "${COLOR_BLUE}$(printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d)${COLOR_OFF}"
+        fi
+    fi
+
+    echo "
+${COLOR_GREEN}A package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}
 
 ${COLOR_GREEN}ndk-pkg <ACTION> [ARGUMENT...]${COLOR_OFF}
 
