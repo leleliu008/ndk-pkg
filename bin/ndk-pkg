@@ -1466,9 +1466,11 @@ command_exists_in_filesystem_and_version_matched() {
 # https://cygwin.com/packages/package_list.html
 __pmw_get_available_package_name_by_command_name_choco() {
     case $1 in
-          go) echo 'golang' ;;
-      cc|gcc|c++|g++)
+        go)   echo 'golang' ;;
+        cc|gcc|c++|g++)
               echo 'gcc-g++';;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
        gmake) echo 'make'   ;;
          gm4) echo 'm4'     ;;
         gsed) echo 'gnu-sed';;
@@ -1506,6 +1508,8 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         make) echo 'gmake' ;;
         perl) echo 'perl5' ;;
@@ -1553,6 +1557,8 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         make) echo 'gmake' ;;
         perl) echo 'perl5' ;;
@@ -1595,6 +1601,8 @@ __pmw_get_available_package_name_by_command_name_pkg() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
         java) echo 'openjdk-17' ;;
          lua) echo 'lua54' ;;
          gm4) echo 'm4'    ;;
@@ -1636,6 +1644,8 @@ __pmw_get_available_package_name_by_command_name_emerge() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
@@ -1678,6 +1688,8 @@ __pmw_get_available_package_name_by_command_name_pacman() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
@@ -1745,6 +1757,8 @@ __pmw_get_available_package_name_by_command_name_xbps() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
@@ -1785,6 +1799,8 @@ __pmw_get_available_package_name_by_command_name_apk() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
@@ -1826,6 +1842,8 @@ __pmw_get_available_package_name_by_command_name_zypper() {
           cc) echo 'gcc'   ;;
          c++) echo 'gcc-g++';;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
@@ -1868,6 +1886,8 @@ __pmw_get_available_package_name_by_command_name_dnf() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
@@ -1908,6 +1928,8 @@ __pmw_get_available_package_name_by_command_name_yum() {
           cc) echo 'gcc'   ;;
          c++) echo 'gcc-g++';;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
@@ -1950,6 +1972,8 @@ __pmw_get_available_package_name_by_command_name_apt() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
         java) echo 'openjdk-17-jdk' ;;
          lua) echo 'lua5.3';;
          gm4) echo 'm4'    ;;
@@ -2004,6 +2028,8 @@ __pmw_get_available_package_name_by_command_name_brew() {
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
      clang++) echo 'clang' ;;
+        addr2line|ar|as|c++filt|dwp|elfedit|gold|gprof|ld|ld.bfd|ld.gold|nm|objcopy|objdump|ranlib|readelf|size|strings|strip)
+              echo 'binutils' ;;
          gm4) echo 'm4'    ;;
         gsed) echo 'gnu-sed'  ;;
         find) echo 'findutils';;
