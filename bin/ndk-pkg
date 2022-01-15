@@ -7129,7 +7129,7 @@ inspect_install_arguments() {
 init() {
     # MY represents this software's
 
-    MY_VERSION=0.1.21
+    MY_VERSION=0.1.22
 
     MY_HOME_PAGE='https://github.com/leleliu008/ndk-pkg.git'
     MY_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository.git'
