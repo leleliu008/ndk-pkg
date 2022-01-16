@@ -3523,9 +3523,9 @@ __load_formula_of_the_given_package() {
             autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=yes ;;
             configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=yes ;;
             ndk-build)   PACKAGE_BUILD_SYSTEM_NDK_BUILD=yes ;;
-            cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes ;;
-            cmake-make)  PACKAGE_BUILD_SYSTEM_CMAKE=yes ;;
-            cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes ;;
+            cmake-make)  PACKAGE_BUILD_SYSTEM_CMAKE=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
             meson)       PACKAGE_BUILD_SYSTEM_MESON=yes ;;
             ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
             make)        PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
@@ -3542,9 +3542,9 @@ __load_formula_of_the_given_package() {
             autotools)   package add dep.cmd perl m4 autoconf automake make ;;
             configure)   package add dep.cmd make ;;
             ndk-build)   package add dep.cmd make ;;
-            cmake)       package add dep.cmd 'cmake>=3.19.0' ninja ;;
             cmake-make)  package add dep.cmd 'cmake>=3.19.0' make  ;;
             cmake-ninja) package add dep.cmd 'cmake>=3.19.0' ninja ;;
+            cmake)       package add dep.cmd 'cmake>=3.19.0' ninja ;;
             meson)       package add dep.cmd meson ninja ;;
             ninja)       package add dep.cmd ninja ;;
             make)        package add dep.cmd make  ;;
@@ -5663,6 +5663,47 @@ __config_variables_for_the_given_target() {
     ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
     ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
 
+    # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
+    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+        unset CMAKE_PREFIX_PATH
+        unset CMAKE_APPLE_SILICON_PROCESSOR
+        unset CMAKE_BUILD_PARALLEL_LEVEL
+        unset CMAKE_BUILD_TYPE
+        unset CMAKE_CONFIGURATION_TYPES
+        unset CMAKE_CONFIG_TYPE
+        unset CMAKE_EXPORT_COMPILE_COMMANDS
+        unset CMAKE_GENERATOR
+        unset CMAKE_GENERATOR_INSTANCE
+        unset CMAKE_GENERATOR_PLATFORM
+        unset CMAKE_GENERATOR_TOOLSET
+        unset CMAKE_INSTALL_MODE
+        unset CMAKE_C_COMPILER_LAUNCHER
+        unset CMAKE_C_LINKER_LAUNCHER
+        unset CMAKE_CXX_COMPILER_LAUNCHER
+        unset CMAKE_CXX_LINKER_LAUNCHER
+        unset CMAKE_MSVCIDE_RUN_PATH
+        unset CMAKE_NO_VERBOSE
+        unset CMAKE_OSX_ARCHITECTURES
+        unset CMAKE_TOOLCHAIN_FILE
+        unset DESTDIR
+        unset CTEST_INTERACTIVE_DEBUG_MODE
+        unset CTEST_OUTPUT_ON_FAILURE
+        unset CTEST_PARALLEL_LEVEL
+        unset CTEST_PROGRESS_OUTPUT
+        unset CTEST_USE_LAUNCHERS_DEFAULT
+        unset DASHBOARD_TEST_FROM_CTEST
+
+        # https://cmake.org/cmake/help/latest/envvar/CMAKE_BUILD_PARALLEL_LEVEL.html
+        export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
+
+        # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
+        if [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] ; then
+            export CMAKE_GENERATOR='Ninja'
+        else
+            export CMAKE_GENERATOR='Unix Makefiles'
+        fi
+    fi
+
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
         for supportedTarget in $(__list_supported_target_triples)
         do
@@ -5687,8 +5728,8 @@ __config_variables_for_the_given_target() {
 
         # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
         # https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        eval export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR=\"$AR\""
-        eval export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER=\"$CC\""
+        export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR"="$AR"
+        export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER"="$CC"
 
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
 
@@ -5714,7 +5755,13 @@ __config_variables_for_the_given_target() {
         # https://github.com/alexcrichton/cmake-rs/blob/master/src/lib.rs
         # https://docs.rs/cmake/latest/cmake/
         # this variable is not motioned in their document. you must read the source code of cmake-rs crate.
-        export TARGET_CMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+        export TARGET_CMAKE_TOOLCHAIN_FILE="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI-android.toolchain.cmake"
+
+        printf '%s\n' "
+        set(ANDROID_ABI "${TARGET_OS_ABI}")
+        set(ANDROID_PLATFORM "android-${TARGET_OS_VERS}")
+        include(${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake)
+        " > "$TARGET_CMAKE_TOOLCHAIN_FILE"
 
         for item in $DEPENDENCY_PACKAGE_LIST
         do
@@ -6104,18 +6151,6 @@ cmakew() {
     if [ "$LOG_LEVEL" = DEBUG ] ; then
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_FIND_DEBUG_MODE=TRUE"
     fi
-
-    for item in $PACKAGE_BUILD_SYSTEM
-    do
-        case $item in
-            cmake-make)
-                CMAKE_FLAGS="$CMAKE_FLAGS -G 'Unix Makefiles'"
-                ;;
-            cmake-ninja|cmake)
-                CMAKE_FLAGS="$CMAKE_FLAGS -G Ninja"
-                ;;
-        esac
-    done
 
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
         CMAKE_FLAGS="
