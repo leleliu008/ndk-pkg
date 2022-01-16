@@ -1266,6 +1266,7 @@ version_of_command() {
          make) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
         gmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
        rustup) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
+       rustc)  "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         cargo) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
            go) "$1"   version | cut -d ' ' -f3 | cut -c3- ;;
          tree) "$1" --version | cut -d ' ' -f2 | cut -c2- ;;
@@ -3548,7 +3549,7 @@ __load_formula_of_the_given_package() {
             ninja)       package add dep.cmd ninja ;;
             make)        package add dep.cmd make  ;;
             rake)        package add dep.cmd ruby gem rake ;;
-            cargo)       package add dep.cmd rustup cargo ;;
+            cargo)       package add dep.cmd rustup rustc cargo ;;
             go)          package add dep.cmd 'go>=1.17' ;;
         esac
     done
