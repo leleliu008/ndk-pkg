@@ -3506,7 +3506,7 @@ __load_formula_of_the_given_package() {
                 die "src.sum is not configed in $PACKAGE_FORMULA_FILEPATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
-                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr _ - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
+                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 case $PACKAGE_VERSION in
                     '') die "version is not configed in $PACKAGE_FORMULA_FILEPATH" ;;
                     v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
@@ -4375,17 +4375,17 @@ __show_depends_of_the_given_package() {
 
     __gen_dependency_package_tree_of_the_given_package "$1"
 
-    if [ -f "$DEPENDENCIES_TXT" ] ; then
-        cat "$DEPENDENCIES_TXT"
-    elif [ -f "$DEPENDENCIES_PNG" ] ; then
+    if [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT" ] ; then
+        cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT"
+    elif [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" ] ; then
         for item in open feh eog lsix
         do
-            if command -v $item > /dev/null && $item "$DEPENDENCIES_PNG" ; then
+            if command -v $item > /dev/null && $item "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" ; then
                 return 0
             fi
         done
-    elif [ -f "$DEPENDENCIES__GV" ] ; then
-        cat "$DEPENDENCIES__GV"
+    elif [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT" ] ; then
+        cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
     fi
 }
 
@@ -4588,7 +4588,20 @@ __gen_dependency_package_list_of_the_given_package() {
     done
 }
 
-# __gen_dependency_package_tree_of_the_given_package PKG [OUTPUT-DIR]
+# __gen_dependency_package_tree_of_the_given_packages <PKG>... [OUTPUT-DIR]
+__get_dot_file_contents() {
+    for PKG in $@
+    do
+        unset DIRECT_DEPENDENCY_PACKAGE_LIST
+        DIRECT_DEPENDENCY_PACKAGE_LIST="$(get_direct_dependency_package_list_of_the_given_package "$PKG")"
+        if [ -n "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
+            printf '"%s" -> { "%s" }\n' "$PKG" "$(printf '%s\n' "$DIRECT_DEPENDENCY_PACKAGE_LIST" | sed 's/ /" "/g')"
+            __get_dot_file_contents $DIRECT_DEPENDENCY_PACKAGE_LIST
+        fi
+    done
+}
+
+# __gen_dependency_package_tree_of_the_given_package <PKG> [OUTPUT-DIR]
 __gen_dependency_package_tree_of_the_given_package() {
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
     DIRECT_DEPENDENCY_PACKAGE_LIST="$(get_direct_dependency_package_list_of_the_given_package "$1")"
@@ -4597,50 +4610,40 @@ __gen_dependency_package_tree_of_the_given_package() {
         return 0
     fi
 
-    unset DEPENDENCIES__GV
-    unset DEPENDENCIES_PNG
-    unset DEPENDENCIES_TXT
-
-    unset DEPENDENCIES_OUTPUT_DIR
+    unset PACKAGE_DEP_PKG_TREE_OUTPUT_DIR
 
     if [ -z "$2" ] ; then
-        DEPENDENCIES_OUTPUT_DIR=$(mktemp -d) || return 1
+        PACKAGE_DEP_PKG_TREE_OUTPUT_DIR=$(mktemp -d) || return 1
     else
-        DEPENDENCIES_OUTPUT_DIR="$2"
+        PACKAGE_DEP_PKG_TREE_OUTPUT_DIR="$2"
         [ -d "$2" ] || install -d "$2"
     fi
 
-    DEPENDENCIES__GV="$DEPENDENCIES_OUTPUT_DIR/dependencies.gv"
-    DEPENDENCIES_PNG="$DEPENDENCIES_OUTPUT_DIR/dependencies.png"
-    DEPENDENCIES_TXT="$DEPENDENCIES_OUTPUT_DIR/dependencies.txt"
+    unset PACKAGE_DEP_PKG_TREE_FILEPATH_DOT
+    unset PACKAGE_DEP_PKG_TREE_FILEPATH_PNG
+    unset PACKAGE_DEP_PKG_TREE_FILEPATH_TXT
 
-    printf 'digraph "%s\n" {' "$1" > "$DEPENDENCIES__GV"
+    PACKAGE_DEP_PKG_TREE_FILEPATH_DOT="$PACKAGE_DEP_PKG_TREE_OUTPUT_DIR/dependencies.gv"
+    PACKAGE_DEP_PKG_TREE_FILEPATH_PNG="$PACKAGE_DEP_PKG_TREE_OUTPUT_DIR/dependencies.png"
+    PACKAGE_DEP_PKG_TREE_FILEPATH_TXT="$PACKAGE_DEP_PKG_TREE_OUTPUT_DIR/dependencies.txt"
 
-    for dependencyPkgName in $1 $DIRECT_DEPENDENCY_PACKAGE_LIST
-    do
-        unset DIRECT_DEPENDENCY_PACKAGE_LIST
-        DIRECT_DEPENDENCY_PACKAGE_LIST="$(get_direct_dependency_package_list_of_the_given_package "$dependencyPkgName")"
-        if [ -z "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
-            continue
-        fi
-        printf '"%s" -> { "%s" }\n' "$dependencyPkgName" "$(printf '%s\n' "$DIRECT_DEPENDENCY_PACKAGE_LIST" | sed 's/ /" "/g')" >> "$DEPENDENCIES__GV"
-    done
-
-    printf "}\n" >> "$DEPENDENCIES__GV"
+    printf 'digraph G {\n'       >  "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
+    __get_dot_file_contents "$1" >> "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
+    printf '}\n'                 >> "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
 
     if command -v dot > /dev/null ; then
-        run dot -Tpng -o "$DEPENDENCIES_PNG" "$DEPENDENCIES__GV"
+        run dot -Tpng -o "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
     else
         note "graphviz is not installed. we do not generate png format dependency image."
     fi
 
     # https://github.com/ggerganov/dot-to-ascii
     curl \
-        -o "$DEPENDENCIES_TXT" \
+        -o "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT" \
         -s \
         -G \
         --data-urlencode "boxart=1" \
-        --data-urlencode "src=$(cat $DEPENDENCIES__GV)" \
+        --data-urlencode "src=$(cat $PACKAGE_DEP_PKG_TREE_FILEPATH_DOT)" \
         "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
 }
 
@@ -4824,8 +4827,8 @@ __install_the_given_package() {
     else
         __gen_dependency_package_list_of_the_given_package "$1"                      || return 1
         __gen_dependency_package_tree_of_the_given_package "$1" "$MY_INSTALL_DIR/$1" || return 1
-        if [ -f "$DEPENDENCIES_TXT" ] ; then
-            cat "$DEPENDENCIES_TXT"
+        if [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT" ] ; then
+            cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT"
         fi
     fi
 
@@ -5586,6 +5589,7 @@ __config_variables_for_the_given_target() {
     fi
 
     # https://www.freedesktop.org/wiki/Software/pkg-config/CrossCompileProposal
+    unset PKG_CONFIG_SYSROOT_DIR
     unset PKG_CONFIG_LIBDIR
     unset PKG_CONFIG_PATH
 
@@ -5736,6 +5740,9 @@ __config_variables_for_the_given_target() {
         export RUSTFLAGS="-Clink-arg=-L$WORK_DIR/$TIMESTAMP_UNIX"
 
         # https://libraries.io/cargo/cc
+        # https://crates.io/crates/cc
+        # https://docs.rs/cc/latest/cc/
+        # https://github.com/alexcrichton/cc-rs
         export HOST_CC="$CC_FOR_BUILD"
         export HOST_CFLAGS="$CFLAGS_FOR_BUILD"
 
@@ -5752,8 +5759,18 @@ __config_variables_for_the_given_target() {
 
         export TARGET_AR="$AR"
 
-        # https://github.com/alexcrichton/cmake-rs/blob/master/src/lib.rs
+
+        # https://libraries.io/cargo/pkg-config
+        # https://crates.io/crates/pkg-config
+        # https://docs.rs/pkg-config/latest/pkg_config/
+        # https://github.com/rust-lang/pkg-config-rs
+        export TARGET_PKG_CONFIG_ALLOW_CROSS=1
+
+
+        # https://libraries.io/cargo/cmake
+        # https://crates.io/crates/cmake
         # https://docs.rs/cmake/latest/cmake/
+        # https://github.com/alexcrichton/cmake-rs
         # this variable is not motioned in their document. you must read the source code of cmake-rs crate.
         export TARGET_CMAKE_TOOLCHAIN_FILE="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI-android.toolchain.cmake"
 
@@ -5762,6 +5779,7 @@ __config_variables_for_the_given_target() {
         set(ANDROID_PLATFORM "android-${TARGET_OS_VERS}")
         include(${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake)
         " > "$TARGET_CMAKE_TOOLCHAIN_FILE"
+
 
         for item in $DEPENDENCY_PACKAGE_LIST
         do
