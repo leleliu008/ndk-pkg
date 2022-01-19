@@ -5104,7 +5104,7 @@ __install_the_given_package_for_the_given_target() {
                 ninja)     ninja clean && ninja && ninja install ;;
                 make)      makew clean && makew && makew install ;;
                 cargo)     cargow install ;;
-                go)        run go build -v -trimpath -ldflags="'-s -w'" ;;
+                go)        gow ;;
             esac
         } || return 1
     fi
@@ -5932,9 +5932,9 @@ EOF
 
             item0=$(printf '%s\n' "$item_" | tr '|' ' ')
             item1=$(printf '%s\n' "$item0" | cut -d= -f1)
-            item2=$(printf '%s\n' "$item0" | cut -d= -f2)
+            item2=$(printf '%s\n' "$item0" | cut -d= -f2 | sed 's/^"//' | sed 's/"$//')
 
-            printf '%18s = %s\n' "$item1" "$item2"
+            printf '      %-12s = %s\n' "$item1" "$item2"
         done
     fi
 
@@ -5960,24 +5960,121 @@ EOF
     fi
 }
 
+gow() {
+    # https://pkg.go.dev/cmd/go
+    # https://pkg.go.dev/cmd/link
+
+    unset GO_BUILD_ARGS
+    unset GO_BUILD_ARGV_V
+    unset GO_BUILD_ARGV_X
+    unset GO_BUILD_ARGV_O
+    unset GO_BUILD_ARGV_MOD
+    unset GO_BUILD_ARGV_TAGS
+    unset GO_BUILD_ARGV_LDFLAGS
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            -v) shift ; GO_BUILD_ARGV_V='-v' ;;
+            -x) shift ; GO_BUILD_ARGV_X='-x' ;;
+            -o) shift ; GO_BUILD_ARGV_O="$1" ; shift ;;
+            -X) shift
+                if [ -z "$GO_BUILD_ARGV_LDFLAGS" ] ; then
+                    GO_BUILD_ARGV_LDFLAGS="-X $1"
+                else
+                    GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -X $1"
+                fi
+                shift
+                ;;
+            -mod)
+                shift
+                GO_BUILD_ARGV_MOD="$1"
+                shift
+                ;;
+            -tags)
+                shift
+                GO_BUILD_ARGV_TAGS="$1"
+                shift
+                ;;
+            -ldflags)
+                shift
+                if [ -z "$GO_BUILD_ARGV_LDFLAGS" ] ; then
+                    GO_BUILD_ARGV_LDFLAGS="$1"
+                else
+                    GO_BUILD_ARGV_LDFLAGS="$1 $GO_BUILD_ARGV_LDFLAGS"
+                fi
+                shift
+                ;;
+            *)  break
+        esac
+    done
+
+    GO_BUILD_ARGS='-trimpath'
+
+    if [ -z "$GO_BUILD_ARGV_V" ] ; then
+        if [ "$LOG_LEVEL" != QUIET ] ; then
+            GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
+        fi
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
+    fi
+
+    if [ -z "$GO_BUILD_ARGV_X" ] ; then
+        if [ "$LOG_LEVEL" = VERBOSE ] ; then
+            GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
+        fi
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
+    fi
+
+    if [ -z "$GO_BUILD_ARGV_LDFLAGS" ] ; then
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '-s -w'"
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '-s -w $GO_BUILD_ARGV_LDFLAGS'"
+    fi
+
+    if [ -z "$GO_BUILD_ARGV_O" ] ; then
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $BUILD_DIR/"
+    else
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $BUILD_DIR/$GO_BUILD_ARGV_O"
+    fi
+
+    GO_BUILD_ARGS="$GO_BUILD_ARGS $@"
+
+    run go build $GO_BUILD_ARGS || return 1
+
+    for item in $(ls "$BUILD_DIR")
+    do
+        case $item in
+            *.a)  run install_libs "$BUILD_DIR/$item" ;;
+            *.so) run install_libs "$BUILD_DIR/$item" ;;
+            *)    run install_bins "$BUILD_DIR/$item" ;;
+        esac
+    done
+}
+
 cargow() {
     case $1 in
         build)
             # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
             # https://doc.rust-lang.org/cargo/commands/cargo-build.html
+
             unset CARGO_BUILD_ARGS
+            unset CARGO_BUILD_ARG_VV
             unset CARGO_BUILD_ARG_TARGET
             unset CARGO_BUILD_ARG_RELEASE
-            unset CARGO_BUILD_ARG_VV
+
             for arg in $@
             do
                 case $arg in
+                    --vv)      CARGO_BUILD_ARG_VV=set      ;;
                     --target)  CARGO_BUILD_ARG_TARGET=set  ;;
                     --release) CARGO_BUILD_ARG_RELEASE=set ;;
-                    --vv)      CARGO_BUILD_ARG_VV=set      ;;
                 esac
             done
+
             CARGO_BUILD_ARGS="$@"
+
             if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
             fi
@@ -5987,6 +6084,7 @@ cargow() {
             if [ -z "$CARGO_BUILD_ARG_TARGET" ] ; then
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --target $RUST_TARGET"
             fi
+
             run cargo clean && run cargo $CARGO_BUILD_ARGS
             ;;
         install)
