@@ -116,7 +116,7 @@ step2() {
 }
 
 run() {
-    echo "$COLOR_PURPLE==>$COLOR_OFF $COLOR_GREEN$@$COLOR_OFF"
+    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
     eval "$*"
 }
 
@@ -523,7 +523,7 @@ fetch() {
     unset FETCH_PIPE_TO_CMD
 
     if [ -z "$1" ] ; then
-        die "fetch <URL> [OPTION]... , URL must not empty."
+        die "fetch <URL> [OPTION]... , URL must not be empty."
     else
         if [ "$COUNTRY" = 'china' ] ; then
             FETCH_URL="$(get_china_mirror_url "$1")"
