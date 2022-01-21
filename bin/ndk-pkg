@@ -5972,6 +5972,8 @@ gow() {
     unset GO_BUILD_ARGV_TAGS
     unset GO_BUILD_ARGV_LDFLAGS
 
+    unset GO_BUILD_ARGS_EXTRA
+
     while [ -n "$1" ]
     do
         case $1 in
@@ -5986,16 +5988,6 @@ gow() {
                 fi
                 shift
                 ;;
-            -mod)
-                shift
-                GO_BUILD_ARGV_MOD="$1"
-                shift
-                ;;
-            -tags)
-                shift
-                GO_BUILD_ARGV_TAGS="$1"
-                shift
-                ;;
             -ldflags)
                 shift
                 if [ -z "$GO_BUILD_ARGV_LDFLAGS" ] ; then
@@ -6005,7 +5997,7 @@ gow() {
                 fi
                 shift
                 ;;
-            *)  break
+            *)  GO_BUILD_ARGS_EXTRA="$GO_BUILD_ARGS_EXTRA $1" ; shift
         esac
     done
 
@@ -6039,7 +6031,7 @@ gow() {
         GO_BUILD_ARGS="$GO_BUILD_ARGS -o $BUILD_DIR/$GO_BUILD_ARGV_O"
     fi
 
-    GO_BUILD_ARGS="$GO_BUILD_ARGS $@"
+    GO_BUILD_ARGS="$GO_BUILD_ARGS $GO_BUILD_ARGS_EXTRA"
 
     run go build $GO_BUILD_ARGS || return 1
 
