@@ -2069,6 +2069,13 @@ __pmw_get_available_package_name_by_command_name_brew() {
     esac
 }
 
+__pmw_get_available_package_name_by_command_name_cargo() {
+    case $1 in
+        cargo-capi|cargo-cbuild|cargo-cinstall|cargo-ctest)
+            echo 'cargo-c' ;;
+    esac
+}
+
 __pmw_get_available_package_name_by_command_name_pip3() {
     __pmw_get_available_package_name_by_command_name_pip $@
 }
@@ -2082,7 +2089,7 @@ __pmw_get_available_package_name_by_command_name_pip() {
 }
 
 __pmw_get_available_pm_list() {
-    for pm in brew pkg apt apt-get dnf yum zypper apk xbps emerge pacman choco pkgin pkg_add
+    for pm in brew pkg apt apt-get dnf yum zypper apk xbps emerge pacman choco pkgin pkg_add cargo
     do
         case $pm in
             apt)
@@ -2173,6 +2180,7 @@ __pmw_install_the_given_package() {
         emerge)  run $sudo emerge "$2" ;;
         pacman)  run $sudo pacman -Syy --noconfirm && run $sudo pacman -S --noconfirm "$2" ;;
         choco)   run choco install -y --source cygwin "$2" ;;
+        cargo)   run cargo install "$2" ;;
     esac
     echo
 }
@@ -2807,14 +2815,12 @@ __install_command_via_pmw() {
         return 0
     fi
 
+    AVAILABLE_PACKAGE_MANAGER_LIST=$(__pmw_get_available_pm_list | tr '\n' ' ')
     if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
-        AVAILABLE_PACKAGE_MANAGER_LIST=$(__pmw_get_available_pm_list | tr '\n' ' ')
-        if [ -z "$AVAILABLE_PACKAGE_MANAGER_LIST" ] ; then
-            warn "no package manager found."
-            return 1
-        else
-            info "Found $(list_length $AVAILABLE_PACKAGE_MANAGER_LIST) package manager : ${COLOR_GREEN}$AVAILABLE_PACKAGE_MANAGER_LIST${COLOR_OFF}"
-        fi
+        warn "no package manager found."
+        return 1
+    else
+        info "Found $(list_length $AVAILABLE_PACKAGE_MANAGER_LIST) package manager : ${COLOR_GREEN}$AVAILABLE_PACKAGE_MANAGER_LIST${COLOR_OFF}"
     fi
 
     for pm in $AVAILABLE_PACKAGE_MANAGER_LIST
@@ -6070,9 +6076,11 @@ cargow() {
             if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
             fi
+
             if [ -z "$CARGO_BUILD_ARG_RELEASE" ] ; then
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --release"
             fi
+
             if [ -z "$CARGO_BUILD_ARG_TARGET" ] ; then
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --target $RUST_TARGET"
             fi
@@ -6082,11 +6090,13 @@ cargow() {
         install)
             # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
             # https://doc.rust-lang.org/cargo/commands/cargo-install.html
+
             unset CARGO_INSTALL_ARGS
             unset CARGO_INSTALL_ARG_TARGET
             unset CARGO_INSTALL_ARG_PATH
             unset CARGO_INSTALL_ARG_ROOT
             unset CARGO_INSTALL_ARG_VV
+
             for arg in $@
             do
                 case $arg in
@@ -6096,20 +6106,69 @@ cargow() {
                     --vv)     CARGO_INSTALL_ARG_VV=set     ;;
                 esac
             done
+
             CARGO_INSTALL_ARGS="$@"
+
             if [ -z "$CARGO_INSTALL_ARG_VV" ] ; then
                 CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
             fi
+
             if [ -z "$CARGO_INSTALL_ARG_TARGET" ] ; then
                 CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --target $RUST_TARGET"
             fi
+
             if [ -z "$CARGO_INSTALL_ARG_PATH" ] ; then
                 CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $SOURCE_DIR"
             fi
+
             if [ -z "$CARGO_INSTALL_ARG_ROOT" ] ; then
                 CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --root=$ABI_INSTALL_DIR"
             fi
+
             run cargo clean && run cargo $CARGO_INSTALL_ARGS
+            ;;
+        cbuild|cinstall)
+            unset CARGO_CINSTALL_ARGS
+            unset CARGO_CINSTALL_ARG_Q
+            unset CARGO_CINSTALL_ARG_V
+            unset CARGO_CINSTALL_ARG_VV
+            unset CARGO_CINSTALL_ARG_DEBUG
+            unset CARGO_CINSTALL_ARG_RELEASE
+            unset CARGO_CINSTALL_ARG_TARGET
+            unset CARGO_CINSTALL_ARG_PREFIX
+
+            for arg in $@
+            do
+                case $arg in
+                    -q|--quiet)   CARGO_CINSTALL_ARG_Q=set       ;;
+                    -v|--verbose) CARGO_CINSTALL_ARG_V=set       ;;
+                    -vv)          CARGO_CINSTALL_ARG_VV=set      ;;
+                    --debug)      CARGO_CINSTALL_ARG_DEBUG=set   ;;
+                    --release)    CARGO_CINSTALL_ARG_RELEASE=set ;;
+                    --target)     CARGO_CINSTALL_ARG_TARGET=set  ;;
+                    --prefix)     CARGO_CINSTALL_ARG_PREFIX=set  ;;
+                esac
+            done
+
+            CARGO_CINSTALL_ARGS="$@"
+
+            if [ -z "$CARGO_CINSTALL_ARG_Q" ] && [ -z "$CARGO_CINSTALL_ARG_V" ] && [ -z "$CARGO_CINSTALL_ARG_VV" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS -vv"
+            fi
+
+            if [ -z "$CARGO_CINSTALL_ARG_DEBUG" ] && [ -z "$CARGO_CINSTALL_ARG_RELEASE" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --release"
+            fi
+
+            if [ -z "$CARGO_CINSTALL_ARG_TARGET" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --target $RUST_TARGET"
+            fi
+
+            if [ -z "$CARGO_CINSTALL_ARG_PREFIX" ] ; then
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --prefix $ABI_INSTALL_DIR"
+            fi
+
+            run cargo $CARGO_CINSTALL_ARGS
             ;;
         *) cargo $@
     esac
