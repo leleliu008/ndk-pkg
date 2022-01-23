@@ -7022,7 +7022,13 @@ setup_build_toolchains_env() {
 
     TOOLCHAIN_NAME='android-ndk'
     TOOLCHAIN_VERS="$ANDROID_NDK_VERS"
-    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+
+    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+        TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
+    else
+        TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    fi
+
     TOOLCHAIN_BIND="$TOOLCHAIN_ROOT/bin"
 
     SYSROOT="$TOOLCHAIN_ROOT/sysroot"
