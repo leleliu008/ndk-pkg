@@ -6775,9 +6775,9 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1" ] &&
     [ -f "$1/source.properties" ] &&
     [ -f "$1/build/cmake/android.toolchain.cmake" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH/bin" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH/sysroot" ]
+    [ -d "$1/toolchains/llvm/prebuilt/$TOOLCHAIN_TAG" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$TOOLCHAIN_TAG/bin" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$TOOLCHAIN_TAG/sysroot" ]
 }
 
 # ndkmanager config @world
@@ -7022,13 +7022,7 @@ setup_build_toolchains_env() {
 
     TOOLCHAIN_NAME='android-ndk'
     TOOLCHAIN_VERS="$ANDROID_NDK_VERS"
-
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
-    else
-        TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
-    fi
-
+    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$TOOLCHAIN_TAG"
     TOOLCHAIN_BIND="$TOOLCHAIN_ROOT/bin"
 
     SYSROOT="$TOOLCHAIN_ROOT/sysroot"
@@ -7396,6 +7390,12 @@ init() {
     fi
 
     __setup_PATH_env
+
+    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+        TOOLCHAIN_TAG='darwin-x86_64'
+    else
+        TOOLCHAIN_TAG="$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    fi
 }
 
 __get_perl_home() {
