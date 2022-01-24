@@ -1261,6 +1261,7 @@ version_of_python_module() {
 # retrive the version of a command from it's name or path
 version_of_command() {
     case $(basename "$1") in
+        xmake) "$1" --version 2> /dev/null | head -n 1 | cut -d '+' -f1 | cut -d 'v' -f2 ;;
         cmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          rake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          make) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
@@ -3401,6 +3402,7 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BUILD_SYSTEM_NINJA
     unset PACKAGE_BUILD_SYSTEM_GMAKE
     unset PACKAGE_BUILD_SYSTEM_CMAKE
+    unset PACKAGE_BUILD_SYSTEM_XMAKE
     unset PACKAGE_BUILD_SYSTEM_MESON
     unset PACKAGE_BUILD_SYSTEM_CARGO
     unset PACKAGE_BUILD_SYSTEM_AUTOGENSH
@@ -3532,6 +3534,7 @@ __load_formula_of_the_given_package() {
             cmake-make)  PACKAGE_BUILD_SYSTEM_CMAKE=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
             cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
             cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            xmake)       PACKAGE_BUILD_SYSTEM_XMAKE=yes ;;
             meson)       PACKAGE_BUILD_SYSTEM_MESON=yes ;;
             ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
             make)        PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
@@ -3551,6 +3554,7 @@ __load_formula_of_the_given_package() {
             cmake-make)  package add dep.cmd 'cmake>=3.19.0' make  ;;
             cmake-ninja) package add dep.cmd 'cmake>=3.19.0' ninja ;;
             cmake)       package add dep.cmd 'cmake>=3.19.0' ninja ;;
+            xmake)       package add dep.cmd xmake ;;
             meson)       package add dep.cmd meson ninja ;;
             ninja)       package add dep.cmd ninja ;;
             make)        package add dep.cmd make  ;;
@@ -3569,6 +3573,11 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+        PACKAGE_BINSRCD=yes
+        PACKAGE_BUILD_IN_SOURCE_DIR=yes
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] ; then
         PACKAGE_BINSRCD=yes
         PACKAGE_BUILD_IN_SOURCE_DIR=yes
     fi
@@ -5177,16 +5186,27 @@ __justfy_la_files_for_the_given_target() {
 
 __justfy_pc_files_for_the_given_target() {
     if [ -d "$ABI_PKGCONF_DIR" ] ; then
-        for item in $(find "$ABI_PKGCONF_DIR" -name "*.pc")
+        for pcfile in $(find "$ABI_PKGCONF_DIR" -name "*.pc")
         do
-            sed_in_place 's/-lpthread//g' "$item" || return 1
-            if grep 'Libs.private:' "$item" > /dev/null ; then
-                LIBS_CONTENT=$(awk '/Libs:/{print}' "$item" || return 1)
-                LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$item" || return 1)
-                sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$item" || return 1
-                sed_in_place '/Libs.private/d' "$item" || return 1
+            sed_in_place "s|$ABI_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile" || return 1
+            sed_in_place 's|-lpthread||g'                     "$pcfile" || return 1
+            if grep 'Libs.private:' "$pcfile" > /dev/null ; then
+                LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile" || return 1)
+                LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile" || return 1)
+                sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile" || return 1
+                sed_in_place '/Libs.private/d' "$pcfile" || return 1
             fi
         done
+    fi
+}
+
+__install_pc_file_if_needed_for_the_given_target() {
+    if [ -d "$ABI_LIBRARY_DIR" ] ; then
+        if [ ! -d "$ABI_PKGCONF_DIR" ] ; then
+            cat > "$BUILD_DIR/$1.pc" << EOF
+EOF
+            run install_pcfs "$BUILD_DIR/$1.pc"
+        fi
     fi
 }
 
@@ -6389,6 +6409,55 @@ cmakew() {
     fi
 }
 
+# https://github.com/xmake-io/xmake/issues/2003
+# run in a subshell
+xmakew() {
+    XMAKE=$(command -v xmake)
+
+    [ -z "$XMAKE" ] && die "command not found: xmake"
+
+    run xmake --version
+
+    XMAKE_CONFIG_OPTIONS="$@"
+
+    XMAKE_CONFIG_OPTION_CLEAN=
+    XMAKE_CONFIG_OPTION_MODE=
+    XMAKE_CONFIG_OPTION_vD=
+
+    for arg in $@
+    do
+        case $arg in
+            -c|--clean)  XMAKE_CONFIG_OPTION_CLEAN=set ;;
+            -m|--mode=*) XMAKE_CONFIG_OPTION_MODE=set  ;;
+            -vD)         XMAKE_CONFIG_OPTION_vD=set ;;
+        esac
+    done
+
+    if [ "$LOG_LEVEL" = DEBUG ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTION_vD -vD"
+    fi
+
+    if [ -z "$XMAKE_CONFIG_OPTION_CLEAN" ] ; then
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --clean"
+    fi
+
+    if [ -z "$XMAKE_CONFIG_OPTION_MODE" ] ; then
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --mode=$BUILD_TYPE"
+    fi
+
+    if [ "$STEP_MESSAGE" = 'build for native' ] ; then
+        run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$SOURCE_DIR --buildir=$NATIVE_BUILD_DIR &&
+        run $XMAKE --jobs=$BUILD_NJOBS &&
+        run $XMAKE install -o "$NATIVE_INSTALL_DIR"
+    else
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_OS_ABI --ndk_sdkver=$TARGET_OS_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$BUILD_DIR"
+
+        run $XMAKE config $XMAKE_CONFIG_OPTIONS &&
+        run $XMAKE --jobs=$BUILD_NJOBS &&
+        run $XMAKE install -o "$ABI_INSTALL_DIR"
+    fi
+}
+
 # https://mesonbuild.com/Cross-compilation.html
 # run in a subshell
 mesonw() {
@@ -6775,9 +6844,9 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1" ] &&
     [ -f "$1/source.properties" ] &&
     [ -f "$1/build/cmake/android.toolchain.cmake" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$TOOLCHAIN_TAG" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$TOOLCHAIN_TAG/bin" ] &&
-    [ -d "$1/toolchains/llvm/prebuilt/$TOOLCHAIN_TAG/sysroot" ]
+    [ -d "$1/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/bin" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/sysroot" ]
 }
 
 # ndkmanager config @world
@@ -7022,7 +7091,7 @@ setup_build_toolchains_env() {
 
     TOOLCHAIN_NAME='android-ndk'
     TOOLCHAIN_VERS="$ANDROID_NDK_VERS"
-    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$TOOLCHAIN_TAG"
+    TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG"
     TOOLCHAIN_BIND="$TOOLCHAIN_ROOT/bin"
 
     SYSROOT="$TOOLCHAIN_ROOT/sysroot"
@@ -7392,9 +7461,9 @@ init() {
     __setup_PATH_env
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        TOOLCHAIN_TAG='darwin-x86_64'
+        ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
     else
-        TOOLCHAIN_TAG="$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+        ANDROID_NDK_TOOLCHAIN_HOST_TAG="$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
     fi
 }
 
