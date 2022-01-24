@@ -5133,12 +5133,17 @@ __install_the_given_package_for_the_given_target() {
         cd  "$ABI_LIBRARY_DIR" || return 1
         for SO_FILENAME_WITH_VERSION in $(find . -type f -name 'lib*.so.*' -exec basename {} \;)
         do
+            unset SO_FILENAME_WITHOUT_VERSION
             SO_FILENAME_WITHOUT_VERSION="$(printf '%s\n' "$SO_FILENAME_WITH_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
             if [ ! -e "$SO_FILENAME_WITHOUT_VERSION" ] ; then
                 run ln -s "$SO_FILENAME_WITH_VERSION" "$SO_FILENAME_WITHOUT_VERSION"
             fi
         done
     fi
+
+    [ -f "/cmake/$PACKAGE_NAME/$PACKAGE_NAME-config.cmake" ] || {
+        :
+    }
 
     step2 "justfy ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
     __justfy_elf_files_for_the_given_target $@ || return 1
