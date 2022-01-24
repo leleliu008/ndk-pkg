@@ -5130,12 +5130,11 @@ __install_the_given_package_for_the_given_target() {
     }
 
     if [ -d "$ABI_LIBRARY_DIR" ] ; then
-        cd  "$ABI_LIBRARY_DIR" || return 1
-        for SO_FILENAME_WITH_VERSION in $(find . -type f -name 'lib*.so.*' -exec basename {} \;)
+        for SO_FILENAME_WITH_VERSION in $(find "$ABI_LIBRARY_DIR" -type f -name 'lib*.so.*' | basename {} \;)
         do
-            SO_FILENAME_WITHOUT_VERSION="$(printf '%s\n' "$SO_FILENAME_WITH_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
-            if [ ! -e "$SO_FILENAME_WITHOUT_VERSION" ] ; then
-                run ln -s "$SO_FILENAME_WITH_VERSION" "$SO_FILENAME_WITHOUT_VERSION"
+            SO_FILENAME_WITHOUT_VERSION="$(printf '%s\n' "$item" | sed 's/\(lib.*\.so\)\..*/\1/')"
+            if [ ! -e "$so_filename_without_version" ] ; then
+                run ln -sr "$item" "$so_filename_without_version"
             fi
         done
     fi
