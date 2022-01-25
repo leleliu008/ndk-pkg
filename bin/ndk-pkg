@@ -2183,7 +2183,6 @@ __pmw_install_the_given_package() {
         choco)   run choco install -y --source cygwin "$2" ;;
         cargo)   run cargo install "$2" ;;
     esac
-    echo
 }
 
 # check if the give package specification is available in specified package manager's repo
