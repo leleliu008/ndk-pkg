@@ -3386,6 +3386,11 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_SRC_TYPE
 
     unset PACKAGE_VERSION
+    unset PACKAGE_VERSION_MAJOR
+    unset PACKAGE_VERSION_MINOR
+    unset PACKAGE_VERSION_PATCH
+    unset PACKAGE_VERSION_TWEAK
+
     unset PACKAGE_LICENSE
     unset PACKAGE_PATCHES
 
@@ -3522,6 +3527,13 @@ __load_formula_of_the_given_package() {
             PACKAGE_SRC_NAME="$PACKAGE_NAME-$PACKAGE_VERSION.$PACKAGE_SRC_TYPE"
             PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
     esac
+
+    if [ -n "$PACKAGE_VERSION" ] ; then
+        PACKAGE_VERSION_MAJOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f1)"
+        PACKAGE_VERSION_MINOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f2)"
+        PACKAGE_VERSION_PATCH="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f3)"
+        PACKAGE_VERSION_TWEAK="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f4)"
+    fi
 
     for item in $PACKAGE_BUILD_SYSTEM
     do
@@ -5143,7 +5155,7 @@ __install_the_given_package_for_the_given_target() {
             unset ABI_LIBRARY_NAMES
             unset ABI_LIBRARY_COUNT
 
-            ABI_LIBRARY_NAMES=$(find . -maxdepth 1 -mindepth 1 -type f \( -name 'lib*.a' -o -name 'lib*.so' \) -exec basename {} \; | sed 's|\(lib.*\)\..*|\1|' | uniq)
+            ABI_LIBRARY_NAMES=$(find . -maxdepth 1 -mindepth 1 \( -type f -o -type l \) -a \( -name 'lib*.a' -o -name 'lib*.so' \) -exec basename {} \; | sed 's|\(lib.*\)\..*|\1|' | uniq)
 
             ABI_LIBRARY_COUNT=$(printf '%s\n' "$ABI_LIBRARY_NAMES" | wc -l)
 
@@ -5166,49 +5178,73 @@ set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR "\${${PACKAGE_NAME_UPPERCASE}_INSTALL_
 set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_COUNT $ABI_LIBRARY_COUNT)
 
 EOF
-                if [ -n "$PACKAGE_VERSION" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION \"$PACKAGE_VERSION\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                if [ -n "$PACKAGE_GIT_REV" ] ; then
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_GIT_REV       \"$PACKAGE_GIT_REV\")"       >> "$ABI_CMAKE_CONFIG_FILEPATH"
                 fi
 
-                if [ -n "$PACKAGE_GIT_REV" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_GIT_REV \"$PACKAGE_GIT_REV\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                if [ -n "$PACKAGE_VERSION" ] ; then
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION       \"$PACKAGE_VERSION\")"       >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                fi
+
+                if [ -n "$PACKAGE_VERSION_MAJOR" ] ; then
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MAJOR \"$PACKAGE_VERSION_MAJOR\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                fi
+
+                if [ -n "$PACKAGE_VERSION_MINOR" ] ; then
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MINOR \"$PACKAGE_VERSION_MINOR\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                fi
+
+                if [ -n "$PACKAGE_VERSION_PATCH" ] ; then
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_PATCH \"$PACKAGE_VERSION_PATCH\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                fi
+
+                if [ -n "$PACKAGE_VERSION_TWEAK" ] ; then
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_TWEAK \"$PACKAGE_VERSION_TWEAK\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
                 fi
 
                 for libname in $ABI_LIBRARY_NAMES
                 do
+                    unset LIBNAME_UPPERCASE
+                    LIBNAME_UPPERCASE="$(printf '%s\n' "$libname" | tr a-z A-Z)"
                     if [ -e "$ABI_LIBRARY_DIR/$libname.a" ] ; then
                         cat >> "$ABI_CMAKE_CONFIG_FILEPATH" << EOF
 
-add_library($PACKAGE_NAME::$libname-static STATIC IMPORTED)
-set_target_properties($PACKAGE_NAME::$libname-static PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.a")
+set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.a")
+add_library($PACKAGE_NAME::$libname::static STATIC IMPORTED)
+set_target_properties($PACKAGE_NAME::$libname::static PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
 EOF
                     fi
 
                     if [ -e "$ABI_LIBRARY_DIR/$libname.so" ] ; then
                         cat >> "$ABI_CMAKE_CONFIG_FILEPATH" << EOF
 
-add_library($PACKAGE_NAME::$libname-shared SHARED IMPORTED)
-set_target_properties($PACKAGE_NAME::$libname-shared PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.so")
+set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.so")
+add_library($PACKAGE_NAME::$libname::shared SHARED IMPORTED)
+set_target_properties($PACKAGE_NAME::$libname::shared PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
 EOF
                     fi
 
                     cat >> "$ABI_CMAKE_CONFIG_FILEPATH" << EOF
 
-if (CMAKE_FIND_PREFER_STATIC)
-    if(TARGET $PACKAGE_NAME::$libname-static)
+if (CMAKE_LINK_LIBRARY_PREFER_STATIC)
+    if(TARGET $PACKAGE_NAME::$libname::static)
+        set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
         add_library($PACKAGE_NAME::$libname STATIC IMPORTED)
-        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.a")
+        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
     else()
+        set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
         add_library($PACKAGE_NAME::$libname SHARED IMPORTED)
-        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.so")
+        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
     endif()
 else()
-    if(TARGET $PACKAGE_NAME::$libname-shared)
+    if(TARGET $PACKAGE_NAME::$libname::shared)
+        set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
         add_library($PACKAGE_NAME::$libname SHARED IMPORTED)
-        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.so")
+        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
     else()
+        set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
         add_library($PACKAGE_NAME::$libname STATIC IMPORTED)
-        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.a")
+        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
     endif()
 endif()
 
@@ -5216,7 +5252,7 @@ EOF
                 done
 
                 if [ "$ABI_LIBRARY_COUNT" -eq 1 ] ; then
-                    printf '%s\n\n' "set(${PACKAGE_NAME_UPPERCASE}_LIBRARY $PACKAGE_NAME::$libname)" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                    printf '%s\n\n' "set(${PACKAGE_NAME_UPPERCASE}_LIBRARY \"\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}}\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
                 fi
 
                 printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_FOUND TRUE)" >> "$ABI_CMAKE_CONFIG_FILEPATH"
