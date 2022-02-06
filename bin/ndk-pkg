@@ -5857,28 +5857,6 @@ __config_variables_for_the_given_target() {
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_BUILD_PARALLEL_LEVEL.html
         export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
 
-        # https://cmake.org/cmake/help/latest/envvar/PackageName_ROOT.html
-        # https://cmake.org/cmake/help/latest/manual/cmake-modules.7.html#find-modules
-        # find ~/.uppm/install.d/cmake/share/cmake-3.21/Modules/ -name "Find*.cmake" -exec basename  {} .cmake \; | sed 's/^Find//' | sort | tr '\n' ' '
-        # ALSA ASPELL AVIFile Armadillo BISON BLAS BZip2 Backtrace Boost Bullet CABLE CUDA CUDAToolkit CURL CVS Coin3D Cups Curses CxxTest Cygwin DCMTK Dart DevIL Doxygen EXPAT EnvModules FLEX FLTK FLTK2 Fontconfig Freetype GCCXML GDAL GIF GLEW GLU GLUT GSL GTK GTK2 GTest Gettext Git GnuTLS Gnuplot HDF5 HSPELL HTMLHelp Hg ICU Ice Iconv Icotool ImageMagick Intl JNI JPEG Jasper Java KDE3 KDE4 LAPACK LATEX LTTngUST LibArchive LibLZMA LibXml2 LibXslt Libinput Lua Lua50 Lua51 MFC MPEG MPEG2 MPI Matlab Motif Msys ODBC OpenACC OpenAL OpenCL OpenGL OpenMP OpenSSL OpenSceneGraph OpenThreads PHP4 PNG PackageHandleStandardArgs PackageMessage Patch Perl PerlLibs PhysFS Pike PkgConfig PostgreSQL Producer Protobuf Python Python2 Python3 PythonInterp PythonLibs Qt Qt3 Qt4 QuickTime RTI Ruby SDL SDL_image SDL_mixer SDL_net SDL_sound SDL_ttf SQLite3 SWIG SelfPackers Squish Subversion TCL TIFF TclStub Tclsh Threads UnixCommands Vulkan Wget Wish X11 XCTest XMLRPC XalanC XercesC ZLIB osg osgAnimation osgDB osgFX osgGA osgIntrospection osgManipulator osgParticle osgPresentation osgProducer osgQt osgShadow osgSim osgTerrain osgText osgUtil osgViewer osgVolume osgWidget osg_functions wxWidgets wxWindows
-        for item in $DEPENDENCY_PACKAGE_LIST
-        do
-            case $item in
-                xz)     export LibLZMA_ROOT="$xz_INSTALL_DIR"  ;;
-                zlib)   export  ZLIB_ROOT="$zlib_INSTALL_DIR"  ;;
-                bzip2)  export BZip2_ROOT="$bzip2_INSTALL_DIR" ;;
-                boost)  export Boost_ROOT="$boost_INSTALL_DIR" ;;
-                libjpeg-turbo)
-                        export JPEG_ROOT="$libjpeg_turbo_INSTALL_DIR" ;;
-                openssl)export OpenSSL_ROOT="$openssl_INSTALL_DIR" ;;
-                libxml2)export LibXml2_ROOT="$libxml2_INSTALL_DIR" ;;
-                libpng) export PNG_ROOT="$libpng_INSTALL_DIR"     ;;
-                sqlite) export SQLite3_ROOT="$sqlite_INSTALL_DIR" ;;
-                python) export SQLite3_ROOT="$pyhton_INSTALL_DIR" ;;
-                curl)   export CURL_ROOT="$curl_INSTALL_DIR"  ;;
-            esac
-        done
-
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
         if [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] ; then
             export CMAKE_GENERATOR='Ninja'
