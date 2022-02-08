@@ -6110,8 +6110,6 @@ EOF
    ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR
    "
 
-    env | sed -n '/_ROOT/p'
-
     if [ "$LOG_LEVEL" = VERBOSE ] ; then
         echo
         run export -p
