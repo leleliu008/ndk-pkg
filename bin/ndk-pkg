@@ -7531,7 +7531,7 @@ init() {
     MY_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository.git'
 
     MY_UPGRAGE_URL="https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg"
-    MY_ZSH_COMPLETION_SCRIPT_URL="https://github.com/leleliu008/ndk-pkg/blob/master/zsh-completion/_ndk-pkg"
+    MY_ZSH_COMPLETION_SCRIPT_URL="https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/zsh-completion/_ndk-pkg"
 
     MY_HOME_DIR="$HOME/.ndk-pkg"
     MY_FORMULA_REPO_DIR="$MY_HOME_DIR/repos.d"
