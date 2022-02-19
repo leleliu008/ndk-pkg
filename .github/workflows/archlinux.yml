@@ -13,8 +13,8 @@ jobs:
     container: archlinux
 
     steps:
-      - run: pacman -Syy --noconfirm
-      - run: pacman -S   --noconfirm git
+      - run: pacman -Syyuu --noconfirm
+      - run: pacman -S     --noconfirm git
 
       - uses: actions/checkout@v2
 
