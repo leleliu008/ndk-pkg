@@ -85,13 +85,10 @@ function _ndk_pkg() {
                     case $state in
                         action)
                             case $words[1] in
-                                del)
-                                    _arguments '1:repo-name:($(ndk-pkg formula-repo list | cut -d= -f1))' 
-                                    ;;
+                                del) _arguments '1:repo-name:($(ndk-pkg formula-repo list | cut -d= -f1))' ;;
                             esac
                     esac
                     ;;
-
                 formula)
                     _arguments \
                         ':action:(create delete rename view edit list)' \
@@ -121,14 +118,14 @@ function _ndk_pkg() {
                     _arguments \
                         '1:package-name:(@all $(ndk-pkg ls-available))' \
                         '*:: :->info-subcommand'
-                                                    case $state in
-                                                        info-subcommand)
-                                                            case $words[1] in
-                                                                @all) _arguments '--json[output format is json]' ;;
-                                                                *) _arguments '1:key:(summary webpage version license git.url src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-files installed-abis --json)'
-                                                            esac
-                                                        esac
-                        ;;
+                    case $state in
+                        info-subcommand)
+                            case $words[1] in
+                                @all) _arguments '--json[output format is json]' ;;
+                                *) _arguments '1:key:(summary webpage version license git.url src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-files installed-abis --json)'
+                            esac
+                    esac
+                    ;;
                 fetch)
                     _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' ;;
                 depends)
@@ -142,7 +139,7 @@ function _ndk_pkg() {
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
                         '--open[open in the web browser]'
-                                                    ;;
+                    ;;
                 tree)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
@@ -189,26 +186,24 @@ function _ndk_pkg() {
                     _arguments \
                         '1:package-name:(@self $(ndk-pkg ls-outdated))' \
                         '*:: :->upgrade-subcommand'
-                                                    case $state in
-                                                        upgrade-subcommand)
-                                                            case $words[1] in
-                                                                @self)
-                                                                    _arguments \
-                        '-x[trace execution of commands]' \
-                        '--china[use china mirror url]'
+                    case $state in
+                        upgrade-subcommand)
+                            case $words[1] in
+                                @self)
+                                    _arguments \
+                                        '-x[trace execution of commands]' \
+                                        '--china[use china mirror url]'
+                                    ;;
+                                *)  _arguments \
+                                        ':package-name:_ndk_pkg_outdated_packages' \
+                                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
+                                        '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
+                                        '(--debug -d)'{--debug,-d}'[debug]' \
+                                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                            esac
+                        esac
                     ;;
-                                                                *)
-                                                                _arguments \
-                        ':package-name:_ndk_pkg_outdated_packages' \
-                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
-                        '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
-                        '(--debug -d)'{--debug,-d}'[debug]' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
-
-                                                            esac
-                                                        esac
-                                                    ;;
                 uninstall)
                     _arguments '*:package-name:_ndk_pkg_installed_packages' ;;
                 is-available)
@@ -217,13 +212,9 @@ function _ndk_pkg() {
                         '2:condition-operator:(eq ne ge gt le lt)'
                     ;;
                 is-installed)
-                    _arguments \
-                        '1:package-name:_ndk_pkg_installed_packages'
-                                                    ;;
+                    _arguments '1:package-name:_ndk_pkg_installed_packages' ;;
                 is-outdated)
-                    _arguments \
-                        '1:package-name:_ndk_pkg_outdated_packages'
-                                                    ;;
+                    _arguments '1:package-name:_ndk_pkg_outdated_packages' ;;
                 ldd)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
