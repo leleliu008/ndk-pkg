@@ -828,11 +828,11 @@ __integrate_zsh_completions() {
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$OUTPUT_DIR" ] ; then
-                    die "__upgrade_self <URL> [--output-dir=<DIR>] , DIR must not be empty."
+                    die "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , DIR must not be empty."
                 fi
                 OUTPUT_DIR=$(globing "$OUTPUT_DIR")
                 ;;
-            *)  die "__upgrade_self <URL> [--output-dir=<DIR>] [--china] [-x] , unrecognized argument: $arg"
+            *)  die "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , unrecognized argument: $arg"
         esac
     done
 
@@ -864,7 +864,7 @@ __integrate_zsh_completions() {
 
     run cd $WORK_DIR
 
-    fetch "$MY_ZSH_COMPLETION_SCRIPT_URL" --output-path="$WORK_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    fetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-path="$WORK_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
@@ -4328,7 +4328,7 @@ __compare_versions_with_brew() {
         __load_formula_of_the_given_package "$item"
         BREW_PKG_NMAE="$(get_brew_package_name_from_my_package_name $PACKAGE_NAME)"
         if brew info "$BREW_PKG_NMAE" > /dev/null 2>&1 ; then
-            BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" 2> /dev/null | sed -n "/$BREW_PKG_NMAE: /p" | cut -d ' ' -f3) 
+            BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" 2> /dev/null | sed -n "/$BREW_PKG_NMAE: /p" | cut -d ' ' -f3)
             if version_match "$BREW_PKG_VERS" gt "$PACKAGE_VERSION" ; then
                 printf "${COLOR_RED}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
             else
@@ -4614,7 +4614,6 @@ __gen_dependency_package_list_of_the_given_package() {
     done
 }
 
-# __gen_dependency_package_tree_of_the_given_packages <PKG>... [OUTPUT-DIR]
 __get_dot_file_contents() {
     for PKG in $@
     do
