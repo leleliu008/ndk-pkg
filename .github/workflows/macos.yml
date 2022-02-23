@@ -2,9 +2,9 @@ name: macOS
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, dev ]
 
 jobs:
   test:
@@ -29,8 +29,6 @@ jobs:
       - run: bin/ndk-pkg integrate zsh
 
       - run: bin/ndk-pkg update
-
-      - run: bin/ndk-pkg test
 
       - run: bin/ndk-pkg search lib
       - run: bin/ndk-pkg search zlib
