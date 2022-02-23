@@ -4790,8 +4790,7 @@ __install_the_given_package() {
         setup_build_toolchains_env
     fi
 
-    unset TARGET_OS_VERS
-    TARGET_OS_VERS=$(pick_target_os_version "$PACKAGE_SDK_API" "$USER_SPECIFIED_TARGET_OS_VERS") || die "$PACKAGE_NAME supportted min-sdk-api-level is $PACKAGE_SDK_API, but you want is $USER_SPECIFIED_TARGET_OS_VERS"
+    calculate_TARGET_OS_VERS "$PACKAGE_NAME" "$PACKAGE_SDK_API" "$USER_EXPECTED_TARGET_OS_VERS"
 
     step "handle required dependencies"
     for item in $PACKAGE_DEP_CMD
@@ -4858,36 +4857,12 @@ __install_the_given_package() {
     fi
 
     step "create common linker script"
-    # https://developer.android.com/ndk/guides/stable_apis#c_library
-    run "echo 'INPUT(-lc)' > $WORK_DIR/$TIMESTAMP_UNIX/libpthread.a"
-    run "echo 'INPUT(-lc)' > $WORK_DIR/$TIMESTAMP_UNIX/librt.a"
-    if [ "$ANDROID_NDK_VERS_MAJOR" -ge 23 ] ; then
-        run "echo 'INPUT(-lunwind)' > $WORK_DIR/$TIMESTAMP_UNIX/libgcc.a"
-    fi
+    create_common_linker_script "$WORK_DIR/$TIMESTAMP_UNIX"
 
     step "create common include.h"
     unset COMMON_INCLUDE_H_FILEPATH
     COMMON_INCLUDE_H_FILEPATH="$WORK_DIR/$TIMESTAMP_UNIX/include.h"
-    cat > "$COMMON_INCLUDE_H_FILEPATH" <<EOF
-// https://linux.die.net/man/3/index
-#define rindex(str,ch) strrchr(str,ch)
-
-// https://linux.die.net/man/3/bcmp
-#define bcmp(b1,b2,len) memcmp(b1,b2,len)
-
-// https://linux.die.net/man/2/wait3
-#define wait3(status,options,rusage) waitpid(-1,status,options)
-
-// https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
-// https://linux.die.net/man/3/ftello
-// int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
-// off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
-#if __ANDROID_API__ < 24
-    #define ftello(f) ftell(f)
-    #define fseeko    fseek
-#endif
-EOF
-
+    create_common_include_h "$COMMON_INCLUDE_H_FILEPATH"
     if command -v bat > /dev/null ; then
         run bat --style=plain --paging=never "$COMMON_INCLUDE_H_FILEPATH"
     else
@@ -5044,9 +5019,6 @@ EOF
             *)  note "no prepare function defined in formula, skipped."
         esac
     fi
-
-    unset TARGET_LIST
-    TARGET_LIST="$(__list_supported_target_abis)"
 
     for TARGET_ITEM in $TARGET_LIST
     do
@@ -5307,9 +5279,9 @@ __justfy_elf_files_for_the_given_target() {
 
 __justfy_la_files_for_the_given_target() {
     if [ -d "$ABI_LIBRARY_DIR" ] ; then
-        for item in $(find "$ABI_LIBRARY_DIR" -name "*.la")
+        for lafile in $(find "$ABI_LIBRARY_DIR" -name "*.la")
         do
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||" "$item" || return 1
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||" "$lafile" || return 1
         done
     fi
 }
@@ -5345,7 +5317,7 @@ __install_logs_for_the_given_target() {
 
     for item in "$BUILD_DIR" "$SOURCE_DIR"
     do
-        for item2 in 'config.log' 'compile_commands.json'
+        for item2 in 'config.log' 'compile_commands.json' 'install.log.txt'
         do
             if [ -f "$item/$item2" ] ; then
                 echo "-- Installing: $ABI_LOG_DIR/$item2"
@@ -6678,6 +6650,41 @@ to_meson_array() {
 
 ########################################################################
 
+create_common_linker_script() {
+    [ -z  "$1" ] && die "create_common_linker_script <DIR>, DIR must not be empty."
+
+    # https://developer.android.com/ndk/guides/stable_apis#c_library
+    run "echo 'INPUT(-lc)' > $1/libpthread.a"
+    run "echo 'INPUT(-lc)' > $1/librt.a"
+
+    if [ "$ANDROID_NDK_VERS_MAJOR" -ge 23 ] ; then
+        run "echo 'INPUT(-lunwind)' > $1/libgcc.a"
+    fi
+}
+
+create_common_include_h() {
+    [ -z  "$1" ] && die "create_common_include_h <FILEPATH>, FILEPATH must not be empty."
+    cat > "$1" <<EOF
+// https://linux.die.net/man/3/index
+#define rindex(str,ch) strrchr(str,ch)
+
+// https://linux.die.net/man/3/bcmp
+#define bcmp(b1,b2,len) memcmp(b1,b2,len)
+
+// https://linux.die.net/man/2/wait3
+#define wait3(status,options,rusage) waitpid(-1,status,options)
+
+// https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
+// https://linux.die.net/man/3/ftello
+// int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
+// off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
+#if __ANDROID_API__ < 24
+    #define ftello(f) ftell(f)
+    #define fseeko    fseek
+#endif
+EOF
+}
+
 include_stub_getdtablesize() {
     # https://linux.die.net/man/2/getdtablesize
     # https://hg.mozilla.org/mozreview/gecko/rev/038c2fe02074d03a6c34d44f68cb5f078a2472cc#index_header
@@ -6875,21 +6882,21 @@ path_of_tool_in_the_toolchain() {
     echo "$TOOL_FILENAME"
 }
 
-# $1: target_os_version configed in formula
-# $2: target_os_version sepecified by user
-# return 0: succees
-# return 1: $1 > $2
-pick_target_os_version() {
-    if [ -z "$1" ] ; then
-        pick_target_os_version $(__list_supported_target_sdk_api_levels | head -n 1) $2
+# calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER_EXPECTED_TARGET_OS_VERS>
+calculate_TARGET_OS_VERS() {
+    die_if_package_is_not_specified "$1"
+
+    if [ -z "$2" ] ; then
+        calculate_TARGET_OS_VERS "$1" "$(__list_supported_target_sdk_api_levels | head -n 1)" $3
     else
-        if [ -z "$2" ] ; then
-            echo "$1"
+        unset TARGET_OS_VERS
+        if [ -z "$3" ] ; then
+            TARGET_OS_VERS="$2"
         else
-            if [ "$1" -gt "$2" ] ; then
-                return 1
+            if [ "$2" -gt "$3" ] ; then
+                die "$1 package's supportted min-sdk-api-level is $2, but you want is $3"
             else
-                echo "$2"
+                TARGET_OS_VERS="$3"
             fi
         fi
     fi
@@ -7384,7 +7391,7 @@ inspect_install_arguments() {
     unset TARGET_ARCH
 
     # https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element#api-level-table
-    unset USER_SPECIFIED_TARGET_OS_VERS
+    unset USER_EXPECTED_TARGET_OS_VERS
 
     unset USER_SPECIFIED_PACKAGE_LIST
 
@@ -7416,8 +7423,8 @@ inspect_install_arguments() {
     do
         case "$1" in
             --min-sdk-api-level=*)
-                USER_SPECIFIED_TARGET_OS_VERS=$(getvalue "$1")
-                is_integer "$USER_SPECIFIED_TARGET_OS_VERS" || die "--min-sdk-api-level=INTEGER argument's value must be a integer."
+                USER_EXPECTED_TARGET_OS_VERS=$(getvalue "$1")
+                is_integer "$USER_EXPECTED_TARGET_OS_VERS" || die "--min-sdk-api-level=INTEGER argument's value must be a integer."
                 ;;
             --xtrace|-x)
                 ;;
@@ -7519,6 +7526,9 @@ inspect_install_arguments() {
     if [ "$LOG_LEVEL" = DEBUG ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
+
+    unset TARGET_LIST
+    TARGET_LIST="$(__list_supported_target_abis)"
 }
 
 init() {
