@@ -5655,8 +5655,8 @@ __load_installed_metadata_of_the_given_package() {
     . "$INSTALLED_METADATA_FILEPATH" || die "$INSTALLED_METADATA_FILEPATH is broken."
 }
 
-# examples:
-# __config_variables_for_the_given_target curl x86_64
+# __config_variables_for_the_given_target <PACKAGE-NAME> <TARGET>
+# __config_variables_for_the_given_target      curl       x86_64
 __config_variables_for_the_given_target() {
     TARGET_OS_KIND=linux
     TARGET_OS_TYPE=android
@@ -5842,9 +5842,7 @@ __config_variables_for_the_given_target() {
             supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
             for installedTarget in $(rustup target list | sed -n '/installed/p' | cut -d ' ' -f1)
             do
-                if [ "$supportedTarget" = "$installedTarget" ] ; then
-                    break
-                fi
+                [ "$supportedTarget" = "$installedTarget" ] && break
             done
             [ "$supportedTarget" = "$installedTarget" ] || {
                 rustup target add "$supportedTarget" || return 1
@@ -5935,16 +5933,18 @@ __config_variables_for_the_given_target() {
         export GOOS="$TARGET_OS_TYPE"
 
         case $TARGET_OS_ARCH in
-            armv7a)  export GOARCH=arm   ;;
+            armv7*)  export GOARCH=arm   ;;
+            arm64*)  export GOARCH=arm64 ;;
             aarch64) export GOARCH=arm64 ;;
+            i386)    export GOARCH=386   ;;
             i686)    export GOARCH=386   ;;
             x86_64)  export GOARCH=amd64 ;;
         esac
     fi
 }
 
-# examples:
-# __printf_variables_for_the_given_target curl x86_64
+# __printf_variables_for_the_given_target <PACKAGE-NAME> <TARGET>
+# __printf_variables_for_the_given_target      curl       x86_64
 __printf_variables_for_the_given_target() {
     echo "
     NATIVE_OS_KIND = $NATIVE_OS_KIND
@@ -6557,15 +6557,15 @@ xmakew() {
 # run in a subshell
 mesonw() {
     case $TARGET_OS_ARCH in
-        armv7a)
+        armv7*)
             HOST_MACHINE_CPU_FAMILY='arm'
             HOST_MACHINE_CPU_NAME="$TARGET_OS_ARCH"
             ;;
-        aarch64)
+        arm64*|aarch64)
             HOST_MACHINE_CPU_FAMILY='aarch64'
             HOST_MACHINE_CPU_NAME='armv8a'
             ;;
-        i686)
+        i386|i686)
             HOST_MACHINE_CPU_FAMILY='x86'
             HOST_MACHINE_CPU_NAME="$TARGET_OS_ARCH"
             ;;
@@ -7426,9 +7426,9 @@ inspect_install_arguments() {
                 USER_EXPECTED_TARGET_OS_VERS=$(getvalue "$1")
                 is_integer "$USER_EXPECTED_TARGET_OS_VERS" || die "--min-sdk-api-level=INTEGER argument's value must be a integer."
                 ;;
-            --xtrace|-x)
-                ;;
             --china)
+                ;;
+            --xtrace|-x)
                 ;;
             --debug|-d)
                 LOG_LEVEL=DEBUG
@@ -7971,17 +7971,21 @@ main() {
                 *)    __show_infomation_of_the_given_package $@ ;;
             esac
             ;;
-
-        ldd)shift; __ldd $@ ;;
-
+        ldd)
+            shift
+            __ldd $@
+            ;;
         list-dynamic-library-names)
-            shift; list_dynamic_library_names_of_the_given_package $@ ;;
-        gen-github-workflows)
-            shift; __gen_github_workflows $@ ;;
-
+            shift
+            list_dynamic_library_names_of_the_given_package $@
+            ;;
         ndkmanager)
             shift
             ndkmanager $@
+            ;;
+        gen-github-workflows)
+            shift
+            __gen_github_workflows $@
             ;;
         test)
             __compare_versions_with_brew
