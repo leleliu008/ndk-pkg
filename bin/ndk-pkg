@@ -5530,6 +5530,9 @@ __show_infomation_of_the_given_package() {
             --shell)
                 __show_infomation_of_the_given_package_as_shell "$1"
                 ;;
+            formula)
+                __path_of_formula_of_the_given_package "$1"
+                ;;
             installed-dir)
                 die_if_package_is_not_installed "$1"
                 echo "$MY_INSTALL_DIR/$1"
