@@ -7846,7 +7846,7 @@ ${COLOR_GREEN}ndk-pkg pack <PACKAGE> [--type=7z|zip|tar.gz|tar.xz|tar.bz2]${COLO
 ${COLOR_GREEN}ndk-pkg logs <PACKAGE> <ABI>${COLOR_OFF}
     show logs of the given installed package.
 
-${COLOR_GREEN}ndk-pkg info <PACKAGE> [KEY|--json]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg info <PACKAGE> [KEY|--json|--shell]${COLOR_OFF}
     show information of the given package.
 
 ${COLOR_GREEN}ndk-pkg info @all [--json]${COLOR_OFF}
