@@ -183,7 +183,7 @@ getvalue() {
     if [ $# -eq 0 ] ; then
         cut -d= -f2
     else
-        echo "$1" | cut -d= -f2
+        printf '%s\n' "$1" | cut -d= -f2
     fi
 }
 
@@ -4206,10 +4206,8 @@ __tree_the_given_installed_package() {
 }
 
 __uninstall_the_given_packages() {
-    shift
-
     die_if_package_is_not_specified "$1"
-    
+
     for packageName in $@
     do
         __uninstall_the_given_package "$packageName" || return 1
@@ -4717,7 +4715,7 @@ __install_the_given_packages() {
     for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
         if is_package_installed "$INSTALLING_PACKAGE" ; then
-            if [ "$LOG_LEVEL" != QUIET ] ; then
+            if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
             fi
         else
@@ -5841,7 +5839,7 @@ __config_variables_for_the_given_target() {
 
     PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
-    if [ "$LOG_LEVEL" = VERBOSE ] ; then
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
         LDFLAGS="$LDFLAGS -v -Wl,-v"
     fi
@@ -5904,19 +5902,7 @@ __config_variables_for_the_given_target() {
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        for supportedTarget in $(__list_supported_target_triples)
-        do
-            supportedTarget=$(echo "$supportedTarget" | sed 's/armv7a/armv7/')
-            for installedTarget in $(rustup target list | sed -n '/installed/p' | cut -d ' ' -f1)
-            do
-                [ "$supportedTarget" = "$installedTarget" ] && break
-            done
-            [ "$supportedTarget" = "$installedTarget" ] || {
-                rustup target add "$supportedTarget" || return 1
-            }
-        done
-
-        RUST_TARGET=$(echo "$TARGET_TRIPLE" | sed 's/armv7a/armv7/')
+        RUST_TARGET=$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/armv7/')
 
         # this environment variable is not defined by Rust, but it is widely used by third-party project.
         export RUST_TARGET="$RUST_TARGET"
@@ -6148,7 +6134,7 @@ EOF
    ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR
    "
 
-    if [ "$LOG_LEVEL" = VERBOSE ] ; then
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         echo
         run export -p
         echo
@@ -6199,7 +6185,7 @@ gow() {
     GO_BUILD_ARGS='-trimpath'
 
     if [ -z "$GO_BUILD_ARGV_V" ] ; then
-        if [ "$LOG_LEVEL" != QUIET ] ; then
+        if [ "$LOG_LEVEL" -ne "$LOG_LEVEL_QUIET" ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
         fi
     else
@@ -6207,7 +6193,7 @@ gow() {
     fi
 
     if [ -z "$GO_BUILD_ARGV_X" ] ; then
-        if [ "$LOG_LEVEL" = VERBOSE ] ; then
+        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
         fi
     else
@@ -6241,6 +6227,8 @@ gow() {
 }
 
 cargow() {
+    run rustup target add "$RUST_TARGET" || return 1
+
     case $1 in
         build)
             # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
@@ -6435,7 +6423,7 @@ configure() {
             PKG_CONFIG_LIBDIR='$PKG_CONFIG_LIBDIR'
             CC_FOR_BUILD='$CC_FOR_BUILD'"
 
-        if [ "$LOG_LEVEL" = DEBUG ] ; then
+        if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] ; then
             CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
         else
             CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
@@ -6464,7 +6452,7 @@ configure() {
         fi
     fi
 
-    if [ "$LOG_LEVEL" = VERBOSE ] ; then
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         for Makefile in $(find "$SOURCE_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
@@ -6480,7 +6468,7 @@ configure() {
 
 # make wrapper
 makew() {
-    if [ "$LOG_LEVEL" = DEBUG ] ; then
+    if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] ; then
         run "$GMAKE -w -j$BUILD_NJOBS --debug V=1 $*"
     else
         run "$GMAKE -w -j$BUILD_NJOBS $*"
@@ -6501,7 +6489,7 @@ cmakew() {
     CMAKE_CONFIG_OPTIONS="-Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=OFF"
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-    if [ "$LOG_LEVEL" = DEBUG ] ; then
+    if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] ; then
         CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_FIND_DEBUG_MODE=TRUE"
     fi
 
@@ -6530,7 +6518,7 @@ cmakew() {
             release) CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_BUILD_TYPE=Release" ;;
         esac
 
-        if [ "$LOG_LEVEL" = QUIET ] ; then
+        if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
             CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_VERBOSE_MAKEFILE=OFF -DCMAKE_COLOR_MAKEFILE=OFF"
         else
             CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON  -DCMAKE_COLOR_MAKEFILE=ON"
@@ -6595,7 +6583,7 @@ xmakew() {
         esac
     done
 
-    if [ "$LOG_LEVEL" = DEBUG ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
+    if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTION_vD -vD"
     fi
 
@@ -7195,7 +7183,7 @@ EOF
 
 setup_build_toolchains_env() {
     debug() {
-        if [ "$LOG_LEVEL" = DEBUG ] ; then
+        if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] ; then
             echo "$*"
         fi
     }
@@ -7449,11 +7437,6 @@ install_jdk_if_needed() {
 }
 
 inspect_install_arguments() {
-    unset ACTION
-    ACTION=$1
-
-    shift
-
     # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
     unset TARGET_ARCH
 
@@ -7464,7 +7447,13 @@ inspect_install_arguments() {
 
     unset DRYRUN
 
-    LOG_LEVEL=NORMAL
+    LOG_LEVEL_QUIET=0
+    LOG_LEVEL_NORMAL=1
+    LOG_LEVEL_VERBOSE=2
+    LOG_LEVEL_TRACE=3
+    LOG_LEVEL_DEBUG=4
+
+    LOG_LEVEL=$LOG_LEVEL_NORMAL
 
     BUILD_NJOBS=$NATIVE_OS_NCPU
 
@@ -7491,20 +7480,21 @@ inspect_install_arguments() {
         case "$1" in
             --min-sdk-api-level=*)
                 USER_EXPECTED_TARGET_OS_VERS=$(getvalue "$1")
-                is_integer "$USER_EXPECTED_TARGET_OS_VERS" || die "--min-sdk-api-level=INTEGER argument's value must be a integer."
+                is_integer "$USER_EXPECTED_TARGET_OS_VERS" || die "--min-sdk-api-level=<VALUE>, VALUE must be a integer."
                 ;;
             --china)
                 ;;
             --xtrace|-x)
+                LOG_LEVEL=$LOG_LEVEL_TRACE
                 ;;
             --debug|-d)
-                LOG_LEVEL=DEBUG
+                LOG_LEVEL=$LOG_LEVEL_DEBUG
                 ;;
             --verbose|-v)
-                LOG_LEVEL=VERBOSE
+                LOG_LEVEL=$LOG_LEVEL_VERBOSE
                 ;;
             --quiet|-q)
-                LOG_LEVEL=QUIET
+                LOG_LEVEL=$LOG_LEVEL_QUIET
                 ;;
             --dry-run)
                 DRYRUN=yes
@@ -7526,8 +7516,7 @@ inspect_install_arguments() {
                 PACK_TYPE=$(getvalue "$1")
                 case $PACK_TYPE in
                     7z|zip|tar.gz|tar.xz|tar.bz2)
-                        PACK_ARGS="--type=$PACK_TYPE"
-                        ;;
+                        PACK_ARGS="--type=$PACK_TYPE" ;;
                     '') die "--pack-type=<VALUE>, VALUE must not be empty." ;;
                     *)  die "--pack-type=<VALUE>, VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
                 esac
@@ -7567,7 +7556,7 @@ inspect_install_arguments() {
                 ;;
             --jobs=*)
                 BUILD_NJOBS=$(getvalue "$1")
-                is_integer "$BUILD_NJOBS" || die "--jobs=INTEGER argument's value must be a integer."
+                is_integer "$BUILD_NJOBS" || die "--jobs=<VALUE>, VALUE must be a integer."
                 ;;
             [a-z]*)
                 if [ "$1" = 'all' ] ; then
@@ -7585,12 +7574,12 @@ inspect_install_arguments() {
         shift
     done
 
-    if [ "$LOG_LEVEL" = QUIET ] ; then
+    if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
         exec 2>&1
     fi
 
-    if [ "$LOG_LEVEL" = DEBUG ] ; then
+    if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_DEBUG" ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
 
@@ -7968,9 +7957,9 @@ main() {
 
         search)  shift; __search_packages "$*" ;;
 
-        install)   __install_the_given_packages $@ ;;
-      reinstall) __reinstall_the_given_packages $@ ;;
-      uninstall) __uninstall_the_given_packages $@ ;;
+        install) shift;   __install_the_given_packages $@ ;;
+      reinstall) shift; __reinstall_the_given_packages $@ ;;
+      uninstall) shift; __uninstall_the_given_packages $@ ;;
 
         upgrade)
             shift
@@ -7979,7 +7968,7 @@ main() {
                     shift
                     __upgrade_self "$MY_UPGRAGE_URL" $@ ;;
                 *)  __upgrade_packages $@ ;;
-                esac
+            esac
             ;;
         integrate)
             shift
