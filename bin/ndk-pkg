@@ -5085,8 +5085,13 @@ __install_the_given_package_for_the_given_target() {
 
     [ -d "$ABI_INSTALL_DIR" ] && run rm -rf "$ABI_INSTALL_DIR"
 
+    step2 "build for ${COLOR_GREEN}$@${COLOR_OFF}"
+
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        run rustup target add "$RUST_TARGET" || return 1
+    fi
+
     if command -v build > /dev/null ; then
-        step2 "build for ${COLOR_GREEN}$@${COLOR_OFF}"
         build $@ || return 1
     else
         {
@@ -6227,8 +6232,6 @@ gow() {
 }
 
 cargow() {
-    run rustup target add "$RUST_TARGET" || return 1
-
     case $1 in
         build)
             # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
