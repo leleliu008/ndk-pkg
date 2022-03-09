@@ -4231,14 +4231,17 @@ __reinstall_the_given_packages() {
         die_if_package_is_not_installed "$packageName"
     done
 
-    for packageName in $USER_SPECIFIED_PACKAGE_LIST
+    for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
     do
-        {
-            [ -d "$MY_BACKUP_DIR" ] || mkdir -p "$MY_BACKUP_DIR"
-        } &&
-        mv "$MY_INSTALL_DIR/$packageName" "$MY_BACKUP_DIR/$packageName" &&
-        __install_the_given_package "$packageName" &&
-        rm -rf "$MY_BACKUP_DIR/$packageName"
+        [ -d "$MY_BACKUP_DIR" ] || {
+            install -d "$MY_BACKUP_DIR" || return 1
+        }
+
+        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+
+        (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
+
+        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
     done
 }
 
@@ -4255,14 +4258,17 @@ __upgrade_packages() {
         die_if_package_is_not_installed "$packageName"
     done
 
-    for packageName in $USER_SPECIFIED_PACKAGE_LIST
+    for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
     do
-        {
-            [ -d "$MY_BACKUP_DIR" ] || mkdir -p "$MY_BACKUP_DIR"
-        } &&
-        mv "$MY_INSTALL_DIR/$packageName" "$MY_BACKUP_DIR/$packageName" &&
-        __install_the_given_package "$packageName" &&
-        rm -rf "$MY_BACKUP_DIR/$packageName"
+        [ -d "$MY_BACKUP_DIR" ] || {
+            install -d "$MY_BACKUP_DIR" || return 1
+        }
+
+        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+
+        (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
+
+        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
     done
 }
 
