@@ -178,9 +178,22 @@ function _ndk_pkg() {
                         ':package-name:_ndk_pkg_installed_packages' \
                         '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
                         '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
-                        '(--debug -d)'{--debug,-d}'[debug]' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                        '--dry-run[dry-run]' \
+                        '--keep-work-dir[do not delete work-dir even if installed success]' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
+                        '(--debug -d)'{--debug,-d}'[debug output]' \
+                        '(--verbose -v)'{--verbose,-v}'[verbose output]' \
+                        '(--quiet -q)'{--quiet,-q}'[no output]' \
+                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefgered)' \
+                        '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
+                        '--install-exe[install executable programs]' \
+                        '--install-doc[install documents]' \
+                        '--install-man[install manpages]' \
+                        '--tree[list installed files in a tree-like format after installed successfully]' \
+                        '--pack[pack after installed successfully]' \
+                        '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
+                        '--pack-type=-[set output file type]:pack-type:(7z zip tar.gz tar.xz tar.bz2)'
                     ;;
                 upgrade)
                     _arguments \
@@ -198,9 +211,23 @@ function _ndk_pkg() {
                                         ':package-name:_ndk_pkg_outdated_packages' \
                                         '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
                                         '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                                        '(--verbose -v)'{--verbose,-v}'[verbose output log]' \
-                                        '(--debug -d)'{--debug,-d}'[debug]' \
-                                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]'
+                                        '--dry-run[dry-run]' \
+                                        '--keep-work-dir[do not delete work-dir even if installed success]' \
+                                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
+                                        '(--debug -d)'{--debug,-d}'[debug output]' \
+                                        '(--verbose -v)'{--verbose,-v}'[verbose output]' \
+                                        '(--quiet -q)'{--quiet,-q}'[no output]' \
+                                        '--build-type=-[set build type]:build-type:(debug release)' \
+                                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefgered)' \
+                                        '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
+                                        '--install-exe[install executable programs]' \
+                                        '--install-doc[install documents]' \
+                                        '--install-man[install manpages]' \
+                                        '--tree[list installed files in a tree-like format after installed successfully]' \
+                                        '--pack[pack after installed successfully]' \
+                                        '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
+                                        '--pack-type=-[set output file type]:pack-type:(7z zip tar.gz tar.xz tar.bz2)'
+                                    ;;
                             esac
                         esac
                     ;;
