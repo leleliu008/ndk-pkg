@@ -2240,7 +2240,7 @@ __pmw_get_available_package_version_by_package_name() {
         apk)   apk info "$2" 2> /dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
         yum)   yum info "$2" 2> /dev/null | sed -n '/Version     :/p'  | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
         dnf)   dnf info "$2" 2> /dev/null | sed -n '/Version      :/p' | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
-        brew) brew info "$2" 2> /dev/null | sed -n "/$2: /p" | cut -d ' ' -f3 | cut -d ',' -f1 ;;
+        brew) brew info "$2" 2> /dev/null | head -n 1 | sed 's|stable ||' | cut -d ' ' -f2 | cut -d ',' -f1 ;;
         xbps) xbps-query -R --property=pkgver "$2" | cut -d- -f2 | cut -d_ -f1 ;;
         pacman) pacman -Ss "^$2$" 2> /dev/null | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
         zyyper) zyyper info "$2" 2> /dev/null | sed -n '/Version        :/p' | sed 's/Version        : \(.*\)/\1/' | cut -d- -f1 ;;
