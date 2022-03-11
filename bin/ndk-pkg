@@ -6196,7 +6196,7 @@ gow() {
     GO_BUILD_ARGS='-trimpath'
 
     if [ -z "$GO_BUILD_ARGV_V" ] ; then
-        if [ "$LOG_LEVEL" -ne "$LOG_LEVEL_QUIET" ] ; then
+        if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
         fi
     else
@@ -6432,7 +6432,7 @@ configure() {
             PKG_CONFIG_LIBDIR='$PKG_CONFIG_LIBDIR'
             CC_FOR_BUILD='$CC_FOR_BUILD'"
 
-        if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] ; then
+        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
             CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
         else
             CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
@@ -6477,7 +6477,7 @@ configure() {
 
 # make wrapper
 makew() {
-    if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] ; then
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
         run "$GMAKE -w -j$BUILD_NJOBS --debug V=1 $*"
     else
         run "$GMAKE -w -j$BUILD_NJOBS $*"
@@ -6498,7 +6498,7 @@ cmakew() {
     CMAKE_CONFIG_OPTIONS="-Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=OFF"
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-    if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] ; then
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
         CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_FIND_DEBUG_MODE=TRUE"
     fi
 
@@ -6592,7 +6592,7 @@ xmakew() {
         esac
     done
 
-    if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ]; then
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTION_vD -vD"
     fi
 
@@ -7192,7 +7192,7 @@ EOF
 
 setup_build_toolchains_env() {
     debug() {
-        if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_DEBUG" ] ; then
+        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
             echo "$*"
         fi
     }
