@@ -6659,7 +6659,7 @@ pkgconfig = '$PKG_CONFIG'
 EOF
 
     # https://mesonbuild.com/Machine-files.html#meson-builtin-options
-    if command_exists_in_filesystem_and_version_matched meson le 0.56.0 ; then
+    if command_exists_in_filesystem_and_version_matched meson lt 0.56.0 ; then
         cat >> "$MESON_CROSS_FILE" <<EOF
 [properties]
 c_args = $(to_meson_array $CFLAGS $CPPFLAGS)
