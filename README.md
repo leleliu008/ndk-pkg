@@ -163,7 +163,7 @@ endif()
 
 *   install [Android NDK](https://developer.android.google.cn/ndk)
 
-        ndk-pkg ndkmanager install r23e
+        ndk-pkg ndkmanager install r23b
         
     **Note**: In general, you don't need to run this command in advance. `ndk-pkg install <PKG>` will run this command if [Android NDK](https://developer.android.google.cn/ndk) not found on your build machine.
 

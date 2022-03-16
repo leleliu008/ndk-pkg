@@ -4068,7 +4068,7 @@ __gen_github_workflows() {
                     '') die "--output-dir=<DIR>, DIR must not be empty." ;;
                     /*) ;;
                     \~|\~/) OUTPUT_DIR="${HOME}" ;;
-                    \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | awk '{print(substr($0, 2))}')" ;;
+                    \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | cut -c3-)" ;;
                     .|./)   OUTPUT_DIR="${PWD}" ;;
                     *)      OUTPUT_DIR="${PWD}/$OUTPUT_DIR" ;;
                 esac
@@ -4548,7 +4548,7 @@ __pack_the_given_installed_package() {
     step "packing"
     case $PACKED_FILE_SUFFIX in
         7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
-        zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME" ;;
+        zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME"   ;;
         tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
         tar.xz)  run tar Jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
         tar.bz2) run tar jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
