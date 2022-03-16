@@ -34,7 +34,7 @@ _commands=(
     'logs:show logs of the given installed package.'
     'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
-    'install-android-ndk:install android-ndk.'
+    'ndkmanager:install android-ndk to ~/.ndk-pkg.'
 )
 
 _target=(
@@ -78,6 +78,18 @@ function _ndk_pkg() {
         option)
             case $words[1] in
                 target) _arguments '1: :{_describe 'target' _target}' ;;
+                ndkmanager)
+                    _arguments \
+                        ':action:(ls-available install)' \
+                        '*:: :->action'
+                    case $state in
+                        action)
+                            case $words[1] in
+                                ls-available) _arguments '--only-rversion[only show rversion]' ;;
+                                install)      _arguments '1:rversion:($(ndk-pkg ndkmanager ls-available --only-rversion))' ;;
+                            esac
+                    esac
+                    ;;
                 formula-repo)
                     _arguments \
                         ':action:(add del list)' \

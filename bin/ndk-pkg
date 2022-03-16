@@ -3887,12 +3887,12 @@ __update_formula_repositories() {
         if [ -d     "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME" ] ; then
             run cd  "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME"
             run git pull origin master:master
-            if [ "$(git branch | sed -n '/^*/p' | cut -d ' ' -f2)" != master ] ;  then                
+            if [ "$(git branch | sed -n '/^*/p' | cut -d ' ' -f2)" != master ] ;  then
                 run git checkout master
             fi
         else
             run install -d "$MY_FORMULA_REPO_DIR"
-            run cd         "$MY_FORMULA_REPO_DIR" 
+            run cd         "$MY_FORMULA_REPO_DIR"
             run git clone "$FORMULA_REPO_URL_" "$FORMULA_REPO_NAME"
         fi
     done
@@ -4865,8 +4865,10 @@ __install_the_given_package() {
         run cat "$COMMON_INCLUDE_H_FILEPATH"
     fi
 
-    step "fetch sources and patches"
+    step "fetch sources if needed"
     __fetch_sources_of_the_given_package "$1" || return 1
+
+    step "fetch patches if needed"
     __fetch_patches_of_the_given_package "$1" || return 1
 
     step "unpack sources to work directory"

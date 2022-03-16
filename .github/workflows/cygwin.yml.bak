@@ -35,6 +35,8 @@ jobs:
       - run: bin/ndk-pkg --homedir
       - run: bin/ndk-pkg --homepage
 
+      - run: bin/ndk-pkg ndkmanager ls-available
+
       - run: bin/ndk-pkg env
 
       - run: command -v curl
