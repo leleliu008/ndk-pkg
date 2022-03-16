@@ -3332,36 +3332,6 @@ __parse_require_dependency_item() {
     esac
 }
 
-__parse_package_patches() {
-    if [ $# -lt 2 ] ; then
-        die "the number of arguments of patches command at least 2."
-    fi
-
-    if [ $(expr $# % 2) -eq 1 ] ; then
-        die "the number of arguments of patches command must be even integer."
-    fi
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            *.diff)    PATCH_CONTENT_TYPE=patch  ; package add dep.cmd patch           ;;
-            *.patch)   PATCH_CONTENT_TYPE=patch  ; package add dep.cmd patch           ;;
-            *.zip)     PATCH_CONTENT_TYPE=zip    ; package add dep.cmd patch unzip     ;;
-            *.tar.xz)  PATCH_CONTENT_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
-            *.tar.gz)  PATCH_CONTENT_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
-            *.tar.lz)  PATCH_CONTENT_TYPE=tar.lz ; package add dep.cmd patch tar lzip  ;;
-            *.tar.bz2) PATCH_CONTENT_TYPE=tar.bz2; package add dep.cmd patch tar bzip2 ;;
-            *.tgz)     PATCH_CONTENT_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
-            *.txz)     PATCH_CONTENT_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
-            *)  die "unrecognized extension : $1. the supported extensions are .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
-        esac
-
-        [ ${#2} -eq 64 ] || die "$2 is not sha256sum. the length of sha256sum must be 64."
-
-        shift 2
-    done
-}
-
 # }}}
 ##############################################################################
 # {{{ operations of formula
@@ -3385,6 +3355,12 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_SRC_PATH
     unset PACKAGE_SRC_TYPE
 
+    unset PACKAGE_FIX_URL
+    unset PACKAGE_FIX_SUM
+    unset PACKAGE_FIX_NAME
+    unset PACKAGE_FIX_PATH
+    unset PACKAGE_FIX_TYPE
+
     unset PACKAGE_VERSION
     unset PACKAGE_VERSION_MAJOR
     unset PACKAGE_VERSION_MINOR
@@ -3392,7 +3368,6 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_VERSION_TWEAK
 
     unset PACKAGE_LICENSE
-    unset PACKAGE_PATCHES
 
     # relative to $WORK_DIR, which contains build script such as configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, etc.
     unset PACKAGE_SOURCED
@@ -3528,6 +3503,29 @@ __load_formula_of_the_given_package() {
             PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
     esac
 
+    if [ -n "$PACKAGE_FIX_URL" ] ; then
+        case $PACKAGE_FIX_URL in
+            *.fix)     PACKAGE_FIX_TYPE=patch  ; package add dep.cmd patch           ;;
+            *.diff)    PACKAGE_FIX_TYPE=patch  ; package add dep.cmd patch           ;;
+            *.patch)   PACKAGE_FIX_TYPE=patch  ; package add dep.cmd patch           ;;
+            *.zip)     PACKAGE_FIX_TYPE=zip    ; package add dep.cmd patch unzip     ;;
+            *.tar.xz)  PACKAGE_FIX_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
+            *.tar.gz)  PACKAGE_FIX_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
+            *.tar.lz)  PACKAGE_FIX_TYPE=tar.lz ; package add dep.cmd patch tar lzip  ;;
+            *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2; package add dep.cmd patch tar bzip2 ;;
+            *.tgz)     PACKAGE_FIX_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
+            *.txz)     PACKAGE_FIX_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
+            *)  die "unrecognized fix extension : $PACKAGE_FIX_URL.\n    supported fix extensons are: .fix .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
+        esac
+
+        if [ -z "$PACKAGE_FIX_SUM" ] ; then
+            die "fix.sum is not configed in $PACKAGE_FORMULA_FILEPATH"
+        fi
+
+        PACKAGE_FIX_NAME=$(basename "$PACKAGE_FIX_URL")
+        PACKAGE_FIX_PATH="$MY_PATCH__DIR/$PACKAGE_NAME/$PACKAGE_FIX_NAME"
+    fi
+
     if [ -n "$PACKAGE_VERSION" ] ; then
         PACKAGE_VERSION_MAJOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f1)"
         PACKAGE_VERSION_MINOR="$(printf '%s\n' "$PACKAGE_VERSION" | cut -d. -f2)"
@@ -3574,10 +3572,6 @@ __load_formula_of_the_given_package() {
             go)          package add dep.cmd 'go>=1.17' ;;
         esac
     done
-
-    if [ -n "$PACKAGE_PATCHES" ] ; then
-        __parse_package_patches $PACKAGE_PATCHES
-    fi
 
     if [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] ; then
         BUILD_NJOBS=1
@@ -3880,16 +3874,27 @@ __update_formula_repositories() {
 
     handle_dependency required exe git
 
-    for repo in $(__list_formula_repositories)
+    for item in $(__list_formula_repositories)
     do
-        unset MY_FORMULA_REPO_NAME
-        unset MY_FORMULA_REPO_URL_
+        unset FORMULA_REPO_NAME
+        unset FORMULA_REPO_URL_
 
-        MY_FORMULA_REPO_NAME=$(echo "$repo" | cut -d= -f1)
-        MY_FORMULA_REPO_URL_=$(echo "$repo" | cut -d= -f2)
+        FORMULA_REPO_NAME=$(printf '%s\n' "$item" | cut -d= -f1)
+        FORMULA_REPO_URL_=$(printf '%s\n' "$item" | cut -d= -f2)
 
-        echo "${COLOR_PURPLE}=== Updating repository${COLOR_OFF} ${COLOR_GREEN}$MY_FORMULA_REPO_NAME${COLOR_OFF}"
-        fetch "$MY_FORMULA_REPO_URL_" --output-dir="$MY_FORMULA_REPO_DIR" --output-name="$MY_FORMULA_REPO_NAME"
+        echo "${COLOR_PURPLE}=== Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
+
+        if [ -d     "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME" ] ; then
+            run cd  "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME"
+            run git pull origin master:master
+            if [ "$(git branch | sed -n '/^*/p' | cut -d ' ' -f2)" != master ] ;  then                
+                run git checkout master
+            fi
+        else
+            run install -d "$MY_FORMULA_REPO_DIR"
+            run cd         "$MY_FORMULA_REPO_DIR" 
+            run git clone "$FORMULA_REPO_URL_" "$FORMULA_REPO_NAME"
+        fi
     done
 }
 
@@ -3955,25 +3960,9 @@ __fetch_sources_of_the_given_package() {
 }
 
 __fetch_patches_of_the_given_package() {
-    __fetch_patches $PACKAGE_PATCHES
-}
-
-__fetch_patches() {
-    unset PACKAGE_PATCHES
-
-    # fetch patches if posible
-    while [ -n "$1" ]
-    do
-        fetch "$1" --sha256="$2" --output-dir="$MY_PATCH__DIR/$PACKAGE_NAME" --output-name="$(basename $1)"
-
-        if [ -z "$PACKAGE_PATCHES" ] ; then
-            PACKAGE_PATCHES="$FETCH_OUTPUT_PATH"
-        else
-            PACKAGE_PATCHES="$PACKAGE_PATCHES $FETCH_OUTPUT_PATH"
-        fi
-
-        shift 2
-    done
+    if [ -n "$PACKAGE_FIX_URL" ] ; then
+        fetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SUM" --output-path="$PACKAGE_FIX_PATH"
+    fi
 }
 
 __fetch_resources_of_the_given_package() {
@@ -4311,6 +4300,7 @@ __compare_versions_with_brew() {
             libjxl)   printf '%s\n' 'jpeg-xl'   ;;
             blake3)   printf '%s\n' 'b3sum'     ;;
             libwebp)  printf '%s\n' 'webp'      ;;
+            proj7)    printf '%s\n' 'proj@7'    ;;
             openssl)  printf '%s\n' 'openssl@1.1';;
             freetype2)printf '%s\n' 'freetype'  ;;
             freetype2-with-harfbuzz)
@@ -4742,7 +4732,8 @@ __install_the_given_package() {
 
     unset WORK_DIR
     unset SOURCE_DIR
-    unset BUILD_DIR
+
+    unset TARGET_BUILD_DIR
 
     unset NATIVE_BUILD_DIR
     unset NATIVE_INSTALL_DIR
@@ -5086,11 +5077,11 @@ __install_the_given_package_for_the_given_target() {
             run cd "$SOURCE_DIR" || return 1
         fi
     else
-        run install -d "$BUILD_DIR" || return 1
-        run cd "$BUILD_DIR" || return 1
+        run install -d "$TARGET_BUILD_DIR" || return 1
+        run cd "$TARGET_BUILD_DIR" || return 1
     fi
 
-    [ -d "$ABI_INSTALL_DIR" ] && run rm -rf "$ABI_INSTALL_DIR"
+    [ -d "$TARGET_INSTALL_DIR" ] && run rm -rf "$TARGET_INSTALL_DIR"
 
     step2 "build for ${COLOR_GREEN}$@${COLOR_OFF}"
 
@@ -5116,13 +5107,13 @@ __install_the_given_package_for_the_given_target() {
         } || return 1
     fi
 
-    [ -d "$ABI_INSTALL_DIR" ] || {
+    [ -d "$TARGET_INSTALL_DIR" ] || {
         error "installed nothing."
         return 1
     }
 
-    [ -d "$ABI_LIBRARY_DIR" ] && {
-        cd  "$ABI_LIBRARY_DIR" || return 1
+    [ -d "$TARGET_LIBRARY_DIR" ] && {
+        cd  "$TARGET_LIBRARY_DIR" || return 1
         for SO_FILENAME_WITH_VERSION in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so.*' -exec basename {} \;)
         do
             unset SO_FILENAME_WITHOUT_VERSION
@@ -5132,23 +5123,23 @@ __install_the_given_package_for_the_given_target() {
             fi
         done
 
-        [ -d "$ABI_LIBRARY_DIR/cmake" ] || {
-            unset ABI_LIBRARY_NAMES
-            unset ABI_LIBRARY_COUNT
+        [ -d "$TARGET_LIBRARY_DIR/cmake" ] || {
+            unset TARGET_LIBRARY_NAMES
+            unset TARGET_LIBRARY_COUNT
 
-            ABI_LIBRARY_NAMES=$(find . -maxdepth 1 -mindepth 1 \( -type f -o -type l \) -a \( -name 'lib*.a' -o -name 'lib*.so' \) -exec basename {} \; | sed 's|\(lib.*\)\..*|\1|' | uniq)
+            TARGET_LIBRARY_NAMES=$(find . -maxdepth 1 -mindepth 1 \( -type f -o -type l \) -a \( -name 'lib*.a' -o -name 'lib*.so' \) -exec basename {} \; | sed 's|\(lib.*\)\..*|\1|' | uniq)
 
-            ABI_LIBRARY_COUNT=$(printf '%s\n' "$ABI_LIBRARY_NAMES" | wc -l)
+            TARGET_LIBRARY_COUNT=$(printf '%s\n' "$TARGET_LIBRARY_NAMES" | wc -l)
 
-            if [ -n "$ABI_LIBRARY_NAMES" ] ; then
+            if [ -n "$TARGET_LIBRARY_NAMES" ] ; then
                 unset PACKAGE_NAME_UPPERCASE
                 PACKAGE_NAME_UPPERCASE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z)
 
-                run install -d "$ABI_LIBRARY_DIR/cmake/$PACKAGE_NAME"
+                run install -d "$TARGET_LIBRARY_DIR/cmake/$PACKAGE_NAME"
 
-                ABI_CMAKE_CONFIG_FILEPATH="$ABI_LIBRARY_DIR/cmake/$PACKAGE_NAME/$PACKAGE_NAME-config.cmake"
+                TARGET_CMAKE_CONFIG_FILEPATH="$TARGET_LIBRARY_DIR/cmake/$PACKAGE_NAME/$PACKAGE_NAME-config.cmake"
 
-                cat > "$ABI_CMAKE_CONFIG_FILEPATH" << EOF
+                cat > "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 # generated by ndk-pkg $MY_VERSION
 
 get_filename_component(${PACKAGE_NAME_UPPERCASE}_INSTALL_DIR "\${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
@@ -5156,39 +5147,39 @@ get_filename_component(${PACKAGE_NAME_UPPERCASE}_INSTALL_DIR "\${CMAKE_CURRENT_L
 set(${PACKAGE_NAME_UPPERCASE}_INCLUDE_DIR "\${${PACKAGE_NAME_UPPERCASE}_INSTALL_DIR}/include")
 set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR "\${${PACKAGE_NAME_UPPERCASE}_INSTALL_DIR}/lib")
 
-set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_COUNT $ABI_LIBRARY_COUNT)
+set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_COUNT $TARGET_LIBRARY_COUNT)
 
 EOF
                 if [ -n "$PACKAGE_GIT_REV" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_GIT_REV       \"$PACKAGE_GIT_REV\")"       >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_GIT_REV       \"$PACKAGE_GIT_REV\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
                 fi
 
                 if [ -n "$PACKAGE_VERSION" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION       \"$PACKAGE_VERSION\")"       >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION       \"$PACKAGE_VERSION\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
                 fi
 
                 if [ -n "$PACKAGE_VERSION_MAJOR" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MAJOR \"$PACKAGE_VERSION_MAJOR\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MAJOR \"$PACKAGE_VERSION_MAJOR\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
                 fi
 
                 if [ -n "$PACKAGE_VERSION_MINOR" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MINOR \"$PACKAGE_VERSION_MINOR\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MINOR \"$PACKAGE_VERSION_MINOR\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
                 fi
 
                 if [ -n "$PACKAGE_VERSION_PATCH" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_PATCH \"$PACKAGE_VERSION_PATCH\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_PATCH \"$PACKAGE_VERSION_PATCH\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
                 fi
 
                 if [ -n "$PACKAGE_VERSION_TWEAK" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_TWEAK \"$PACKAGE_VERSION_TWEAK\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_TWEAK \"$PACKAGE_VERSION_TWEAK\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
                 fi
 
-                for libname in $ABI_LIBRARY_NAMES
+                for libname in $TARGET_LIBRARY_NAMES
                 do
                     unset LIBNAME_UPPERCASE
                     LIBNAME_UPPERCASE="$(printf '%s\n' "$libname" | tr a-z A-Z)"
-                    if [ -e "$ABI_LIBRARY_DIR/$libname.a" ] ; then
-                        cat >> "$ABI_CMAKE_CONFIG_FILEPATH" << EOF
+                    if [ -e "$TARGET_LIBRARY_DIR/$libname.a" ] ; then
+                        cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
 set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.a")
 add_library($PACKAGE_NAME::$libname::static STATIC IMPORTED)
@@ -5196,8 +5187,8 @@ set_target_properties($PACKAGE_NAME::$libname::static PROPERTIES IMPORTED_LOCATI
 EOF
                     fi
 
-                    if [ -e "$ABI_LIBRARY_DIR/$libname.so" ] ; then
-                        cat >> "$ABI_CMAKE_CONFIG_FILEPATH" << EOF
+                    if [ -e "$TARGET_LIBRARY_DIR/$libname.so" ] ; then
+                        cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
 set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.so")
 add_library($PACKAGE_NAME::$libname::shared SHARED IMPORTED)
@@ -5205,7 +5196,7 @@ set_target_properties($PACKAGE_NAME::$libname::shared PROPERTIES IMPORTED_LOCATI
 EOF
                     fi
 
-                    cat >> "$ABI_CMAKE_CONFIG_FILEPATH" << EOF
+                    cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
 if (CMAKE_LINK_LIBRARY_PREFER_STATIC)
     if(TARGET $PACKAGE_NAME::$libname::static)
@@ -5232,11 +5223,11 @@ endif()
 EOF
                 done
 
-                if [ "$ABI_LIBRARY_COUNT" -eq 1 ] ; then
-                    printf '%s\n\n' "set(${PACKAGE_NAME_UPPERCASE}_LIBRARY \"\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}}\")" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                if [ "$TARGET_LIBRARY_COUNT" -eq 1 ] ; then
+                    printf '%s\n\n' "set(${PACKAGE_NAME_UPPERCASE}_LIBRARY \"\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}}\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
                 fi
 
-                printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_FOUND TRUE)" >> "$ABI_CMAKE_CONFIG_FILEPATH"
+                printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_FOUND TRUE)" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
             fi
         }
     }
@@ -5259,27 +5250,27 @@ EOF
 __justfy_elf_files_for_the_given_target() {
     for x in bin sbin lib
     do
-        if [ -d "$ABI_INSTALL_DIR/$x" ] ; then
-            for y in $(ls "$ABI_INSTALL_DIR/$x")
+        if [ -d "$TARGET_INSTALL_DIR/$x" ] ; then
+            for y in $(ls "$TARGET_INSTALL_DIR/$x")
             do
-                if [ -d "$ABI_INSTALL_DIR/$x/$y" ] ; then
+                if [ -d "$TARGET_INSTALL_DIR/$x/$y" ] ; then
                     continue
                 fi
-                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$ABI_INSTALL_DIR/$x/$y")" = '7F454C46' ] ; then
-                    #OLD_SONAME="$($READELF -d "$ABI_INSTALL_DIR/$x/$y" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
+                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$TARGET_INSTALL_DIR/$x/$y")" = '7F454C46' ] ; then
+                    #OLD_SONAME="$($READELF -d "$TARGET_INSTALL_DIR/$x/$y" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
                     #if [ -n "$OLD_SONAME" ] ; then
                     #    NEW_SONAME="$(printf '%s\n' "$OLD_SONAME" | sed 's|\.[0-9].*||g')"
-                    #    run patchelf --set-soname "$NEW_SONAME" "$ABI_INSTALL_DIR/$x/$y"
+                    #    run patchelf --set-soname "$NEW_SONAME" "$TARGET_INSTALL_DIR/$x/$y"
                     #fi
-                    #for soname in $($READELF -d "$ABI_INSTALL_DIR/$x/$y" | sed -n '/NEEDED/p' | cut -d '[' -f2 | sed 's/]//')
+                    #for soname in $($READELF -d "$TARGET_INSTALL_DIR/$x/$y" | sed -n '/NEEDED/p' | cut -d '[' -f2 | sed 's/]//')
                     #do
                     #    case $soname in
                     #        lib*.so) ;;
-                    #        *) run patchelf --replace-needed "$soname" "$(printf '%s\n' "$soname" | sed 's|\.[0-9].*||g')" "$ABI_INSTALL_DIR/$x/$y"
+                    #        *) run patchelf --replace-needed "$soname" "$(printf '%s\n' "$soname" | sed 's|\.[0-9].*||g')" "$TARGET_INSTALL_DIR/$x/$y"
                     #    esac
                     #done
                     if [ "$BUILD_TYPE" = release ] ; then
-                        run "$STRIP" "$ABI_INSTALL_DIR/$x/$y" || true
+                        run "$STRIP" "$TARGET_INSTALL_DIR/$x/$y" || true
                     fi
                 fi
             done
@@ -5288,8 +5279,8 @@ __justfy_elf_files_for_the_given_target() {
 }
 
 __justfy_la_files_for_the_given_target() {
-    if [ -d "$ABI_LIBRARY_DIR" ] ; then
-        for lafile in $(find "$ABI_LIBRARY_DIR" -name "*.la")
+    if [ -d "$TARGET_LIBRARY_DIR" ] ; then
+        for lafile in $(find "$TARGET_LIBRARY_DIR" -name "*.la")
         do
             sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||" "$lafile" || return 1
         done
@@ -5297,10 +5288,10 @@ __justfy_la_files_for_the_given_target() {
 }
 
 __justfy_pc_files_for_the_given_target() {
-    if [ -d "$ABI_PKGCONF_DIR" ] ; then
-        for pcfile in $(find "$ABI_PKGCONF_DIR" -name "*.pc")
+    if [ -d "$TARGET_PKGCONF_DIR" ] ; then
+        for pcfile in $(find "$TARGET_PKGCONF_DIR" -name "*.pc")
         do
-            sed_in_place "s|$ABI_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile" || return 1
+            sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile" || return 1
             sed_in_place 's|-lpthread||g'                     "$pcfile" || return 1
             if grep 'Libs.private:' "$pcfile" > /dev/null ; then
                 LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile" || return 1)
@@ -5313,26 +5304,26 @@ __justfy_pc_files_for_the_given_target() {
 }
 
 __install_pc_file_if_needed_for_the_given_target() {
-    if [ -d "$ABI_LIBRARY_DIR" ] ; then
-        if [ ! -d "$ABI_PKGCONF_DIR" ] ; then
-            cat > "$BUILD_DIR/$1.pc" << EOF
+    if [ -d "$TARGET_LIBRARY_DIR" ] ; then
+        if [ ! -d "$TARGET_PKGCONF_DIR" ] ; then
+            cat > "$TARGET_BUILD_DIR/$1.pc" << EOF
 EOF
-            run install_pcfs "$BUILD_DIR/$1.pc"
+            run install_pcfs "$TARGET_BUILD_DIR/$1.pc"
         fi
     fi
 }
 
 __install_logs_for_the_given_target() {
-    ABI_LOG_DIR="$ABI_INSTALL_DIR/share/log"
+    TARGET_LOG_DIR="$TARGET_INSTALL_DIR/share/log"
 
-    for item in "$BUILD_DIR" "$SOURCE_DIR"
+    for item in "$TARGET_BUILD_DIR" "$SOURCE_DIR"
     do
         for item2 in 'config.log' 'compile_commands.json' 'install.log.txt'
         do
             if [ -f "$item/$item2" ] ; then
-                echo "-- Installing: $ABI_LOG_DIR/$item2"
-                [ -d "$ABI_LOG_DIR" ] || run install -d "$ABI_LOG_DIR"
-                install -m 644 "$item/$item2" "$ABI_LOG_DIR" || return 1
+                echo "-- Installing: $TARGET_LOG_DIR/$item2"
+                [ -d "$TARGET_LOG_DIR" ] || run install -d "$TARGET_LOG_DIR"
+                install -m 644 "$item/$item2" "$TARGET_LOG_DIR" || return 1
             fi
         done
     done
@@ -5350,37 +5341,37 @@ install_incs() {
             unset X2
         fi
 
-        install -v -d         "$ABI_INCLUDE_DIR/$X2" || return 1
-        install -v -m 644 $X1 "$ABI_INCLUDE_DIR/$X2" || return 1
+        install -v -d         "$TARGET_INCLUDE_DIR/$X2" || return 1
+        install -v -m 644 $X1 "$TARGET_INCLUDE_DIR/$X2" || return 1
 
         shift
     done
 }
 
 install_libs() {
-    install -v -d "$ABI_LIBRARY_DIR" || return 1
+    install -v -d "$TARGET_LIBRARY_DIR" || return 1
     for item in $@
     do
         case $item in
-            *.a) install -v -m 644 $item "$ABI_LIBRARY_DIR" || return 1 ;;
-            *)   install -v -m 755 $item "$ABI_LIBRARY_DIR" || return 1 ;;
+            *.a) install -v -m 644 $item "$TARGET_LIBRARY_DIR" || return 1 ;;
+            *)   install -v -m 755 $item "$TARGET_LIBRARY_DIR" || return 1 ;;
         esac
     done
 }
 
 install_pcfs() {
-    install -v -d        "$ABI_PKGCONF_DIR" &&
-    install -v -m 644 $@ "$ABI_PKGCONF_DIR"
+    install -v -d        "$TARGET_PKGCONF_DIR" &&
+    install -v -m 644 $@ "$TARGET_PKGCONF_DIR"
 }
 
 install_bins() {
-    install -v -d        "$ABI_BINARY__DIR" &&
-    install -v -m 755 $@ "$ABI_BINARY__DIR"
+    install -v -d        "$TARGET_BINARY__DIR" &&
+    install -v -m 755 $@ "$TARGET_BINARY__DIR"
 }
 
 install_etcs() {
-    install -v -d        "$ABI_INSTALL_DIR/etc" &&
-    install -v -m 644 $@ "$ABI_INSTALL_DIR/etc"
+    install -v -d        "$TARGET_INSTALL_DIR/etc" &&
+    install -v -m 644 $@ "$TARGET_INSTALL_DIR/etc"
 }
 
 install_mans() {
@@ -5392,14 +5383,14 @@ install_mans() {
             [1-8]);;
             *)    die "$item: not a manpage."
         esac
-        install -v -d           "$ABI_INSTALL_DIR/share/man/man$NUMBER" &&
-        install -v -m 644 $item "$ABI_INSTALL_DIR/share/man/man$NUMBER"
+        install -v -d           "$TARGET_INSTALL_DIR/share/man/man$NUMBER" &&
+        install -v -m 644 $item "$TARGET_INSTALL_DIR/share/man/man$NUMBER"
     done
 }
 
 install_pc_file() {
-    install -v -d "$ABI_PKGCONF_DIR" &&
-    cat >         "$ABI_PKGCONF_DIR/$1.pc"
+    install -v -d "$TARGET_PKGCONF_DIR" &&
+    cat >         "$TARGET_PKGCONF_DIR/$1.pc"
 }
 
 __show_infomation_of_all_available_packages() {
@@ -5473,13 +5464,17 @@ PACKAGE_SRC_SUM
 PACKAGE_SRC_NAME
 PACKAGE_SRC_PATH
 PACKAGE_SRC_TYPE
+PACKAGE_FIX_URL
+PACKAGE_FIX_SUM
+PACKAGE_FIX_NAME
+PACKAGE_FIX_PATH
+PACKAGE_FIX_TYPE
 PACKAGE_VERSION
 PACKAGE_VERSION_MAJOR
 PACKAGE_VERSION_MINOR
 PACKAGE_VERSION_PATCH
 PACKAGE_VERSION_TWEAK
 PACKAGE_LICENSE
-PACKAGE_PATCHES
 PACKAGE_SOURCED
 PACKAGE_BSYSTEM
 PACKAGE_BINSRCD
@@ -5813,37 +5808,37 @@ __config_variables_for_the_given_target() {
     do
         PKG=$(printf '%s\n' "$PACKAGE" | tr '+-.' '_')
 
-        ABI_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE/$TARGET_OS_ABI"
-        ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
-        ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
-        ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
+        TARGET_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE/$TARGET_OS_ABI"
+        TARGET_INCLUDE_DIR="$TARGET_INSTALL_DIR/include"
+        TARGET_LIBRARY_DIR="$TARGET_INSTALL_DIR/lib"
+        TARGET_PKGCONF_DIR="$TARGET_INSTALL_DIR/lib/pkgconfig"
 
-        eval "${PKG}_INSTALL_DIR='$ABI_INSTALL_DIR'"
-        eval "${PKG}_INCLUDE_DIR='$ABI_INCLUDE_DIR'"
-        eval "${PKG}_LIBRARY_DIR='$ABI_LIBRARY_DIR'"
+        eval "${PKG}_INSTALL_DIR='$TARGET_INSTALL_DIR'"
+        eval "${PKG}_INCLUDE_DIR='$TARGET_INCLUDE_DIR'"
+        eval "${PKG}_LIBRARY_DIR='$TARGET_LIBRARY_DIR'"
 
-        CPPFLAGS="-I$ABI_INCLUDE_DIR $CPPFLAGS"
-         LDFLAGS="-L$ABI_LIBRARY_DIR $LDFLAGS"
+        CPPFLAGS="-I$TARGET_INCLUDE_DIR $CPPFLAGS"
+         LDFLAGS="-L$TARGET_LIBRARY_DIR $LDFLAGS"
 
         if [ -z "$PKG_CONFIG_PATH" ] ; then
-            PKG_CONFIG_PATH="$ABI_PKGCONF_DIR"
+            PKG_CONFIG_PATH="$TARGET_PKGCONF_DIR"
         else
-            PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$ABI_PKGCONF_DIR"
+            PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$TARGET_PKGCONF_DIR"
         fi
 
         if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
-            CMAKE_FIND_ROOT_PATH="$ABI_INSTALL_DIR"
+            CMAKE_FIND_ROOT_PATH="$TARGET_INSTALL_DIR"
         else
-            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$ABI_INSTALL_DIR"
+            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$TARGET_INSTALL_DIR"
         fi
 
         for item in bin sbin
         do
-            if [ -d "$ABI_INSTALL_DIR/$item" ] ; then
+            if [ -d "$TARGET_INSTALL_DIR/$item" ] ; then
                 if [ -z "$CMAKE_IGNORE_PATH" ] ; then
-                    CMAKE_IGNORE_PATH="$ABI_INSTALL_DIR/$item"
+                    CMAKE_IGNORE_PATH="$TARGET_INSTALL_DIR/$item"
                 else
-                    CMAKE_IGNORE_PATH="$CMAKE_IGNORE_PATH;$ABI_INSTALL_DIR/$item"
+                    CMAKE_IGNORE_PATH="$CMAKE_IGNORE_PATH;$TARGET_INSTALL_DIR/$item"
                 fi
             fi
         done
@@ -5863,14 +5858,14 @@ __config_variables_for_the_given_target() {
         CXXFLAGS="$CXXFLAGS $PACKAGE_XXFLAGS"
     fi
 
-    BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
+    TARGET_BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
 
     PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
-    ABI_INSTALL_DIR="$PKG_INSTALL_DIR/$TARGET_OS_ABI"
-    ABI_BINARY__DIR="$ABI_INSTALL_DIR/bin"
-    ABI_INCLUDE_DIR="$ABI_INSTALL_DIR/include"
-    ABI_LIBRARY_DIR="$ABI_INSTALL_DIR/lib"
-    ABI_PKGCONF_DIR="$ABI_INSTALL_DIR/lib/pkgconfig"
+    TARGET_INSTALL_DIR="$PKG_INSTALL_DIR/$TARGET_OS_ABI"
+    TARGET_BINARY__DIR="$TARGET_INSTALL_DIR/bin"
+    TARGET_INCLUDE_DIR="$TARGET_INSTALL_DIR/include"
+    TARGET_LIBRARY_DIR="$TARGET_INSTALL_DIR/lib"
+    TARGET_PKGCONF_DIR="$TARGET_INSTALL_DIR/lib/pkgconfig"
 
     # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
     if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
@@ -6135,15 +6130,14 @@ EOF
     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
           WORK_DIR = $WORK_DIR
         SOURCE_DIR = $SOURCE_DIR
-         BUILD_DIR = $BUILD_DIR
                PWD = $PWD
-
    PKG_INSTALL_DIR = $PKG_INSTALL_DIR
-   ABI_INSTALL_DIR = $ABI_INSTALL_DIR
-   ABI_BINARY__DIR = $ABI_BINARY__DIR
-   ABI_INCLUDE_DIR = $ABI_INCLUDE_DIR
-   ABI_LIBRARY_DIR = $ABI_LIBRARY_DIR
-   ABI_PKGCONF_DIR = $ABI_PKGCONF_DIR
+  TARGET_BUILD_DIR = $TARGET_BUILD_DIR
+TARGET_INSTALL_DIR = $TARGET_INSTALL_DIR
+TARGET_BINARY__DIR = $TARGET_BINARY__DIR
+TARGET_INCLUDE_DIR = $TARGET_INCLUDE_DIR
+TARGET_LIBRARY_DIR = $TARGET_LIBRARY_DIR
+TARGET_PKGCONF_DIR = $TARGET_PKGCONF_DIR
    "
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
@@ -6219,21 +6213,21 @@ gow() {
     fi
 
     if [ -z "$GO_BUILD_ARGV_O" ] ; then
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $BUILD_DIR/"
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $TARGET_BUILD_DIR/"
     else
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $BUILD_DIR/$GO_BUILD_ARGV_O"
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $TARGET_BUILD_DIR/$GO_BUILD_ARGV_O"
     fi
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS $GO_BUILD_ARGS_EXTRA"
 
     run go build $GO_BUILD_ARGS || return 1
 
-    for item in $(ls "$BUILD_DIR")
+    for item in $(ls "$TARGET_BUILD_DIR")
     do
         case $item in
-            *.a)  run install_libs "$BUILD_DIR/$item" ;;
-            *.so) run install_libs "$BUILD_DIR/$item" ;;
-            *)    run install_bins "$BUILD_DIR/$item" ;;
+            *.a)  run install_libs "$TARGET_BUILD_DIR/$item" ;;
+            *.so) run install_libs "$TARGET_BUILD_DIR/$item" ;;
+            *)    run install_bins "$TARGET_BUILD_DIR/$item" ;;
         esac
     done
 }
@@ -6309,7 +6303,7 @@ cargow() {
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_ROOT" ] ; then
-                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --root=$ABI_INSTALL_DIR"
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --root=$TARGET_INSTALL_DIR"
             fi
 
             run cargo clean && run cargo $CARGO_INSTALL_ARGS
@@ -6352,7 +6346,7 @@ cargow() {
             fi
 
             if [ -z "$CARGO_CINSTALL_ARG_PREFIX" ] ; then
-                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --prefix $ABI_INSTALL_DIR"
+                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --prefix $TARGET_INSTALL_DIR"
             fi
 
             run cargo $CARGO_CINSTALL_ARGS
@@ -6394,8 +6388,8 @@ configure() {
             $@ ; then
             echo
         else
-            if [ -f "$BUILD_DIR/config.log" ] ; then
-                run cat "$BUILD_DIR/config.log"
+            if [ -f "$TARGET_BUILD_DIR/config.log" ] ; then
+                run cat "$TARGET_BUILD_DIR/config.log"
             elif [ -f "$SOURCE_DIR/config.log" ] ; then
                 run cat "$SOURCE_DIR/config.log"
             fi
@@ -6414,7 +6408,7 @@ configure() {
 
         CONFIGURE_ARGS="
             --host='$TARGET_TRIPLE'
-            --prefix='$ABI_INSTALL_DIR'
+            --prefix='$TARGET_INSTALL_DIR'
             --disable-option-checking
             --disable-rpath
             --disable-nls
@@ -6452,8 +6446,8 @@ configure() {
         else
             # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
             if [ "$GITHUB_ACTIONS" = true ] ; then
-                if [ -f "$BUILD_DIR/config.log" ] ; then
-                    run cat "$BUILD_DIR/config.log"
+                if [ -f "$TARGET_BUILD_DIR/config.log" ] ; then
+                    run cat "$TARGET_BUILD_DIR/config.log"
                 elif [ -f "$SOURCE_DIR/config.log" ] ; then
                     run cat "$SOURCE_DIR/config.log"
                 fi
@@ -6547,7 +6541,7 @@ cmakew() {
         -DCMAKE_FIND_ROOT_PATH='$CMAKE_FIND_ROOT_PATH'
         -DCMAKE_LIBRARY_PATH='$SYSTEM_LIBRARY_DIR'
         -DCMAKE_IGNORE_PATH='$CMAKE_IGNORE_PATH'
-        -DCMAKE_INSTALL_PREFIX='$ABI_INSTALL_DIR'
+        -DCMAKE_INSTALL_PREFIX='$TARGET_INSTALL_DIR'
         -DCMAKE_C_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DCMAKE_CXX_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DBUILD_SHARED_LIBS=ON 
@@ -6558,14 +6552,14 @@ cmakew() {
 
         # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
         if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $SOURCE_DIR -B $BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $SOURCE_DIR -B $TARGET_BUILD_DIR"
         else
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$SOURCE_DIR -B$BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$SOURCE_DIR -B$TARGET_BUILD_DIR"
         fi
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
-        run $CMAKE --build   "$BUILD_DIR" -- -j$BUILD_NJOBS &&
-        run $CMAKE --install "$BUILD_DIR"
+        run $CMAKE --build   "$TARGET_BUILD_DIR" -- -j$BUILD_NJOBS &&
+        run $CMAKE --install "$TARGET_BUILD_DIR"
     fi
 }
 
@@ -6610,11 +6604,11 @@ xmakew() {
         run $XMAKE --jobs=$BUILD_NJOBS &&
         run $XMAKE install -o "$NATIVE_INSTALL_DIR"
     else
-        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_OS_ABI --ndk_sdkver=$TARGET_OS_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$BUILD_DIR"
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_OS_ABI --ndk_sdkver=$TARGET_OS_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$TARGET_BUILD_DIR"
 
         run $XMAKE config $XMAKE_CONFIG_OPTIONS &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
-        run $XMAKE install -o "$ABI_INSTALL_DIR"
+        run $XMAKE install -o "$TARGET_INSTALL_DIR"
     fi
 }
 
@@ -6640,7 +6634,7 @@ mesonw() {
             ;;
     esac
 
-    MESON_CROSS_FILE="$BUILD_DIR/cross-file"
+    MESON_CROSS_FILE="$TARGET_BUILD_DIR/cross-file"
 
     cat > "$MESON_CROSS_FILE" <<EOF
 [host_machine]
@@ -6685,21 +6679,21 @@ EOF
     esac
 
     run "$MESON" setup \
-        --prefix="$ABI_INSTALL_DIR" \
+        --prefix="$TARGET_INSTALL_DIR" \
         --buildtype=$BUILD_TYPE \
         --backend=ninja \
         --pkg-config-path="$PKG_CONFIG_PATH" \
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$MESON_CROSS_FILE" \
         $MESON_ARGUMENT_DEFAULT_LIBRARY \
-        $@ "$BUILD_DIR" "$SOURCE_DIR" &&
+        $@ "$TARGET_BUILD_DIR" "$SOURCE_DIR" &&
     {
         if command -v build_configed > /dev/null ; then
             build_configed
         fi
     } &&
-    run ninja -C "$BUILD_DIR" &&
-    run ninja -C "$BUILD_DIR" install
+    run ninja -C "$TARGET_BUILD_DIR" &&
+    run ninja -C "$TARGET_BUILD_DIR" install
 }
 
 to_meson_array() {
@@ -6856,9 +6850,9 @@ list_dynamic_library_names_of_the_given_package() {
     die_if_package_is_not_installed "$1"
 
     ABI=$(__list_supported_target_abis | head -n 1)
-    ABI_LIBRARY_DIR="$MY_INSTALL_DIR/$1/$ABI/lib"
-    if [ -d  "$ABI_LIBRARY_DIR" ] ; then
-        find "$ABI_LIBRARY_DIR" -name "*.so*" -a -maxdepth 0 -a \( -type f -o -type l \) -exec basename {} \;
+    TARGET_LIBRARY_DIR="$MY_INSTALL_DIR/$1/$ABI/lib"
+    if [ -d  "$TARGET_LIBRARY_DIR" ] ; then
+        find "$TARGET_LIBRARY_DIR" -name "*.so*" -a -maxdepth 0 -a \( -type f -o -type l \) -exec basename {} \;
     fi
 }
 
@@ -7044,150 +7038,153 @@ is_a_valid_android_ndk_home_dir() {
     [ -d "$1/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/sysroot" ]
 }
 
-# ndkmanager config @world
-# ndkmanager config
-# ndkmanager config  r21e
-# ndkmanager ls-available
-# ndkmanager ls-installed
-# ndkmanager install r21e
-# ndkmanager install <URL> <SHA256>
+ndkmanager_list_all_available_for_windows() {
+    # https://developer.android.google.cn/ndk/downloads
+    cat <<EOF
+36270f8b2cfdd940f410bd8ffe6ce86ffaa8e87ff1c4fd4a8be5130268357778|https://dl.google.com/android/repository/android-ndk-r23b-windows.zip
+f71307c5c572e2c163d602b3704b8bc024bec0c43ba2800de36bd10f3a21492b|https://dl.google.com/android/repository/android-ndk-r21e-windows-x86_64.zip
+EOF
+}
+
+ndkmanager_list_all_available_for_darwin() {
+    # https://developer.android.google.cn/ndk/downloads
+    cat <<EOF
+163ff3bb72306ffa814de35c49819bccae9df10855a4e3fbba52ad4111fcccae|https://dl.google.com/android/repository/android-ndk-r23b-darwin.zip
+437278103a3db12632c05b1be5c41bbb8522791a67e415cc54411a65366f499d|https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip
+EOF
+}
+
+ndkmanager_list_all_available_for_linux_x86_64() {
+    # https://developer.android.google.cn/ndk/downloads
+    cat <<EOF
+c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382|https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
+ad7ce5467e18d40050dc51b8e7affc3e635c85bd8c59be62de32352328ed467e|https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip
+EOF
+}
+
+ndkmanager_list_all_available_for_android_aarch64() {
+    # https://github.com/leleliu008/test/releases
+    cat <<EOF
+5fdca02b4a4c168671b0e077d0adfe38f9e2fb960664c71df6bd1bd3bad9f55c|https://github.com/leleliu008/test/releases/download/android-ndk-r23b-linux-aarch64/android-ndk-r23b-linux-aarch64.zip
+EOF
+}
+
+ndkmanager_list_all_available() {
+    case $NATIVE_OS_KIND in
+        windows) ndkmanager_list_all_available_for_windows ;;
+        darwin)  ndkmanager_list_all_available_for_darwin  ;;
+        linux)
+            case $NATIVE_OS_ARCH in
+                x86_64)  ndkmanager_list_all_available_for_linux_x86_64 ;;
+                aarch64) ndkmanager_list_all_available_for_android_aarch64 ;;
+            esac
+    esac
+}
+
+ndkmanager_install_the_given_rversion() {
+    case $1 in
+        '') die "ndk-pkg ndkmanager install <Rversion>, Rversion must not be empty." ;;
+        r2[1-3][a-e])     ;;
+        *)  die "ndkmanager install unrecognized argument: $1"
+    esac
+
+    ANDROID_NDK_INSTALL_DIR="$MY_HOME_DIR/android-ndk-$1"
+
+    if [ -f "$ANDROID_NDK_INSTALL_DIR/.installed" ] && is_a_valid_android_ndk_home_dir "$ANDROID_NDK_INSTALL_DIR" ; then
+        success "Android NDK $1 already have been installed to $ANDROID_NDK_INSTALL_DIR."
+        ANDROID_NDK_HOME="$ANDROID_NDK_INSTALL_DIR"
+        ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+        return 0
+    fi
+
+    ANDROID_NDK_SELECTED=$(ndkmanager_list_all_available | sed -n "/android-ndk-$1/p")
+
+    if [ -z "$ANDROID_NDK_SELECTED" ] ; then
+        die "$1 versioned Android NDK not available."
+    fi
+
+    ANDROID_NDK_URL=$(printf '%s\n' "$ANDROID_NDK_SELECTED" | cut -d '|' -f2)
+    ANDROID_NDK_SUM=$(printf '%s\n' "$ANDROID_NDK_SELECTED" | cut -d '|' -f1)
+
+    if [ "${#ANDROID_NDK_SUM}" -ne 64 ] ; then
+        die "$ANDROID_NDK_SUM is not sha256sum"
+    fi
+
+    fetch "$ANDROID_NDK_URL" --sha256="$ANDROID_NDK_SUM" --output-dir="$MY_HOME_DIR"
+
+    unset ANDROID_NDK_FILEPATH
+    unset ANDROID_NDK_FILENAME
+
+    ANDROID_NDK_FILEPATH="$FETCH_OUTPUT_PATH"
+    ANDROID_NDK_FILENAME="$FETCH_OUTPUT_NAME"
+
+    if [ -f "$ANDROID_NDK_INSTALL_DIR/.installed" ] ; then
+        success "$ANDROID_NDK_FILEPATH already have been unpacked to $ANDROID_NDK_INSTALL_DIR."
+    else
+        if [ -d "$ANDROID_NDK_INSTALL_DIR" ] ; then
+            run rm -rf "$ANDROID_NDK_INSTALL_DIR"
+        fi
+        case $ANDROID_NDK_URL in
+            *.zip)
+                handle_dependency required exe unzip
+                run unzip -q "$ANDROID_NDK_FILEPATH" -d "$MY_HOME_DIR"
+                run touch "$ANDROID_NDK_INSTALL_DIR/.installed"
+                ;;
+            *.tar.xz)
+                handle_dependency required exe tar
+                handle_dependency required exe xz
+                run tar xf   "$ANDROID_NDK_FILEPATH" -C "$MY_HOME_DIR"
+                run touch "$ANDROID_NDK_INSTALL_DIR/.installed"
+                ;;
+        esac
+    fi
+
+    if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_INSTALL_DIR" ; then
+        ANDROID_NDK_HOME="$ANDROID_NDK_INSTALL_DIR"
+        ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+    else
+        return 1
+    fi
+}
+
+ndkmanager_help() {
+    echo "
+${COLOR_GREEN}ndkmanager ls-available${COLOR_OFF}
+    list available Android NDK
+
+${COLOR_GREEN}ndkmanager ls-available --only-rversion${COLOR_OFF}
+    list available Android NDK, only show rversion
+
+${COLOR_GREEN}ndkmanager install <RVERSION>${COLOR_OFF}
+    install specified rversion of Android NDK to ~/.ndk-pkg
+    example: ndkmanager install r23b
+"
+}
+
+# ndkmanager ls-available [--only-rversion]
+# ndkmanager install r23b
 ndkmanager() {
     set -e
 
     case $1 in
-        '') die "ndk-pkg ndkmanager <ACTION> <ARGUMENT>..." ;;
-        config)
-            shift
-            case $1 in
-                @world)
-                    # https://developer.android.google.cn/ndk/downloads
-                    cat <<EOF
-windows|x86_64 |36270f8b2cfdd940f410bd8ffe6ce86ffaa8e87ff1c4fd4a8be5130268357778|https://dl.google.com/android/repository/android-ndk-r23b-windows.zip
-windows|x86_64 |f71307c5c572e2c163d602b3704b8bc024bec0c43ba2800de36bd10f3a21492b|https://dl.google.com/android/repository/android-ndk-r21e-windows-x86_64.zip
-darwin |x86_64 |163ff3bb72306ffa814de35c49819bccae9df10855a4e3fbba52ad4111fcccae|https://dl.google.com/android/repository/android-ndk-r23b-darwin.zip
-darwin |x86_64 |437278103a3db12632c05b1be5c41bbb8522791a67e415cc54411a65366f499d|https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip
-linux  |x86_64 |c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382|https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
-linux  |x86_64 |ad7ce5467e18d40050dc51b8e7affc3e635c85bd8c59be62de32352328ed467e|https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip
-linux  |aarch64|0c372d87ad5bcccd59e24ac397bedcb395174a9ed525941d778bbde90d05ab5e|https://github.com/leleliu008/test/releases/download/20111128/android-ndk-r23a-linux-aarch64.tar.xz
-EOF
-                    ;;
-                '')
-                    for LINE in $(ndkmanager config @world | sed 's/ //g')
-                    do
-                        unset __XX_OS_KIND__
-                        unset __XX_OS_ARCH__
-
-                        __XX_OS_KIND__=$(printf '%s\n' "$LINE" | cut -d '|' -f1)
-
-                        if [ -n "$__XX_OS_KIND__" ] && [ "$__XX_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
-                            continue
-                        fi
-
-                        __XX_OS_ARCH__=$(printf '%s\n' "$LINE" | cut -d '|' -f2)
-
-                        if [ -n "$__XX_OS_ARCH__" ] && [ "$__XX_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
-                            continue
-                        fi
-
-                        printf '%s\n' "$LINE"
-                    done
-                    ;;
-                r2[1-4][a-e])
-                    for LINE in $(ndkmanager config @world | sed 's/ //g')
-                    do
-                        unset __XX_VERSION__
-                        unset __XX_OS_KIND__
-                        unset __XX_OS_ARCH__
-
-                        __XX_VERSION__=$(printf '%s\n' "$LINE" | cut -d- -f3)
-                        [ "$__XX_VERSION__" = "$1" ] || continue
-
-                        __XX_OS_KIND__=$(printf '%s\n' "$LINE" | cut -d '|' -f1)
-
-                        if [ -n "$__XX_OS_KIND__" ] && [ "$__XX_OS_KIND__" != "$NATIVE_OS_KIND" ] ; then
-                            continue
-                        fi
-
-                        __XX_OS_ARCH__=$(printf '%s\n' "$LINE" | cut -d '|' -f2)
-
-                        if [ -n "$__XX_OS_ARCH__" ] && [ "$__XX_OS_ARCH__" != "$NATIVE_OS_ARCH" ] ; then
-                            continue
-                        fi
-
-                        unset __XX_SUM__
-                        unset __XX_URL__
-
-                        __XX_SUM__=$(printf '%s\n' "$LINE" | cut -d '|' -f3)
-                        __XX_URL__=$(printf '%s\n' "$LINE" | cut -d '|' -f4)
-
-                        printf '%s %s\n' "$__XX_URL__" "$__XX_SUM__"
-
-                        break
-                    done
-                    ;;
-                *)  die "ndkmanager config unrecognized argument: $1"
-            esac
+        ''|-h|--help)
+            ndkmanager_help
             ;;
         ls-available)
-            ndkmanager config | cut -d- -f3 | cut -d. -f1
+            shift
+            case $1 in
+                --only-rversion)
+                    ndkmanager_list_all_available | cut -d- -f3
+                    ;;
+                '') ndkmanager_list_all_available ;;
+                *)  die "ndkmanager ls-available unrecognized argument: $1"
+            esac
             ;;
         install)
             shift
-            case $1 in
-                '') die "ndk-pkg ndkmanager install <Reversion> , for example: ndk-pkg ndkmanager install r23b, you can get <Reversion> via run: ndk-pkg ndkmanager ls-available" ;;
-                r2[1-3][a-e])
-                    if [ -f "$MY_HOME_DIR/android-ndk-$1/.installed" ] && is_a_valid_android_ndk_home_dir "$MY_HOME_DIR/android-ndk-$1" ; then
-                        ANDROID_NDK_HOME="$MY_HOME_DIR/android-ndk-$1"
-                        ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
-                    else
-                        ndkmanager install $(ndkmanager config "$1")
-                    fi
-                    ;;
-                https://*)
-                    fetch "$1" --sha256="$2" --output-dir="$MY_HOME_DIR"
-
-                    unset ANDROID_NDK_FILEPATH
-                    unset ANDROID_NDK_FILENAME
-                    unset ANDROID_NDK_RVERSION
-                    unset ANDROID_NDK_INSTALLD
-
-                    ANDROID_NDK_FILEPATH="$FETCH_OUTPUT_PATH"
-                    ANDROID_NDK_FILENAME="$FETCH_OUTPUT_NAME"
-                    ANDROID_NDK_RVERSION=$(printf '%s\n' "$ANDROID_NDK_FILENAME" | cut -d- -f3 | cut -d. -f1)
-                    ANDROID_NDK_INSTALLD="$MY_HOME_DIR/android-ndk-$ANDROID_NDK_RVERSION"
-
-                    if [ -f "$ANDROID_NDK_INSTALLD/.installed" ] ; then
-                        success "$ANDROID_NDK_FILEPATH already have been unpacked to $ANDROID_NDK_INSTALLD."
-                    else
-                        if [ -d "$ANDROID_NDK_INSTALLD" ] ; then
-                            run rm -rf "$ANDROID_NDK_INSTALLD"
-                        fi
-                        case $1 in
-                            *.zip)
-                                handle_dependency required exe unzip
-                                run unzip -q "$ANDROID_NDK_FILEPATH" -d "$MY_HOME_DIR"
-                                run touch "$ANDROID_NDK_INSTALLD/.installed"
-                                ;;
-                            *.tar.xz)
-                                handle_dependency required exe tar
-                                handle_dependency required exe xz
-                                run tar xf   "$ANDROID_NDK_FILEPATH" -C "$MY_HOME_DIR"
-                                run touch "$ANDROID_NDK_INSTALLD/.installed"
-                                ;;
-                        esac
-                    fi
-
-                    if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_INSTALLD" ; then
-                        ANDROID_NDK_HOME="$ANDROID_NDK_INSTALLD"
-                        ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
-                    else
-                        return 1
-                    fi
-                    ;;
-                *)  die "ndkmanager install unrecognized argument: $1"
-            esac
+            ndkmanager_install_the_given_rversion $@
             ;;
-        *)  die "ndkmanager() unrecognized argument: $@"
+        *)  die "ndkmanager unrecognized argument: $@"
     esac
 }
 
