@@ -1,0 +1,24 @@
+name: ndk-pkg-brew-version-compare
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '* 20 * * *'
+
+jobs:
+  schedule:
+
+    runs-on: macos-11
+
+    steps:
+      - run: brew update
+
+      - uses: actions/checkout@v2
+
+      - run: bin/ndk-pkg --help
+      - run: bin/ndk-pkg env
+      - run: bin/ndk-pkg update
+      - run: bin/ndk-pkg test
