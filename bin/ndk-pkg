@@ -4220,6 +4220,8 @@ __reinstall_the_given_packages() {
         die_if_package_is_not_installed "$packageName"
     done
 
+    __config_native_toolchain_environment_variables
+
     for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
     do
         [ -d "$MY_BACKUP_DIR" ] || {
@@ -4246,6 +4248,8 @@ __upgrade_packages() {
         die_if_package_is_not_available "$packageName"
         die_if_package_is_not_installed "$packageName"
     done
+
+    __config_native_toolchain_environment_variables
 
     for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
     do
@@ -4682,12 +4686,12 @@ __config_native_toolchain_environment_variables() {
         TOOLNAME_UPPERCASE=$(printf '%s\n' "$TOOLNAME" | tr a-z A-Z)
 
         eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
-        eval export "${TOOLNAME_UPPERCASE}_FOR_BUILD='$TOOLPATH'"
-
-        unset TOOLNAME_UPPERCASE
-        unset TOOLNAME
-        unset TOOLPATH
+        eval export "${TOOLNAME_UPPERCASE}_FOR_BUILD=\"\$$TOOLNAME_UPPERCASE\""
     done
+
+    unset TOOLNAME_UPPERCASE
+    unset TOOLNAME
+    unset TOOLPATH
 
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
@@ -5367,8 +5371,8 @@ install_pcfs() {
 }
 
 install_bins() {
-    install -v -d        "$TARGET_BINARY__DIR" &&
-    install -v -m 755 $@ "$TARGET_BINARY__DIR"
+    install -v -d        "$TARGET_INSTALL_DIR/bin" &&
+    install -v -m 755 $@ "$TARGET_INSTALL_DIR/bin"
 }
 
 install_etcs() {
@@ -5806,18 +5810,18 @@ __config_variables_for_the_given_target() {
     unset CMAKE_INCLUDE_PATH
     unset CMAKE_LIBRARY_PATH
 
-    for PACKAGE in $DEPENDENCY_PACKAGE_LIST
+    for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
     do
-        PKG=$(printf '%s\n' "$PACKAGE" | tr '+-.' '_')
-
-        TARGET_INSTALL_DIR="$MY_INSTALL_DIR/$PACKAGE/$TARGET_OS_ABI"
+        TARGET_INSTALL_DIR="$MY_INSTALL_DIR/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI"
         TARGET_INCLUDE_DIR="$TARGET_INSTALL_DIR/include"
         TARGET_LIBRARY_DIR="$TARGET_INSTALL_DIR/lib"
         TARGET_PKGCONF_DIR="$TARGET_INSTALL_DIR/lib/pkgconfig"
 
-        eval "${PKG}_INSTALL_DIR='$TARGET_INSTALL_DIR'"
-        eval "${PKG}_INCLUDE_DIR='$TARGET_INCLUDE_DIR'"
-        eval "${PKG}_LIBRARY_DIR='$TARGET_LIBRARY_DIR'"
+        DEPENDENCY_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENCY_PACKAGE_NAME" | tr '+-.' '_')
+
+        eval "${DEPENDENCY_PACKAGE_NAME_UNDERSCORE}_INSTALL_DIR='$TARGET_INSTALL_DIR'"
+        eval "${DEPENDENCY_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$TARGET_INCLUDE_DIR'"
+        eval "${DEPENDENCY_PACKAGE_NAME_UNDERSCORE}_LIBRARY_DIR='$TARGET_LIBRARY_DIR'"
 
         CPPFLAGS="-I$TARGET_INCLUDE_DIR $CPPFLAGS"
          LDFLAGS="-L$TARGET_LIBRARY_DIR $LDFLAGS"
@@ -5846,6 +5850,9 @@ __config_variables_for_the_given_target() {
         done
     done
 
+    unset DEPENDENCY_PACKAGE_NAME
+    unset DEPENDENCY_PACKAGE_NAME_UNDERSCORE
+
     PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
@@ -5862,9 +5869,7 @@ __config_variables_for_the_given_target() {
 
     TARGET_BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
 
-    PKG_INSTALL_DIR="$MY_INSTALL_DIR/$1"
-    TARGET_INSTALL_DIR="$PKG_INSTALL_DIR/$TARGET_OS_ABI"
-    TARGET_BINARY__DIR="$TARGET_INSTALL_DIR/bin"
+    TARGET_INSTALL_DIR="$MY_INSTALL_DIR/$1/$TARGET_OS_ABI"
     TARGET_INCLUDE_DIR="$TARGET_INSTALL_DIR/include"
     TARGET_LIBRARY_DIR="$TARGET_INSTALL_DIR/lib"
     TARGET_PKGCONF_DIR="$TARGET_INSTALL_DIR/lib/pkgconfig"
@@ -5911,10 +5916,10 @@ __config_variables_for_the_given_target() {
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        RUST_TARGET=$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/armv7/')
+        unset RUST_TARGET
+        unset RUST_TARGET_UPPERCASE_UNDERSCORE
 
-        # this environment variable is not defined by Rust, but it is widely used by third-party project.
-        export RUST_TARGET="$RUST_TARGET"
+        RUST_TARGET=$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/armv7/')
 
         RUST_TARGET_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$RUST_TARGET" | tr a-z A-Z | tr - _)
 
@@ -5922,6 +5927,9 @@ __config_variables_for_the_given_target() {
         # https://doc.rust-lang.org/cargo/reference/environment-variables.html
         export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR"="$AR"
         export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER"="$CC"
+
+        # this environment variable is not defined by Rust, but it is widely used by third-party project.
+        export RUST_TARGET
 
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
 
@@ -6130,13 +6138,11 @@ EOF
 
     echo "
     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
+
           WORK_DIR = $WORK_DIR
         SOURCE_DIR = $SOURCE_DIR
-               PWD = $PWD
-   PKG_INSTALL_DIR = $PKG_INSTALL_DIR
   TARGET_BUILD_DIR = $TARGET_BUILD_DIR
 TARGET_INSTALL_DIR = $TARGET_INSTALL_DIR
-TARGET_BINARY__DIR = $TARGET_BINARY__DIR
 TARGET_INCLUDE_DIR = $TARGET_INCLUDE_DIR
 TARGET_LIBRARY_DIR = $TARGET_LIBRARY_DIR
 TARGET_PKGCONF_DIR = $TARGET_PKGCONF_DIR
