@@ -6583,7 +6583,11 @@ makew() {
 
     if [ "$MAKE_OPTION_SETTED_C" != yes ] ; then
         if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" != yes ] ; then
-            MAKE_OPTIONS="$MAKE_OPTIONS -C $TARGET_BUILD_DIR"
+            if [ "$STEP_MESSAGE" = 'build for native' ] ; then
+                MAKE_OPTIONS="$MAKE_OPTIONS -C $NATIVE_BUILD_DIR"
+            else
+                MAKE_OPTIONS="$MAKE_OPTIONS -C $TARGET_BUILD_DIR"
+            fi
         fi
     fi
 
