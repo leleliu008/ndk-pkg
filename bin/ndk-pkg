@@ -776,11 +776,11 @@ __upgrade_self() {
     fi
 
     echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    WORK_DIR=$(mktemp -d)
+    WORKING_DIR=$(mktemp -d)
 
-    run cd $WORK_DIR
+    run cd $WORKING_DIR
 
-    fetch "$UPGRADE_SELF_URL" --output-path="$WORK_DIR/self"
+    fetch "$UPGRADE_SELF_URL" --output-path="$WORKING_DIR/self"
 
     __upgrade_self_exit() {
         if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
@@ -789,7 +789,7 @@ __upgrade_self() {
             run sudo install -m 755 self "$CURRENT_SCRIPT_REALPATH"
         fi
 
-        run rm -rf $WORK_DIR
+        run rm -rf $WORKING_DIR
     }
 
     trap __upgrade_self_exit EXIT
@@ -860,11 +860,11 @@ __integrate_zsh_completions() {
     fi
 
     echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    WORK_DIR=$(mktemp -d)
+    WORKING_DIR=$(mktemp -d)
 
-    run cd $WORK_DIR
+    run cd $WORKING_DIR
 
-    fetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-path="$WORK_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    fetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
@@ -884,7 +884,7 @@ __integrate_zsh_completions() {
         fi
     fi
 
-    run rm -rf $WORK_DIR
+    run rm -rf $WORKING_DIR
 
     printf '\n'
     note "${COLOR_YELLOW}you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
@@ -1261,6 +1261,7 @@ version_of_python_module() {
 # retrive the version of a command from it's name or path
 version_of_command() {
     case $(basename "$1") in
+       ccache) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
         xmake) "$1" --version 2> /dev/null | head -n 1 | cut -d '+' -f1 | cut -d 'v' -f2 ;;
         cmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          rake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
@@ -3277,10 +3278,10 @@ regist_dependency() {
 
 # package set bsystem "cmake"
 
-# package set binsrcd 'yes'
-# package set binsrcd 'no'
+# package set bscript "src"
 
-# package set sourced 'src'
+# package set binbstd 'yes'
+# package set binbstd 'no'
 
 # package set sdk.api '23'
 package() {
@@ -3369,11 +3370,7 @@ __load_formula_of_the_given_package() {
 
     unset PACKAGE_LICENSE
 
-    # relative to $WORK_DIR, which contains build script such as configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, etc.
-    unset PACKAGE_SOURCED
-
     unset PACKAGE_BSYSTEM
-    unset PACKAGE_BINSRCD
 
     unset PACKAGE_BUILD_SYSTEM
     unset PACKAGE_BUILD_SYSTEM_GO
@@ -3389,8 +3386,12 @@ __load_formula_of_the_given_package() {
     unset PACKAGE_BUILD_SYSTEM_CONFIGURE
     unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
 
-    # if build in source dir, otherwise in build dir
-    PACKAGE_BUILD_IN_SOURCE_DIR=no
+    # dir relative to $PACKAGE_WORKING_DIR, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
+    unset PACKAGE_BSCRIPT
+
+    # if build in build script dir, otherwise build in build dir
+    unset PACKAGE_BINBSTD
+    unset PACKAGE_BUILD_IN_BSCRIPT_DIR
 
     # if build in parallel
     PACKAGE_BUILD_IN_PARALLEL=yes
@@ -3441,7 +3442,8 @@ __load_formula_of_the_given_package() {
     . "$PACKAGE_FORMULA_FILEPATH" || die "$PACKAGE_FORMULA_FILEPATH is broken."
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
-    PACKAGE_BUILD_IN_SOURCE_DIR=$PACKAGE_BINSRCD
+
+    PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
 
     if [ -z "$PACKAGE_SUMMARY" ] ; then
         die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
@@ -3578,13 +3580,18 @@ __load_formula_of_the_given_package() {
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
-        PACKAGE_BINSRCD=yes
-        PACKAGE_BUILD_IN_SOURCE_DIR=yes
+        PACKAGE_BINBSTD=yes
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
+    fi
+
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+        PACKAGE_BINBSTD=yes
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] ; then
-        PACKAGE_BINSRCD=yes
-        PACKAGE_BUILD_IN_SOURCE_DIR=yes
+        PACKAGE_BINBSTD=yes
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
     fi
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
@@ -4539,12 +4546,12 @@ __pack_the_given_installed_package() {
     PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-bin"
     PACKED_FILE_NAME="$PACKED_DIR_NAME.$PACKED_FILE_SUFFIX"
 
-    step "create work directory"
+    step "create working directory"
     echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    WORK_DIR=$(mktemp -d)
+    WORKING_DIR=$(mktemp -d)
 
-    step "change to work directory"
-    run cd $WORK_DIR
+    step "change to working directory"
+    run cd $WORKING_DIR
 
     step "make link refer to installed package root dir"
     run ln -s "$MY_INSTALL_DIR/$INSTALLED_PKG_NAME" "$PACKED_DIR_NAME"
@@ -4569,8 +4576,8 @@ __pack_the_given_installed_package() {
     step "show disk usage statistics"
     run "du -sh $PACKED_FILE_NAME | cut -f1"
 
-    step "delete work directory"
-    run rm -rf $WORK_DIR
+    step "delete working directory"
+    run rm -rf $WORKING_DIR
 }
 
 get_direct_dependency_package_list_of_the_given_package() {
@@ -4734,10 +4741,9 @@ __install_the_given_package() {
     # beacuse previous package's work direcotory is deleted.
     cd ~ || return 1
 
-    unset WORK_DIR
-    unset SOURCE_DIR
-
-    unset TARGET_BUILD_DIR
+    unset PACKAGE_WORKING_DIR
+    unset PACKAGE_SRC_DIR
+    unset PACKAGE_BSCRIPT_DIR
 
     unset NATIVE_BUILD_DIR
     unset NATIVE_INSTALL_DIR
@@ -4751,16 +4757,16 @@ __install_the_given_package() {
     __install_the_given_package_on_exit() {
         is_package_installed "$INSTALLING_PACKAGE" && return 0
 
-        if [ -z "$WORK_DIR" ] ; then
+        if [ -z "$PACKAGE_WORKING_DIR" ] ; then
             die "install $INSTALLING_PACKAGE failed!"
         else
             if [ "$DRYRUN" = yes ] ; then
                 return 0
             fi
             if [ -z "$TARGET_ITEM" ] ; then
-                die "install $INSTALLING_PACKAGE failed! you can go to $WORK_DIR to see see."
+                die "install $INSTALLING_PACKAGE failed! you can go to $PACKAGE_WORKING_DIR to see see."
             else
-                die "install $INSTALLING_PACKAGE/$TARGET_ITEM failed! you can go to $WORK_DIR to see see."
+                die "install $INSTALLING_PACKAGE/$TARGET_ITEM failed! you can go to $PACKAGE_WORKING_DIR to see see."
             fi
         fi
     }
@@ -4792,6 +4798,10 @@ __install_the_given_package() {
 
     calculate_TARGET_OS_VERS "$PACKAGE_NAME" "$PACKAGE_SDK_API" "$USER_EXPECTED_TARGET_OS_VERS"
 
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        package add dep.cmd ccache
+    fi
+
     step "handle required dependencies"
     for item in $PACKAGE_DEP_CMD
     do
@@ -4822,12 +4832,14 @@ __install_the_given_package() {
     done
 
     unset PKG_CONFIG
+    unset CCACHE
     unset MESON
     unset CMAKE
     unset GMAKE
     unset NINJA
 
     PKG_CONFIG=$(command -v pkg-config || true)
+    CCACHE=$(command -v ccache || true)
     MESON=$(command -v meson || true)
     CMAKE=$(command -v cmake || true)
     GMAKE=$(command -v gmake || command -v make || true)
@@ -4838,11 +4850,14 @@ __install_the_given_package() {
         bppend_to_PATH "$PERL_HOME/bin"
     fi
 
-    step "create work directory"
-    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    WORK_DIR=$(mktemp -d) || die "create work directory failed."
+    PACKAGE_WORKING_DIR="$MY_HOME_DIR/build.d/$1"
+    PACKAGE_SRC_DIR="$PACKAGE_WORKING_DIR/src"
 
-    run install -d "$WORK_DIR/$TIMESTAMP_UNIX"
+    step "create working directory"
+    if [ -d "$PACKAGE_WORKING_DIR" ] ; then
+        run rm -rf "$PACKAGE_WORKING_DIR"
+    fi
+    run install -d "$PACKAGE_WORKING_DIR"
 
     step "calculate dependency packages"
     unset DEPENDENCY_PACKAGE_LIST
@@ -4857,11 +4872,11 @@ __install_the_given_package() {
     fi
 
     step "create common linker script"
-    create_common_linker_script "$WORK_DIR/$TIMESTAMP_UNIX"
+    create_common_linker_script "$PACKAGE_WORKING_DIR"
 
     step "create common include.h"
     unset COMMON_INCLUDE_H_FILEPATH
-    COMMON_INCLUDE_H_FILEPATH="$WORK_DIR/$TIMESTAMP_UNIX/include.h"
+    COMMON_INCLUDE_H_FILEPATH="$PACKAGE_WORKING_DIR/include.h"
     create_common_include_h "$COMMON_INCLUDE_H_FILEPATH"
     if command -v bat > /dev/null ; then
         run bat --style=plain --paging=never "$COMMON_INCLUDE_H_FILEPATH"
@@ -4875,14 +4890,18 @@ __install_the_given_package() {
     step "fetch patches if needed"
     __fetch_patches_of_the_given_package "$1" || return 1
 
-    step "unpack sources to work directory"
     case $PACKAGE_SRC_URL in
         dir://*)
-            if command -v git > /dev/null ; then
-                PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
-            fi
             if [ -d "$PACKAGE_SRC_PATH" ] ; then
-                run cp -r "$PACKAGE_SRC_PATH/." "$WORK_DIR" || return 1
+                if command -v git > /dev/null ; then
+                    PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
+                fi
+
+                step "create the directory where source files will be copied to"
+                run install -d "$PACKAGE_SRC_DIR" || return 1
+
+                step "copy source files to the directory i just created"
+                run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_DIR" || return 1
             else
                 die "src.url point to dir is not exist."
             fi
@@ -4891,35 +4910,52 @@ __install_the_given_package() {
             if [ -z "$PACKAGE_GIT_REV" ] ; then
                 PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD) || return 1
             fi
-            run cp -r "$PACKAGE_SRC_PATH/." "$WORK_DIR" || return 1
+
+            step "create the directory where source files will be copied to"
+            run install -d "$PACKAGE_SRC_DIR" || return 1
+
+            step "copy source files to the directory i just created"
+            run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_DIR" || return 1
             ;;
         *.c|*.cc|*.cxx|*.cpp)
-            run cp    "$PACKAGE_SRC_PATH"   "$WORK_DIR" || return 1
+            step "create the directory where source files will be copied to"
+            run install -d "$PACKAGE_SRC_DIR" || return 1
+
+            step "copy source files to the directory i just created"
+            run cp    "$PACKAGE_SRC_PATH"   "$PACKAGE_SRC_DIR" || return 1
             ;;
         *.zip)
-            run unzip "$PACKAGE_SRC_PATH" -d "$WORK_DIR" || return 1
+            step "create the directory where source file will be uncompressed to"
+            run install -d "$PACKAGE_SRC_DIR" || return 1
+
+            step "uncompressed source file to the directory i just created"
+            run unzip "$PACKAGE_SRC_PATH" -d "$PACKAGE_SRC_DIR" || return 1
             ;;
         *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
-            run tar xf "$PACKAGE_SRC_PATH" -C "$WORK_DIR" --strip-components 1 || return 1
+            step "create the directory where source file will be uncompressed to"
+            run install -d "$PACKAGE_SRC_DIR" || return 1
+
+            step "uncompressed source file to the directory i just created"
+            run tar xf "$PACKAGE_SRC_PATH" -C "$PACKAGE_SRC_DIR" --strip-components 1 || return 1
             ;;
         *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
-    if [ -z "$PACKAGE_SOURCED" ] ; then
-        SOURCE_DIR="$WORK_DIR"
-    else
-        SOURCE_DIR="$WORK_DIR/$PACKAGE_SOURCED"
-    fi
-
     step "change to source directory"
-    run cd "$SOURCE_DIR" || return 1
+    run cd "$PACKAGE_SRC_DIR" || return 1
 
-    step "list content of source directory"
+    step "list files of source directory"
     run ls -l
+
+    if [ -z "$PACKAGE_BSCRIPT" ] ; then
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_DIR"
+    else
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_DIR/$PACKAGE_BSCRIPT"
+    fi
 
     step "build for native"
     if command -v build0 > /dev/null ; then
-        NATIVE_BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/native"
+        NATIVE_BUILD_DIR="$PACKAGE_WORKING_DIR/native"
         NATIVE_INSTALL_DIR="$MY_HOME_DIR/native/$PACKAGE_NAME"
 
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
@@ -4932,16 +4968,14 @@ __install_the_given_package() {
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
             note "build for native already have been done, skipped."
         else
-            [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = yes ] || {
+            [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] || {
                 run install -d "$NATIVE_BUILD_DIR" || return 1
-                run cd    "$NATIVE_BUILD_DIR" || return 1
+                run cd         "$NATIVE_BUILD_DIR" || return 1
             }
-
-            printf "%18s = %s\n\n" "PACKAGE_NAME" "$PACKAGE_NAME"
 
             for TOOL in PKG_CONFIG MESON CMAKE GMAKE NINJA
             do
-                printf "%18s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+                printf "%19s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
             done
 
             echo
@@ -4949,13 +4983,13 @@ __install_the_given_package() {
             for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
             do
                 eval export "$TOOL=\"\$${TOOL}_FOR_BUILD\""
-                printf "%18s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+                printf "%19s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
             done
 
             for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
             do
                 eval export "$FLAG=\"\$${FLAG}_FOR_BUILD\""
-                printf "\n%18s = " "$FLAG"
+                printf "\n%19s = " "$FLAG"
                 FIRST=yes
                 for item in $(eval echo \$$FLAG | tr ':' ' ')
                 do
@@ -4963,12 +4997,12 @@ __install_the_given_package() {
                         FIRST=no
                         echo "$item"
                     else
-                        echo "                     $item"
+                        echo "                      $item"
                     fi
                 done
             done
             echo
-            printf "\n%18s = " PATH
+            printf "\n%19s = " PATH
             FIRST=yes
             for item in $(printf '%s\n' "$PATH" | tr ' ' '|' | tr ':' ' ')
             do
@@ -4976,19 +5010,24 @@ __install_the_given_package() {
                     FIRST=no
                     printf '%s\n' "$item" | tr '|' ' '
                 else
-                    printf '%s\n' "                     $item" | tr '|' ' '
+                    printf '%s\n' "                      $item" | tr '|' ' '
                 fi
             done
 
-            echo "
-                 BUILD_NJOBS = $BUILD_NJOBS
+            cat <<EOF
 
-                    WORK_DIR = $WORK_DIR
-                  SOURCE_DIR = $SOURCE_DIR
-            NATIVE_BUILD_DIR = $NATIVE_BUILD_DIR
-            NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
-            PWD = $PWD
-            "
+        BUILD_NJOBS = $BUILD_NJOBS
+
+PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
+PACKAGE_SRC_DIR     = $PACKAGE_SRC_DIR
+PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
+
+ NATIVE_BUILD_DIR   = $NATIVE_BUILD_DIR
+ NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
+
+                PWD = $PWD
+
+EOF
 
             run build0 || return 1
 
@@ -5004,8 +5043,8 @@ __install_the_given_package() {
 
     step "do some preparation works"
     if command -v prepare > /dev/null ; then
-        if [ "$PWD" != "$SOURCE_DIR" ] ; then
-            run cd "$SOURCE_DIR" || return 1
+        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+            run cd "$PACKAGE_BSCRIPT_DIR" || return 1
         fi
         prepare "$1" || return 1
     else
@@ -5032,7 +5071,7 @@ __install_the_given_package() {
     [ "$DRYRUN" = yes ] && exit
 
     step "record installed abis"
-    run cp "$WORK_DIR/$TIMESTAMP_UNIX/installed-abis" "$MY_INSTALL_DIR/$1/installed-abis"
+    run cp "$PACKAGE_WORKING_DIR/installed-abis" "$MY_INSTALL_DIR/$1/installed-abis"
 
     step "record installed metadata"
     __record_installed_metadata_of_the_given_package "$1"
@@ -5040,9 +5079,9 @@ __install_the_given_package() {
     step "record installed files"
     __record_installed_files_of_the_given_package "$1"
 
-    [ "$KEEP_WORK_DIR" = yes ] || {
-        step "clean work directory."
-        run rm -rf "$WORK_DIR"
+    [ "$KEEP_WORKING_DIR" = yes ] || {
+        step "clean working directory."
+        run rm -rf "$PACKAGE_WORKING_DIR"
     }
 
     echo
@@ -5078,12 +5117,29 @@ __install_the_given_package_for_the_given_target() {
         exec "$SHELL" || return 1
     }
 
-    if [ "$PACKAGE_BUILD_IN_SOURCE_DIR" = yes ] ; then
-        if [ "$PWD" != "$SOURCE_DIR" ] ; then
-            run cd "$SOURCE_DIR" || return 1
+    step2 "create needed directories for ${COLOR_GREEN}$@${COLOR_OFF}"
+    run install -d "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/build"   || return 1
+    run install -d "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/include" || return 1
+    run install -d "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/lib"     || return 1
+    run install -d "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/bin"     || return 1
+
+    step2 "create symbolic link for CC and CXX to use ccache"
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        if [ -z "$CCACHE" ] ; then
+            die "ccache is not installed."
+        fi
+        run ln -s "$CCACHE" "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/bin/$CC"
+        run ln -s "$CCACHE" "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/bin/$CXX"
+        run export PATH="$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/bin:$PATH"
+    else
+        note "ccache is disabled, skipped."
+    fi
+
+    if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
+        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+            run cd "$PACKAGE_BSCRIPT_DIR" || return 1
         fi
     else
-        run install -d "$TARGET_BUILD_DIR" || return 1
         run cd "$TARGET_BUILD_DIR" || return 1
     fi
 
@@ -5118,8 +5174,8 @@ __install_the_given_package_for_the_given_target() {
         return 1
     }
 
-    [ -d "$TARGET_LIBRARY_DIR" ] && {
-        cd  "$TARGET_LIBRARY_DIR" || return 1
+    [ -d "$TARGET_INSTALL_DIR/lib" ] && {
+        cd  "$TARGET_INSTALL_DIR/lib" || return 1
         for SO_FILENAME_WITH_VERSION in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so.*' -exec basename {} \;)
         do
             unset SO_FILENAME_WITHOUT_VERSION
@@ -5129,7 +5185,7 @@ __install_the_given_package_for_the_given_target() {
             fi
         done
 
-        [ -d "$TARGET_LIBRARY_DIR/cmake" ] || {
+        [ -d "$TARGET_INSTALL_DIR/lib/cmake" ] || {
             unset TARGET_LIBRARY_NAMES
             unset TARGET_LIBRARY_COUNT
 
@@ -5141,9 +5197,9 @@ __install_the_given_package_for_the_given_target() {
                 unset PACKAGE_NAME_UPPERCASE
                 PACKAGE_NAME_UPPERCASE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z)
 
-                run install -d "$TARGET_LIBRARY_DIR/cmake/$PACKAGE_NAME"
+                run install -d "$TARGET_INSTALL_DIR/lib/cmake/$PACKAGE_NAME"
 
-                TARGET_CMAKE_CONFIG_FILEPATH="$TARGET_LIBRARY_DIR/cmake/$PACKAGE_NAME/$PACKAGE_NAME-config.cmake"
+                TARGET_CMAKE_CONFIG_FILEPATH="$TARGET_INSTALL_DIR/lib/cmake/$PACKAGE_NAME/$PACKAGE_NAME-config.cmake"
 
                 cat > "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 # generated by ndk-pkg $MY_VERSION
@@ -5184,7 +5240,7 @@ EOF
                 do
                     unset LIBNAME_UPPERCASE
                     LIBNAME_UPPERCASE="$(printf '%s\n' "$libname" | tr a-z A-Z)"
-                    if [ -e "$TARGET_LIBRARY_DIR/$libname.a" ] ; then
+                    if [ -e "$TARGET_INSTALL_DIR/lib/$libname.a" ] ; then
                         cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
 set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.a")
@@ -5193,7 +5249,7 @@ set_target_properties($PACKAGE_NAME::$libname::static PROPERTIES IMPORTED_LOCATI
 EOF
                     fi
 
-                    if [ -e "$TARGET_LIBRARY_DIR/$libname.so" ] ; then
+                    if [ -e "$TARGET_INSTALL_DIR/lib/$libname.so" ] ; then
                         cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
 set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.so")
@@ -5250,7 +5306,7 @@ EOF
     step2 "install logs for ${COLOR_GREEN}$@${COLOR_OFF}"
     __install_logs_for_the_given_target $@ || return 1
 
-    run "echo '$TARGET_OS_ABI' >> $WORK_DIR/$TIMESTAMP_UNIX/installed-abis"
+    run "echo '$TARGET_OS_ABI' >> $PACKAGE_WORKING_DIR/installed-abis"
 }
 
 __justfy_elf_files_for_the_given_target() {
@@ -5285,8 +5341,8 @@ __justfy_elf_files_for_the_given_target() {
 }
 
 __justfy_la_files_for_the_given_target() {
-    if [ -d "$TARGET_LIBRARY_DIR" ] ; then
-        for lafile in $(find "$TARGET_LIBRARY_DIR" -name "*.la")
+    if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
+        for lafile in $(find "$TARGET_INSTALL_DIR/lib" -name "*.la")
         do
             sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||" "$lafile" || return 1
         done
@@ -5294,11 +5350,14 @@ __justfy_la_files_for_the_given_target() {
 }
 
 __justfy_pc_files_for_the_given_target() {
-    if [ -d "$TARGET_PKGCONF_DIR" ] ; then
-        for pcfile in $(find "$TARGET_PKGCONF_DIR" -name "*.pc")
+    if [ -d "$TARGET_INSTALL_DIR/lib/pkgconfig" ] ; then
+        for pcfile in $(find "$TARGET_INSTALL_DIR/lib/pkgconfig" -name "*.pc")
         do
             sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile" || return 1
-            sed_in_place 's|-lpthread||g'                     "$pcfile" || return 1
+            sed_in_place 's|-lpthread||g'             "$pcfile" || return 1
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR||" "$pcfile" || return 1
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||"  "$pcfile" || return 1
+            sed_in_place "s|--sysroot $SYSROOT||"     "$pcfile" || return 1
             if grep 'Libs.private:' "$pcfile" > /dev/null ; then
                 LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile" || return 1)
                 LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile" || return 1)
@@ -5310,8 +5369,8 @@ __justfy_pc_files_for_the_given_target() {
 }
 
 __install_pc_file_if_needed_for_the_given_target() {
-    if [ -d "$TARGET_LIBRARY_DIR" ] ; then
-        if [ ! -d "$TARGET_PKGCONF_DIR" ] ; then
+    if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
+        if [ ! -d "$TARGET_INSTALL_DIR/lib/pkgconfig" ] ; then
             cat > "$TARGET_BUILD_DIR/$1.pc" << EOF
 EOF
             run install_pcfs "$TARGET_BUILD_DIR/$1.pc"
@@ -5322,7 +5381,7 @@ EOF
 __install_logs_for_the_given_target() {
     TARGET_LOG_DIR="$TARGET_INSTALL_DIR/share/log"
 
-    for item in "$TARGET_BUILD_DIR" "$SOURCE_DIR"
+    for item in "$TARGET_BUILD_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         for item2 in 'config.log' 'compile_commands.json' 'install.log.txt'
         do
@@ -5347,27 +5406,27 @@ install_incs() {
             unset X2
         fi
 
-        install -v -d         "$TARGET_INCLUDE_DIR/$X2" || return 1
-        install -v -m 644 $X1 "$TARGET_INCLUDE_DIR/$X2" || return 1
+        install -v -d         "$TARGET_INSTALL_DIR/include/$X2" || return 1
+        install -v -m 644 $X1 "$TARGET_INSTALL_DIR/include/$X2" || return 1
 
         shift
     done
 }
 
 install_libs() {
-    install -v -d "$TARGET_LIBRARY_DIR" || return 1
+    install -v -d "$TARGET_INSTALL_DIR/lib" || return 1
     for item in $@
     do
         case $item in
-            *.a) install -v -m 644 $item "$TARGET_LIBRARY_DIR" || return 1 ;;
-            *)   install -v -m 755 $item "$TARGET_LIBRARY_DIR" || return 1 ;;
+            *.a) install -v -m 644 $item "$TARGET_INSTALL_DIR/lib" || return 1 ;;
+            *)   install -v -m 755 $item "$TARGET_INSTALL_DIR/lib" || return 1 ;;
         esac
     done
 }
 
 install_pcfs() {
-    install -v -d        "$TARGET_PKGCONF_DIR" &&
-    install -v -m 644 $@ "$TARGET_PKGCONF_DIR"
+    install -v -d        "$TARGET_INSTALL_DIR/lib/pkgconfig" &&
+    install -v -m 644 $@ "$TARGET_INSTALL_DIR/lib/pkgconfig"
 }
 
 install_bins() {
@@ -5395,8 +5454,8 @@ install_mans() {
 }
 
 install_pc_file() {
-    install -v -d "$TARGET_PKGCONF_DIR" &&
-    cat >         "$TARGET_PKGCONF_DIR/$1.pc"
+    install -v -d "$TARGET_INSTALL_DIR/lib/pkgconfig" &&
+    cat >         "$TARGET_INSTALL_DIR/lib/pkgconfig/$1.pc"
 }
 
 __show_infomation_of_all_available_packages() {
@@ -5481,9 +5540,9 @@ PACKAGE_VERSION_MINOR
 PACKAGE_VERSION_PATCH
 PACKAGE_VERSION_TWEAK
 PACKAGE_LICENSE
-PACKAGE_SOURCED
+PACKAGE_BSCRIPT
 PACKAGE_BSYSTEM
-PACKAGE_BINSRCD
+PACKAGE_BINBSTD
 PACKAGE_BUILD_SYSTEM
 PACKAGE_BUILD_SYSTEM_GO
 PACKAGE_BUILD_SYSTEM_RAKE
@@ -5497,7 +5556,7 @@ PACKAGE_BUILD_SYSTEM_AUTOGENSH
 PACKAGE_BUILD_SYSTEM_AUTOTOOLS
 PACKAGE_BUILD_SYSTEM_CONFIGURE
 PACKAGE_BUILD_SYSTEM_NDK_BUILD
-PACKAGE_BUILD_IN_SOURCE_DIR
+PACKAGE_BUILD_IN_BSCRIPT_DIR
 PACKAGE_BUILD_IN_PARALLEL
 PACKAGE_DEP_CMD
 PACKAGE_DEP_PYM
@@ -5676,6 +5735,10 @@ __record_installed_files_of_the_given_package() {
         INSTALLED_FILES_FILEPATH="$MY_INSTALL_DIR/$1/installed-files"
         echo "-- Installing: $INSTALLED_FILES_FILEPATH"
 
+        touch "$INSTALLED_FILES_FILEPATH"
+        return 0
+
+        # TODO
         exec 7> "$INSTALLED_FILES_FILEPATH"
 
         __record_installed_files_of_the_given_package "$1" "$MY_INSTALL_DIR/$1"
@@ -5772,7 +5835,7 @@ __config_variables_for_the_given_target() {
     # https://gcc.gnu.org/onlinedocs/gcc/Invoking-GCC.html#Invoking-GCC
      CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -fpic -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
-     LDFLAGS="--sysroot $SYSROOT -L$WORK_DIR/$TIMESTAMP_UNIX -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
+     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
 
     if [ "$BUILD_TYPE" = release ] ; then
         CCFLAGS="$CCFLAGS -Wl,--strip-debug -Os -DNDEBUG"
@@ -5812,39 +5875,39 @@ __config_variables_for_the_given_target() {
 
     for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
     do
-        TARGET_INSTALL_DIR="$MY_INSTALL_DIR/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI"
-        TARGET_INCLUDE_DIR="$TARGET_INSTALL_DIR/include"
-        TARGET_LIBRARY_DIR="$TARGET_INSTALL_DIR/lib"
-        TARGET_PKGCONF_DIR="$TARGET_INSTALL_DIR/lib/pkgconfig"
+        DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR="$MY_INSTALL_DIR/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI"
+        DEPENDENCY_PACKAGE_TARGET_INSTALLED_INCLUDE_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/include"
+        DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/lib"
+        DEPENDENCY_PACKAGE_TARGET_INSTALLED_PKGCONF_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/lib/pkgconfig"
 
         DEPENDENCY_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENCY_PACKAGE_NAME" | tr '+-.' '_')
 
-        eval "${DEPENDENCY_PACKAGE_NAME_UNDERSCORE}_INSTALL_DIR='$TARGET_INSTALL_DIR'"
-        eval "${DEPENDENCY_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$TARGET_INCLUDE_DIR'"
-        eval "${DEPENDENCY_PACKAGE_NAME_UNDERSCORE}_LIBRARY_DIR='$TARGET_LIBRARY_DIR'"
+        eval "${DEPENDENCY_PACKAGE_NAME_UNDERSCORE}_INSTALL_DIR='$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR'"
+        eval "${DEPENDENCY_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INCLUDE_DIR'"
+        eval "${DEPENDENCY_PACKAGE_NAME_UNDERSCORE}_LIBRARY_DIR='$DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR'"
 
-        CPPFLAGS="-I$TARGET_INCLUDE_DIR $CPPFLAGS"
-         LDFLAGS="-L$TARGET_LIBRARY_DIR $LDFLAGS"
+        CPPFLAGS="-I$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INCLUDE_DIR $CPPFLAGS"
+         LDFLAGS="-L$DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR $LDFLAGS"
 
         if [ -z "$PKG_CONFIG_PATH" ] ; then
-            PKG_CONFIG_PATH="$TARGET_PKGCONF_DIR"
+            PKG_CONFIG_PATH="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_PKGCONF_DIR"
         else
-            PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$TARGET_PKGCONF_DIR"
+            PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEPENDENCY_PACKAGE_TARGET_INSTALLED_PKGCONF_DIR"
         fi
 
         if [ -z "$CMAKE_FIND_ROOT_PATH" ] ; then
-            CMAKE_FIND_ROOT_PATH="$TARGET_INSTALL_DIR"
+            CMAKE_FIND_ROOT_PATH="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR"
         else
-            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$TARGET_INSTALL_DIR"
+            CMAKE_FIND_ROOT_PATH="$CMAKE_FIND_ROOT_PATH;$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR"
         fi
 
         for item in bin sbin
         do
-            if [ -d "$TARGET_INSTALL_DIR/$item" ] ; then
+            if [ -d "$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/$item" ] ; then
                 if [ -z "$CMAKE_IGNORE_PATH" ] ; then
-                    CMAKE_IGNORE_PATH="$TARGET_INSTALL_DIR/$item"
+                    CMAKE_IGNORE_PATH="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/$item"
                 else
-                    CMAKE_IGNORE_PATH="$CMAKE_IGNORE_PATH;$TARGET_INSTALL_DIR/$item"
+                    CMAKE_IGNORE_PATH="$CMAKE_IGNORE_PATH;$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/$item"
                 fi
             fi
         done
@@ -5852,8 +5915,17 @@ __config_variables_for_the_given_target() {
 
     unset DEPENDENCY_PACKAGE_NAME
     unset DEPENDENCY_PACKAGE_NAME_UNDERSCORE
+    unset DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR
+    unset DEPENDENCY_PACKAGE_TARGET_INSTALLED_INCLUDE_DIR
+    unset DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR
+    unset DEPENDENCY_PACKAGE_TARGET_INSTALLED_PKGCONF_DIR
 
-    PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
+    TARGET_WORKING_DIR="$PACKAGE_WORKING_DIR/$TARGET_OS_ABI"
+    TARGET_BUILD_DIR="$TARGET_WORKING_DIR/build"
+    TARGET_INSTALL_DIR="$MY_INSTALL_DIR/$1/$TARGET_OS_ABI"
+
+    CPPFLAGS="-I$TARGET_WORKING_DIR/include -I$PACKAGE_WORKING_DIR $CPPFLAGS"
+     LDFLAGS="-L$TARGET_WORKING_DIR/lib     -L$PACKAGE_WORKING_DIR  $LDFLAGS"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
@@ -5867,12 +5939,7 @@ __config_variables_for_the_given_target() {
         CXXFLAGS="$CXXFLAGS $PACKAGE_XXFLAGS"
     fi
 
-    TARGET_BUILD_DIR="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI"
-
-    TARGET_INSTALL_DIR="$MY_INSTALL_DIR/$1/$TARGET_OS_ABI"
-    TARGET_INCLUDE_DIR="$TARGET_INSTALL_DIR/include"
-    TARGET_LIBRARY_DIR="$TARGET_INSTALL_DIR/lib"
-    TARGET_PKGCONF_DIR="$TARGET_INSTALL_DIR/lib/pkgconfig"
+    PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
     # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
     if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
@@ -5933,7 +6000,7 @@ __config_variables_for_the_given_target() {
 
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
 
-        export RUSTFLAGS="-Clink-arg=-L$WORK_DIR/$TIMESTAMP_UNIX"
+        export RUSTFLAGS="-Clink-arg=-L$TARGET_WORKING_DIR/lib -Clink-arg=-L$PACKAGE_WORKING_DIR"
 
         # https://libraries.io/cargo/cc
         # https://crates.io/crates/cc
@@ -5968,7 +6035,7 @@ __config_variables_for_the_given_target() {
         # https://docs.rs/cmake/latest/cmake/
         # https://github.com/alexcrichton/cmake-rs
         # this variable is not motioned in their document. you must read the source code of cmake-rs crate.
-        export TARGET_CMAKE_TOOLCHAIN_FILE="$WORK_DIR/$TIMESTAMP_UNIX/$TARGET_OS_ABI-android.toolchain.cmake"
+        export TARGET_CMAKE_TOOLCHAIN_FILE="$TARGET_WORKING_DIR/toolchain.cmake"
 
         printf '%s\n' "
         set(ANDROID_ABI "${TARGET_OS_ABI}")
@@ -6017,46 +6084,48 @@ __config_variables_for_the_given_target() {
 # __printf_variables_for_the_given_target      curl       x86_64
 __printf_variables_for_the_given_target() {
     echo "
-    NATIVE_OS_KIND = $NATIVE_OS_KIND
-    NATIVE_OS_TYPE = $NATIVE_OS_TYPE
-    NATIVE_OS_NAME = $NATIVE_OS_NAME
-    NATIVE_OS_VERS = $NATIVE_OS_VERS
-    NATIVE_OS_ARCH = $NATIVE_OS_ARCH
-    NATIVE_OS_NCPU = $NATIVE_OS_NCPU
-    NATIVE_OS_LIBC = $NATIVE_OS_LIBC
-    NATIVE_OS_SUBS = $NATIVE_OS_SUBS
+        BUILD_NJOBS = $BUILD_NJOBS
+        BUILD_TYPE  = $BUILD_TYPE
 
-    TARGET_OS_KIND = $TARGET_OS_KIND
-    TARGET_OS_TYPE = $TARGET_OS_TYPE
-    TARGET_OS_NAME = $TARGET_OS_NAME
-    TARGET_OS_VERS = $TARGET_OS_VERS
-    TARGET_OS_ARCH = $TARGET_OS_ARCH
-    TARGET_OS_ABI  = $TARGET_OS_ABI
-    TARGET_OS_BIT  = $TARGET_OS_BIT
-    TARGET_TRIPLE  = $TARGET_TRIPLE
-    TARGET_INDEX   = $TARGET_INDEX
+     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
 
-    TOOLCHAIN_NAME = $TOOLCHAIN_NAME
-    TOOLCHAIN_VERS = $TOOLCHAIN_VERS
-    TOOLCHAIN_ROOT = $TOOLCHAIN_ROOT
-    TOOLCHAIN_BIND = $TOOLCHAIN_BIND
+     NATIVE_OS_KIND = $NATIVE_OS_KIND
+     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
+     NATIVE_OS_NAME = $NATIVE_OS_NAME
+     NATIVE_OS_VERS = $NATIVE_OS_VERS
+     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
+     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
+     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
+     NATIVE_OS_SUBS = $NATIVE_OS_SUBS
 
-  ANDROID_NDK_HOME = $ANDROID_NDK_HOME
-  ANDROID_NDK_ROOT = $ANDROID_NDK_ROOT
+     TARGET_OS_KIND = $TARGET_OS_KIND
+     TARGET_OS_TYPE = $TARGET_OS_TYPE
+     TARGET_OS_NAME = $TARGET_OS_NAME
+     TARGET_OS_VERS = $TARGET_OS_VERS
+     TARGET_OS_ARCH = $TARGET_OS_ARCH
+     TARGET_OS_ABI  = $TARGET_OS_ABI
+     TARGET_OS_BIT  = $TARGET_OS_BIT
+     TARGET_TRIPLE  = $TARGET_TRIPLE
+     TARGET_INDEX   = $TARGET_INDEX
 
-           SYSROOT = $SYSROOT
+     TOOLCHAIN_NAME = $TOOLCHAIN_NAME
+     TOOLCHAIN_VERS = $TOOLCHAIN_VERS
+     TOOLCHAIN_ROOT = $TOOLCHAIN_ROOT
+     TOOLCHAIN_BIND = $TOOLCHAIN_BIND
 
-SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR
-SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
+   ANDROID_NDK_HOME = $ANDROID_NDK_HOME
+   ANDROID_NDK_ROOT = $ANDROID_NDK_ROOT
 
-       BUILD_NJOBS = $BUILD_NJOBS
-       BUILD_TYPE  = $BUILD_TYPE
+            SYSROOT = $SYSROOT
+
+ SYSTEM_INCLUDE_DIR = $SYSTEM_INCLUDE_DIR
+ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
     "
 
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
         eval export "$TOOL=\"\$$TOOL\""
-        printf "%18s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
+        printf "%19s = %s\n" "$TOOL" "$(eval echo \$$TOOL)"
     done
 
     echo
@@ -6064,7 +6133,7 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
     for TOOL in $(list_tools_in_the_toolchain | tr a-z A-Z)
     do
         eval export "${TOOL}_FOR_BUILD=\"\$${TOOL}_FOR_BUILD\""
-        printf "%18s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$${TOOL}_FOR_BUILD)"
+        printf "%19s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$${TOOL}_FOR_BUILD)"
     done
 
     echo
@@ -6072,7 +6141,7 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
     for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
     do
         eval export "$FLAG=\"\$$FLAG\""
-        printf "\n%18s = " "$FLAG"
+        printf "\n%19s = " "$FLAG"
         FIRST=yes
         for item in $(eval echo \$$FLAG | tr ':' ' ')
         do
@@ -6080,14 +6149,14 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
                 FIRST=no
                 echo "$item"
             else
-                echo "                     $item"
+                echo "                      $item"
             fi
         done
     done
 
     echo
 
-    printf "\n%18s = " PATH
+    printf "\n%19s = " PATH
     FIRST=yes
     for item in $(printf '%s\n' "$PATH" | tr ' ' '|' | tr ':' ' ')
     do
@@ -6095,7 +6164,7 @@ SYSTEM_LIBRARY_DIR = $SYSTEM_LIBRARY_DIR
             FIRST=no
             printf '%s\n' "$item" | tr '|' ' '
         else
-            printf '%s\n' "                     $item" | tr '|' ' '
+            printf '%s\n' "                      $item" | tr '|' ' '
         fi
     done
 
@@ -6137,15 +6206,13 @@ EOF
     fi
 
     echo "
-    TIMESTAMP_UNIX = $TIMESTAMP_UNIX
+PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
+PACKAGE_SRC_DIR     = $PACKAGE_SRC_DIR
+PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
 
-          WORK_DIR = $WORK_DIR
-        SOURCE_DIR = $SOURCE_DIR
-  TARGET_BUILD_DIR = $TARGET_BUILD_DIR
-TARGET_INSTALL_DIR = $TARGET_INSTALL_DIR
-TARGET_INCLUDE_DIR = $TARGET_INCLUDE_DIR
-TARGET_LIBRARY_DIR = $TARGET_LIBRARY_DIR
-TARGET_PKGCONF_DIR = $TARGET_PKGCONF_DIR
+ TARGET_WORKING_DIR = $TARGET_WORKING_DIR
+ TARGET_BUILD_DIR   = $TARGET_BUILD_DIR
+ TARGET_INSTALL_DIR = $TARGET_INSTALL_DIR
    "
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
@@ -6307,7 +6374,7 @@ cargow() {
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_PATH" ] ; then
-                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $SOURCE_DIR"
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $PACKAGE_BSCRIPT_DIR"
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_ROOT" ] ; then
@@ -6375,7 +6442,7 @@ configure() {
         # https://git.savannah.gnu.org/cgit/config.git/tree/
         for item in config.sub config.guess
         do
-            for file in $(find "$SOURCE_DIR" -name "$item")
+            for file in $(find "$PACKAGE_BSCRIPT_DIR" -name "$item")
             do
                 CONFIG_XX="$MY_SOURCE_DIR/config/$item"
                 if [ ! -f "$CONFIG_XX" ] ; then
@@ -6391,15 +6458,15 @@ configure() {
     fi
 
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-        if run "$SOURCE_DIR"/configure \
+        if run "$PACKAGE_BSCRIPT_DIR"/configure \
             --prefix="$NATIVE_INSTALL_DIR" \
             $@ ; then
             echo
         else
             if [ -f "$TARGET_BUILD_DIR/config.log" ] ; then
                 run cat "$TARGET_BUILD_DIR/config.log"
-            elif [ -f "$SOURCE_DIR/config.log" ] ; then
-                run cat "$SOURCE_DIR/config.log"
+            elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
+                run cat "$PACKAGE_BSCRIPT_DIR/config.log"
             fi
             return 1
         fi
@@ -6449,15 +6516,15 @@ configure() {
             no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
         esac
 
-        if run $SOURCE_DIR/configure $CONFIGURE_ARGS $@ ; then
+        if run $PACKAGE_BSCRIPT_DIR/configure $CONFIGURE_ARGS $@ ; then
             echo
         else
             # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
             if [ "$GITHUB_ACTIONS" = true ] ; then
                 if [ -f "$TARGET_BUILD_DIR/config.log" ] ; then
                     run cat "$TARGET_BUILD_DIR/config.log"
-                elif [ -f "$SOURCE_DIR/config.log" ] ; then
-                    run cat "$SOURCE_DIR/config.log"
+                elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
+                    run cat "$PACKAGE_BSCRIPT_DIR/config.log"
                 fi
             fi
             return 1
@@ -6465,7 +6532,7 @@ configure() {
     fi
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        for Makefile in $(find "$SOURCE_DIR" -name Makefile)
+        for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
             sed_in_place 's|@echo|echo|g' "$Makefile" || return 1
@@ -6480,11 +6547,41 @@ configure() {
 
 # make wrapper
 makew() {
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
-        run "$GMAKE -w -j$BUILD_NJOBS --debug V=1 $*"
-    else
-        run "$GMAKE -w -j$BUILD_NJOBS $*"
+    unset MAKE_OPTIONS
+    unset MAKE_OPTION_SETTED_C
+    unset MAKE_OPTION_SETTED_w
+    unset MAKE_OPTION_SETTED_j
+
+    for option in $@
+    do
+        case $option in
+            -C)           MAKE_OPTION_SETTED_C=yes ;;
+            -w)           MAKE_OPTION_SETTED_w=yes ;;
+            -j)           MAKE_OPTION_SETTED_j=yes ;;
+            -j[1-9])      MAKE_OPTION_SETTED_j=yes ;;
+            -j[1-9][0-9]) MAKE_OPTION_SETTED_j=yes ;;
+        esac
+    done
+
+    if [ "$MAKE_OPTION_SETTED_w" != yes ] ; then
+        MAKE_OPTIONS="$MAKE_OPTIONS -w"
     fi
+
+    if [ "$MAKE_OPTION_SETTED_C" != yes ] ; then
+        if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" != yes ] ; then
+            MAKE_OPTIONS="$MAKE_OPTIONS -C $TARGET_BUILD_DIR"
+        fi
+    fi
+
+    if [ "$MAKE_OPTION_SETTED_j" != yes ] ; then
+        MAKE_OPTIONS="$MAKE_OPTIONS -j$BUILD_NJOBS"
+    fi
+
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
+        MAKE_OPTIONS="$MAKE_OPTIONS --debug V=1"
+    fi
+
+    run "$GMAKE $MAKE_OPTIONS $*"
 }
 
 # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
@@ -6510,9 +6607,9 @@ cmakew() {
 
         # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
         if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $SOURCE_DIR -B $NATIVE_BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $NATIVE_BUILD_DIR"
         else
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$SOURCE_DIR -B$NATIVE_BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_BSCRIPT_DIR -B$NATIVE_BUILD_DIR"
         fi
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
@@ -6558,11 +6655,15 @@ cmakew() {
         -DANDROID_ARM_NEON=TRUE
         -DANDROID_PLATFORM=$TARGET_OS_VERS"
 
+        if [ "$CCACHE_ENABLED" = yes ] ; then
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DNDK_CCACHE=ccache"
+        fi
+
         # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
         if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $SOURCE_DIR -B $TARGET_BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $TARGET_BUILD_DIR"
         else
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$SOURCE_DIR -B$TARGET_BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_BSCRIPT_DIR -B$TARGET_BUILD_DIR"
         fi
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
@@ -6608,7 +6709,7 @@ xmakew() {
     fi
 
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-        run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$SOURCE_DIR --buildir=$NATIVE_BUILD_DIR &&
+        run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_BSCRIPT_DIR --buildir=$NATIVE_BUILD_DIR &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
         run $XMAKE install -o "$NATIVE_INSTALL_DIR"
     else
@@ -6694,7 +6795,7 @@ EOF
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$MESON_CROSS_FILE" \
         $MESON_ARGUMENT_DEFAULT_LIBRARY \
-        $@ "$TARGET_BUILD_DIR" "$SOURCE_DIR" &&
+        $@ "$TARGET_BUILD_DIR" "$PACKAGE_BSCRIPT_DIR" &&
     {
         if command -v build_configed > /dev/null ; then
             build_configed
@@ -6756,7 +6857,7 @@ include_stub_getdtablesize() {
     # https://linux.die.net/man/2/getdtablesize
     # https://hg.mozilla.org/mozreview/gecko/rev/038c2fe02074d03a6c34d44f68cb5f078a2472cc#index_header
     if [ "$TARGET_INDEX" -eq 1 ] ; then
-        cat > "$SOURCE_DIR/stub-getdtablesize.c" <<EOF
+        cat > "$PACKAGE_WORKING_DIR/getdtablesize.c" <<EOF
 #ifndef STUB_GETDTABLESIZE_H
 #define STUB_GETDTABLESIZE_H
 
@@ -6791,7 +6892,7 @@ static int stub_getdtablesize(void) {
 #endif
 EOF
     fi
-    export CPPFLAGS="$CPPFLAGS -include $SOURCE_DIR/stub-getdtablesize.c"
+    export CPPFLAGS="$CPPFLAGS -include $PACKAGE_WORKING_DIR/getdtablesize.c"
 }
 
 list_all_installed_libs() {
@@ -7462,6 +7563,8 @@ inspect_install_arguments() {
 
     unset DRYRUN
 
+    CCACHE_ENABLED=yes
+
     LOG_LEVEL_QUIET=0
     LOG_LEVEL_NORMAL=1
     LOG_LEVEL_VERBOSE=2
@@ -7481,7 +7584,7 @@ inspect_install_arguments() {
     INSTALL_DOC=yes
     INSTALL_LIB=yes
 
-    KEEP_WORK_DIR=no
+    KEEP_WORKING_DIR=no
 
     NEED_RUN_TREE=no
     NEED_RUN_PACK=no
@@ -7511,11 +7614,14 @@ inspect_install_arguments() {
             --quiet|-q)
                 LOG_LEVEL=$LOG_LEVEL_QUIET
                 ;;
+            --disable-ccache)
+                CCACHE_ENABLED=no
+                ;;
             --dry-run)
                 DRYRUN=yes
                 ;;
             --keep-work-dir)
-                KEEP_WORK_DIR=yes
+                KEEP_WORKING_DIR=yes
                 ;;
             --tree)
                 NEED_RUN_TREE=yes
