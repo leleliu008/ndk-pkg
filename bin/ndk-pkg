@@ -4707,7 +4707,7 @@ __config_native_toolchain_environment_variables() {
         TOOLNAME_UPPERCASE=$(printf '%s\n' "$TOOLNAME" | tr a-z A-Z)
 
         eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
-        eval export "${TOOLNAME_UPPERCASE}_FOR_BUILD=\"\$$TOOLNAME_UPPERCASE\""
+        eval export "${TOOLNAME_UPPERCASE}_FOR_BUILD='$TOOLPATH'"
     done
 
     unset TOOLNAME_UPPERCASE
@@ -5055,6 +5055,10 @@ EOF
         note "no build0  function defined in formula, skipped."
     fi
 
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
+    fi
+
     step "do some preparation works"
     if command -v prepare > /dev/null ; then
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
@@ -5093,6 +5097,14 @@ EOF
     step "record installed files"
     __record_installed_files_of_the_given_package "$1"
 
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        step "show ccache statistics summary"
+        info "Before Build:"
+        run  cat "$PACKAGE_WORKING_DIR/ccache-s.txt"
+        info "After  Build:"
+        run  ccache -s
+    fi
+
     [ "$KEEP_WORKING_DIR" = yes ] || {
         step "clean working directory."
         run rm -rf "$PACKAGE_WORKING_DIR"
@@ -5125,12 +5137,6 @@ __install_the_given_package_for_the_given_target() {
     step2 "printf variables for ${COLOR_GREEN}$@${COLOR_OFF}"
     __printf_variables_for_the_given_target $@
 
-    [ "$DRYRUN" = yes ] && {
-        [ -z "$SHELL" ] && SHELL=$(command -v zsh || command -v bash || command -v sh)
-        [ -z "$SHELL" ] && SHELL=sh
-        exec "$SHELL" || return 1
-    }
-
     step2 "create needed directories for ${COLOR_GREEN}$@${COLOR_OFF}"
     run install -d "$TARGET_WORKING_DIR/build"   || return 1
     run install -d "$TARGET_WORKING_DIR/include" || return 1
@@ -5156,6 +5162,12 @@ __install_the_given_package_for_the_given_target() {
     else
         run cd "$TARGET_BUILD_DIR" || return 1
     fi
+
+    [ "$DRYRUN" = yes ] && {
+        [ -z "$SHELL" ] && SHELL=$(command -v zsh || command -v bash || command -v sh)
+        [ -z "$SHELL" ] && SHELL=sh
+        exec "$SHELL" || return 1
+    }
 
     [ -d "$TARGET_INSTALL_DIR" ] && run rm -rf "$TARGET_INSTALL_DIR"
 
