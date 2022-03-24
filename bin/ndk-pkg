@@ -2843,6 +2843,20 @@ __install_command_via_pmw() {
 
 __install_command_via_run_install_script() {
     case $1 in
+        xmake)
+            # https://xmake.io/#/guide/installation
+            note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
+
+            handle_dependency required exe bash
+
+            if [ -f    "$MY_HOME_DIR/get-xmake.sh" ] ; then
+                run rm "$MY_HOME_DIR/get-xmake.sh"
+            fi
+
+            fetch 'https://xmake.io/shget.text' --output-path="$MY_HOME_DIR/get-xmake.sh"
+
+            run bash "$MY_HOME_DIR/get-xmake.sh"
+            ;;
         rustup)
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
@@ -5118,19 +5132,19 @@ __install_the_given_package_for_the_given_target() {
     }
 
     step2 "create needed directories for ${COLOR_GREEN}$@${COLOR_OFF}"
-    run install -d "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/build"   || return 1
-    run install -d "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/include" || return 1
-    run install -d "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/lib"     || return 1
-    run install -d "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/bin"     || return 1
+    run install -d "$TARGET_WORKING_DIR/build"   || return 1
+    run install -d "$TARGET_WORKING_DIR/include" || return 1
+    run install -d "$TARGET_WORKING_DIR/lib"     || return 1
+    run install -d "$TARGET_WORKING_DIR/bin"     || return 1
 
     step2 "create symbolic link for CC and CXX to use ccache"
     if [ "$CCACHE_ENABLED" = yes ] ; then
         if [ -z "$CCACHE" ] ; then
             die "ccache is not installed."
         fi
-        run ln -s "$CCACHE" "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/bin/$CC"
-        run ln -s "$CCACHE" "$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/bin/$CXX"
-        run export PATH="$PACKAGE_WORKING_DIR/$TARGET_OS_ABI/bin:$PATH"
+        run ln -s "$CCACHE" "$TARGET_WORKING_DIR/bin/$CC"
+        run ln -s "$CCACHE" "$TARGET_WORKING_DIR/bin/$CXX"
+        run export PATH="'$TARGET_WORKING_DIR/bin:$PATH'"
     else
         note "ccache is disabled, skipped."
     fi
