@@ -5003,11 +5003,13 @@ __install_the_given_package() {
     step "list files of source top directory"
     run ls -l "$PACKAGE_SRC_DIR"
 
-    step "list files of build script directory"
-    run ls -l "$PACKAGE_BSCRIPT_DIR"
+    if [ -n "$PACKAGE_BSCRIPT" ] ; then
+        step "list files of build script directory"
+        run ls -l "$PACKAGE_BSCRIPT_DIR"
+    fi
 
     step "change to build script directory"
-    run cd "$PACKAGE_SRC_DIR" || return 1
+    run cd "$PACKAGE_BSCRIPT_DIR" || return 1
 
     step "build for native"
     if command -v build0 > /dev/null ; then
