@@ -4955,21 +4955,23 @@ __install_the_given_package() {
         *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
-    step "change to source directory"
-    run cd "$PACKAGE_SRC_DIR" || return 1
-
-    step "list files of source directory"
-    run ls -l
-
     if [ -z "$PACKAGE_BSCRIPT" ] ; then
         PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_DIR"
     else
         PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_DIR/$PACKAGE_BSCRIPT"
     fi
 
+    step "list files of source top directory"
+    run ls -l "$PACKAGE_SRC_DIR"
+
+    step "list files of build script directory"
+    run ls -l "$PACKAGE_BSCRIPT_DIR"
+
+    step "change to build script directory"
+    run cd "$PACKAGE_SRC_DIR" || return 1
+
     step "build for native"
     if command -v build0 > /dev/null ; then
-        NATIVE_BUILD_DIR="$PACKAGE_WORKING_DIR/native"
         NATIVE_INSTALL_DIR="$MY_HOME_DIR/native/$PACKAGE_NAME"
 
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
@@ -4982,6 +4984,8 @@ __install_the_given_package() {
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
             note "build for native already have been done, skipped."
         else
+            NATIVE_BUILD_DIR="$PACKAGE_WORKING_DIR/native"
+
             [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] || {
                 run install -d "$NATIVE_BUILD_DIR" || return 1
                 run cd         "$NATIVE_BUILD_DIR" || return 1
@@ -5370,7 +5374,14 @@ __justfy_la_files_for_the_given_target() {
     if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
         for lafile in $(find "$TARGET_INSTALL_DIR/lib" -name "*.la")
         do
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||" "$lafile" || return 1
+            sed_in_place 's|-lpthread||g'                 "$lafile" || return 1
+            sed_in_place 's|-Wl,--strip-debug||g'         "$lafile" || return 1
+            sed_in_place "s|-L$TARGET_WORKING_DIR/lib||"  "$lafile" || return 1
+            sed_in_place "s|-L$TARGET_WORKING_DIR||"      "$lafile" || return 1
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR/lib||" "$lafile" || return 1
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR||"     "$lafile" || return 1
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||"      "$lafile" || return 1
+            sed_in_place "s|--sysroot $SYSROOT||"         "$lafile" || return 1
         done
     fi
 }
@@ -5380,10 +5391,14 @@ __justfy_pc_files_for_the_given_target() {
         for pcfile in $(find "$TARGET_INSTALL_DIR/lib/pkgconfig" -name "*.pc")
         do
             sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile" || return 1
-            sed_in_place 's|-lpthread||g'             "$pcfile" || return 1
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR||" "$pcfile" || return 1
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||"  "$pcfile" || return 1
-            sed_in_place "s|--sysroot $SYSROOT||"     "$pcfile" || return 1
+            sed_in_place 's|-lpthread||g'                 "$pcfile" || return 1
+            sed_in_place 's|-Wl,--strip-debug||g'         "$pcfile" || return 1
+            sed_in_place "s|-L$TARGET_WORKING_DIR/lib||"  "$pcfile" || return 1
+            sed_in_place "s|-L$TARGET_WORKING_DIR||"      "$pcfile" || return 1
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR/lib||" "$pcfile" || return 1
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR||"     "$pcfile" || return 1
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||"      "$pcfile" || return 1
+            sed_in_place "s|--sysroot $SYSROOT||"         "$pcfile" || return 1
             if grep 'Libs.private:' "$pcfile" > /dev/null ; then
                 LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile" || return 1)
                 LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile" || return 1)
