@@ -13,12 +13,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: [15.1, 15.2]
+        tag: [15.1, 15.2, 15.3, 15.4]
 
     container: opensuse/leap:${{ matrix.tag }}
 
     steps:
-      - run: zypper update -y
+      - run: zypper update  -y
       - run: zypper install -y git
 
       - uses: actions/checkout@v2

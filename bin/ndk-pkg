@@ -2127,8 +2127,8 @@ __pmw_install_the_given_package() {
     [ "$PMW_PM_UPDATED" = yes ] || {
         {
             case $1 in
-                apk)     run "$sudo" apk        update ;;
-                zypper)  run "$sudo" zypper  -y update ;;
+                apk)     run "$sudo" apk    update    ;;
+                zypper)  run "$sudo" zypper update -y ;;
                 pacman)  run "$sudo" pacman -Syy --noconfirm ;;
                 dnf|yum)
                     case $2 in
