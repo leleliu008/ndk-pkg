@@ -1903,6 +1903,7 @@ __pmw_get_available_package_name_by_command_name_dnf() {
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
+    ccache)   echo 'epel:ccache' ;;
     rst2man|rst2html)
                   echo "python3-docutils" ;;
     sphinx-build) echo "python3-sphinx" ;;
@@ -1945,6 +1946,7 @@ __pmw_get_available_package_name_by_command_name_yum() {
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
+    ccache)   echo 'epel:ccache' ;;
     sphinx-build) echo "python-sphinx" ;;
     glib-mkenums) echo 'glib2-devel' ;;
     glib-compile-resources)
@@ -2112,48 +2114,67 @@ __pmw_get_available_pm_list() {
     done
 }
 
-# __pmw_install_the_given_package <PM> <PKG> [eq|ne|le|ge|lt|gt <VERSION>]
-# __pmw_install_the_given_package apt make ge 3.80
-# __pmw_install_the_given_package apt make
+# __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>]
+# __pmw_install_the_given_package apt default make ge 3.80
+# __pmw_install_the_given_package apt default make
+# __pmw_install_the_given_package yum epel    ccache
+# __pmw_install_the_given_package dnf epel    ccache
 __pmw_install_the_given_package() {
-    [ -z "$1" ] && die "USAGE: __pmw_install_the_given_package <PM> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PM  must not be empty."
-    [ -z "$2" ] && die "USAGE: __pmw_install_the_given_package <PM> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG must not be empty."
+    [ -z "$1" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PM   must not be empty."
+    [ -z "$2" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , REPO must not be empty."
+    [ -z "$3" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG  must not be empty."
 
-    if [ "$PMW_PM_UPDATED" != 'yes' ] ; then
-        case $pm in
-            apt-get) run $sudo apt-get -y update ;;
-            apt)     run $sudo apt     -y update ;;
-            dnf)     run $sudo dnf     -y update ;;
-            yum)     run $sudo yum     -y update ;;
-            zypper)  run $sudo zypper  -y update ;;
-            apk)     run $sudo apk        update ;;
-            pacman)  run $sudo pacman -Syy --noconfirm ;;
-        esac
+    [ "$PMW_PM_UPDATED" = yes ] || {
+        {
+            case $1 in
+                apk)     run "$sudo" apk        update ;;
+                zypper)  run "$sudo" zypper  -y update ;;
+                pacman)  run "$sudo" pacman -Syy --noconfirm ;;
+                dnf|yum)
+                    case $2 in
+                        default) run "$sudo" "$1" -y update ;;
+                        epel)
+                            if [ epel != "$("$1" repolist | cut -d ' ' -f1 | sed -n '/^epel$/p')" ] ; then
+                                run "$sudo" "$1" --enablerepo=epel -y update  &&
+                                run "$sudo" "$1" --enablerepo=epel -y install epel-release
+                            fi
+                                run "$sudo" "$1" --enablerepo=epel -y update
+                            ;;
+                    esac
+                    ;;
+                apt-get|apt)
+                    case $2 in
+                        default) run "$sudo" "$1" -y update ;;
+                        ppa:*)   run "$sudo" "$1" -y update ;;
+                        *)       die "$1: unrecognized repo: $2" ;;
+                    esac
+            esac
+        } || return 1
         PMW_PM_UPDATED=yes
-    fi
+    }
 
     __pmw_is_the_given_package_available $@ || return 1
 
-    note "${COLOR_GREEN}$(shiftn 1 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
+    note "${COLOR_GREEN}$(shiftn 2 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
 
     case $1 in
         pip3)
             case $NATIVE_OS_KIND in
-                *bsd|linux) run pip3 install --user -U "$2" ;;
-                *)          run pip3 install        -U "$2"
+                *bsd|linux) run pip3 install --user -U "$3" ;;
+                *)          run pip3 install        -U "$3"
             esac
             ;;
         pip)
             case $NATIVE_OS_KIND in
-                *bsd|linux) run pip  install --user -U "$2" ;;
-                *)          run pip  install        -U "$2"
+                *bsd|linux) run pip  install --user -U "$3" ;;
+                *)          run pip  install        -U "$3"
             esac
             ;;
         brew)
-            if run brew install "$2" ; then
+            if run brew install "$3" ; then
                 unset __HOMEBREW_PKG_PREFIX__
-                __HOMEBREW_PKG_PREFIX__="$(brew --prefix "$2")"
-                if [ "$(brew info --json=v2 "$2" | sed -n '/"keg_only":/p' | sed 's/ //g' | cut -d: -f2 | sed 's/,//')" = 'true' ] ; then
+                __HOMEBREW_PKG_PREFIX__="$(brew --prefix "$3")"
+                if [ "$(brew info --json=v2 "$3" | sed -n '/"keg_only":/p' | sed 's/ //g' | cut -d: -f2 | sed 's/,//')" = 'true' ] ; then
                     if [ -d "$__HOMEBREW_PKG_PREFIX__/bin" ] ; then
                         export PATH="$__HOMEBREW_PKG_PREFIX__/bin:$PATH"
                     fi
@@ -2169,20 +2190,20 @@ __pmw_install_the_given_package() {
                 return 1
             fi
             ;;
-        pkg)     run $sudo pkg install -y "$2" ;;
-        pkgin)   run $sudo pkgin -y install "$2" ;;
-        pkg_add) run $sudo pkg_add "$2" ;;
-        apt)     run $sudo apt -y install "$2" ;;
-        apt-get) run $sudo apt-get -y install "$2" ;;
-        dnf)     run $sudo dnf -y install "$2" ;;
-        yum)     run $sudo yum -y install "$2" ;;
-        zypper)  run $sudo zypper install -y "$2" ;;
-        apk)     run $sudo apk add "$2" ;;
-        xbps)    run $sudo xbps-install -Sy "$2" ;;
-        emerge)  run $sudo emerge "$2" ;;
-        pacman)  run $sudo pacman -Syy --noconfirm && run $sudo pacman -S --noconfirm "$2" ;;
-        choco)   run choco install -y --source cygwin "$2" ;;
-        cargo)   run cargo install "$2" ;;
+        pkg)     run $sudo pkg install -y "$3" ;;
+        pkgin)   run $sudo pkgin -y install "$3" ;;
+        pkg_add) run $sudo pkg_add "$3" ;;
+        apt)     run $sudo apt -y install "$3" ;;
+        apt-get) run $sudo apt-get -y install "$3" ;;
+        dnf)     run $sudo dnf -y install "$3" ;;
+        yum)     run $sudo yum -y install "$3" ;;
+        zypper)  run $sudo zypper install -y "$3" ;;
+        apk)     run $sudo apk add "$3" ;;
+        xbps)    run $sudo xbps-install -Sy "$3" ;;
+        emerge)  run $sudo emerge "$3" ;;
+        pacman)  run $sudo pacman -Syy --noconfirm && run $sudo pacman -S --noconfirm "$3" ;;
+        choco)   run choco install -y --source cygwin "$3" ;;
+        cargo)   run cargo install "$3" ;;
     esac
 }
 
@@ -2198,37 +2219,37 @@ __pmw_install_the_given_package() {
 # ge  greater than or equal
 # le  less than or equal
 #
-# __pmw_is_the_given_package_available <PM> <PKG> [OP VERSION]
+# __pmw_is_the_given_package_available <PM> <REPO> <PKG> [OP VERSION]
 #
-# __pmw_is_the_given_package_available apt automake eq 1.16.0
-# __pmw_is_the_given_package_available apt automake lt 1.16.0
-# __pmw_is_the_given_package_available apt automake gt 1.16.0
-# __pmw_is_the_given_package_available apt automake le 1.16.0
-# __pmw_is_the_given_package_available apt automake ge 1.16.0
-# __pmw_is_the_given_package_available apt automake
+# __pmw_is_the_given_package_available apt default automake eq 1.16.0
+# __pmw_is_the_given_package_available apt default automake lt 1.16.0
+# __pmw_is_the_given_package_available apt default automake gt 1.16.0
+# __pmw_is_the_given_package_available apt default automake le 1.16.0
+# __pmw_is_the_given_package_available apt default automake ge 1.16.0
+# __pmw_is_the_given_package_available apt default automake
 __pmw_is_the_given_package_available() {
-    if [ $# -eq 2 ] ; then
+    if [ $# -eq 3 ] ; then
         case $1 in
-            pkg) pkg show "$2" > /dev/null 2>&1 ;;
-            apt) apt show "$2" > /dev/null 2>&1 ;;
-            apk) apk info "$2" > /dev/null 2>&1 ;;
-            yum) yum info "$2" > /dev/null 2>&1 ;;
-            dnf) dnf info "$2" > /dev/null 2>&1 ;;
-            brew) brew info "$2" > /dev/null 2>&1 ;;
-            xbps) xbps-query -R "$2" > /dev/null 2>&1 ;;
-            pacman) pacman -Ss "^$2$" > /dev/null 2>&1 ;;
-            zypper) [ "$(zypper info "$2" 2>&1 | tail -n 1)" != "package '$2' not found." ] ;;
+            pkg) pkg show "$3" > /dev/null 2>&1 ;;
+            apt) apt show "$3" > /dev/null 2>&1 ;;
+            apk) apk info "$3" > /dev/null 2>&1 ;;
+            yum) yum info "$3" > /dev/null 2>&1 ;;
+            dnf) dnf info "$3" > /dev/null 2>&1 ;;
+            brew) brew info "$3" > /dev/null 2>&1 ;;
+            xbps) xbps-query -R "$3" > /dev/null 2>&1 ;;
+            pacman) pacman -Ss "^$3$" > /dev/null 2>&1 ;;
+            zypper) [ "$(zypper info "$3" 2>&1 | tail -n 1)" != "package '$3' not found." ] ;;
             emerge)
-                case $2 in
-                    */*) [ "$(emerge -s "%@^$2$" 2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ] ;;
-                    *)   [ "$(emerge -s "%^$2$"  2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ]
+                case $3 in
+                    */*) [ "$(emerge -s "%@^$3$" 2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ] ;;
+                    *)   [ "$(emerge -s "%^$3$"  2>&1 | tail -n 2 | head -n 1)" != '\[ Applications found : 0 \]' ]
                 esac
                 ;;
         esac
-    elif [ $# -eq 4 ] ; then
-        __pmw_is_the_given_package_available "$1" "$2" && version_match "$(__pmw_get_available_package_version_by_package_name "$1" "$2")" "$3" "$4"
+    elif [ $# -eq 5 ] ; then
+        __pmw_is_the_given_package_available "$1" "$2" "$3" && version_match "$(__pmw_get_available_package_version_by_package_name "$1" "$3")" "$4" "$5"
     else
-        die "USAGE:  __pmw_is_the_given_package_available <PM> <PKG> [OP VERSION]\nACTUAL: __pmw_is_the_given_package_available $@"
+        die "USAGE:  __pmw_is_the_given_package_available <PM> <REPO> <PKG> [OP VERSION]\nACTUAL: __pmw_is_the_given_package_available $@"
     fi
 }
 
@@ -2826,17 +2847,29 @@ __install_command_via_pmw() {
 
     for pm in $AVAILABLE_PACKAGE_MANAGER_LIST
     do
-        unset PMW_PM__NAME_UNDERSCORE
-        unset PMW_PKG_NAME
+        unset PMW_PM_NAME_UNDERSCORE
+        unset PMW_REPO_PKG_ITEM
+        unset PMW_REPO_NAME
+        unset PMW_PKG__NAME
 
-        PMW_PM__NAME_UNDERSCORE="$(printf '%s\n' "$pm" | tr - _)"
-        PMW_PKG_NAME="$(eval __pmw_get_available_package_name_by_command_name_$PMW_PM__NAME_UNDERSCORE $1)"
+        PMW_PM_NAME_UNDERSCORE="$(printf '%s\n' "$pm" | tr - _)"
+        PMW_REPO_PKG_ITEM="$(eval __pmw_get_available_package_name_by_command_name_$PMW_PM_NAME_UNDERSCORE $1)"
 
         # if pacmakge name is empty, I assume that command name is equal to package name.
-        if [ -z "$PMW_PKG_NAME" ] ; then
-            PMW_PKG_NAME="$1"
+        if [ -z "$PMW_REPO_PKG_ITEM" ] ; then
+            PMW_REPO_NAME=default
+            PMW_PKG__NAME="$1"
+        else
+            case $PMW_REPO_PKG_ITEM in
+                *:*)
+                    PMW_REPO_NAME=$(printf '%s\n' "$PMW_REPO_PKG_ITEM" | cut -d: -f1)
+                    PMW_PKG__NAME=$(printf '%s\n' "$PMW_REPO_PKG_ITEM" | cut -d: -f2)
+                    ;;
+                *)  PMW_REPO_NAME=default
+                    PMW_PKG__NAME="$PMW_REPO_PKG_ITEM"
+            esac
         fi
-        __pmw_install_the_given_package "$pm" "$PMW_PKG_NAME" $2 $3 && return 0
+        __pmw_install_the_given_package "$pm" "$PMW_REPO_NAME" "$PMW_PKG__NAME" $2 $3 && return 0
     done
     return 1
 }
@@ -2906,9 +2939,9 @@ __install_command_via_pip() {
     )
 
     if   command_exists_in_filesystem pip3 ; then
-        __pmw_install_the_given_package pip3 "$(__pmw_get_available_package_name_by_command_name_pip3 "$1")"
+        __pmw_install_the_given_package pip3 default "$(__pmw_get_available_package_name_by_command_name_pip3 "$1")"
     elif command_exists_in_filesystem pip ; then
-        __pmw_install_the_given_package pip  "$(__pmw_get_available_package_name_by_command_name_pip "$1")"
+        __pmw_install_the_given_package pip  default "$(__pmw_get_available_package_name_by_command_name_pip "$1")"
     else
         return 1
     fi
@@ -5376,12 +5409,9 @@ __justfy_la_files_for_the_given_target() {
         do
             sed_in_place 's|-lpthread||g'                 "$lafile" || return 1
             sed_in_place 's|-Wl,--strip-debug||g'         "$lafile" || return 1
-            sed_in_place "s|-L$TARGET_WORKING_DIR/lib||"  "$lafile" || return 1
-            sed_in_place "s|-L$TARGET_WORKING_DIR||"      "$lafile" || return 1
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR/lib||" "$lafile" || return 1
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR||"     "$lafile" || return 1
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||"      "$lafile" || return 1
-            sed_in_place "s|--sysroot $SYSROOT||"         "$lafile" || return 1
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR\S*||g" "$lafile" || return 1
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"     "$lafile" || return 1
+            sed_in_place "s|--sysroot $SYSROOT||g"        "$lafile" || return 1
         done
     fi
 }
@@ -5393,11 +5423,8 @@ __justfy_pc_files_for_the_given_target() {
             sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile" || return 1
             sed_in_place 's|-lpthread||g'                 "$pcfile" || return 1
             sed_in_place 's|-Wl,--strip-debug||g'         "$pcfile" || return 1
-            sed_in_place "s|-L$TARGET_WORKING_DIR/lib||"  "$pcfile" || return 1
-            sed_in_place "s|-L$TARGET_WORKING_DIR||"      "$pcfile" || return 1
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR/lib||" "$pcfile" || return 1
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR||"     "$pcfile" || return 1
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||"      "$pcfile" || return 1
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR\S*||g" "$pcfile" || return 1
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"     "$pcfile" || return 1
             sed_in_place "s|--sysroot $SYSROOT||"         "$pcfile" || return 1
             if grep 'Libs.private:' "$pcfile" > /dev/null ; then
                 LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile" || return 1)
