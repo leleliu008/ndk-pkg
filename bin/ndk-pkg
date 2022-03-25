@@ -2124,34 +2124,33 @@ __pmw_install_the_given_package() {
     [ -z "$2" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , REPO must not be empty."
     [ -z "$3" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG  must not be empty."
 
-    [ "$PMW_PM_UPDATED" = yes ] || {
-        {
-            case $1 in
-                apk)     run "$sudo" apk    update    ;;
-                zypper)  run "$sudo" zypper update -y ;;
-                pacman)  run "$sudo" pacman -Syy --noconfirm ;;
-                dnf|yum)
-                    case $2 in
-                        default) run "$sudo" "$1" -y update ;;
-                        epel)
-                            if [ epel != "$("$1" repolist | cut -d ' ' -f1 | sed -n '/^epel$/p')" ] ; then
-                                run "$sudo" "$1" --enablerepo=epel -y update  &&
-                                run "$sudo" "$1" --enablerepo=epel -y install epel-release
-                            fi
-                                run "$sudo" "$1" --enablerepo=epel -y update
-                            ;;
-                    esac
-                    ;;
-                apt-get|apt)
-                    case $2 in
-                        default) run "$sudo" "$1" -y update ;;
-                        ppa:*)   run "$sudo" "$1" -y update ;;
-                        *)       die "$1: unrecognized repo: $2" ;;
-                    esac
-            esac
-        } || return 1
-        PMW_PM_UPDATED=yes
-    }
+    {
+        case $1 in
+            apk)     run "$sudo" apk    update    ;;
+            zypper)  run "$sudo" zypper update -y ;;
+            pacman)  run "$sudo" pacman -Syy --noconfirm ;;
+            dnf|yum)
+                case $2 in
+                    default) run "$sudo" "$1" -y update ;;
+                    epel)
+                        if [ epel = "$("$1" repolist | cut -d ' ' -f1 | sed -n '/^epel$/p')" ] ; then
+                            run "$sudo" "$1" --enablerepo=epel -y update
+                        else
+                            run "$sudo" "$1"                   -y update  &&
+                            run "$sudo" "$1"                   -y install epel-release &&
+                            run "$sudo" "$1" --enablerepo=epel -y update
+                        fi
+                        ;;
+                esac
+                ;;
+            apt-get|apt)
+                case $2 in
+                    default) run "$sudo" "$1" -y update ;;
+                    ppa:*)   run "$sudo" "$1" -y update ;;
+                    *)       die "$1: unrecognized repo: $2" ;;
+                esac
+        esac
+    } || return 1
 
     __pmw_is_the_given_package_available $@ || return 1
 
@@ -7901,11 +7900,13 @@ __setup_PATH_env() {
     if command -v brew > /dev/null ; then
         unset __HOMEBREW_PKG_PREFIX__
         __HOMEBREW_PKG_PREFIX__="$(brew --prefix gnu-sed)"
+
         if [ -d "$__HOMEBREW_PKG_PREFIX__/libexec/gnubin" ] ; then
             bppend_to_PATH "$__HOMEBREW_PKG_PREFIX__/libexec/gnubin"
         fi
+
+        unset __HOMEBREW_PKG_PREFIX__
     fi
-    unset __HOMEBREW_PKG_PREFIX__
 }
 
 help() {
