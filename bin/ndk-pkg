@@ -1903,7 +1903,14 @@ __pmw_get_available_package_name_by_command_name_dnf() {
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
-    ccache)   echo 'epel:ccache' ;;
+    ccache)
+        # EPEL repo is shipped with Fedora
+        if [ "$NATIVE_OS_TYPE" = fedora ] ; then
+            echo 'ccache'
+        else
+            echo 'epel:ccache'
+        fi
+        ;;
     rst2man|rst2html)
                   echo "python3-docutils" ;;
     sphinx-build) echo "python3-sphinx" ;;
