@@ -6113,6 +6113,8 @@ __config_variables_for_the_given_target() {
         # this variable is not motioned in their document. you must read the source code of cmake-rs crate.
         export TARGET_CMAKE_TOOLCHAIN_FILE="$TARGET_WORKING_DIR/toolchain.cmake"
 
+        install -d "$TARGET_WORKING_DIR"
+
         printf '%s\n' "
         set(ANDROID_ABI "${TARGET_OS_ABI}")
         set(ANDROID_PLATFORM "android-${TARGET_OS_VERS}")
