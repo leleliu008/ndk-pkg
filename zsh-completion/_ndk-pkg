@@ -180,6 +180,7 @@ function _ndk_pkg() {
                         '--install-exe[install executable programs]' \
                         '--install-doc[install documents]' \
                         '--install-man[install manpages]' \
+                        '--disable-ccache[do not use ccache]' \
                         '--tree[list installed files in a tree-like format after installed successfully]' \
                         '--pack[pack after installed successfully]' \
                         '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
@@ -202,6 +203,7 @@ function _ndk_pkg() {
                         '--install-exe[install executable programs]' \
                         '--install-doc[install documents]' \
                         '--install-man[install manpages]' \
+                        '--disable-ccache[do not use ccache]' \
                         '--tree[list installed files in a tree-like format after installed successfully]' \
                         '--pack[pack after installed successfully]' \
                         '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
@@ -235,6 +237,7 @@ function _ndk_pkg() {
                                         '--install-exe[install executable programs]' \
                                         '--install-doc[install documents]' \
                                         '--install-man[install manpages]' \
+                                        '--disable-ccache[do not use ccache]' \
                                         '--tree[list installed files in a tree-like format after installed successfully]' \
                                         '--pack[pack after installed successfully]' \
                                         '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \

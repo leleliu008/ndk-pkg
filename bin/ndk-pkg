@@ -5415,11 +5415,11 @@ __justfy_la_files_for_the_given_target() {
     if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
         for lafile in $(find "$TARGET_INSTALL_DIR/lib" -name "*.la")
         do
-            sed_in_place 's|-lpthread||g'                 "$lafile" || return 1
-            sed_in_place 's|-Wl,--strip-debug||g'         "$lafile" || return 1
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR\S*||g" "$lafile" || return 1
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"     "$lafile" || return 1
-            sed_in_place "s|--sysroot $SYSROOT||g"        "$lafile" || return 1
+            sed_in_place 's|-lpthread||g'                    "$lafile" || return 1
+            sed_in_place 's|-Wl,--strip-debug||g'            "$lafile" || return 1
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$lafile" || return 1
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$lafile" || return 1
+            sed_in_place "s|--sysroot $SYSROOT||g"           "$lafile" || return 1
         done
     fi
 }
@@ -5429,11 +5429,11 @@ __justfy_pc_files_for_the_given_target() {
         for pcfile in $(find "$TARGET_INSTALL_DIR/lib/pkgconfig" -name "*.pc")
         do
             sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile" || return 1
-            sed_in_place 's|-lpthread||g'                 "$pcfile" || return 1
-            sed_in_place 's|-Wl,--strip-debug||g'         "$pcfile" || return 1
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR\S*||g" "$pcfile" || return 1
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"     "$pcfile" || return 1
-            sed_in_place "s|--sysroot $SYSROOT||"         "$pcfile" || return 1
+            sed_in_place 's|-lpthread||g'                    "$pcfile" || return 1
+            sed_in_place 's|-Wl,--strip-debug||g'            "$pcfile" || return 1
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$pcfile" || return 1
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$pcfile" || return 1
+            sed_in_place "s|--sysroot $SYSROOT||"            "$pcfile" || return 1
             if grep 'Libs.private:' "$pcfile" > /dev/null ; then
                 LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile" || return 1)
                 LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile" || return 1)
