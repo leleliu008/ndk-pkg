@@ -1261,6 +1261,7 @@ version_of_python_module() {
 # retrive the version of a command from it's name or path
 version_of_command() {
     case $(basename "$1") in
+      gclient) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
        ccache) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
         xmake) "$1" --version 2> /dev/null | head -n 1 | cut -d '+' -f1 | cut -d 'v' -f2 ;;
         cmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
@@ -2882,6 +2883,12 @@ __install_command_via_pmw() {
 
 __install_command_via_run_install_script() {
     case $1 in
+        gclient)
+            # https://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html
+            run install -d "$MY_HOME_DIR/native"
+            run git -C "$MY_HOME_DIR/native" clone https://gitlab.com/webrtc-mirror/depot_tools.git
+            export PATH="$MY_HOME_DIR/native/depot_tools:$PATH"
+            ;;
         xmake)
             # https://xmake.io/#/guide/installation
             note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
@@ -4945,8 +4952,11 @@ __install_the_given_package() {
 
     case $PACKAGE_SRC_URL in
         dir://*)
-            if [ -d "$PACKAGE_SRC_PATH" ] ; then
-                if command -v git > /dev/null ; then
+            if [ "$PACKAGE_SRC_PATH" = '/dev/null' ] ; then
+                step "create the directory where source files will be stored in"
+                run install -d "$PACKAGE_SRC_DIR" || return 1
+            elif [ -d "$PACKAGE_SRC_PATH" ] ; then
+                if [ -d "$PACKAGE_SRC_PATH/.git" ] && command -v git > /dev/null ; then
                     PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
                 fi
 
@@ -6932,6 +6942,7 @@ create_common_include_h() {
     #define ftello(f) ftell(f)
     #define fseeko    fseek
 #endif
+
 EOF
 }
 
