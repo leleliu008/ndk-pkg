@@ -1288,6 +1288,7 @@ version_of_command() {
                "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
   intltoolize) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
       objcopy) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f5 ;;
+          adb) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f5 ;;
          flex) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         bison) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
          yacc) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f4 ;;
@@ -2307,6 +2308,9 @@ linux |arm64 |glibc|jdk     |17.0.1|a5e954a4e89b50277f20345034aea0ccf06f53705d4e
 linux |x86_64|glibc|jdk     |17.0.1|6f25bcb94d3e22fb52a4632c74e03b403834e81b68701ab7ecd900fb9cd89f43|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-x64_bin.tar.gz
 darwin|arm64 |  -  |jdk     |17.0.1|8e5f240705bdf37ed831abc8c52cc05afe71721a6bc26dd977b6efd01b5ebef7|https://download.oracle.com/java/17/archive/jdk-17.0.1_macos-aarch64_bin.tar.gz
 darwin|x86_64|  -  |jdk     |17.0.1|b8905d88a14e60f873064a8b25737e2ec2e3688611adbf21f3a5dd5c8742797d|https://download.oracle.com/java/17/archive/jdk-17.0.1_macos-x64_bin.tar.gz
+
+linux |x86_64|  -  |android-sdk|7583922|124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf|https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
+darwin|  -   |  -  |android-sdk|7583922|6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf|https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip
 EOF
 }
 
@@ -2883,39 +2887,61 @@ __install_command_via_pmw() {
 
 __install_command_via_run_install_script() {
     case $1 in
+        java|javac|jar)
+            install_jdk_if_needed
+            ;;
+        adb|aapt|aapt2|sdkmanager|zipalign)
+            install_android_sdk_if_needed
+            ;;
         gclient)
+            handle_dependency required exe bash
+
             # https://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html
-            run install -d "$MY_HOME_DIR/native"
-            run git -C "$MY_HOME_DIR/native" clone https://gitlab.com/webrtc-mirror/depot_tools.git
+
+            if [ !          -d "$MY_HOME_DIR/native" ] ; then
+                run install -d "$MY_HOME_DIR/native"
+            fi
+
+            if [ -d "$MY_HOME_DIR/native/depot_tools" ] ; then
+                if [ -d "$MY_HOME_DIR/native/depot_tools/.git" ] && git -C "$MY_HOME_DIR/native/depot_tools" rev-parse 2> /dev/null ; then
+                    run git -C "$MY_HOME_DIR/native/depot_tools" pull
+                else
+                    run rm -rf "$MY_HOME_DIR/native/depot_tools"
+                    run git -C "$MY_HOME_DIR/native/depot_tools" clone https://gitlab.com/webrtc-mirror/depot_tools.git
+                fi
+            else
+                run git -C "$MY_HOME_DIR/native" clone https://gitlab.com/webrtc-mirror/depot_tools.git
+            fi
+
             export PATH="$MY_HOME_DIR/native/depot_tools:$PATH"
             ;;
         xmake)
+            handle_dependency required exe bash
+
             # https://xmake.io/#/guide/installation
             note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
 
-            handle_dependency required exe bash
-
-            if [ -f    "$MY_HOME_DIR/get-xmake.sh" ] ; then
-                run rm "$MY_HOME_DIR/get-xmake.sh"
+            if [ -f    "$MY_HOME_DIR/tmp.d/get-xmake.sh" ] ; then
+                run rm "$MY_HOME_DIR/tmp.d/get-xmake.sh"
             fi
 
-            fetch 'https://xmake.io/shget.text' --output-path="$MY_HOME_DIR/get-xmake.sh"
+            fetch 'https://xmake.io/shget.text' --output-path="$MY_HOME_DIR/tmp.d/get-xmake.sh"
 
-            run bash "$MY_HOME_DIR/get-xmake.sh"
+            run bash "$MY_HOME_DIR/tmp.d/get-xmake.sh"
             ;;
         rustup)
+            handle_dependency required exe bash:zsh:dash:ash
+
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
 
-            handle_dependency required exe bash:zsh:dash:ash
-
-            if [ -f    "$MY_HOME_DIR/rustup-init.sh" ] ; then
-                run rm "$MY_HOME_DIR/rustup-init.sh"
+            if [ -f    "$MY_HOME_DIR/tmp.d/rustup-init.sh" ] ; then
+                run rm "$MY_HOME_DIR/tmp.d/rustup-init.sh"
             fi
 
-            fetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/rustup-init.sh"
+            fetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/tmp.d/rustup-init.sh"
 
-            run $(command -v bash || command -v zsh || command -v dash || command -v ash || command -v sh) "$MY_HOME_DIR/rustup-init.sh" -y
+            run $(command -v bash || command -v zsh || command -v dash || command -v ash || command -v sh) "$MY_HOME_DIR/tmp.d/rustup-init.sh" -y
 
             export CARGO_HOME=$HOME/.cargo
             export PATH="$CARGO_HOME/bin:$PATH"
@@ -3467,12 +3493,6 @@ __load_formula_of_the_given_package() {
 
     # dependency packages       List
     unset PACKAGE_DEP_PKG
-
-    # if depends on JDK
-    PACKAGE_DEP_JDK=no
-
-    # if depends on Android SDK
-    PACKAGE_DEP_SDK=no
 
     # if depends on Android NDK
     PACKAGE_DEP_NDK=yes
@@ -4841,16 +4861,6 @@ __install_the_given_package() {
     step "load formula"
     __load_formula_of_the_given_package "$1"
 
-    if [ "$PACKAGE_DEP_JDK" = yes ] ; then
-        step "find Java Development Kit"
-        install_jdk_if_needed
-    fi
-
-    if [ "$PACKAGE_DEP_SDK" = yes ] ; then
-        step "find Android SDK"
-        install_android_sdk_if_needed
-    fi
-
     if [ "$PACKAGE_DEP_NDK" = yes ] ; then
         step "find Android NDK"
         setup_build_toolchains_env
@@ -4910,7 +4920,7 @@ __install_the_given_package() {
         bppend_to_PATH "$PERL_HOME/bin"
     fi
 
-    PACKAGE_WORKING_DIR="$MY_HOME_DIR/build.d/$1"
+    PACKAGE_WORKING_DIR="$MY_HOME_DIR/installing.d/$1"
     PACKAGE_SRC_DIR="$PACKAGE_WORKING_DIR/src"
 
     step "create working directory"
@@ -5160,27 +5170,23 @@ EOF
         run  ccache -s
     fi
 
-    [ "$KEEP_WORKING_DIR" = yes ] || {
+    if [ "$KEEP_WORKING_DIR" != yes ] ; then
         step "clean working directory."
         run rm -rf "$PACKAGE_WORKING_DIR"
-    }
-
-    echo
-    success "$1 installed successfully."
+    fi
 
     if [ "$NEED_RUN_TREE" = yes ] ; then
-        unset STEP_NUM
-        echo
-        echo "${COLOR_GREEN}$_0 tree $1 $TREE_ARGS${COLOR_OFF}"
+        step "list files of installed dir in a tree-like format"
         __tree_the_given_installed_package "$1" $TREE_ARGS
     fi
 
     if [ "$NEED_RUN_PACK" = yes ] ; then
-        unset STEP_NUM
-        echo
-        echo "${COLOR_GREEN}$_0 pack $1 $PACK_ARGS${COLOR_OFF}"
+        step "packing"
         __pack_the_given_installed_package "$1" $PACK_ARGS
     fi
+
+    echo
+    success "$1 installed successfully."
 }
 
 __install_the_given_package_for_the_given_target() {
@@ -5648,8 +5654,6 @@ PACKAGE_DEP_CMD
 PACKAGE_DEP_PYM
 PACKAGE_DEP_PLM
 PACKAGE_DEP_PKG
-PACKAGE_DEP_JDK
-PACKAGE_DEP_SDK
 PACKAGE_DEP_NDK
 PACKAGE_CDEFINE
 PACKAGE_CCFLAGS
@@ -6153,7 +6157,10 @@ __config_variables_for_the_given_target() {
         export CGO_LDFLAGS="$LDFLAGS"
 
         export GO111MODULE='auto'
-        export GOPROXY='https://goproxy.cn'
+
+        if [ "$COUNTRY" = china ] ; then
+            export GOPROXY='https://goproxy.cn'
+        fi
 
         export GOOS="$TARGET_OS_TYPE"
 
@@ -7571,26 +7578,21 @@ install_android_sdk_if_needed() {
         run "yes | $MY_HOME_DIR/android-sdk/cmdline-tools/latest/bin/sdkmanager 'platform-tools'"
 
         cat > "$MY_HOME_DIR/android-sdk/env" <<EOF
-bppend_to_PATH() {
-    case ":\${PATH}:" in
-        *:"\$@":*) ;;
-        *) export PATH="\$@:\$PATH" ;;
-    esac
-}
+export ANDROID_HOME="$MY_HOME_DIR/android-sdk"
+export ANDROID_SDK_ROOT="\$ANDROID_HOME"
 
-ANDROID_HOME="$MY_HOME_DIR/android-sdk"
-ANDROID_SDK_ROOT="$MY_HOME_DIR/android-sdk"
-
-bppend_to_PATH "$ANDROID_SDK_ROOT/cmdline-tools/tools/bin"
-bppend_to_PATH "$ANDROID_SDK_ROOT/platform-tools"
-bppend_to_PATH "$ANDROID_SDK_ROOT/build-tools/30.0.3"
+export PATH="\$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:\$PATH"
+export PATH="\$ANDROID_SDK_ROOT/platform-tools:\$PATH"
+export PATH="\$ANDROID_SDK_ROOT/build-tools/30.0.3:\$PATH"
 EOF
-    . "$MY_HOME_DIR/android-sdk/env"
+        . "$MY_HOME_DIR/android-sdk/env"
     fi
 
-    echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
-    echo "ANDROID_HOME     = $ANDROID_HOME"
-    echo "PATH = $PATH"
+    cat <<EOF
+ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT
+ANDROID_HOME     = $ANDROID_HOME
+PATH             = $PATH
+EOF
 }
 
 is_a_valid_jdk_home_dir() {
@@ -7627,7 +7629,7 @@ install_jdk_if_needed() {
     fi
 
     note "JDK Not Found on your build machine, I will install it for you."
-    handle_dependency required exe java
+    __uppm_install_the_given_package jdk
 
     if [ -f "$HOME/.uppm/install.d/jdk/installed-metadata" ] && [ -f "$HOME/.uppm/install.d/jdk/env" ] ; then
         if is_a_valid_jdk_home_dir "$HOME/.uppm/install.d/jdk" ; then

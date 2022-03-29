@@ -78,7 +78,7 @@ mkdir -p ~/.ndk-pkg
 
 docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg
 
-# CHINESE USER IF NO VPN, please use fowlling instruction
+# TO CHINESE USER, if VPN is not being used, please use fowlling instruction
 docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg:china
 
 docker start ndk-pkg
