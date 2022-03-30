@@ -4180,14 +4180,16 @@ __gen_github_workflows() {
 
     AVAILABLE_PACKAGES=$(__list_available_packages)
 
+    for item in test v8 webrtc
+    do
+        AVAILABLE_PACKAGES=$(printf '%s\n' "$AVAILABLE_PACKAGES" | sed "s|^$item$||")
+    done
+
     for x in $AVAILABLE_PACKAGES
     do
-        if [ "$x" = 'test' ] ; then
-            continue
-        fi
         for y in $AVAILABLE_PACKAGES
         do
-            if [ "$x" = "$y" ] || [ 'test' = "$y" ] ; then
+            if [ "$x" = "$y" ] ; then
                 continue
             else
                 for z in $(get_direct_dependency_package_list_of_the_given_package "$y")
@@ -4604,6 +4606,7 @@ __pack_the_given_installed_package() {
         case $PACKED_FILE_SUFFIX in
             7z) handle_dependency required exe 7za ;;
             zip)handle_dependency required exe zip ;;
+            aar)__create_aar_for_the_given_installed_package "$INSTALLED_PKG_NAME"; return $? ;;
             tar.gz)
                 handle_dependency required exe tar
                 handle_dependency required exe gzip
@@ -4616,7 +4619,7 @@ __pack_the_given_installed_package() {
                 handle_dependency required exe tar 
                 handle_dependency required exe bzip2 
                 ;;
-            *) die "unsupported type: $PACKED_FILE_SUFFIX, the supported types are 7z zip tar.gz tar.xz tar.bz2."
+            *) die "unsupported type: $PACKED_FILE_SUFFIX, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
         esac
     fi
 
@@ -4655,6 +4658,170 @@ __pack_the_given_installed_package() {
 
     step "show disk usage statistics"
     run "du -sh $PACKED_FILE_NAME | cut -f1"
+
+    step "delete working directory"
+    run rm -rf $WORKING_DIR
+}
+
+# https://developer.android.com/studio/projects/android-library#aar-contents
+#
+# __create_aar_for_the_given_installed_package <PKG-NAME>
+# __create_aar_for_the_given_installed_package     v8
+__create_aar_for_the_given_installed_package() {
+    set -e
+
+    die_if_package_is_not_installed "$1"
+
+    unset PACKAGE_HAVE_INCLUDE
+    unset PACKAGE_HAVE_LIBRARY
+
+    unset PACKAGE_INSTALLED_DIR
+    unset PACKAGE_INSTALLED_ABIS
+
+    PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/$1"
+
+    PACKAGE_INSTALLED_ABIS="$(cat "$PACKAGE_INSTALLED_DIR/installed-abis")"
+
+    for INSTALLED_ABI in $PACKAGE_INSTALLED_ABIS
+    do
+        if [ -d "$PACKAGE_INSTALL_DIR/$INSTALLED_ABI/include" ] ; then
+            PACKAGE_HAVE_INCLUDE=yes
+        fi
+
+        if [ ! -d "$PACKAGE_INSTALL_DIR/$INSTALLED_ABI/lib" ] ; then
+            PACKAGE_HAVE_LIBRARY=yes
+        fi
+
+        if [ "$PACKAGE_HAVE_INCLUDE" != yes ] && [ "$PACKAGE_HAVE_LIBRARY" != yes ] ; then
+            die "$1 do not contains library files."
+        fi
+    done
+
+    step "handle required tools"
+    handle_dependency required exe zip
+    handle_dependency required exe tree
+    handle_dependency required exe unzip
+
+    step "printf required tools"
+    printf_dependency required exe zip
+    printf_dependency required exe tree
+    printf_dependency required exe unzip
+
+    step "create working directory"
+    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    WORKING_DIR=$(mktemp -d)
+
+    step "change to working directory"
+    run cd $WORKING_DIR
+
+    __load_installed_metadata_of_the_given_package "$1"
+
+    unset PACKAGE_NAME_UNDERSCORE
+
+    PACKAGE_NAME_UNDERSCORE="$(printf '%s\n' "$1" | tr '+-.' '_')"
+
+    step "create META-INF entry"
+    run install -d aar/META-INF
+    cat > aar/META-INF/README <<EOF
+This package is created by ndk-pkg $MY_VERSION. For more details, please look at https://github.com/leleliu008/ndk-pkg
+EOF
+
+    step "create AndroidManifest.xml entry"
+    cat > aar/AndroidManifest.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.fpliu.android.ndk.pkg.$PACKAGE_NAME_UNDERSCORE"
+    android:versionCode="$INSTALLED_DATETIME"
+    android:versionName="$INSTALLED_PKG_VERS" >
+
+    <uses-sdk
+        android:minSdkVersion="$BUILD_USE_SDK_VERS"
+        android:targetSdkVersion="30" />
+
+</manifest>
+EOF
+
+    if [ no = yes ] ; then
+        step "create jni entry"
+        for INSTALLED_ABI in $PACKAGE_INSTALLED_ABIS
+        do
+            run install -d "aar/jni/$INSTALLED_ABI"
+            run cp "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib/*.so" "aar/jni/$INSTALLED_ABI"
+        done
+    fi
+
+    step "create prefab entry"
+    run install -d aar/prefab
+
+    cat > aar/prefab/prefab.json <<EOF
+{
+  "schema_version": 2,
+  "name": "$INSTALLED_PKG_NAME",
+  "version": "$INSTALLED_PKG_VERS",
+  "dependencies": []
+}
+EOF
+
+    if [ "$PACKAGE_HAVE_LIBRARY" = yes ] ; then
+        for LIBRARY_FILENAME in $(cd "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib"; ls lib*.so)
+        do
+            LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}"
+            LIBRARY_NAME="$(printf '%s\n' "$LIBRARY_FILENAME_PREFIX" | cut -c4-)"
+            MODULE_DIR="aar/prefab/modules/$LIBRARY_NAME"
+            run install -d "$MODULE_DIR"
+            cat > "$MODULE_DIR/module.json" <<EOF
+{
+  "export_libraries": [],
+  "android": {
+    "export_libraries": ["-l$LIBRARY_NAME"]
+  }
+}
+EOF
+            if [ "$PACKAGE_HAVE_INCLUDE" = yes ] ; then
+                run cp -r "$PACKAGE_INSTALLED_DIR/armeabi-v7a/include" "$MODULE_DIR"
+            fi
+
+            for INSTALLED_ABI in $PACKAGE_INSTALLED_ABIS
+            do
+                ABI_DIR="aar/prefab/modules/$LIBRARY_NAME/libs/android.$INSTALLED_ABI"
+                run install -d "$ABI_DIR"
+                run cp "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib/$LIBRARY_FILENAME" "$ABI_DIR"
+                printf '%s\n' "{\"api\": $BUILD_USE_SDK_VERS,\"abi\": \"$INSTALLED_ABI\",\"ndk\": 21,\"stl\": \"c++_shared\"}" > "$ABI_DIR/abi.json"
+            done
+        done
+    else
+        # header only
+        MODULE_DIR="aar/prefab/modules/$1"
+        run install -d "$MODULE_DIR"
+        run cp -r "$PACKAGE_INSTALLED_DIR/armeabi-v7a/include" "$MODULE_DIR"
+    fi
+
+    PACKED_FILE_NAME="$1-$INSTALLED_PKG_VERS.aar"
+
+    if command -v tree > /dev/null ; then
+        step "tree aar"
+        run tree aar --dirsfirst
+    fi
+
+    step "packing"
+    run cd aar
+    run zip -9 -r "../$PACKED_FILE_NAME" .
+    run cd ..
+
+    step "check if packed aar file is a valid zip file"
+    run unzip -t "$PACKED_FILE_NAME"
+
+    step "show disk usage statistics"
+    run "du -sh $PACKED_FILE_NAME | cut -f1 | sed 's/^/💠  /'"
+
+    if [ ! -d "$MY_BINARY_DIR" ] ; then
+        step "create cached binary dir"
+        run install -d "$MY_BINARY_DIR"
+    fi
+
+    step "copy packed file to cached binary dir"
+    run cp "$PACKED_FILE_NAME" "$MY_BINARY_DIR/"
 
     step "delete working directory"
     run rm -rf $WORKING_DIR
@@ -7581,7 +7748,7 @@ install_android_sdk_if_needed() {
 export ANDROID_HOME="$MY_HOME_DIR/android-sdk"
 export ANDROID_SDK_ROOT="\$ANDROID_HOME"
 
-export PATH="\$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:\$PATH"
+export PATH="\$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:\$PATH"
 export PATH="\$ANDROID_SDK_ROOT/platform-tools:\$PATH"
 export PATH="\$ANDROID_SDK_ROOT/build-tools/30.0.3:\$PATH"
 EOF
@@ -8095,6 +8262,8 @@ ${COLOR_GREEN}ndk-pkg uninstall <PACKAGE>...${COLOR_OFF}
 }
 
 main() {
+    set -e
+
     unset XTRACE
     unset COUNTRY
 
