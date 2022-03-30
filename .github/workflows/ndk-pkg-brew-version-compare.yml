@@ -2,9 +2,9 @@ name: ndk-pkg-brew-version-compare
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, dev ]
   schedule:
     - cron: '* 20 * * *'
 
@@ -21,4 +21,5 @@ jobs:
       - run: bin/ndk-pkg --help
       - run: bin/ndk-pkg env
       - run: bin/ndk-pkg update
+      - run: git -C ~/.ndk-pkg/repos.d/offical checkout ${{ github.ref }}
       - run: bin/ndk-pkg test
