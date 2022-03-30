@@ -50,7 +50,7 @@ jobs:
 
       - run: bin/ndk-pkg update
 
-      - run: git -C ~/.ndk-pkg/repos.d/offical checkout ${{ github.ref }}
+      - run: git -C ~/.ndk-pkg/repos.d/offical checkout ${{ github.ref_name }}
 
       - run: bin/ndk-pkg search lib
       - run: bin/ndk-pkg search zlib
