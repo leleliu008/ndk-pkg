@@ -2300,9 +2300,9 @@ darwin|  -   |  -  |cmake   |3.21.4|f818a10fe625b215e31d0c29c19a6563fb5f51ed7cc7
 linux |x86_64|  -  |ninja   |1.10.2|763464859c7ef2ea3a0a10f4df40d2025d3bb9438fcb1228404640410c0ec22d|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
 darwin|x86_64|  -  |ninja   |1.10.2|6fa359f491fac7e5185273c6421a000eea6a2f0febf0ac03ac900bd4d80ed2a5|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
 
-linux |x86_64|  -  |golang  |1.17.2|f242a9db6a0ad1846de7b6d94d507915d14062660616a61ef7c808a76e4f1676|https://dl.google.com/go/go1.17.2.linux-amd64.tar.gz
-darwin|x86_64|  -  |golang  |1.17.2|7914497a302a132a465d33f5ee044ce05568bacdb390ab805cb75a3435a23f94|https://dl.google.com/go/go1.17.2.darwin-amd64.tar.gz
-darwin|arm64 |  -  |golang  |1.17.2|ce8771bd3edfb5b28104084b56bbb532eeb47fbb7769c3e664c6223712c30904|https://dl.google.com/go/go1.17.2.darwin-arm64.tar.gz
+linux |x86_64|  -  |golang  |1.18|e85278e98f57cdb150fe8409e6e5df5343ecb13cebf03a5d5ff12bd55a80264f|https://dl.google.com/go/go1.18.linux-amd64.tar.gz
+darwin|x86_64|  -  |golang  |1.18|70bb4a066997535e346c8bfa3e0dfe250d61100b17ccc5676274642447834969|https://dl.google.com/go/go1.18.darwin-amd64.tar.gz
+darwin|arm64 |  -  |golang  |1.18|9cab6123af9ffade905525d79fc9ee76651e716c85f1f215872b5f2976782480|https://dl.google.com/go/go1.18.darwin-arm64.tar.gz
 
 linux |arm64 |glibc|jdk     |17.0.1|a5e954a4e89b50277f20345034aea0ccf06f53705d4ec586b268b14ff42468f7|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-aarch64_bin.tar.gz
 linux |x86_64|glibc|jdk     |17.0.1|6f25bcb94d3e22fb52a4632c74e03b403834e81b68701ab7ecd900fb9cd89f43|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-x64_bin.tar.gz
@@ -3651,7 +3651,7 @@ __load_formula_of_the_given_package() {
             make)        package add dep.cmd make  ;;
             rake)        package add dep.cmd ruby gem rake ;;
             cargo)       package add dep.cmd rustup rustc cargo ;;
-            go)          package add dep.cmd 'go>=1.17' ;;
+            go)          package add dep.cmd 'go>=1.18' ;;
         esac
     done
 
@@ -5343,7 +5343,7 @@ EOF
     fi
 
     if [ "$NEED_RUN_TREE" = yes ] ; then
-        step "list files of installed dir in a tree-like format"
+        step "list installed files in a tree-like format"
         __tree_the_given_installed_package "$1" $TREE_ARGS
     fi
 
@@ -7840,7 +7840,6 @@ inspect_install_arguments() {
 
     CCACHE_ENABLED=yes
 
-
     LOG_LEVEL_QUIET=0
     LOG_LEVEL_NORMAL=1
     LOG_LEVEL_VERBOSE=2
@@ -7860,6 +7859,7 @@ inspect_install_arguments() {
     INSTALL_DOC=yes
     INSTALL_LIB=yes
 
+    # https://clang.llvm.org/docs/JSONCompilationDatabase.html
     EXPORT_COMPILE_COMMANDS_JSON=no
 
     KEEP_WORKING_DIR=no
