@@ -145,7 +145,7 @@ function _ndk_pkg() {
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '--type=-[output file type]:type:(7z zip tar.gz tar.xz tar.bz2)'
+                        '--type=-[set packed file type]:type:(7z zip tar.gz tar.xz tar.bz2)'
                     ;;
                 homepage)
                     _arguments \
@@ -167,7 +167,7 @@ function _ndk_pkg() {
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
                         '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
-                        '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-work-dir[do not delete work-dir even if installed success]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
@@ -180,17 +180,18 @@ function _ndk_pkg() {
                         '--install-exe[install executable programs]' \
                         '--install-doc[install documents]' \
                         '--install-man[install manpages]' \
+                        '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         '--tree[list installed files in a tree-like format after installed successfully]' \
                         '--pack[pack after installed successfully]' \
                         '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
-                        '--pack-type=-[set output file type]:pack-type:(7z zip tar.gz tar.xz tar.bz2)'
+                        '--pack-type=-[set packed file type]:pack-type:(7z zip tar.gz tar.xz tar.bz2)'
                     ;;
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
                         '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
-                        '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-work-dir[do not delete work-dir even if installed success]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
@@ -203,11 +204,12 @@ function _ndk_pkg() {
                         '--install-exe[install executable programs]' \
                         '--install-doc[install documents]' \
                         '--install-man[install manpages]' \
+                        '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         '--tree[list installed files in a tree-like format after installed successfully]' \
                         '--pack[pack after installed successfully]' \
                         '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
-                        '--pack-type=-[set output file type]:pack-type:(7z zip tar.gz tar.xz tar.bz2)'
+                        '--pack-type=-[set packed file type]:pack-type:(7z zip tar.gz tar.xz tar.bz2)'
                     ;;
                 upgrade)
                     _arguments \
@@ -224,7 +226,7 @@ function _ndk_pkg() {
                                 *)  _arguments \
                                         ':package-name:_ndk_pkg_outdated_packages' \
                                         '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
-                                        '--jobs=-[set the number of jobs you can run in parallel with make]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                                         '--dry-run[dry-run]' \
                                         '--keep-work-dir[do not delete work-dir even if installed success]' \
                                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
@@ -237,11 +239,12 @@ function _ndk_pkg() {
                                         '--install-exe[install executable programs]' \
                                         '--install-doc[install documents]' \
                                         '--install-man[install manpages]' \
+                                        '--export-compile-commands-json[generates compile_commands.json]' \
                                         '--disable-ccache[do not use ccache]' \
                                         '--tree[list installed files in a tree-like format after installed successfully]' \
                                         '--pack[pack after installed successfully]' \
                                         '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
-                                        '--pack-type=-[set output file type]:pack-type:(7z zip tar.gz tar.xz tar.bz2)'
+                                        '--pack-type=-[set packed file type]:pack-type:(7z zip tar.gz tar.xz tar.bz2)'
                                     ;;
                             esac
                         esac

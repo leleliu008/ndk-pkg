@@ -6237,6 +6237,14 @@ __config_variables_for_the_given_target() {
         else
             export CMAKE_GENERATOR='Unix Makefiles'
         fi
+
+        # https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
+        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] ; then
+            export CMAKE_EXPORT_COMPILE_COMMANDS=ON
+        else
+            export CMAKE_EXPORT_COMPILE_COMMANDS=OFF
+        fi
+
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
@@ -6429,6 +6437,11 @@ __printf_variables_for_the_given_target() {
             printf '%s\n' "                      $item" | tr '|' ' '
         fi
     done
+
+    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+        echo
+        env | sed -n '/^CMAKE_/p'
+    fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
         echo
@@ -6861,7 +6874,7 @@ makew() {
 # https://developer.android.com/ndk/guides/cmake
 # run in a subshell
 cmakew() {
-    CMAKE_CONFIG_OPTIONS="-Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=OFF"
+    CMAKE_CONFIG_OPTIONS="-Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=$CMAKE_EXPORT_COMPILE_COMMANDS -DBUILD_TESTING=OFF"
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
@@ -7827,6 +7840,7 @@ inspect_install_arguments() {
 
     CCACHE_ENABLED=yes
 
+
     LOG_LEVEL_QUIET=0
     LOG_LEVEL_NORMAL=1
     LOG_LEVEL_VERBOSE=2
@@ -7845,6 +7859,8 @@ inspect_install_arguments() {
     INSTALL_MAN=yes
     INSTALL_DOC=yes
     INSTALL_LIB=yes
+
+    EXPORT_COMPILE_COMMANDS_JSON=no
 
     KEEP_WORKING_DIR=no
 
@@ -7911,6 +7927,9 @@ inspect_install_arguments() {
                     '') die "--build-type=<VALUE>, VALUE must not be empty." ;;
                     *)  die "--build-type=<VALUE>, VALUE must be one of debug release"
                 esac
+                ;;
+            --export-compile-commands-json)
+                EXPORT_COMPILE_COMMANDS_JSON=yes
                 ;;
             --install-doc)
                 INSTALL_DOC=yes
