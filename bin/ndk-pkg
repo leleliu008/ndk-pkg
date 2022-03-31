@@ -3619,20 +3619,20 @@ __load_formula_of_the_given_package() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            autogen)     PACKAGE_BUILD_SYSTEM_AUTOGENSH=yes ;;
-            autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=yes ;;
-            configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=yes ;;
             ndk-build)   PACKAGE_BUILD_SYSTEM_NDK_BUILD=yes ;;
-            cmake-make)  PACKAGE_BUILD_SYSTEM_CMAKE=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
-            cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
-            xmake)       PACKAGE_BUILD_SYSTEM_XMAKE=yes ;;
-            meson)       PACKAGE_BUILD_SYSTEM_MESON=yes ;;
-            ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
-            make)        PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            rake)        PACKAGE_BUILD_SYSTEM_RAKE=yes  ;;
-            cargo)       PACKAGE_BUILD_SYSTEM_CARGO=yes ;;
-            go)          PACKAGE_BUILD_SYSTEM_GO=yes    ;;
+            autogen)     PACKAGE_BUILD_SYSTEM_AUTOGENSH=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            cmake-make)  PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            xmake)       PACKAGE_BUILD_SYSTEM_XMAKE=yes     ;;
+            meson)       PACKAGE_BUILD_SYSTEM_MESON=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
+            ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes     ;;
+            make)        PACKAGE_BUILD_SYSTEM_GMAKE=yes     ;;
+            rake)        PACKAGE_BUILD_SYSTEM_RAKE=yes      ;;
+            cargo)       PACKAGE_BUILD_SYSTEM_CARGO=yes     ;;
+            go)          PACKAGE_BUILD_SYSTEM_GO=yes        ;;
         esac
     done
 
