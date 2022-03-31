@@ -1263,6 +1263,7 @@ version_of_command() {
     case $(basename "$1") in
       gclient) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
        ccache) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
+         bear) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f2 ;;
         xmake) "$1" --version 2> /dev/null | head -n 1 | cut -d '+' -f1 | cut -d 'v' -f2 ;;
         cmake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
          rake) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
@@ -5039,6 +5040,12 @@ __install_the_given_package() {
         package add dep.cmd ccache
     fi
 
+    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] ; then
+        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
+            package add dep.cmd bear
+        fi
+    fi
+
     step "handle required dependencies"
     for item in $PACKAGE_DEP_CMD
     do
@@ -6860,7 +6867,11 @@ makew() {
         MAKE_OPTIONS="$MAKE_OPTIONS --debug V=1"
     fi
 
-    run "$GMAKE $MAKE_OPTIONS $*"
+    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
+        run bear -- $GMAKE $MAKE_OPTIONS $*
+    else
+        run         $GMAKE $MAKE_OPTIONS $*
+    fi
 }
 
 # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
@@ -7838,6 +7849,7 @@ inspect_install_arguments() {
 
     unset DRYRUN
 
+      BEAR_ENABLED=yes
     CCACHE_ENABLED=yes
 
     LOG_LEVEL_QUIET=0
@@ -7894,6 +7906,9 @@ inspect_install_arguments() {
                 ;;
             --disable-ccache)
                 CCACHE_ENABLED=no
+                ;;
+            --disable-bear)
+                BEAR_ENABLED=no
                 ;;
             --dry-run)
                 DRYRUN=yes
