@@ -2895,7 +2895,7 @@ __install_command_via_run_install_script() {
             install_android_sdk_if_needed
             ;;
         gclient)
-            handle_dependency required exe bash
+            handle_dependency required exe git
 
             # https://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html
 
@@ -2905,7 +2905,8 @@ __install_command_via_run_install_script() {
 
             if [ -d "$MY_HOME_DIR/native/depot_tools" ] ; then
                 if [ -d "$MY_HOME_DIR/native/depot_tools/.git" ] && git -C "$MY_HOME_DIR/native/depot_tools" rev-parse 2> /dev/null ; then
-                    run git -C "$MY_HOME_DIR/native/depot_tools" pull
+                    # do nothing. depot_tools will be automatically updated when you running 'yes | gclient sync' command
+                    :
                 else
                     run rm -rf "$MY_HOME_DIR/native/depot_tools"
                     run git -C "$MY_HOME_DIR/native/depot_tools" clone https://gitlab.com/webrtc-mirror/depot_tools.git
