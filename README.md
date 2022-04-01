@@ -155,7 +155,7 @@ endif()
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
 
 
-*   **update the formula repositories**
+*   **update formula repositories**
 
         ndk-pkg update
         
@@ -167,12 +167,12 @@ endif()
         
     **Note**: In general, you don't need to run this command in advance. `ndk-pkg install <PKG>` will run this command if [Android NDK](https://developer.android.google.cn/ndk) not found on your build machine.
 
-*   search packages can be installed
+*   **search packages**
         
         ndk-pkg search curl
         ndk-pkg search lib
         
-*   **show infomation of the given package or all available packages**
+*   **show infomation of the given package**
         
         ndk-pkg info curl
         ndk-pkg info curl version
@@ -231,15 +231,15 @@ endif()
         ndk-pkg upgrade @self --china -x
         
 
-*   **list the avaliable formula repos**
+*   **list the avaliable formula repositories**
 
         ndk-pkg formula-repo list
 
-*   **add a new formula repo**
+*   **add a new formula repository**
 
         ndk-pkg formula-repo add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository.git
 
-*   **delete a existing formula repo**
+*   **delete a existing formula repository**
 
         ndk-pkg formula-repo del my_repo
 
@@ -309,19 +309,16 @@ endif()
         
         ndk-pkg is-outdated curl
         
-*   **list files of the given installed package in a tree-like format.**
+*   **list files of the given installed package in a tree-like format**
         
         ndk-pkg tree curl
         ndk-pkg tree curl --dirsfirst
         ndk-pkg tree curl -L 3
         ndk-pkg tree curl -L 3 --dirsfirst
         
-*   **download formula resources of the given package to the cache**
+*   **download formula resources of the given package to the local cache**
         
         ndk-pkg fetch curl
-        
-*   **download formula resources of all available packages to the cache**
-
         ndk-pkg fetch @all
 
 *   **show logs of the given installed package**
@@ -348,11 +345,11 @@ endif()
         ndk-pkg homepage --open curl
         ndk-pkg homepage curl --open
         
-*   **show the depended packages of the given package**
+*   **show packages that are depended by the given package**
         
         ndk-pkg depends curl
         
-*   **cleanup the unused cache**
+*   **cleanup the unused cached files**
         
         ndk-pkg cleanup
         
