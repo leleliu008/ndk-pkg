@@ -8,7 +8,10 @@ _commands=(
     '--homedir:show home directory of this command.'
     '--homepage:show home webpage of this command.'
     'search:search packages can be installed.'
-    'target:list the supported target abis, archs, triples, api-levels.'
+    'ls-target-abis:list the supported target abis.'
+    'ls-target-archs:list the supported target archs.'
+    'ls-target-levels:list the supported android-sdk api-levels.'
+    'ls-target-triples:list the supported target triples.'
     'ls-available:list the available packages.'
     'ls-installed:list the installed packages.'
     'ls-outdated:list the installed packages which can be upgraded.'
@@ -35,13 +38,6 @@ _commands=(
     'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
     'ndkmanager:install android-ndk to ~/.ndk-pkg.'
-)
-
-_target=(
-    'abis:list the supported target abis.'
-    'archs:list the supported target archs.'
-    'levels:list the supported android-sdk api-levels.'
-    'triples:list the supported target triples.'
 )
 
 function _ndk_pkg_commands() {
@@ -77,7 +73,6 @@ function _ndk_pkg() {
     case $state in
         option)
             case $words[1] in
-                target) _arguments '1: :{_describe 'target' _target}' ;;
                 ndkmanager)
                     _arguments \
                         ':action:(ls-available install)' \
@@ -161,12 +156,12 @@ function _ndk_pkg() {
                 logs)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:abi:($(ndk-pkg target abis))'
+                        '2:abi:($(ndk-pkg ls-target-abis))'
                     ;;
                 install)
                     _arguments \
                         ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
-                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-work-dir[do not delete work-dir even if installed success]' \
@@ -190,7 +185,7 @@ function _ndk_pkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
-                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-work-dir[do not delete work-dir even if installed success]' \
@@ -225,7 +220,7 @@ function _ndk_pkg() {
                                     ;;
                                 *)  _arguments \
                                         ':package-name:_ndk_pkg_outdated_packages' \
-                                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
+                                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
                                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                                         '--dry-run[dry-run]' \
                                         '--keep-work-dir[do not delete work-dir even if installed success]' \
@@ -263,7 +258,7 @@ function _ndk_pkg() {
                 ldd)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:abi:($(ndk-pkg target abis))' \
+                        '2:abi:($(ndk-pkg ls-target-abis))' \
                         '3:type:(bin lib)'
                     ;;
                 gen-github-workflows)

@@ -67,10 +67,10 @@ jobs:
       - run: bin/ndk-pkg formula-repo list
       - run: bin/ndk-pkg formula view curl
 
-      - run: bin/ndk-pkg target abis
-      - run: bin/ndk-pkg target archs
-      - run: bin/ndk-pkg target triples
-      - run: bin/ndk-pkg target levels
+      - run: bin/ndk-pkg ls-target-abis
+      - run: bin/ndk-pkg ls-target-archs
+      - run: bin/ndk-pkg ls-target-triples
+      - run: bin/ndk-pkg ls-target-levels
 
       - run: bin/ndk-pkg ls-available
       - run: bin/ndk-pkg ls-installed

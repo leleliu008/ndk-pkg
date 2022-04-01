@@ -7605,7 +7605,7 @@ ndkmanager() {
 
 setup_build_toolchains_env() {
     debug() {
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
+        if [ -n "$LOG_LEVEL" ] && [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
             echo "$*"
         fi
     }
@@ -8199,16 +8199,16 @@ ${COLOR_GREEN}ndk-pkg update${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg cleanup${COLOR_OFF}
     cleanup the unused cache.
 
-${COLOR_GREEN}ndk-pkg target levels${COLOR_OFF}
-    list the supported target os's api-levels.
+${COLOR_GREEN}ndk-pkg ls-target-levels${COLOR_OFF}
+    list the supported target sdk api-levels.
 
-${COLOR_GREEN}ndk-pkg target triples${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg ls-target-triples${COLOR_OFF}
     list the supported target triples.
 
-${COLOR_GREEN}ndk-pkg target archs${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg ls-target-archs${COLOR_OFF}
     list the supported target archs.
 
-${COLOR_GREEN}ndk-pkg target abis${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg ls-target-abis${COLOR_OFF}
     list the supported target abis.
 
 ${COLOR_GREEN}ndk-pkg ls-available${COLOR_OFF}
@@ -8348,16 +8348,12 @@ main() {
             echo
             setup_build_toolchains_env
             ;;
-        target)
-            shift
-            case $1 in
-                levels)  shift; __list_supported_target_sdk_api_levels ;;
-                triples) shift; __list_supported_target_triples ;;
-                archs)   shift; __list_supported_target_archs ;;
-                abis)    shift; __list_supported_target_abis ;;
-                *) help 1
-            esac
-            ;;
+
+        ls-target-levels)  shift; __list_supported_target_sdk_api_levels ;;
+        ls-target-triples) shift; __list_supported_target_triples ;;
+        ls-target-archs)   shift; __list_supported_target_archs ;;
+        ls-target-abis)    shift; __list_supported_target_abis ;;
+
         ls-available) shift; __list_available_packages ;;
         ls-installed) shift; __list_installed_packages ;;
         ls-outdated)  shift; __list__outdated_packages ;;

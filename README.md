@@ -265,19 +265,19 @@ endif()
         
 *   **list the supported target abis**
         
-        ndk-pkg target abis
+        ndk-pkg ls-target-abis
 
 *   **list the supported target archs**
         
-        ndk-pkg target archs
+        ndk-pkg ls-target-archs
 
 *   **list the supported target triples**
         
-        ndk-pkg target triples
+        ndk-pkg ls-target-triples
 
 *   **list the supported sdk api-levels**
         
-        ndk-pkg target levels
+        ndk-pkg ls-target-levels
         
 *   **list the available packages**
         

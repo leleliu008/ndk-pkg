@@ -56,10 +56,10 @@ jobs:
       - run: bin/ndk-pkg tree zlib
       - run: bin/ndk-pkg pack zlib
 
-      - run: bin/ndk-pkg target abis
-      - run: bin/ndk-pkg target archs
-      - run: bin/ndk-pkg target triples
-      - run: bin/ndk-pkg target levels
+      - run: bin/ndk-pkg ls-target-abis
+      - run: bin/ndk-pkg ls-target-archs
+      - run: bin/ndk-pkg ls-target-triples
+      - run: bin/ndk-pkg ls-target-levels
 
       - run: bin/ndk-pkg ls-available
       - run: bin/ndk-pkg ls-installed

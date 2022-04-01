@@ -58,10 +58,10 @@ jobs:
       - run: bin/ndk-pkg tree zlib
       - run: bin/ndk-pkg pack zlib
 
-      - run: bin/ndk-pkg target abis
-      - run: bin/ndk-pkg target archs
-      - run: bin/ndk-pkg target triples
-      - run: bin/ndk-pkg target levels
+      - run: bin/ndk-pkg ls-target-abis
+      - run: bin/ndk-pkg ls-target-archs
+      - run: bin/ndk-pkg ls-target-triples
+      - run: bin/ndk-pkg ls-target-levels
 
       - run: bin/ndk-pkg ls-available
       - run: bin/ndk-pkg ls-installed
@@ -122,10 +122,10 @@ jobs:
       - run: ndk-pkg formula-repo list
       - run: ndk-pkg formula view curl
 
-      - run: ndk-pkg target abis
-      - run: ndk-pkg target archs
-      - run: ndk-pkg target triples
-      - run: ndk-pkg target levels
+      - run: ndk-pkg ls-target-abis
+      - run: ndk-pkg ls-target-archs
+      - run: ndk-pkg ls-target-triples
+      - run: ndk-pkg ls-target-levels
 
       - run: ndk-pkg ls-available
       - run: ndk-pkg ls-installed
