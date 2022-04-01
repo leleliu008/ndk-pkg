@@ -3681,6 +3681,7 @@ __load_formula_of_the_given_package() {
     fi
 
     package add dep.cmd 'find'
+    package add dep.cmd 'file'
     package add dep.cmd 'tree'
     package add dep.cmd 'hexdump'
 
@@ -5555,6 +5556,19 @@ EOF
             fi
         }
     }
+
+    if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
+        step2 "show .so files"
+
+        unset PACKAGE_INSTALLED_SHARED_LIBRARIES
+        PACKAGE_INSTALLED_SHARED_LIBRARIES="$(find "$TARGET_INSTALL_DIR/lib" -name "lib*.so*")"
+
+        if [ -z "$PACKAGE_INSTALLED_SHARED_LIBRARIES" ] ; then
+            warn "no .so files installed."
+        else
+            run file $PACKAGE_INSTALLED_SHARED_LIBRARIES
+        fi
+    fi
 
     step2 "justfy ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
     __justfy_elf_files_for_the_given_target $@ || return 1
@@ -7976,15 +7990,14 @@ inspect_install_arguments() {
                 BUILD_NJOBS=$(getvalue "$1")
                 is_integer "$BUILD_NJOBS" || die "--jobs=<VALUE>, VALUE must be a integer."
                 ;;
+            @all)
+                USER_SPECIFIED_PACKAGE_LIST="$(__list_available_packages)"
+                ;;
             [a-z]*)
-                if [ "$1" = 'all' ] ; then
-                    USER_SPECIFIED_PACKAGE_LIST="$(__list_available_packages)"
+                if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
+                    USER_SPECIFIED_PACKAGE_LIST="$1"
                 else
-                    if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
-                        USER_SPECIFIED_PACKAGE_LIST="$1"
-                    else
-                        USER_SPECIFIED_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST $1"
-                    fi
+                    USER_SPECIFIED_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST $1"
                 fi
                 ;;
             *)  die "unrecognized argument: $1"

@@ -128,7 +128,7 @@ function _ndk_pkg() {
                     ;;
                 info)
                     _arguments \
-                        '1:package-name:(@all $(ndk-pkg ls-available))' \
+                        '1:package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
                         '*:: :->info-subcommand'
                     case $state in
                         info-subcommand)
@@ -165,7 +165,7 @@ function _ndk_pkg() {
                     ;;
                 install)
                     _arguments \
-                        ':package-name:_ndk_pkg_available_packages' \
+                        ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
                         '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg target levels))' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
