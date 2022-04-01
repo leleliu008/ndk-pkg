@@ -130,19 +130,19 @@ endif()
         ndk-pkg -V
         ndk-pkg --version
         
-*   show home directory of this software
+*   **show home directory of this software**
 
         ndk-pkg --homedir
 
-*   show home webpage of this software
+*   **show home webpage of this software**
 
         ndk-pkg --homepage
 
-*   show current machine os and [Android NDK](https://developer.android.google.cn/ndk) toolchain info
+*   **show current machine os and [Android NDK](https://developer.android.google.cn/ndk) toolchain info**
 
         ndk-pkg env
 
-*   integrate `zsh-completion` script
+*   **integrate `zsh-completion` script**
 
         ndk-pkg integrate zsh
         ndk-pkg integrate zsh --output-dir=/usr/local/share/zsh/site-functions
@@ -155,13 +155,13 @@ endif()
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit`
 
 
-*   update the formula repositories
+*   **update the formula repositories**
 
         ndk-pkg update
         
     **Note:** this software supports multi formula repositories. Offical formula repository is [ndk-pkg-formula-repository](https://github.com/leleliu008/ndk-pkg-formula-repository)
 
-*   install [Android NDK](https://developer.android.google.cn/ndk)
+*   **install [Android NDK](https://developer.android.google.cn/ndk)**
 
         ndk-pkg ndkmanager install r23b
         
@@ -172,7 +172,7 @@ endif()
         ndk-pkg search curl
         ndk-pkg search lib
         
-*   show infomation of the given package or all available packages
+*   **show infomation of the given package or all available packages**
         
         ndk-pkg info curl
         ndk-pkg info curl version
@@ -196,7 +196,7 @@ endif()
 
     For more keys, please see [README.md](https://github.com/leleliu008/ndk-pkg-formula-repository/blob/master/README.md#the-function-must-be-invoked-on-top-of-the-formula)
 
-*   install packages
+*   **install packages**
         
         ndk-pkg install curl
         ndk-pkg install curl bzip2 --min-sdk-api-level=21
@@ -207,23 +207,23 @@ endif()
         ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run --keep-work-dir
         ndk-pkg install @all
         
-*   reinstall packages
+*   **reinstall packages**
         
         ndk-pkg reinstall curl
         ndk-pkg reinstall curl bzip2 --min-sdk-api-level=21 -v
         
-*   uninstall packages
+*   **uninstall packages**
 
         ndk-pkg uninstall curl
         ndk-pkg uninstall curl bzip2
         
-*   upgrade the outdated packages
+*   **upgrade the outdated packages**
 
         ndk-pkg upgrade
         ndk-pkg upgrade curl
         ndk-pkg upgrade curl bzip2 --min-sdk-api-level=21 -v
         
-*   upgrade this software
+*   **upgrade this software**
 
         ndk-pkg upgrade @self
         ndk-pkg upgrade @self -x
@@ -231,67 +231,67 @@ endif()
         ndk-pkg upgrade @self --china -x
         
 
-*   list the avaliable formula repos
+*   **list the avaliable formula repos**
 
         ndk-pkg formula-repo list
 
-*   add a new formula repo
+*   **add a new formula repo**
 
         ndk-pkg formula-repo add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository.git
 
-*   delete a existing formula repo
+*   **delete a existing formula repo**
 
         ndk-pkg formula-repo del my_repo
 
-*   view the formula of the given package
+*   **view the formula of the given package**
         
         ndk-pkg formula view curl
         
-*   edit the formula of the given package
+*   **edit the formula of the given package**
         
         ndk-pkg formula edit curl
         
-*   create the formula of the given package
+*   **create the formula of the given package**
         
         ndk-pkg formula create curl
         
-*   delete the formula of the given package
+*   **delete the formula of the given package**
         
         ndk-pkg formula delete curl
         
-*   rename the formula of the given package to new name
+*   **rename the formula of the given package to new name**
         
         ndk-pkg formula rename curl curl7
         
-*   list the supported target abis
+*   **list the supported target abis**
         
         ndk-pkg target abis
 
-*   list the supported target archs
+*   **list the supported target archs**
         
         ndk-pkg target archs
 
-*   list the supported target triples
+*   **list the supported target triples**
         
         ndk-pkg target triples
 
-*   list the supported sdk api-levels
+*   **list the supported sdk api-levels**
         
         ndk-pkg target levels
         
-*   list the available packages
+*   **list the available packages**
         
         ndk-pkg ls-available
         
-*   list the installed packages
+*   **list the installed packages**
         
         ndk-pkg ls-installed
         
-*   list the outdated packages
+*   **list the outdated packages**
         
         ndk-pkg ls-outdated
         
-*   is the given package available ?
+*   **is the given package available ?**
         
         ndk-pkg is-available curl
         ndk-pkg is-available curl ge 7.50.0
@@ -301,37 +301,37 @@ endif()
         ndk-pkg is-available curl eq 7.50.0
         ndk-pkg is-available curl ne 7.50.0
         
-*   is the given package installed ?
+*   **is the given package installed ?**
         
         ndk-pkg is-installed curl
         
-*   is the given package outdated ?
+*   **is the given package outdated ?**
         
         ndk-pkg is-outdated curl
         
-*   list files of the given installed package in a tree-like format.
+*   **list files of the given installed package in a tree-like format.**
         
         ndk-pkg tree curl
         ndk-pkg tree curl --dirsfirst
         ndk-pkg tree curl -L 3
         ndk-pkg tree curl -L 3 --dirsfirst
         
-*   download formula resources of the given package to the cache
+*   **download formula resources of the given package to the cache**
         
         ndk-pkg fetch curl
         
-*   download formula resources of all available packages to the cache
+*   **download formula resources of all available packages to the cache**
 
         ndk-pkg fetch @all
 
-*   show logs of the given installed package
+*   **show logs of the given installed package**
         
         ndk-pkg logs curl armeabi-v7a
         ndk-pkg logs curl arm64-v8a
         ndk-pkg logs curl x86
         ndk-pkg logs curl x86_64
         
-*   pack the given installed package
+*   **pack the given installed package**
         
         ndk-pkg pack curl
         ndk-pkg pack curl --type=tar.gz
@@ -339,19 +339,20 @@ endif()
         ndk-pkg pack curl --type=tar.bz2
         ndk-pkg pack curl --type=zip
         ndk-pkg pack curl --type=7z
+        ndk-pkg pack curl --type=aar
         
-*   show or open the homepage of the given package or this project
+*   **show or open the homepage of the given package or this project**
         
         ndk-pkg homepage
         ndk-pkg homepage --open
         ndk-pkg homepage --open curl
         ndk-pkg homepage curl --open
         
-*   show the depended packages of the given package
+*   **show the depended packages of the given package**
         
         ndk-pkg depends curl
         
-*   cleanup the unused cache
+*   **cleanup the unused cache**
         
         ndk-pkg cleanup
         
