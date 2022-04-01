@@ -120,12 +120,12 @@ endif()
 
 
 ## ndk-pkg command usage
-*   show help of this command
+*   **show help of this command**
         
         ndk-pkg -h
         ndk-pkg --help
         
-*   show version of this command
+*   **show version of this command**
 
         ndk-pkg -V
         ndk-pkg --version
@@ -205,6 +205,7 @@ endif()
         ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x
         ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run
         ndk-pkg install curl bzip2 --min-sdk-api-level=21 --jobs=4 -v -x --dry-run --keep-work-dir
+        ndk-pkg install @all
         
 *   reinstall packages
         
