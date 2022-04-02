@@ -136,7 +136,11 @@ function _ndk_pkg() {
                 fetch)
                     _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' ;;
                 depends)
-                    _arguments ':package-name:_ndk_pkg_available_packages' ;;
+                    _arguments \
+                        '1:package-name:_ndk_pkg_available_packages' \
+                        '--format=-[set output format]:format:(list json graph)' \
+                        '--brief[output breif]'
+                    ;;
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \

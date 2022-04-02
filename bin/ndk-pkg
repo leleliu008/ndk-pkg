@@ -4487,23 +4487,82 @@ __open_homepage_of_the_given_package() {
     fi
 }
 
-__show_depends_of_the_given_package() {
+__show_packages_depended_by_the_given_package() {
     die_if_package_is_not_specified "$1"
 
-    __gen_dependency_package_tree_of_the_given_package "$1"
+    PACKAGE_NAME="$1"
 
-    if [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT" ] ; then
-        cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT"
-    elif [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" ] ; then
-        for item in open feh eog lsix
-        do
-            if command -v $item > /dev/null && $item "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" ; then
-                return 0
-            fi
-        done
-    elif [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT" ] ; then
-        cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
+    shift
+
+    unset OUTPUT_FORMAT
+    unset OUTPUT_BRIEF
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --format=list)
+                OUTPUT_FORMAT=list
+                ;;
+            --format=json)
+                OUTPUT_FORMAT=json
+                ;;
+            --format=graph)
+                OUTPUT_FORMAT=graph
+                ;;
+            --format=*)
+                OUTPUT_FORMAT=$(getvalue $1)
+                die "unsupported format: $OUTPUT_FORMAT"
+                ;;
+            --brief)
+                OUTPUT_BRIEF=yes
+                ;;
+            -x) ;;
+            *)  die "unrecognized argumet: $1"
+        esac
+        shift
+    done
+
+    if [ -z "$OUTPUT_FORMAT" ] ; then
+        OUTPUT_FORMAT=list
     fi
+
+    case $OUTPUT_FORMAT in
+        list)
+            __gen_dependency_package_list_of_the_given_package "$PACKAGE_NAME"
+
+            if [ "$OUTPUT_BRIEF" = yes ] ; then
+                printf '%s\n' "$DEPENDENCY_PACKAGE_LIST" | sed 's|[ ][ ]*|\n|g'
+            else
+                for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
+                do
+                    if is_package_installed "$DEPENDENCY_PACKAGE_NAME" ; then
+                        DEPENDENCY_PACKAGE_IS_INSTALLED=installed
+                    else
+                        DEPENDENCY_PACKAGE_IS_INSTALLED=
+                    fi
+
+                    printf '%-10s %s\n' "$DEPENDENCY_PACKAGE_NAME" "$DEPENDENCY_PACKAGE_IS_INSTALLED"
+                done
+            fi
+            ;;
+        json)
+            ;;
+        graph)
+            __gen_dependency_package_tree_of_the_given_package "$PACKAGE_NAME"
+
+            if [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT" ] ; then
+                cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT"
+            elif [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" ] ; then
+                for item in open feh eog lsix
+                do
+                    if command -v $item > /dev/null && $item "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" ; then
+                        return 0
+                    fi
+                done
+            elif [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT" ] ; then
+                cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
+            fi
+    esac
 }
 
 __logs_the_given_installed_package() {
@@ -8443,9 +8502,9 @@ main() {
                 *)  die "ndk-pkg integrate $1: not support."
             esac
             ;;
-        homepage) shift; __show_or_open_homepage_of_the_given_package $@ ;;
-        depends)  shift;          __show_depends_of_the_given_package $@ ;;
-        fetch)    shift;       __fetch_resources_of_the_given_package $@ ;;
+        homepage) shift;  __show_or_open_homepage_of_the_given_package $@ ;;
+        depends)  shift; __show_packages_depended_by_the_given_package $@ ;;
+        fetch)    shift;        __fetch_resources_of_the_given_package $@ ;;
 
         logs) shift; __logs_the_given_installed_package $@ ;;
         pack) shift; __pack_the_given_installed_package $@ ;;
