@@ -1856,7 +1856,18 @@ __pmw_get_available_package_name_by_command_name_zypper() {
         diff) echo 'diffutils';;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
-  7z|7za|7zr) echo 'p7zip'    ;;
+         7zr) echo 'p7zip'    ;;
+      7z|7za)
+            if [ "$NATIVE_OS_TYPE" = opensuse-leap ] ; then
+                if [ "$NATIVE_OS_VERS" -gt 15.1 ] ; then
+                    echo 'p7zip-full'
+                else
+                    echo 'p7zip'
+                fi
+            else
+                echo 'p7zip'
+            fi
+            ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
