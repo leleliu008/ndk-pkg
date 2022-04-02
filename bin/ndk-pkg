@@ -4195,7 +4195,7 @@ __gen_github_workflows() {
             if [ "$x" = "$y" ] ; then
                 continue
             else
-                for z in $(get_direct_dependency_package_list_of_the_given_package "$y")
+                for z in $(__get_packages_directly_depended_by_the_given_package "$y")
                 do
                     if [ "$x" = "$z" ] ; then
                         BREAK=yes
@@ -4487,6 +4487,7 @@ __open_homepage_of_the_given_package() {
     fi
 }
 
+# __show_packages_depended_by_the_given_package <PKG-NAME> [--format=<list|json|graph>] [--brief] [-r]
 __show_packages_depended_by_the_given_package() {
     die_if_package_is_not_specified "$1"
 
@@ -4496,6 +4497,7 @@ __show_packages_depended_by_the_given_package() {
 
     unset OUTPUT_FORMAT
     unset OUTPUT_BRIEF
+    unset RECURSIVE
 
     while [ -n "$1" ]
     do
@@ -4516,8 +4518,9 @@ __show_packages_depended_by_the_given_package() {
             --brief)
                 OUTPUT_BRIEF=yes
                 ;;
-            -x) ;;
-            *)  die "unrecognized argumet: $1"
+            -r) RECURSIVE=yes ;;
+            -x) set -x ;;
+            *)  die "$_0 depends <PKG-NAME> [--format=<list|json|graph>] [--brief] [-r], unrecognized argumet: $1"
         esac
         shift
     done
@@ -4528,39 +4531,77 @@ __show_packages_depended_by_the_given_package() {
 
     case $OUTPUT_FORMAT in
         list)
-            __gen_dependency_package_list_of_the_given_package "$PACKAGE_NAME"
+            unset DEPENDENCY_PACKAGE_LIST
+            DEPENDENCY_PACKAGE_LIST=$(__get_packages_recursively_depended_by_the_given_package "$PACKAGE_NAME")
 
             if [ "$OUTPUT_BRIEF" = yes ] ; then
-                printf '%s\n' "$DEPENDENCY_PACKAGE_LIST" | sed 's|[ ][ ]*|\n|g'
+                DEPENDENCY_PACKAGE_LIST="$(printf '%s\n' "$DEPENDENCY_PACKAGE_LIST" | sed 's|[ ]$||')"
+                if [ -n "$DEPENDENCY_PACKAGE_LIST" ] ; then
+                    printf '%s\n' "$DEPENDENCY_PACKAGE_LIST" | sed 's|[ ][ ]*|\n|g'
+                fi
             else
                 for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
                 do
                     if is_package_installed "$DEPENDENCY_PACKAGE_NAME" ; then
-                        DEPENDENCY_PACKAGE_IS_INSTALLED=installed
+                        DEPENDENCY_PACKAGE_IS_INSTALLED='installed:yes'
                     else
-                        DEPENDENCY_PACKAGE_IS_INSTALLED=
+                        DEPENDENCY_PACKAGE_IS_INSTALLED='installed:no '
                     fi
 
-                    printf '%-10s %s\n' "$DEPENDENCY_PACKAGE_NAME" "$DEPENDENCY_PACKAGE_IS_INSTALLED"
+                    unset DEPENDENCY_PACKAGE_DIRECT_DEPS
+                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME" | tr ' ' ',')
+
+                    printf '%-15s %-15s dependencies:%s\n' "$DEPENDENCY_PACKAGE_NAME" "$DEPENDENCY_PACKAGE_IS_INSTALLED" "$DEPENDENCY_PACKAGE_DIRECT_DEPS"
                 done
             fi
             ;;
         json)
+            unset DEPENDENCY_PACKAGE_LIST
+            DEPENDENCY_PACKAGE_LIST=$(__get_packages_recursively_depended_by_the_given_package "$PACKAGE_NAME")
+
+            JSON_ARRAY='['
+
+            if [ "$OUTPUT_BRIEF" = yes ] ; then
+                for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
+                do
+                    JSON_ARRAY="$JSON_ARRAY\"$DEPENDENCY_PACKAGE_NAME\","
+                done
+            else
+                for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
+                do
+                    if is_package_installed "$DEPENDENCY_PACKAGE_NAME" ; then
+                        DEPENDENCY_PACKAGE_IS_INSTALLED=true
+                    else
+                        DEPENDENCY_PACKAGE_IS_INSTALLED=false
+                    fi
+
+                    unset DEPENDENCY_PACKAGE_DIRECT_DEPS
+                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME" | tr ' ' ',')
+
+                    JSON_ARRAY="$JSON_ARRAY{\"name\":\"$DEPENDENCY_PACKAGE_NAME\",\"installed\":$DEPENDENCY_PACKAGE_IS_INSTALLED,\"dependencies\":\"$DEPENDENCY_PACKAGE_DIRECT_DEPS\"},"
+                done
+            fi
+
+            JSON_ARRAY=$(printf '%s\n' "$JSON_ARRAY" | sed 's|,$||')
+
+            JSON_ARRAY="$JSON_ARRAY]"
+
+            printf '%s\n' "$JSON_ARRAY"
             ;;
         graph)
-            __gen_dependency_package_tree_of_the_given_package "$PACKAGE_NAME"
+            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME"
 
-            if [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT" ] ; then
-                cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT"
-            elif [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" ] ; then
+            if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
+                cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
+            elif [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" ] ; then
                 for item in open feh eog lsix
                 do
-                    if command -v $item > /dev/null && $item "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" ; then
+                    if command -v $item > /dev/null && $item "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" ; then
                         return 0
                     fi
                 done
-            elif [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT" ] ; then
-                cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
+            elif [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" ] ; then
+                cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
             fi
     esac
 }
@@ -4620,76 +4661,36 @@ __logs_the_given_installed_package() {
 }
 
 # examples:
-# __pack_the_given_installed_package autoconf
-# __pack_the_given_installed_package autoconf --type=tar.xz
+# __pack_the_given_installed_package <PKG-NAME> <TYPE>
+# __pack_the_given_installed_package  autoconf  tar.xz
 __pack_the_given_installed_package() {
-    set -e
-
     __load_installed_metadata_of_the_given_package "$1"
 
-    shift
-
-    unset PACKED_FILE_SUFFIX
-
-    for arg in $@
-    do
-        case $arg in
-            --type=*)
-                PACKED_FILE_SUFFIX=$(getvalue $arg)
-                if [ -z "$PACKED_FILE_SUFFIX" ] ; then
-                    die "--type=<VALUE> , VALUE must not be empty."
-                fi
-                ;;
-            *)  die "unrecognized argument: $arg"
-        esac
-    done
-
-    if [ -z "$PACKED_FILE_SUFFIX" ] ; then
-        if command -v 7za > /dev/null ; then
-            PACKED_FILE_SUFFIX=7z
-        elif command -v zip > /dev/null ; then
-            PACKED_FILE_SUFFIX=zip
-        elif command -v tar > /dev/null ; then
-            if command -v xz > /dev/null ; then
-                PACKED_FILE_SUFFIX=tar.xz
-            elif command -v bzip2 > /dev/null ; then
-                PACKED_FILE_SUFFIX=tar.bz2
-            elif command -v gzip > /dev/null ; then
-                PACKED_FILE_SUFFIX=tar.gz
-            else
-                handle_dependency required exe xz
-                PACKED_FILE_SUFFIX=tar.xz
-            fi
-        else
-            handle_dependency required exe zip
-            PACKED_FILE_SUFFIX=tar.xz
-        fi
-    else
-        case $PACKED_FILE_SUFFIX in
-            7z) handle_dependency required exe 7za ;;
-            zip)handle_dependency required exe zip ;;
-            aar)__create_aar_for_the_given_installed_package "$INSTALLED_PKG_NAME"; return $? ;;
-            tar.gz)
-                handle_dependency required exe tar
-                handle_dependency required exe gzip
-                ;;
-            tar.xz)
-                handle_dependency required exe tar
-                handle_dependency required exe xz
-                ;;
-            tar.bz2)
-                handle_dependency required exe tar 
-                handle_dependency required exe bzip2 
-                ;;
-            *) die "unsupported type: $PACKED_FILE_SUFFIX, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
-        esac
-    fi
+    case $2 in
+        7z) handle_dependency required exe 7za ;;
+        zip)handle_dependency required exe zip ;;
+        aar)__create_aar_for_the_given_installed_package "$1"; return $? ;;
+        tar.gz)
+            handle_dependency required exe tar
+            handle_dependency required exe gzip
+            ;;
+        tar.xz)
+            handle_dependency required exe tar
+            handle_dependency required exe xz
+            ;;
+        tar.bz2)
+            handle_dependency required exe tar
+            handle_dependency required exe bzip2
+            ;;
+        '')die "$_0 pack <PKG-NAME> <TYPE>, TYPE must not be empty." ;;
+        *) die "$_0 pack <PKG-NAME> <TYPE>, unsupported TYPE: $2, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
+    esac
 
     unset PACKED_DIR_NAME
     unset PACKED_FILE_NAME
 
     PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-bin"
-    PACKED_FILE_NAME="$PACKED_DIR_NAME.$PACKED_FILE_SUFFIX"
+    PACKED_FILE_NAME="$PACKED_DIR_NAME.$2"
 
     step "create working directory"
     echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
@@ -4702,7 +4703,7 @@ __pack_the_given_installed_package() {
     run ln -s "$MY_INSTALL_DIR/$INSTALLED_PKG_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
-    case $PACKED_FILE_SUFFIX in
+    case $2 in
         7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
         zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME"   ;;
         tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
@@ -4746,11 +4747,11 @@ __create_aar_for_the_given_installed_package() {
 
     for INSTALLED_ABI in $PACKAGE_INSTALLED_ABIS
     do
-        if [ -d "$PACKAGE_INSTALL_DIR/$INSTALLED_ABI/include" ] ; then
+        if [ -d "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/include" ] ; then
             PACKAGE_HAVE_INCLUDE=yes
         fi
 
-        if [ ! -d "$PACKAGE_INSTALL_DIR/$INSTALLED_ABI/lib" ] ; then
+        if [ -d "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib" ] ; then
             PACKAGE_HAVE_LIBRARY=yes
         fi
 
@@ -4889,51 +4890,124 @@ EOF
     run rm -rf $WORKING_DIR
 }
 
-get_direct_dependency_package_list_of_the_given_package() {
-    grep '^\s*package set dep\.pkg\s*".*"' $(__path_of_formula_of_the_given_package $1) | sed 's/.*package set dep\.pkg.*"\(.*\)"/\1/'
+# this fuction should be run in subshell
+# __get_packages_directly_depended_by_the_given_package <PKG-NAME>
+__get_packages_directly_depended_by_the_given_package() {
+    unset PACKAGE_FORMULA_FILEPATH
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
+
+    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
+        die "$1 package's formula is not found."
+    fi
+
+    sed -n '/^\s*package\s\{1,\}set\s\{1,\}dep\.pkg\s\{1,\}".*"\s*/p' "$PACKAGE_FORMULA_FILEPATH" | sed 's/^\s*package\s\{1,\}set\s\{1,\}dep\.pkg\s\{1,\}"\s*\(.*\)\s*"\s*/\1/'
 }
 
-# $1 packageName, if packageName is not specified, USER_SPECIFIED_PACKAGE_LIST will be used
-# $2=yes invoked by myself
-__gen_dependency_package_list_of_the_given_package() {
-    [ "$2" = yes ] || {
-        unset I
-        unset DEPENDENCY_PACKAGE_LIST
-    }
+# this fuction should be run in subshell
+#
+# __get_packages_recursively_depended_by_the_given_package
+# __get_packages_recursively_depended_by_the_given_package <PKG-NAME> [yes]
+#
+# if PKG-NAME is not specified, $USER_SPECIFIED_PACKAGE_LIST will be used
+# yes means invoked by myself
+__get_packages_recursively_depended_by_the_given_package() {
+    if [ "$2" != yes ] ; then
+        DEPTH=1
+        RESULT=
+    fi
+
+    DEPTH=$(expr "$DEPTH" + 1)
 
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
     if [ -z "$1" ] ; then
         DIRECT_DEPENDENCY_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST"
     else
-        DIRECT_DEPENDENCY_PACKAGE_LIST=$(get_direct_dependency_package_list_of_the_given_package "$1")
+        DIRECT_DEPENDENCY_PACKAGE_LIST=$(__get_packages_directly_depended_by_the_given_package "$1")
     fi
 
-    for dependencyPkgName in $DIRECT_DEPENDENCY_PACKAGE_LIST
+    for DIRECT_DEPENDENCY_PACKAGE_NAME in $DIRECT_DEPENDENCY_PACKAGE_LIST
     do
-        die_if_package_is_not_available "$dependencyPkgName"
+        die_if_package_is_not_available "$DIRECT_DEPENDENCY_PACKAGE_NAME"
 
-        DEPENDENCY_PACKAGE_LIST_TEMP=""
+        DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS=no
 
-        for item in $DEPENDENCY_PACKAGE_LIST
+        for item in $RESULT
         do
-            if [ "$dependencyPkgName" = "$item" ] ; then
-                continue
-            else
-                DEPENDENCY_PACKAGE_LIST_TEMP="$DEPENDENCY_PACKAGE_LIST_TEMP $item"
+            if [ "$DIRECT_DEPENDENCY_PACKAGE_NAME" = "$item" ] ; then
+                DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS=yes
+                break
             fi
         done
 
-        DEPENDENCY_PACKAGE_LIST="$dependencyPkgName $DEPENDENCY_PACKAGE_LIST_TEMP"
+        if [ "$DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS" = no ] ; then
+            RESULT="$DIRECT_DEPENDENCY_PACKAGE_NAME $RESULT"
+        fi
 
-        __gen_dependency_package_list_of_the_given_package "$dependencyPkgName" yes
+        __get_packages_recursively_depended_by_the_given_package "$DIRECT_DEPENDENCY_PACKAGE_NAME" yes
     done
+
+    DEPTH=$(expr "$DEPTH" - 1)
+
+    if [ "$DEPTH" -eq 1 ] ; then
+        printf '%s\n' "$RESULT"
+    fi
+}
+
+# this fuction should be run in subshell
+#
+# __get_packages_recursively_depended_by_the_given_package
+# __get_packages_recursively_depended_by_the_given_package <PKG-NAME> [yes]
+#
+# if PKG-NAME is not specified, $USER_SPECIFIED_PACKAGE_LIST will be used
+# yes means invoked by myself
+__get_dependencies_recursively_depended_by_the_given_package() {
+    if [ "$2" != yes ] ; then
+        DEPTH=1
+        RESULT=
+    fi
+
+    DEPTH=$(expr "$DEPTH" + 1)
+
+    unset DIRECT_DEPENDENCY_PACKAGE_LIST
+    if [ -z "$1" ] ; then
+        DIRECT_DEPENDENCY_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST"
+    else
+        DIRECT_DEPENDENCY_PACKAGE_LIST=$(__get_packages_directly_depended_by_the_given_package "$1")
+    fi
+
+    for DIRECT_DEPENDENCY_PACKAGE_NAME in $DIRECT_DEPENDENCY_PACKAGE_LIST
+    do
+        die_if_package_is_not_available "$DIRECT_DEPENDENCY_PACKAGE_NAME"
+
+        DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS=no
+
+        for item in $(printf '%s\n' "$RESULT" | cut -d: -f1)
+        do
+            if [ "$DIRECT_DEPENDENCY_PACKAGE_NAME" = "$item" ] ; then
+                DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS=yes
+                break
+            fi
+        done
+
+        if [ "$DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS" = no ] ; then
+            RESULT="$DIRECT_DEPENDENCY_PACKAGE_NAME $RESULT"
+        fi
+
+        __get_packages_recursively_depended_by_the_given_package "$DIRECT_DEPENDENCY_PACKAGE_NAME" yes
+    done
+
+    DEPTH=$(expr "$DEPTH" - 1)
+
+    if [ "$DEPTH" -eq 1 ] ; then
+        printf '%s\n' "$RESULT"
+    fi
 }
 
 __get_dot_file_contents() {
     for PKG in $@
     do
         unset DIRECT_DEPENDENCY_PACKAGE_LIST
-        DIRECT_DEPENDENCY_PACKAGE_LIST="$(get_direct_dependency_package_list_of_the_given_package "$PKG")"
+        DIRECT_DEPENDENCY_PACKAGE_LIST="$(__get_packages_directly_depended_by_the_given_package "$PKG")"
         if [ -n "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
             printf '"%s" -> { "%s" }\n' "$PKG" "$(printf '%s\n' "$DIRECT_DEPENDENCY_PACKAGE_LIST" | sed 's/ /" "/g')"
             __get_dot_file_contents $DIRECT_DEPENDENCY_PACKAGE_LIST
@@ -4941,49 +5015,49 @@ __get_dot_file_contents() {
     done
 }
 
-# __gen_dependency_package_tree_of_the_given_package <PKG> [OUTPUT-DIR]
-__gen_dependency_package_tree_of_the_given_package() {
+# __gen_dependency_graph_recursively_depended_by_the_given_package <PKG> [OUTPUT-DIR]
+__gen_dependency_graph_recursively_depended_by_the_given_package() {
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
-    DIRECT_DEPENDENCY_PACKAGE_LIST="$(get_direct_dependency_package_list_of_the_given_package "$1")"
+    DIRECT_DEPENDENCY_PACKAGE_LIST="$(__get_packages_directly_depended_by_the_given_package "$1")"
 
     if [ -z "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
         return 0
     fi
 
-    unset PACKAGE_DEP_PKG_TREE_OUTPUT_DIR
+    unset PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR
 
     if [ -z "$2" ] ; then
-        PACKAGE_DEP_PKG_TREE_OUTPUT_DIR=$(mktemp -d) || return 1
+        PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR=$(mktemp -d) || return 1
     else
-        PACKAGE_DEP_PKG_TREE_OUTPUT_DIR="$2"
+        PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR="$2"
         [ -d "$2" ] || install -d "$2"
     fi
 
-    unset PACKAGE_DEP_PKG_TREE_FILEPATH_DOT
-    unset PACKAGE_DEP_PKG_TREE_FILEPATH_PNG
-    unset PACKAGE_DEP_PKG_TREE_FILEPATH_TXT
+    unset PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT
+    unset PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG
+    unset PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT
 
-    PACKAGE_DEP_PKG_TREE_FILEPATH_DOT="$PACKAGE_DEP_PKG_TREE_OUTPUT_DIR/dependencies.gv"
-    PACKAGE_DEP_PKG_TREE_FILEPATH_PNG="$PACKAGE_DEP_PKG_TREE_OUTPUT_DIR/dependencies.png"
-    PACKAGE_DEP_PKG_TREE_FILEPATH_TXT="$PACKAGE_DEP_PKG_TREE_OUTPUT_DIR/dependencies.txt"
+    PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR/dependencies.gv"
+    PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR/dependencies.png"
+    PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR/dependencies.txt"
 
-    printf 'digraph G {\n'       >  "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
-    __get_dot_file_contents "$1" >> "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
-    printf '}\n'                 >> "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
+    printf 'digraph G {\n'       >  "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
+    __get_dot_file_contents "$1" >> "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
+    printf '}\n'                 >> "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
 
     if command -v dot > /dev/null ; then
-        run dot -Tpng -o "$PACKAGE_DEP_PKG_TREE_FILEPATH_PNG" "$PACKAGE_DEP_PKG_TREE_FILEPATH_DOT"
+        run dot -Tpng -o "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
     else
         note "graphviz is not installed. we do not generate png format dependency image."
     fi
 
     # https://github.com/ggerganov/dot-to-ascii
     curl \
-        -o "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT" \
+        -o "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" \
         -s \
         -G \
         --data-urlencode "boxart=1" \
-        --data-urlencode "src=$(cat $PACKAGE_DEP_PKG_TREE_FILEPATH_DOT)" \
+        --data-urlencode "src=$(cat $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT)" \
         "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
 }
 
@@ -5023,7 +5097,8 @@ __install_the_given_packages() {
 
     __config_native_toolchain_environment_variables
 
-    __gen_dependency_package_list_of_the_given_package || return 1
+    unset DEPENDENCY_PACKAGE_LIST
+    DEPENDENCY_PACKAGE_LIST="$(__get_packages_recursively_depended_by_the_given_package)"
 
     if [ $(list_length $DEPENDENCY_PACKAGE_LIST) -gt 1 ] ; then
         echo "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
@@ -5164,15 +5239,15 @@ __install_the_given_package() {
     fi
     run install -d "$PACKAGE_WORKING_DIR"
 
-    step "calculate dependency packages"
+    step "calculate  packages are depended by $1"
     unset DEPENDENCY_PACKAGE_LIST
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
-        note "no dependency packages."
+        note "there's no packages are depended by $1."
     else
-        __gen_dependency_package_list_of_the_given_package "$1"                      || return 1
-        __gen_dependency_package_tree_of_the_given_package "$1" "$MY_INSTALL_DIR/$1" || return 1
-        if [ -f "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT" ] ; then
-            cat "$PACKAGE_DEP_PKG_TREE_FILEPATH_TXT"
+        DEPENDENCY_PACKAGE_LIST=$(__get_packages_recursively_depended_by_the_given_package "$1")
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" "$PACKAGE_WORKING_DIR"
+        if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
+            cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
         fi
     fi
 
@@ -5387,6 +5462,14 @@ EOF
     done
 
     [ "$DRYRUN" = yes ] && exit
+
+    if [ -n "$PACKAGE_DEP_PKG" ] ; then
+        step "record dependencies files."
+        for file in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG
+        do
+            run cp "$file" "$MY_INSTALL_DIR/$1"
+        done
+    fi
 
     step "record installed abis"
     run cp "$PACKAGE_WORKING_DIR/installed-abis" "$MY_INSTALL_DIR/$1/installed-abis"
@@ -8279,31 +8362,31 @@ ${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
     list the outdated  packages.
 
-${COLOR_GREEN}ndk-pkg is-available <PACKAGE> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-available <PKG-NAME> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
     is PACKAGE available?
 
-${COLOR_GREEN}ndk-pkg is-installed <PACKAGE>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-installed <PKG-NAME>${COLOR_OFF}
     is PACKAGE installed?
 
-${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-outdated  <PKG-NAME>${COLOR_OFF}
     is PACKAGE outdated?
 
 ${COLOR_GREEN}ndk-pkg search <KEYWORD>${COLOR_OFF}
     search available packages.
  
-${COLOR_GREEN}ndk-pkg formula create <PACKAGE>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg formula create <PKG-NAME>${COLOR_OFF}
     create a new formula.
 
-${COLOR_GREEN}ndk-pkg formula delete <PACKAGE>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg formula delete <PKG-NAME>${COLOR_OFF}
     delete a exist formula.
 
 ${COLOR_GREEN}ndk-pkg formula rename <P1> <P2>${COLOR_OFF}
     rename a exist formula to new name.
 
-${COLOR_GREEN}ndk-pkg formula view <PACKAGE>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg formula view <PKG-NAME>${COLOR_OFF}
     view the formula of the given package.
 
-${COLOR_GREEN}ndk-pkg formula edit <PACKAGE>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg formula edit <PKG-NAME>${COLOR_OFF}
     edit the formula of the given package.
 
 ${COLOR_GREEN}ndk-pkg formula list${COLOR_OFF}
@@ -8318,46 +8401,46 @@ ${COLOR_GREEN}ndk-pkg formula-repo add <NAME> <URL>${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg formula-repo del <NAME>${COLOR_OFF}
     delete a exist formula-repo.
 
-${COLOR_GREEN}ndk-pkg tree <PACKAGE> [--dirsfirst | -L N]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg tree <PKG-NAME> [--dirsfirst | -L N]${COLOR_OFF}
     list files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE> [--type=7z|zip|tar.gz|tar.xz|tar.bz2]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PKG-NAME> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
-${COLOR_GREEN}ndk-pkg logs <PACKAGE> <ABI>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg logs <PKG-NAME> <armeabi-v7a|arm64-v8a|x86|x86_64>${COLOR_OFF}
     show logs of the given installed package.
 
-${COLOR_GREEN}ndk-pkg info <PACKAGE> [KEY|--json|--shell]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg info <PKG-NAME> [KEY|--json|--shell]${COLOR_OFF}
     show information of the given package.
 
 ${COLOR_GREEN}ndk-pkg info @all [--json]${COLOR_OFF}
     show information of all the available packages.
 
-${COLOR_GREEN}ndk-pkg fetch <PACKAGE>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg fetch <PKG-NAME>${COLOR_OFF}
     download formula resources of the given package to the cache.
 
 ${COLOR_GREEN}ndk-pkg fetch @all${COLOR_OFF}
     download formula resources of all available packages to the cache.
 
-${COLOR_GREEN}ndk-pkg depends <PACKAGE>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg depends <PKG-NAME>${COLOR_OFF}
     show the depends of the given package.
 
-${COLOR_GREEN}ndk-pkg homepage [--open] [PACKAGE]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg homepage [--open] [PKG-NAME]${COLOR_OFF}
     show or open the homepage of the given package or this project in web browser.
 
-${COLOR_GREEN}ndk-pkg install   <PACKAGE>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg install   <PKG-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
     install the given packages.
 
-${COLOR_GREEN}ndk-pkg reinstall <PACKAGE>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg reinstall <PKG-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ndk-pkg upgrade   [PACKAGE]... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg upgrade   [PKG-NAME]... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
 ${COLOR_GREEN}ndk-pkg upgrade @self  [-x | --china]${COLOR_OFF}
     upgrade this software.
 
-${COLOR_GREEN}ndk-pkg uninstall <PACKAGE>...${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg uninstall <PKG-NAME>...${COLOR_OFF}
     uninstall the given packages.
     "
 

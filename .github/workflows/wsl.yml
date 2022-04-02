@@ -69,7 +69,13 @@ jobs:
 
 
       - run: bin/ndk-pkg tree zlib
-      - run: bin/ndk-pkg pack zlib
+
+      - run: bin/ndk-pkg pack zlib tar.gz
+      - run: bin/ndk-pkg pack zlib tar.xz
+      - run: bin/ndk-pkg pack zlib tar.bz2
+      - run: bin/ndk-pkg pack zlib 7z
+      - run: bin/ndk-pkg pack zlib zip
+      - run: bin/ndk-pkg pack zlib aar
 
       - run: bin/ndk-pkg formula-repo list
       - run: bin/ndk-pkg formula view curl

@@ -144,7 +144,7 @@ function _ndk_pkg() {
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '--type=-[set packed file type]:type:(7z zip tar.gz tar.xz tar.bz2)'
+                        '2:type:(7z zip aar tar.gz tar.xz tar.bz2)'
                     ;;
                 homepage)
                     _arguments \

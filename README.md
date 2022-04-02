@@ -330,13 +330,12 @@ endif()
         
 *   **pack the given installed package**
         
-        ndk-pkg pack curl
-        ndk-pkg pack curl --type=tar.gz
-        ndk-pkg pack curl --type=tar.xz
-        ndk-pkg pack curl --type=tar.bz2
-        ndk-pkg pack curl --type=zip
-        ndk-pkg pack curl --type=7z
-        ndk-pkg pack curl --type=aar
+        ndk-pkg pack curl tar.gz
+        ndk-pkg pack curl tar.xz
+        ndk-pkg pack curl tar.bz2
+        ndk-pkg pack curl 7z
+        ndk-pkg pack curl zip
+        ndk-pkg pack curl aar
         
 *   **show or open the homepage of the given package or this project**
         
