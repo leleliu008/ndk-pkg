@@ -1858,8 +1858,8 @@ __pmw_get_available_package_name_by_command_name_zypper() {
     realpath) echo 'coreutils';;
          7zr) echo 'p7zip'    ;;
       7z|7za)
-            if [ "$NATIVE_OS_TYPE" = opensuse-leap ] ; then
-                if [ "$NATIVE_OS_VERS" -gt 15.1 ] ; then
+            if [ "$NATIVE_OS_TYPE" = 'opensuse-leap' ] ; then
+                if version_match "$NATIVE_OS_VERS" gt 15.1 ; then
                     echo 'p7zip-full'
                 else
                     echo 'p7zip'
@@ -4679,9 +4679,12 @@ __pack_the_given_installed_package() {
     __load_installed_metadata_of_the_given_package "$1"
 
     case $2 in
-        7z) handle_dependency required exe 7za ;;
-        zip)handle_dependency required exe zip ;;
         aar)__create_aar_for_the_given_installed_package "$1"; return $? ;;
+        7z) handle_dependency required exe 7za ;;
+        zip)
+            handle_dependency required exe zip
+            handle_dependency required exe unzip
+            ;;
         tar.gz)
             handle_dependency required exe tar
             handle_dependency required exe gzip
@@ -4723,16 +4726,23 @@ __pack_the_given_installed_package() {
         tar.bz2) run tar jvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
     esac
 
+    step "check integrity of packed file"
+    case $2 in
+        7z)    run 7za t -t7z "$PACKED_FILE_NAME" ;;
+        zip)   run unzip -t   "$PACKED_FILE_NAME" ;;
+        tar.*) run tar   -tf  "$PACKED_FILE_NAME" ;;
+    esac
+
+    step "show size of packed file"
+    run "du -sh $PACKED_FILE_NAME | cut -f1"
+
     if [ ! -d "$MY_BINARY_DIR" ] ; then
         step "create cached binary dir"
         run install -d "$MY_BINARY_DIR"
     fi
 
-    step "copy packed file to cached binary dir"
+    step "copy packed file to cache dir"
     run cp "$PACKED_FILE_NAME" "$MY_BINARY_DIR/"
-
-    step "show disk usage statistics"
-    run "du -sh $PACKED_FILE_NAME | cut -f1"
 
     step "delete working directory"
     run rm -rf $WORKING_DIR
@@ -4884,18 +4894,18 @@ EOF
     run zip -9 -r "../$PACKED_FILE_NAME" .
     run cd ..
 
-    step "check if packed aar file is a valid zip file"
+    step "check integrity of packed file"
     run unzip -t "$PACKED_FILE_NAME"
 
-    step "show disk usage statistics"
-    run "du -sh $PACKED_FILE_NAME | cut -f1 | sed 's/^/💠  /'"
+    step "show size of packed file"
+    run "du -sh $PACKED_FILE_NAME | cut -f1"
 
     if [ ! -d "$MY_BINARY_DIR" ] ; then
         step "create cached binary dir"
         run install -d "$MY_BINARY_DIR"
     fi
 
-    step "copy packed file to cached binary dir"
+    step "copy packed file to cache dir"
     run cp "$PACKED_FILE_NAME" "$MY_BINARY_DIR/"
 
     step "delete working directory"
