@@ -1689,7 +1689,7 @@ __pmw_get_available_package_name_by_command_name_emerge() {
     esac
 }
 
-__pmw_get_available_package_name_by_command_name_pacman() {
+__pmw_get_available_package_name_by_command_name_pacman_internal() {
     case $1 in
           cc) echo 'gcc'   ;;
          c++) echo 'g++'   ;;
@@ -1752,9 +1752,9 @@ __pmw_get_available_package_name_by_command_name_pacman() {
         echo make
     fi
     case $NATIVE_OS_SUBS in
-        mingw32) __mingw_w64_i686   $(__pmw_get_available_package_name_by_command_name_pacman "$1") ;;
-        mingw64) __mingw_w64_x86_64 $(__pmw_get_available_package_name_by_command_name_pacman "$1") ;;
-        *) __pmw_get_available_package_name_by_command_name_pacman "$1"
+        mingw32) __mingw_w64_i686   $(__pmw_get_available_package_name_by_command_name_pacman_internal "$1") ;;
+        mingw64) __mingw_w64_x86_64 $(__pmw_get_available_package_name_by_command_name_pacman_internal "$1") ;;
+        *) __pmw_get_available_package_name_by_command_name_pacman_internal "$1"
     esac
 }
 
@@ -1998,7 +1998,8 @@ __pmw_get_available_package_name_by_command_name_apt() {
         xz)   echo 'xz-utils' ;;
      objcopy) echo 'binutils' ;;
     realpath) echo 'coreutils';;
-  7z|7za|7zr) echo 'p7zip' ;;
+         7zr) echo 'p7zip'    ;;
+      7z|7za) echo 'p7zip-full' ;;
       protoc) echo 'protobuf' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'bsdmainutils';;
