@@ -4922,7 +4922,7 @@ __get_packages_directly_depended_by_the_given_package() {
         die "$1 package's formula is not found."
     fi
 
-    sed -n '/^\s*package\s\{1,\}set\s\{1,\}dep\.pkg\s\{1,\}".*"\s*/p' "$PACKAGE_FORMULA_FILEPATH" | sed 's/^\s*package\s\{1,\}set\s\{1,\}dep\.pkg\s\{1,\}"\s*\(.*\)\s*"\s*/\1/'
+    sed -n '/^[[:space:]]*package[[:space:]]\{1,\}set[[:space:]]\{1,\}dep\.pkg[[:space:]]\{1,\}".*"[[:space:]]*/p' "$PACKAGE_FORMULA_FILEPATH" | sed 's/^[[:space:]]*package[[:space:]]\{1,\}set[[:space:]]\{1,\}dep\.pkg[[:space:]]\{1,\}"[[:space:]]*\(.*\)[[:space:]]*"[[:space:]]*/\1/'
 }
 
 # this fuction should be run in subshell
