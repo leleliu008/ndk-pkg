@@ -4547,9 +4547,8 @@ __show_packages_depended_by_the_given_package() {
             DEPENDENCY_PACKAGE_LIST=$(__get_packages_recursively_depended_by_the_given_package "$PACKAGE_NAME")
 
             if [ "$OUTPUT_BRIEF" = yes ] ; then
-                DEPENDENCY_PACKAGE_LIST="$(printf '%s\n' "$DEPENDENCY_PACKAGE_LIST" | sed 's|[ ]$||')"
                 if [ -n "$DEPENDENCY_PACKAGE_LIST" ] ; then
-                    printf '%s\n' "$DEPENDENCY_PACKAGE_LIST" | sed 's|[ ][ ]*|\n|g'
+                    printf '%s\n' "$DEPENDENCY_PACKAGE_LIST"
                 fi
             else
                 for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
@@ -4951,68 +4950,15 @@ __get_packages_recursively_depended_by_the_given_package() {
     do
         die_if_package_is_not_available "$DIRECT_DEPENDENCY_PACKAGE_NAME"
 
-        DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS=no
-
-        for item in $RESULT
-        do
-            if [ "$DIRECT_DEPENDENCY_PACKAGE_NAME" = "$item" ] ; then
-                DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS=yes
-                break
-            fi
-        done
-
-        if [ "$DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS" = no ] ; then
-            RESULT="$DIRECT_DEPENDENCY_PACKAGE_NAME $RESULT"
+        if [ "$(printf '%s\n' "$RESULT" | sed -n "/^$DIRECT_DEPENDENCY_PACKAGE_NAME$/p")" = "$DIRECT_DEPENDENCY_PACKAGE_NAME" ] ; then
+            RESULT=$(printf '%s\n' "$RESULT" | sed "/^$DIRECT_DEPENDENCY_PACKAGE_NAME$/d")
         fi
 
-        __get_packages_recursively_depended_by_the_given_package "$DIRECT_DEPENDENCY_PACKAGE_NAME" yes
-    done
-
-    DEPTH=$(expr "$DEPTH" - 1)
-
-    if [ "$DEPTH" -eq 1 ] ; then
-        printf '%s\n' "$RESULT"
-    fi
-}
-
-# this fuction should be run in subshell
-#
-# __get_packages_recursively_depended_by_the_given_package
-# __get_packages_recursively_depended_by_the_given_package <PKG-NAME> [yes]
-#
-# if PKG-NAME is not specified, $USER_SPECIFIED_PACKAGE_LIST will be used
-# yes means invoked by myself
-__get_dependencies_recursively_depended_by_the_given_package() {
-    if [ "$2" != yes ] ; then
-        DEPTH=1
-        RESULT=
-    fi
-
-    DEPTH=$(expr "$DEPTH" + 1)
-
-    unset DIRECT_DEPENDENCY_PACKAGE_LIST
-    if [ -z "$1" ] ; then
-        DIRECT_DEPENDENCY_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST"
-    else
-        DIRECT_DEPENDENCY_PACKAGE_LIST=$(__get_packages_directly_depended_by_the_given_package "$1")
-    fi
-
-    for DIRECT_DEPENDENCY_PACKAGE_NAME in $DIRECT_DEPENDENCY_PACKAGE_LIST
-    do
-        die_if_package_is_not_available "$DIRECT_DEPENDENCY_PACKAGE_NAME"
-
-        DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS=no
-
-        for item in $(printf '%s\n' "$RESULT" | cut -d: -f1)
-        do
-            if [ "$DIRECT_DEPENDENCY_PACKAGE_NAME" = "$item" ] ; then
-                DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS=yes
-                break
-            fi
-        done
-
-        if [ "$DIRECT_DEPENDENCY_PACKAGE_NAME_EXISTS" = no ] ; then
-            RESULT="$DIRECT_DEPENDENCY_PACKAGE_NAME $RESULT"
+        if [ -z "$RESULT" ] ; then
+            RESULT="$DIRECT_DEPENDENCY_PACKAGE_NAME"
+        else
+            RESULT="$DIRECT_DEPENDENCY_PACKAGE_NAME
+$RESULT"
         fi
 
         __get_packages_recursively_depended_by_the_given_package "$DIRECT_DEPENDENCY_PACKAGE_NAME" yes
