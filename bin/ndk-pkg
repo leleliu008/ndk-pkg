@@ -4578,10 +4578,14 @@ __show_packages_depended_by_the_given_package() {
             unset DEPENDENCY_PACKAGE_LIST
             DEPENDENCY_PACKAGE_LIST=$(__get_packages_recursively_depended_by_the_given_package "$PACKAGE_NAME")
 
+            if [ -z "$DEPENDENCY_PACKAGE_LIST" ] ; then
+                return 0
+            fi
+
+            unset OUTPUT_CONTENT
+
             if [ "$OUTPUT_BRIEF" = yes ] ; then
-                if [ -n "$DEPENDENCY_PACKAGE_LIST" ] ; then
-                    printf '%s\n' "$DEPENDENCY_PACKAGE_LIST"
-                fi
+                OUTPUT_CONTENT="$DEPENDENCY_PACKAGE_LIST"
             else
                 for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
                 do
@@ -4592,10 +4596,35 @@ __show_packages_depended_by_the_given_package() {
                     fi
 
                     unset DEPENDENCY_PACKAGE_DIRECT_DEPS
-                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME" | tr ' ' ',')
+                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME")
+                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(printf '%s\n' "$DEPENDENCY_PACKAGE_DIRECT_DEPS" | tr ' ' ',')
 
-                    printf '%-15s %-15s dependencies:%s\n' "$DEPENDENCY_PACKAGE_NAME" "$DEPENDENCY_PACKAGE_IS_INSTALLED" "$DEPENDENCY_PACKAGE_DIRECT_DEPS"
+                    unset LINE
+                    LINE=$(printf '%-15s %-15s dependencies:%s\n' "$DEPENDENCY_PACKAGE_NAME" "$DEPENDENCY_PACKAGE_IS_INSTALLED" "$DEPENDENCY_PACKAGE_DIRECT_DEPS")
+                    if [ -z "$OUTPUT_CONTENT" ] ; then
+                        OUTPUT_CONTENT="$LINE"
+                    else
+                        OUTPUT_CONTENT="$OUTPUT_CONTENT
+$LINE"
+                    fi
                 done
+            fi
+
+            if [ "$OUTPUT_FILEPATH" = '/dev/tty' ] ; then
+                printf '%s\n' "$OUTPUT_CONTENT"
+            else
+                unset OUTPUT_DIR
+
+                case $3 in
+                    /*) OUTPUT_DIR="$(dirname      "$3")" ;;
+                     *) OUTPUT_DIR="$(dirname "$PWD/$3")" ;;
+                esac
+
+                if [ !      -d "$OUTPUT_DIR" ] ; then
+                    install -d "$OUTPUT_DIR"
+                fi
+
+                printf '%s\n' "$OUTPUT_CONTENT" > "$OUTPUT_FILEPATH"
             fi
             ;;
         json)
@@ -4629,7 +4658,22 @@ __show_packages_depended_by_the_given_package() {
 
             JSON_ARRAY="$JSON_ARRAY]"
 
-            printf '%s\n' "$JSON_ARRAY"
+            if [ "$OUTPUT_FILEPATH" = '/dev/tty' ] ; then
+                printf '%s\n' "$JSON_ARRAY"
+            else
+                unset OUTPUT_DIR
+
+                case $3 in
+                    /*) OUTPUT_DIR="$(dirname      "$3")" ;;
+                     *) OUTPUT_DIR="$(dirname "$PWD/$3")" ;;
+                esac
+
+                if [ !      -d "$OUTPUT_DIR" ] ; then
+                    install -d "$OUTPUT_DIR"
+                fi
+
+                printf '%s\n' "$JSON_ARRAY" > "$OUTPUT_FILEPATH"
+            fi
             ;;
         dot)
             __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" dot "$OUTPUT_FILEPATH"
@@ -4639,13 +4683,16 @@ __show_packages_depended_by_the_given_package() {
             ;;
         png)
             __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" png "$OUTPUT_FILEPATH"
-            for item in open feh eog lsix
-            do
-                if command -v "$item" > /dev/null ; then
-                    "$item" "$OUTPUT_FILEPATH" &
-                    return 0
-                fi
-            done
+
+            if [ "$OUTPUT_FILEPATH" != '/dev/tty' ] ; then
+                for item in open feh eog lsix
+                do
+                    if command -v "$item" > /dev/null ; then
+                        "$item" "$OUTPUT_FILEPATH" &
+                        return 0
+                    fi
+                done
+            fi
     esac
 }
 
