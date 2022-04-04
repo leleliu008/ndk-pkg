@@ -46,29 +46,29 @@ jobs:
       - run: bin/ndk-pkg update
 
       - run: bin/ndk-pkg search lib
-      - run: bin/ndk-pkg search zlib
+      - run: bin/ndk-pkg search libzip
 
-      - run: bin/ndk-pkg info zlib
-      - run: bin/ndk-pkg info zlib version
-      - run: bin/ndk-pkg info zlib webpage
-      - run: bin/ndk-pkg info zlib
+      - run: bin/ndk-pkg info libzip
+      - run: bin/ndk-pkg info libzip version
+      - run: bin/ndk-pkg info libzip webpage
+      - run: bin/ndk-pkg info libzip
 
-      - run: bin/ndk-pkg depends zlib
+      - run: bin/ndk-pkg depends libzip
 
       - run: bin/ndk-pkg homepage
-      - run: bin/ndk-pkg homepage zlib
+      - run: bin/ndk-pkg homepage libzip
 
-      - run: bin/ndk-pkg install zlib
+      - run: bin/ndk-pkg install libzip
 
 
-      - run: bin/ndk-pkg tree zlib
+      - run: bin/ndk-pkg tree libzip
 
-      - run: bin/ndk-pkg pack zlib tar.gz
-      - run: bin/ndk-pkg pack zlib tar.xz
-      - run: bin/ndk-pkg pack zlib tar.bz2
-      - run: bin/ndk-pkg pack zlib 7z
-      - run: bin/ndk-pkg pack zlib zip
-      - run: bin/ndk-pkg pack zlib aar
+      - run: bin/ndk-pkg pack libzip tar.gz
+      - run: bin/ndk-pkg pack libzip tar.xz
+      - run: bin/ndk-pkg pack libzip tar.bz2
+      - run: bin/ndk-pkg pack libzip 7z
+      - run: bin/ndk-pkg pack libzip zip
+      - run: bin/ndk-pkg pack libzip aar
 
       - run: bin/ndk-pkg formula-repo list
       - run: bin/ndk-pkg formula view curl
@@ -82,11 +82,11 @@ jobs:
       - run: bin/ndk-pkg ls-installed
       - run: bin/ndk-pkg ls-outdated
 
-      - run: bin/ndk-pkg is-available zlib
-      - run: bin/ndk-pkg is-installed zlib
-      - run: bin/ndk-pkg is-outdated zlib || echo "not outdated"
+      - run: bin/ndk-pkg is-available libzip
+      - run: bin/ndk-pkg is-installed libzip
+      - run: bin/ndk-pkg is-outdated libzip || echo "not outdated"
 
-      - run: bin/ndk-pkg uninstall zlib
+      - run: bin/ndk-pkg uninstall libzip
 
       - run: bin/ndk-pkg fetch curl
 

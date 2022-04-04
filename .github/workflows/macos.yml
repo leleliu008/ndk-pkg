@@ -35,46 +35,46 @@ jobs:
       - run: git -C ~/.ndk-pkg/repos.d/offical checkout ${{ github.ref_name }}
 
       - run: bin/ndk-pkg search lib
-      - run: bin/ndk-pkg search zlib
+      - run: bin/ndk-pkg search libzip
 
       - run: bin/ndk-pkg formula-repo list
 
       - run: bin/ndk-pkg formula view curl
-      - run: bin/ndk-pkg formula view zlib --paging=never
+      - run: bin/ndk-pkg formula view libzip --paging=never
 
-      - run: bin/ndk-pkg info zlib
-      - run: bin/ndk-pkg info zlib version
-      - run: bin/ndk-pkg info zlib webpage
-      - run: bin/ndk-pkg info zlib
+      - run: bin/ndk-pkg info libzip
+      - run: bin/ndk-pkg info libzip version
+      - run: bin/ndk-pkg info libzip webpage
+      - run: bin/ndk-pkg info libzip
 
-      - run: bin/ndk-pkg depends zlib
+      - run: bin/ndk-pkg depends libzip
 
-      - run: bin/ndk-pkg depends zlib --format=list
-      - run: bin/ndk-pkg depends zlib --format=json
-      - run: bin/ndk-pkg depends zlib --format=dot
-      - run: bin/ndk-pkg depends zlib --format=txt
-      - run: bin/ndk-pkg depends zlib --format=png
+      - run: bin/ndk-pkg depends libzip --format=list
+      - run: bin/ndk-pkg depends libzip --format=json
+      - run: bin/ndk-pkg depends libzip --format=dot
+      - run: bin/ndk-pkg depends libzip --format=txt
+      - run: bin/ndk-pkg depends libzip --format=png
 
-      - run: bin/ndk-pkg depends zlib --format=list -o zlib-dependencies.list
-      - run: bin/ndk-pkg depends zlib --format=json -o zlib-dependencies.json
-      - run: bin/ndk-pkg depends zlib --format=dot  -o zlib-dependencies.dot
-      - run: bin/ndk-pkg depends zlib --format=txt  -o zlib-dependencies.txt
-      - run: bin/ndk-pkg depends zlib --format=png  -o zlib-dependencies.png
+      - run: bin/ndk-pkg depends libzip --format=list -o libzip-dependencies.list
+      - run: bin/ndk-pkg depends libzip --format=json -o libzip-dependencies.json
+      - run: bin/ndk-pkg depends libzip --format=dot  -o libzip-dependencies.dot
+      - run: bin/ndk-pkg depends libzip --format=txt  -o libzip-dependencies.txt
+      - run: bin/ndk-pkg depends libzip --format=png  -o libzip-dependencies.png
 
       - run: bin/ndk-pkg homepage
-      - run: bin/ndk-pkg homepage zlib
+      - run: bin/ndk-pkg homepage libzip
 
-      - run: bin/ndk-pkg install zlib
+      - run: bin/ndk-pkg install libzip
 
 
-      - run: bin/ndk-pkg tree zlib
+      - run: bin/ndk-pkg tree libzip
 
-      - run: bin/ndk-pkg pack zlib tar.gz
-      - run: bin/ndk-pkg pack zlib tar.xz
-      - run: bin/ndk-pkg pack zlib tar.bz2
-      - run: bin/ndk-pkg pack zlib 7z
-      - run: bin/ndk-pkg pack zlib zip
-      - run: bin/ndk-pkg pack zlib aar
+      - run: bin/ndk-pkg pack libzip tar.gz
+      - run: bin/ndk-pkg pack libzip tar.xz
+      - run: bin/ndk-pkg pack libzip tar.bz2
+      - run: bin/ndk-pkg pack libzip 7z
+      - run: bin/ndk-pkg pack libzip zip
+      - run: bin/ndk-pkg pack libzip aar
 
       - run: bin/ndk-pkg ls-target-abis
       - run: bin/ndk-pkg ls-target-archs
@@ -85,11 +85,11 @@ jobs:
       - run: bin/ndk-pkg ls-installed
       - run: bin/ndk-pkg ls-outdated
 
-      - run: bin/ndk-pkg is-available zlib
-      - run: bin/ndk-pkg is-installed zlib
-      - run: bin/ndk-pkg is-outdated  zlib || echo "not outdated"
+      - run: bin/ndk-pkg is-available libzip
+      - run: bin/ndk-pkg is-installed libzip
+      - run: bin/ndk-pkg is-outdated  libzip || echo "not outdated"
 
-      - run: bin/ndk-pkg uninstall zlib
+      - run: bin/ndk-pkg uninstall libzip
 
       - run: bin/ndk-pkg fetch curl
 
@@ -120,41 +120,41 @@ jobs:
       - run: ndk-pkg update
 
       - run: ndk-pkg search lib
-      - run: ndk-pkg search zlib
+      - run: ndk-pkg search libzip
 
-      - run: ndk-pkg info zlib
-      - run: ndk-pkg info zlib version
-      - run: ndk-pkg info zlib webpage
-      - run: ndk-pkg info zlib
+      - run: ndk-pkg info libzip
+      - run: ndk-pkg info libzip version
+      - run: ndk-pkg info libzip webpage
+      - run: ndk-pkg info libzip
 
-      - run: ndk-pkg depends zlib
+      - run: ndk-pkg depends libzip
 
-      - run: ndk-pkg depends zlib --format=list
-      - run: ndk-pkg depends zlib --format=json
-      - run: ndk-pkg depends zlib --format=dot
-      - run: ndk-pkg depends zlib --format=txt
-      - run: ndk-pkg depends zlib --format=png
+      - run: ndk-pkg depends libzip --format=list
+      - run: ndk-pkg depends libzip --format=json
+      - run: ndk-pkg depends libzip --format=dot
+      - run: ndk-pkg depends libzip --format=txt
+      - run: ndk-pkg depends libzip --format=png
 
-      - run: ndk-pkg depends zlib --format=list -o zlib-dependencies.list
-      - run: ndk-pkg depends zlib --format=json -o zlib-dependencies.json
-      - run: ndk-pkg depends zlib --format=dot  -o zlib-dependencies.dot
-      - run: ndk-pkg depends zlib --format=txt  -o zlib-dependencies.txt
-      - run: ndk-pkg depends zlib --format=png  -o zlib-dependencies.png
+      - run: ndk-pkg depends libzip --format=list -o libzip-dependencies.list
+      - run: ndk-pkg depends libzip --format=json -o libzip-dependencies.json
+      - run: ndk-pkg depends libzip --format=dot  -o libzip-dependencies.dot
+      - run: ndk-pkg depends libzip --format=txt  -o libzip-dependencies.txt
+      - run: ndk-pkg depends libzip --format=png  -o libzip-dependencies.png
 
       - run: ndk-pkg homepage
-      - run: ndk-pkg homepage zlib
+      - run: ndk-pkg homepage libzip
 
-      - run: ndk-pkg install zlib
+      - run: ndk-pkg install libzip
 
 
-      - run: ndk-pkg tree zlib
+      - run: ndk-pkg tree libzip
 
-      - run: bin/ndk-pkg pack zlib tar.gz
-      - run: bin/ndk-pkg pack zlib tar.xz
-      - run: bin/ndk-pkg pack zlib tar.bz2
-      - run: bin/ndk-pkg pack zlib 7z
-      - run: bin/ndk-pkg pack zlib zip
-      - run: bin/ndk-pkg pack zlib aar
+      - run: bin/ndk-pkg pack libzip tar.gz
+      - run: bin/ndk-pkg pack libzip tar.xz
+      - run: bin/ndk-pkg pack libzip tar.bz2
+      - run: bin/ndk-pkg pack libzip 7z
+      - run: bin/ndk-pkg pack libzip zip
+      - run: bin/ndk-pkg pack libzip aar
 
       - run: ndk-pkg formula-repo list
       - run: ndk-pkg formula view curl
@@ -168,11 +168,11 @@ jobs:
       - run: ndk-pkg ls-installed
       - run: ndk-pkg ls-outdated
 
-      - run: ndk-pkg is-available zlib
-      - run: ndk-pkg is-installed zlib
-      - run: ndk-pkg is-outdated  zlib || echo "not outdated"
+      - run: ndk-pkg is-available libzip
+      - run: ndk-pkg is-installed libzip
+      - run: ndk-pkg is-outdated  libzip || echo "not outdated"
 
-      - run: ndk-pkg uninstall zlib
+      - run: ndk-pkg uninstall libzip
 
       - run: ndk-pkg fetch curl
 
