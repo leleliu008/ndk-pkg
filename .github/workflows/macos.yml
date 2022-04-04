@@ -51,6 +51,7 @@ jobs:
 
       - run: bin/ndk-pkg depends libzip --format=list
       - run: bin/ndk-pkg depends libzip --format=json
+      - run: bin/ndk-pkg depends libzip --format=json | jq .
       - run: bin/ndk-pkg depends libzip --format=dot
       - run: bin/ndk-pkg depends libzip --format=txt
 
@@ -130,6 +131,7 @@ jobs:
 
       - run: ndk-pkg depends libzip --format=list
       - run: ndk-pkg depends libzip --format=json
+      - run: ndk-pkg depends libzip --format=json | jq .
       - run: ndk-pkg depends libzip --format=dot
       - run: ndk-pkg depends libzip --format=txt
 
