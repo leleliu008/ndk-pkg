@@ -347,6 +347,11 @@ endif()
 *   **show packages that are depended by the given package**
         
         ndk-pkg depends curl
+        ndk-pkg depends curl --format=list
+        ndk-pkg depends curl --format=json
+        ndk-pkg depends curl --format=dot
+        ndk-pkg depends curl --format=txt
+        ndk-pkg depends curl --format=png -o curl-dependencies.png
         
 *   **cleanup the unused cached files**
         

@@ -1485,6 +1485,7 @@ __pmw_get_available_package_name_by_command_name_choco() {
      objcopy) echo 'binutils' ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -1527,6 +1528,7 @@ __pmw_get_available_package_name_by_command_name_pkg_add() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     pip3|pip) echo 'py3-pip' ;;
@@ -1576,6 +1578,7 @@ __pmw_get_available_package_name_by_command_name_pkgin() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -1621,6 +1624,7 @@ __pmw_get_available_package_name_by_command_name_pkg() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -1660,6 +1664,7 @@ __pmw_get_available_package_name_by_command_name_emerge() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -1704,6 +1709,7 @@ __pmw_get_available_package_name_by_command_name_pacman_internal() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     makeinfo) echo 'texinfo'  ;;
     hexdump)  echo 'util-linux' ;;
@@ -1774,6 +1780,7 @@ __pmw_get_available_package_name_by_command_name_xbps() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -1816,6 +1823,7 @@ __pmw_get_available_package_name_by_command_name_apk() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -1870,6 +1878,7 @@ __pmw_get_available_package_name_by_command_name_zypper() {
             ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -1914,6 +1923,7 @@ __pmw_get_available_package_name_by_command_name_dnf() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -1964,6 +1974,7 @@ __pmw_get_available_package_name_by_command_name_yum() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -2012,6 +2023,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
          7zr) echo 'p7zip'    ;;
       7z|7za) echo 'p7zip-full' ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'bsdmainutils';;
     makeinfo) echo 'texinfo'  ;;
@@ -2066,6 +2078,7 @@ __pmw_get_available_package_name_by_command_name_brew() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
+         dot) echo 'graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -4507,6 +4520,7 @@ __show_packages_depended_by_the_given_package() {
 
     shift
 
+    unset OUTPUT_FILEPATH
     unset OUTPUT_FORMAT
     unset OUTPUT_BRIEF
     unset RECURSIVE
@@ -4520,8 +4534,14 @@ __show_packages_depended_by_the_given_package() {
             --format=json)
                 OUTPUT_FORMAT=json
                 ;;
-            --format=graph)
-                OUTPUT_FORMAT=graph
+            --format=dot)
+                OUTPUT_FORMAT=dot
+                ;;
+            --format=txt)
+                OUTPUT_FORMAT=txt
+                ;;
+            --format=png)
+                OUTPUT_FORMAT=png
                 ;;
             --format=*)
                 OUTPUT_FORMAT=$(getvalue $1)
@@ -4532,6 +4552,14 @@ __show_packages_depended_by_the_given_package() {
                 ;;
             -r) RECURSIVE=yes ;;
             -x) set -x ;;
+            -o)
+                if [ -z "$2" ] ; then
+                    die "-o <OUTPUT-FILE-PATH>, OUTPUT-FILE-PATH must not be empty."
+                else
+                    OUTPUT_FILEPATH="$2"
+                    shift
+                fi
+                ;;
             *)  die "$_0 depends <PKG-NAME> [--format=<list|json|graph>] [--brief] [-r], unrecognized argumet: $1"
         esac
         shift
@@ -4539,6 +4567,10 @@ __show_packages_depended_by_the_given_package() {
 
     if [ -z "$OUTPUT_FORMAT" ] ; then
         OUTPUT_FORMAT=list
+    fi
+
+    if [ -z "$OUTPUT_FILEPATH" ] ; then
+        OUTPUT_FILEPATH=/dev/tty
     fi
 
     case $OUTPUT_FORMAT in
@@ -4599,21 +4631,21 @@ __show_packages_depended_by_the_given_package() {
 
             printf '%s\n' "$JSON_ARRAY"
             ;;
-        graph)
-            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME"
-
-            if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
-                cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
-            elif [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" ] ; then
-                for item in open feh eog lsix
-                do
-                    if command -v $item > /dev/null && $item "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" ; then
-                        return 0
-                    fi
-                done
-            elif [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" ] ; then
-                cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
-            fi
+        dot)
+            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" dot "$OUTPUT_FILEPATH"
+            ;;
+        txt)
+            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" txt "$OUTPUT_FILEPATH"
+            ;;
+        png)
+            __gen_dependency_graph_recursively_depended_by_the_given_package "$PACKAGE_NAME" png "$OUTPUT_FILEPATH"
+            for item in open feh eog lsix
+            do
+                if command -v "$item" > /dev/null ; then
+                    "$item" "$OUTPUT_FILEPATH" &
+                    return 0
+                fi
+            done
     esac
 }
 
@@ -4983,7 +5015,7 @@ __get_dot_file_contents() {
     done
 }
 
-# __gen_dependency_graph_recursively_depended_by_the_given_package <PKG> [OUTPUT-DIR]
+# __gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>
 __gen_dependency_graph_recursively_depended_by_the_given_package() {
     unset DIRECT_DEPENDENCY_PACKAGE_LIST
     DIRECT_DEPENDENCY_PACKAGE_LIST="$(__get_packages_directly_depended_by_the_given_package "$1")"
@@ -4992,41 +5024,70 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
         return 0
     fi
 
-    unset PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR
+    case $2 in
+        dot|txt|png) ;;
+        '') die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, format must not be empty." ;;
+        *)  die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, unrecognized format: $2"
+    esac
 
-    if [ -z "$2" ] ; then
-        PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR=$(mktemp -d) || return 1
-    else
-        PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR="$2"
-        [ -d "$2" ] || install -d "$2"
+    if [ -z "$3" ] ; then
+        die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, OUTPUT-FILEPATH must be not empty."
     fi
 
-    unset PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT
-    unset PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG
-    unset PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT
+    unset GEN_DEPENDENCY_GRAPH_WORKING_DIR
+    unset GEN_DEPENDENCY_GRAPH_DOT_FILEPATH
 
-    PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR/dependencies.gv"
-    PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR/dependencies.png"
-    PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_DEPENDENCY_GRAPH_OUTPUT_DIR/dependencies.txt"
+    GEN_DEPENDENCY_GRAPH_WORKING_DIR=$(mktemp -d)
+    GEN_DEPENDENCY_GRAPH_DOT_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.dot"
+    GEN_DEPENDENCY_GRAPH_TXT_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.txt"
+    GEN_DEPENDENCY_GRAPH_PNG_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.png"
 
-    printf 'digraph G {\n'       >  "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
-    __get_dot_file_contents "$1" >> "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
-    printf '}\n'                 >> "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
+    printf 'digraph G {\n'       >  "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+    __get_dot_file_contents "$1" >> "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+    printf '}\n'                 >> "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
 
-    if command -v dot > /dev/null ; then
-        run dot -Tpng -o "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
-    else
-        note "graphviz is not installed. we do not generate png format dependency image."
+    if [ "$3" != '/dev/tty' ] ; then
+        unset GEN_DEPENDENCY_GRAPH_OUTPUT_DIR
+
+        case $3 in
+            /*) GEN_DEPENDENCY_GRAPH_OUTPUT_DIR="$(dirname      "$3")" ;;
+             *) GEN_DEPENDENCY_GRAPH_OUTPUT_DIR="$(dirname "$PWD/$3")" ;;
+        esac
+
+        if [ !      -d "$GEN_DEPENDENCY_GRAPH_OUTPUT_DIR" ] ; then
+            install -d "$GEN_DEPENDENCY_GRAPH_OUTPUT_DIR"
+        fi
     fi
 
-    # https://github.com/ggerganov/dot-to-ascii
-    curl \
-        -o "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" \
-        -s \
-        -G \
-        --data-urlencode "boxart=1" \
-        --data-urlencode "src=$(cat $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT)" \
-        "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
+    case $2 in
+        dot)
+            if [ "$3" = '/dev/tty' ] ; then
+                cat   "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            else
+                cp -f "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH" "$3"
+            fi
+            ;;
+        txt)
+            # https://github.com/ggerganov/dot-to-ascii
+            curl \
+                -o "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH" \
+                -s \
+                -G \
+                --data-urlencode "boxart=1" \
+                --data-urlencode "src=$(cat $GEN_DEPENDENCY_GRAPH_DOT_FILEPATH)" \
+                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php"
+
+            if [ "$3" = '/dev/tty' ] ; then
+                cat   "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH"
+            else
+                cp -f "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH" "$3"
+            fi
+            ;;
+        png)
+            handle_dependency required exe dot
+            run dot -Tpng -o "$3" "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
+            ;;
+    esac
 }
 
 __config_native_toolchain_environment_variables() {
@@ -5212,8 +5273,16 @@ __install_the_given_package() {
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
         note "there's no packages are depended by $1."
     else
-        DEPENDENCY_PACKAGE_LIST=$(__get_packages_recursively_depended_by_the_given_package "$1")
-        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" "$PACKAGE_WORKING_DIR"
+        DEPENDENCY_PACKAGE_LIST="$(__get_packages_recursively_depended_by_the_given_package "$1")"
+
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_WORKING_DIR/dependencies.txt"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_WORKING_DIR/dependencies.png"
+
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" txt "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
+        __gen_dependency_graph_recursively_depended_by_the_given_package "$1" png "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG" || true
+
         if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" ] ; then
             cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
         fi

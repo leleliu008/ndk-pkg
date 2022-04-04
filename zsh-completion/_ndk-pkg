@@ -138,8 +138,9 @@ function _ndk_pkg() {
                 depends)
                     _arguments \
                         '1:package-name:_ndk_pkg_available_packages' \
-                        '--format=-[set output format]:format:(list json graph)' \
-                        '--brief[output breif]'
+                        '--format=-[set output format]:format:(list json dot txt png)' \
+                        '--brief[output breif]' \
+                        '-o[set output file path]:output-filepath:{_files -/}'
                     ;;
                 pack)
                     _arguments \
