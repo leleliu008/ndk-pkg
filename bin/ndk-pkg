@@ -1664,7 +1664,7 @@ __pmw_get_available_package_name_by_command_name_emerge() {
   7z|7za|7zr) echo 'p7zip'    ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
-         dot) echo 'graphviz' ;;
+         dot) echo 'media-gfx/graphviz' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -4570,7 +4570,15 @@ __show_packages_depended_by_the_given_package() {
     fi
 
     if [ -z "$OUTPUT_FILEPATH" ] ; then
+        if [ "$OUTPUT_FORMAT" = 'png' ] ; then
+            die "you want png file, but -o <OUTPUT-FILE-PATH> option is not given."
+        fi
+
         OUTPUT_FILEPATH=/dev/tty
+    else
+        if [ "$OUTPUT_FORMAT" = 'png' ] && [ "$OUTPUT_FILEPATH" = '/dev/tty' ] ; then
+            die "you want png file, /dev/tty is not allowed."
+        fi
     fi
 
     case $OUTPUT_FORMAT in

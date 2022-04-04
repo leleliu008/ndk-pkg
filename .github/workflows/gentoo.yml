@@ -51,7 +51,6 @@ jobs:
       - run: bin/ndk-pkg depends libzip --format=json
       - run: bin/ndk-pkg depends libzip --format=dot
       - run: bin/ndk-pkg depends libzip --format=txt
-      - run: bin/ndk-pkg depends libzip --format=png
 
       - run: bin/ndk-pkg depends libzip --format=list -o libzip-dependencies.list
       - run: bin/ndk-pkg depends libzip --format=json -o libzip-dependencies.json
