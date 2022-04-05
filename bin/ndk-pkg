@@ -1875,7 +1875,7 @@ __pmw_get_available_package_name_by_command_name_zypper() {
             ;;
     xsltproc) echo 'libxslt'  ;;
       protoc) echo 'protobuf' ;;
-         dot) echo 'graphviz' ;;
+         dot) echo 'graphviz-gd' ;;
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
@@ -5163,6 +5163,14 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
             ;;
         png)
             handle_dependency required exe dot
+
+            if command -v fc-match > /dev/null ; then
+                # Error: fontconfig: Couldn't find font.
+                if [ -z "$(fc-match)" ] ; then
+                    fetch 'https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/Meslo/M/Regular/complete/Meslo%20LG%20M%20Regular%20Nerd%20Font%20Complete%20Mono%20Windows%20Compatible.ttf?raw=true' --output-dir="$HOME/.fonts" --output-name='Meslo LG M DZ Regular Nerd Font Complete Mono.ttf'
+                fi
+            fi
+
             run dot -Tpng -o "$3" "$GEN_DEPENDENCY_GRAPH_DOT_FILEPATH"
             ;;
     esac
