@@ -147,12 +147,12 @@ jobs:
 
       - run: ndk-pkg tree libzip
 
-      - run: bin/ndk-pkg pack libzip tar.gz
-      - run: bin/ndk-pkg pack libzip tar.xz
-      - run: bin/ndk-pkg pack libzip tar.bz2
-      - run: bin/ndk-pkg pack libzip 7z
-      - run: bin/ndk-pkg pack libzip zip
-      - run: bin/ndk-pkg pack libzip aar
+      - run: ndk-pkg pack libzip tar.gz
+      - run: ndk-pkg pack libzip tar.xz
+      - run: ndk-pkg pack libzip tar.bz2
+      - run: ndk-pkg pack libzip 7z
+      - run: ndk-pkg pack libzip zip
+      - run: ndk-pkg pack libzip aar
 
       - run: ndk-pkg formula-repo list
       - run: ndk-pkg formula view curl
