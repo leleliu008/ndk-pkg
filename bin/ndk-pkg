@@ -30,10 +30,6 @@ echo() {
     printf '%b\n' "$*"
 }
 
-info() {
-    printf '%b\n' "💠  $*"
-}
-
 note() {
     printf '%b\n' "${COLOR_YELLOW}🔔  $*${COLOR_OFF}" >&2
 }
@@ -43,7 +39,7 @@ warn() {
 }
 
 success() {
-    printf '%b\n' "${COLOR_GREEN}[✔] $*${COLOR_OFF}"
+    printf '%b\n' "${COLOR_GREEN}[✔] $*${COLOR_OFF}" >&2
 }
 
 error() {
@@ -2880,7 +2876,7 @@ __install_command_via_pmw() {
         warn "no package manager found."
         return 1
     else
-        info "Found $(list_length $AVAILABLE_PACKAGE_MANAGER_LIST) package manager : ${COLOR_GREEN}$AVAILABLE_PACKAGE_MANAGER_LIST${COLOR_OFF}"
+        note "Found $(list_length $AVAILABLE_PACKAGE_MANAGER_LIST) package manager : ${COLOR_GREEN}$AVAILABLE_PACKAGE_MANAGER_LIST${COLOR_OFF}"
     fi
 
     for pm in $AVAILABLE_PACKAGE_MANAGER_LIST
@@ -5124,6 +5120,7 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
             fi
             ;;
         txt)
+            handle_dependency required exe curl
             # https://github.com/ggerganov/dot-to-ascii
             curl \
                 -o "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH" \
@@ -5575,9 +5572,9 @@ EOF
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
         step "show ccache statistics summary"
-        info "Before Build:"
+        note "Before Build:"
         run  cat "$PACKAGE_WORKING_DIR/ccache-s.txt"
-        info "After  Build:"
+        note "After  Build:"
         run  ccache -s
     fi
 
@@ -7446,7 +7443,7 @@ list_all_installed_libs() {
     for item in *
     do
         if is_package_installed "$item" ; then
-            if [ -d "$MY_INSTALL_DIR/$item/libs" ] ; then
+            if [ -d  "$MY_INSTALL_DIR/$item/libs" ] ; then
                 find "$MY_INSTALL_DIR/$item/libs" -name "lib*\.a"
             fi
         fi
