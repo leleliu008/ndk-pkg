@@ -2230,7 +2230,7 @@ __pmw_install_the_given_package() {
         yum)     run $sudo yum -y install "$3" ;;
         zypper)  run $sudo zypper install -y "$3" ;;
         apk)     run $sudo apk add "$3" ;;
-        xbps)    run $sudo xbps-install -Sy "$3" ;;
+        xbps)    run $sudo xbps-install -Syu "$3" ;;
         emerge)  run $sudo emerge "$3" ;;
         pacman)  run $sudo pacman -Syy --noconfirm && run $sudo pacman -S --noconfirm "$3" ;;
         choco)   run choco install -y --source cygwin "$3" ;;
@@ -3700,6 +3700,12 @@ __load_formula_of_the_given_package() {
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
         package add dep.cmd 'gsed'
+    fi
+
+    # I don't known why
+    # If bash is not installed, ccache and make can not work correctly on VoidLinux.
+    if [ "$NATIVE_OS_TYPE" = 'void' ] ; then
+        package add dep.cmd 'bash'
     fi
 
     package add dep.cmd 'find'
