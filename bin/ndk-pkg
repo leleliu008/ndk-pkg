@@ -1932,6 +1932,17 @@ __pmw_get_available_package_name_by_command_name_dnf() {
             echo 'epel:ccache'
         fi
         ;;
+    pkg-config)
+        if [ "$NATIVE_OS_TYPE" = fedora ] ; then
+            if [ "$NATIVE_OS_VERS" -ge 34 ] ; then
+                echo 'pkgconf-pkg-config'
+            else
+                echo 'pkg-config'
+            fi
+        else
+            echo 'pkg-config'
+        fi
+        ;;
     rst2man|rst2html)
                   echo "python3-docutils" ;;
     sphinx-build) echo "python3-sphinx" ;;
@@ -2231,10 +2242,18 @@ __pmw_install_the_given_package() {
         zypper)  run $sudo zypper install -y "$3" ;;
         apk)     run $sudo apk add "$3" ;;
         xbps)    run $sudo xbps-install -Syu "$3" ;;
-        emerge)  run $sudo emerge "$3" ;;
         pacman)  run $sudo pacman -Syy --noconfirm && run $sudo pacman -S --noconfirm "$3" ;;
         choco)   run choco install -y --source cygwin "$3" ;;
         cargo)   run cargo install "$3" ;;
+        emerge)
+            if [ "$3" = 'media-gfx/graphviz' ] ; then
+                $sudo cat >> /etc/portage/package.use/zzz_autounmask <<EOF
+# required by media-gfx/graphviz-2.44.1-r1::gentoo
+# required by media-gfx/graphviz (argument)
+>=media-libs/gd-2.3.1 fontconfig truetype
+EOF
+            fi
+            run $sudo emerge "$3" ;;
     esac
 }
 
@@ -4515,7 +4534,7 @@ __open_homepage_of_the_given_package() {
     fi
 }
 
-# __show_packages_depended_by_the_given_package <PKG-NAME> [--format=<list|json|graph>] [--brief] [-r]
+# __show_packages_depended_by_the_given_package <PKG-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>]
 __show_packages_depended_by_the_given_package() {
     die_if_package_is_not_specified "$1"
 
@@ -4563,7 +4582,7 @@ __show_packages_depended_by_the_given_package() {
                     shift
                 fi
                 ;;
-            *)  die "$_0 depends <PKG-NAME> [--format=<list|json|graph>] [--brief] [-r], unrecognized argumet: $1"
+            *)  die "$_0 depends <PKG-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], unrecognized argumet: $1"
         esac
         shift
     done
@@ -5644,7 +5663,9 @@ __install_the_given_package_for_the_given_target() {
         exec "$SHELL" || return 1
     }
 
-    [ -d "$TARGET_INSTALL_DIR" ] && run rm -rf "$TARGET_INSTALL_DIR"
+    if [ -d        "$TARGET_INSTALL_DIR" ] ; then
+        run rm -rf "$TARGET_INSTALL_DIR"
+    fi
 
     step2 "build for ${COLOR_GREEN}$@${COLOR_OFF}"
 
@@ -5671,7 +5692,7 @@ __install_the_given_package_for_the_given_target() {
     fi
 
     [ -d "$TARGET_INSTALL_DIR" ] || {
-        error "installed nothing."
+        error "nothing was installed."
         return 1
     }
 
@@ -8518,19 +8539,19 @@ ${COLOR_GREEN}ndk-pkg fetch <PKG-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg fetch @all${COLOR_OFF}
     download formula resources of all available packages to the cache.
 
-${COLOR_GREEN}ndk-pkg depends <PKG-NAME>${COLOR_OFF}
-    show the depends of the given package.
+${COLOR_GREEN}ndk-pkg depends <PKG-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>]${COLOR_OFF}
+    show or save packages that are depended by the given package.
 
 ${COLOR_GREEN}ndk-pkg homepage [--open] [PKG-NAME]${COLOR_OFF}
     show or open the homepage of the given package or this project in web browser.
 
-${COLOR_GREEN}ndk-pkg install   <PKG-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg install   <PKG-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
     install the given packages.
 
-${COLOR_GREEN}ndk-pkg reinstall <PKG-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg reinstall <PKG-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ndk-pkg upgrade   [PKG-NAME]... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg upgrade   [PKG-NAME]... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
 ${COLOR_GREEN}ndk-pkg upgrade @self  [-x | --china]${COLOR_OFF}

@@ -67,7 +67,7 @@ jobs:
       - run: bin/ndk-pkg homepage
       - run: bin/ndk-pkg homepage libzip
 
-      - run: bin/ndk-pkg install libzip -x
+      - run: bin/ndk-pkg install libzip
 
 
       - run: bin/ndk-pkg tree libzip
