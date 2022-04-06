@@ -2184,33 +2184,35 @@ __pmw_install_the_given_package() {
     [ -z "$2" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , REPO must not be empty."
     [ -z "$3" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG  must not be empty."
 
-    case $1 in
-        apk)     run "$sudo" apk    update    ;;
-        zypper)  run "$sudo" zypper update -y ;;
-        pacman)  run "$sudo" pacman -Syy --noconfirm ;;
-        dnf|yum)
-            case $2 in
-                default) run "$sudo" "$1" -y update ;;
-                epel)
-                    if [ epel = "$("$1" repolist | cut -d ' ' -f1 | sed -n '/^epel$/p')" ] ; then
-                        run "$sudo" "$1" --enablerepo=epel -y update
-                    else
-                        run "$sudo" "$1"                   -y update  &&
-                        run "$sudo" "$1"                   -y install epel-release &&
-                        run "$sudo" "$1" --enablerepo=epel -y update
-                    fi
-                    ;;
-            esac
-            ;;
-        apt-get|apt)
-            case $2 in
-                default) run "$sudo" "$1" -y update ;;
-                ppa:*)   run "$sudo" "$1" -y update ;;
-                *)       die "$1: unrecognized repo: $2" ;;
-            esac
-    esac
+    {
+        case $1 in
+            apk)     run "$sudo" apk    update    ;;
+            zypper)  run "$sudo" zypper update -y ;;
+            pacman)  run "$sudo" pacman -Syy --noconfirm ;;
+            dnf|yum)
+                case $2 in
+                    default) run "$sudo" "$1" -y update ;;
+                    epel)
+                        if [ epel = "$("$1" repolist | cut -d ' ' -f1 | sed -n '/^epel$/p')" ] ; then
+                            run "$sudo" "$1" --enablerepo=epel -y update
+                        else
+                            run "$sudo" "$1"                   -y update  &&
+                            run "$sudo" "$1"                   -y install epel-release &&
+                            run "$sudo" "$1" --enablerepo=epel -y update
+                        fi
+                        ;;
+                esac
+                ;;
+            apt-get|apt)
+                case $2 in
+                    default) run "$sudo" "$1" -y update ;;
+                    ppa:*)   run "$sudo" "$1" -y update ;;
+                    *)       die "$1: unrecognized repo: $2" ;;
+                esac
+        esac
+    } || return 1
 
-    __pmw_is_the_given_package_available $@
+    __pmw_is_the_given_package_available $@ || return 1
 
     note "${COLOR_GREEN}$(shiftn 2 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
 
@@ -5371,10 +5373,10 @@ __install_the_given_package() {
     fi
     run install -d "$PACKAGE_WORKING_DIR"
 
-    step "calculate  packages are depended by $1"
+    step "calculate packages that are depended by $1"
     unset DEPENDENCY_PACKAGE_LIST
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
-        note "there's no packages are depended by $1."
+        note "there's no packages that are depended by $1."
     else
         DEPENDENCY_PACKAGE_LIST="$(__get_packages_recursively_depended_by_the_given_package "$1")"
 
