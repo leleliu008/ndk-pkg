@@ -592,7 +592,7 @@ fetch() {
     case $FETCH_URL in
         *.git)
             if [ -d "$FETCH_OUTPUT_PATH" ] ; then
-                run cd  "$FETCH_OUTPUT_PATH" || return 1
+                run cd  "$FETCH_OUTPUT_PATH"
                 if      git rev-parse 2> /dev/null ; then
                     run git pull &&
                     run git submodule update --recursive
@@ -603,9 +603,9 @@ fetch() {
                 fi
             else
                 if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
-                    run install -d "$FETCH_OUTPUT_DIR" || return 1
+                    run install -d "$FETCH_OUTPUT_DIR"
                 fi
-                run cd "$FETCH_OUTPUT_DIR" || return 1
+                run cd "$FETCH_OUTPUT_DIR"
                 run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
             fi
             ;;
@@ -684,8 +684,6 @@ fetch() {
                     ;;
             esac
 
-            [ $? -eq 0 ] || return 1
-
             if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -n "$FETCH_SHA256" ] ; then
                 die_if_sha256sum_mismatch "$FETCH_OUTPUT_PATH" "$FETCH_SHA256"
             fi
@@ -697,7 +695,7 @@ install_ca_certificates_on_netbsd() {
     if [ "$(uname)" = NetBSD ] ; then
         command -v mozilla-rootcerts > /dev/null || {
             if command -v pkgin > /dev/null ; then
-                run $([ "$(whoami)" = root ] || printf 'sudo\n') pkgin -y install mozilla-rootcerts || return 1
+                run $([ "$(whoami)" = root ] || printf 'sudo\n') pkgin -y install mozilla-rootcerts
             fi
         }
         run mozilla-rootcerts install || true
@@ -936,7 +934,7 @@ __get_os_version_from_uname_a() {
 __get_os_type_from_etc_os_release() {
     if [ -e /etc/os-release ] ; then
         (
-            . /etc/os-release || return 1
+            . /etc/os-release || return 20
             if [ -z "$ID" ] ; then
                 return 1
             else
@@ -951,7 +949,7 @@ __get_os_type_from_etc_os_release() {
 __get_os_version_from_etc_os_release() {
     if [ -f /etc/os-release ] ; then
         (
-            . /etc/os-release || return 1
+            . /etc/os-release || return 20
             if [ -z "$VERSION_ID" ] ; then
                 printf '%s\n' 'rolling'
             else
@@ -1087,7 +1085,7 @@ __get_os_name_from_os_type() {
         macos)   printf '%s\n' 'macOS' ;;
         android) printf '%s\n' 'Android' ;;
         windows)
-            systeminfo | grep 'OS Name:' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//'
+            systeminfo | sed -n '/OS Name:/p' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//'
             ;;
         *) printf '%s\n' "$1"
     esac
@@ -1107,7 +1105,7 @@ __get_os_version_from_os_kind() {
             __get_os_version_from_uname_a
             ;;
         windows)
-            systeminfo | grep 'OS Version:' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//' | cut -d ' ' -f1
+            systeminfo | sed -n '/OS Version:/p' | cut -d: -f2 | head -n 1 | sed 's/^[[:space:]]*//' | cut -d ' ' -f1
             ;;
     esac
 }
@@ -1133,20 +1131,22 @@ __get_os_arch() {
 }
 
 __get_os_libc_from_os_kind() {
-    case $1 in
-        linux)
-            if [ "$(uname -o 2>/dev/null)" = Android ] ; then
-                printf '%s\n' bionic
+    if [ "$1" = linux ] ; then
+        if [ "$(uname -o 2>/dev/null)" = Android ] ; then
+            printf '%s\n' bionic
+            return 0
+        fi
+
+        # https://pubs.opengroup.org/onlinepubs/7908799/xcu/getconf.html
+        if command -v getconf > /dev/null ; then
+            if getconf GNU_LIBC_VERSION > /dev/null 2>&1 ; then
+                printf '%s\n' glibc
                 return 0
             fi
-            # https://pubs.opengroup.org/onlinepubs/7908799/xcu/getconf.html
-            if command -v getconf > /dev/null ; then
-                if getconf GNU_LIBC_VERSION > /dev/null 2>&1 ; then
-                    printf '%s\n' glibc
-                    return 0
-                fi
-            fi
-            if command -v ldd > /dev/null ; then
+        fi
+
+        if command -v ldd > /dev/null ; then
+            if command -v grep > /dev/null ; then
                 if ldd --version 2>&1 | head -n 1 | grep -q GLIBC ; then
                     printf '%s\n' glibc
                     return 0
@@ -1155,9 +1155,20 @@ __get_os_libc_from_os_kind() {
                     printf '%s\n' musl
                     return 0
                 fi
+            elif command -v sed > /dev/null ; then
+                if [ -n "$(ldd --version 2>&1 | head -n 1 | sed -n '/GLIBC/p')" ] ; then
+                    printf '%s\n' glibc
+                    return 0
+                fi
+                if [ -n "$(ldd --version 2>&1 | head -n 1 | sed -n '/musl/p')"  ] ; then
+                    printf '%s\n' musl
+                    return 0
+                fi
             fi
-            return 1
-    esac
+        fi
+
+        return 1
+    fi
 }
 
 # https://stackoverflow.com/questions/45181115/portable-way-to-find-the-number-of-processors-cpus-in-a-shell-script
@@ -1168,7 +1179,13 @@ __get_os_ncpu() {
         *)  if command nproc --version > /dev/null 2>&1 ; then
                 command nproc
             elif test -f /proc/cpuinfo ; then
-                grep -c processor /proc/cpuinfo
+                if command -v grep > /dev/null ; then
+                    grep -c processor /proc/cpuinfo
+                elif command -v sed > /dev/null && command -v wc > /dev/null ; then
+                    sed -n '/^processor/p' /proc/cpuinfo | wc -l
+                else
+                    echo 4
+                fi
             else
                 echo 4
             fi
@@ -1250,7 +1267,7 @@ version_of_python_module() {
     if [ -z "$PIP_COMMAND" ] ; then
         die "can't found pip command."
     else
-        "$PIP_COMMAND" show $1 | grep 'Version:' | cut -d ' ' -f2
+        "$PIP_COMMAND" show $1 | sed -n '/Version:/p' | cut -d ' ' -f2
     fi
 }
 
@@ -2167,35 +2184,33 @@ __pmw_install_the_given_package() {
     [ -z "$2" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , REPO must not be empty."
     [ -z "$3" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG  must not be empty."
 
-    {
-        case $1 in
-            apk)     run "$sudo" apk    update    ;;
-            zypper)  run "$sudo" zypper update -y ;;
-            pacman)  run "$sudo" pacman -Syy --noconfirm ;;
-            dnf|yum)
-                case $2 in
-                    default) run "$sudo" "$1" -y update ;;
-                    epel)
-                        if [ epel = "$("$1" repolist | cut -d ' ' -f1 | sed -n '/^epel$/p')" ] ; then
-                            run "$sudo" "$1" --enablerepo=epel -y update
-                        else
-                            run "$sudo" "$1"                   -y update  &&
-                            run "$sudo" "$1"                   -y install epel-release &&
-                            run "$sudo" "$1" --enablerepo=epel -y update
-                        fi
-                        ;;
-                esac
-                ;;
-            apt-get|apt)
-                case $2 in
-                    default) run "$sudo" "$1" -y update ;;
-                    ppa:*)   run "$sudo" "$1" -y update ;;
-                    *)       die "$1: unrecognized repo: $2" ;;
-                esac
-        esac
-    } || return 1
+    case $1 in
+        apk)     run "$sudo" apk    update    ;;
+        zypper)  run "$sudo" zypper update -y ;;
+        pacman)  run "$sudo" pacman -Syy --noconfirm ;;
+        dnf|yum)
+            case $2 in
+                default) run "$sudo" "$1" -y update ;;
+                epel)
+                    if [ epel = "$("$1" repolist | cut -d ' ' -f1 | sed -n '/^epel$/p')" ] ; then
+                        run "$sudo" "$1" --enablerepo=epel -y update
+                    else
+                        run "$sudo" "$1"                   -y update  &&
+                        run "$sudo" "$1"                   -y install epel-release &&
+                        run "$sudo" "$1" --enablerepo=epel -y update
+                    fi
+                    ;;
+            esac
+            ;;
+        apt-get|apt)
+            case $2 in
+                default) run "$sudo" "$1" -y update ;;
+                ppa:*)   run "$sudo" "$1" -y update ;;
+                *)       die "$1: unrecognized repo: $2" ;;
+            esac
+    esac
 
-    __pmw_is_the_given_package_available $@ || return 1
+    __pmw_is_the_given_package_available $@
 
     note "${COLOR_GREEN}$(shiftn 2 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
 
@@ -2567,7 +2582,7 @@ __uppm_fetch() {
 
         UPPM_PKG_FILEPATH="$HOME/.uppm/downloads/$UPPM_PKG_FILENAME"
 
-        fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SUM_" --output-path="$UPPM_PKG_FILEPATH" || return 1
+        fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SUM_" --output-path="$UPPM_PKG_FILEPATH"
     done
 }
 
@@ -2674,7 +2689,7 @@ __uppm_install_the_given_package() {
 
     UPPM_PKG_FILEPATH="$HOME/.uppm/downloads/$UPPM_PKG_FILENAME"
 
-    fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SUM_" --output-path="$UPPM_PKG_FILEPATH" || return 1
+    fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SUM_" --output-path="$UPPM_PKG_FILEPATH"
 
     case $UPPM_PKG_FILETYPE in
         zip)
@@ -2728,14 +2743,14 @@ __uppm_install_the_given_package() {
 
     if [ ! -f "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" ] ; then
         if [ ! -d "$UPPM_PKG_INSTALLD" ] ; then
-            install -o $(whoami) -d "$UPPM_PKG_INSTALLD" 2>/dev/null || sudo install -o $(whoami) -d "$UPPM_PKG_INSTALLD" || return 1
+            install -o $(whoami) -d "$UPPM_PKG_INSTALLD" 2>/dev/null || sudo install -o $(whoami) -d "$UPPM_PKG_INSTALLD"
         fi
         case $UPPM_PKG_FILETYPE in
             zip)
-                run unzip  "$UPPM_PKG_FILEPATH" -d "$UPPM_PKG_INSTALLD" || return 1
+                run unzip  "$UPPM_PKG_FILEPATH" -d "$UPPM_PKG_INSTALLD"
                 ;;
             tar.xz|tar.gz|tar.lz|tar.bz2|tgz|txz|tlz)
-                run tar xf "$UPPM_PKG_FILEPATH" -C "$UPPM_PKG_INSTALLD" --strip-components 1 || return 1
+                run tar xf "$UPPM_PKG_FILEPATH" -C "$UPPM_PKG_INSTALLD" --strip-components 1
                 ;;
         esac
 
@@ -3114,7 +3129,7 @@ __handle_required_dependencies() {
 
     for dependency in $REQUIRED_DEPENDENCY_LIST
     do
-        handle_dependency $(__decode_dependency "$dependency") || return 1
+        handle_dependency $(__decode_dependency "$dependency")
     done
 }
 
@@ -3231,8 +3246,8 @@ python_module() {
             __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
 
             case $2 in
-                version)  "$__PIP_COMMAND__" show "$3" 2> /dev/null | grep 'Version:'  | cut -d ' ' -f2 ;;
-                location) "$__PIP_COMMAND__" show "$3" 2> /dev/null | grep 'Location:' | cut -d ' ' -f2 ;;
+                version)  "$__PIP_COMMAND__" show "$3" 2> /dev/null | sed -n '/Version:/p'  | cut -d ' ' -f2 ;;
+                location) "$__PIP_COMMAND__" show "$3" 2> /dev/null | sed -n '/Location:/p' | cut -d ' ' -f2 ;;
                 *) die "python_module get $2: not support."
             esac
             ;;
@@ -3242,8 +3257,8 @@ python_module() {
             fi
             if ! python_module is installed "$2" ; then
                 note "${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
-                run "$__PIP_COMMAND__" install -U pip  || return 1
-                run "$__PIP_COMMAND__" install -U "$2" || return 1
+                run "$__PIP_COMMAND__" install -U pip
+                run "$__PIP_COMMAND__" install -U "$2"
             fi
             ;;
         *)  die "python_module $1: not support."
@@ -4048,7 +4063,7 @@ __fetch_sources_of_the_given_package() {
     case $PACKAGE_SRC_TYPE in
         git)
             if [ -d "$PACKAGE_SRC_PATH" ] ; then
-                run cd  "$PACKAGE_SRC_PATH" || return 1
+                run cd  "$PACKAGE_SRC_PATH"
                 if git rev-parse 2> /dev/null ; then
                     if [ -n "$PACKAGE_GIT_REV" ] ; then
                         if [ "$PACKAGE_GIT_REV" = "$(git rev-parse HEAD)" ] ; then
@@ -4083,8 +4098,8 @@ __fetch_sources_of_the_given_package() {
                     run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_REV:refs/remotes/origin/master &&
                     run git checkout --progress --force -B master refs/remotes/origin/master
                 else
-                    if [ ! -d "$MY_SOURCE_DIR" ] ; then
-                        run install -d "$MY_SOURCE_DIR" || return 1
+                    if [ !          -d "$MY_SOURCE_DIR" ] ; then
+                        run install -d "$MY_SOURCE_DIR"
                     fi
                     run cd "$MY_SOURCE_DIR" &&
                     run git clone --recursive "$PACKAGE_SRC_URL" "$PACKAGE_SRC_NAME"
@@ -4111,14 +4126,14 @@ __fetch_resources_of_the_given_package() {
             for PKG in $(__list_available_packages)
             do
                 step "$PKG"
-                 __load_formula_of_the_given_package "$PKG" $@ || return 1
-                __fetch_sources_of_the_given_package "$PKG" $@ || return 1
-                __fetch_patches_of_the_given_package "$PKG" $@ || return 1
+                 __load_formula_of_the_given_package "$PKG" $@
+                __fetch_sources_of_the_given_package "$PKG" $@
+                __fetch_patches_of_the_given_package "$PKG" $@
             done
             ;;
         *)
-             __load_formula_of_the_given_package $@ || return 1
-            __fetch_sources_of_the_given_package $@ || return 1
+             __load_formula_of_the_given_package $@
+            __fetch_sources_of_the_given_package $@
             __fetch_patches_of_the_given_package $@
     esac
 }
@@ -4168,10 +4183,10 @@ is_package_available() {
 is_package_installed() {
     die_if_package_is_not_specified "$1"
 
-    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 1
-    [ -f "$MY_INSTALL_DIR/$1/installed-metadata" ] || return 1
-    [ -f "$MY_INSTALL_DIR/$1/installed-files" ]    || return 1
-    [ -f "$MY_INSTALL_DIR/$1/installed-abis" ]     || return 1
+    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 10
+    [ -f "$MY_INSTALL_DIR/$1/installed-metadata" ] || return 11
+    [ -f "$MY_INSTALL_DIR/$1/installed-files" ]    || return 12
+    [ -f "$MY_INSTALL_DIR/$1/installed-abis" ]     || return 13
 }
 
 is_package__outdated() {
@@ -4291,14 +4306,14 @@ __gen_github_workflows() {
 __list_available_packages() {
     for repo in $(__list_formula_repositories | cut -d= -f1)
     do
-        cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
-        ls -1 *.sh | sed 's/\.sh//g' || return 1
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula"
+        ls -1 *.sh | sed 's/\.sh$//g'
     done
 }
 
 __list_installed_packages() {
     if [ -d "$MY_INSTALL_DIR" ] ; then
-         cd "$MY_INSTALL_DIR" 2>/dev/null || return 1
+         cd "$MY_INSTALL_DIR" 2>/dev/null
     else
         return 0
     fi
@@ -4313,7 +4328,7 @@ __list_installed_packages() {
 
 __list__outdated_packages() {
     if [ -d "$MY_INSTALL_DIR" ] ; then
-         cd "$MY_INSTALL_DIR" 2>/dev/null || return 1
+         cd "$MY_INSTALL_DIR" 2>/dev/null
     else
         return 0
     fi
@@ -4338,7 +4353,7 @@ __uninstall_the_given_packages() {
 
     for packageName in $@
     do
-        __uninstall_the_given_package "$packageName" || return 1
+        __uninstall_the_given_package "$packageName"
     done
 }
 
@@ -4363,15 +4378,15 @@ __reinstall_the_given_packages() {
 
     for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
     do
-        [ -d "$MY_BACKUP_DIR" ] || {
-            install -d "$MY_BACKUP_DIR" || return 1
-        }
+        if [ !      -d "$MY_BACKUP_DIR" ] ; then
+            install -d "$MY_BACKUP_DIR"
+        fi
 
-        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE"
 
-        (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
+        (__install_the_given_package "$INSTALLING_PACKAGE")
 
-        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE"
     done
 }
 
@@ -4392,15 +4407,15 @@ __upgrade_packages() {
 
     for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
     do
-        [ -d "$MY_BACKUP_DIR" ] || {
-            install -d "$MY_BACKUP_DIR" || return 1
-        }
+        if [ !      -d "$MY_BACKUP_DIR" ] ; then
+            install -d "$MY_BACKUP_DIR"
+        fi
 
-        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE"
 
-        (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
+        (__install_the_given_package "$INSTALLING_PACKAGE")
 
-        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" || return 1
+        rm -rf "$MY_BACKUP_DIR/$INSTALLING_PACKAGE"
     done
 }
 
@@ -4408,7 +4423,7 @@ __cleanup() {
     [ -d "$MY_SOURCE_DIR" ] || return 0
     for repo in $(__list_formula_repositories | cut -d= -f1)
     do
-        cd "$MY_FORMULA_REPO_DIR/$repo/formula" || return 1
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula"
         for item in $(ls)
         do
             if [ -f "$item" ] ; then
@@ -4427,9 +4442,11 @@ __search_packages() {
         die "please specify a keyword."
     fi
 
+    handle_dependency required exe grep
+
     for repo in $(__list_formula_repositories | cut -d= -f1)
     do
-        cd "$MY_FORMULA_REPO_DIR/$repo/formula" && ls -1 *.sh | sed 's/\.sh//g' | grep "$*"
+        cd "$MY_FORMULA_REPO_DIR/$repo/formula" && ls -1 *.sh | sed 's/\.sh$//g' | grep "$*"
     done
 }
 
@@ -5226,7 +5243,7 @@ __install_the_given_packages() {
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
             fi
         else
-            (__install_the_given_package "$INSTALLING_PACKAGE") || return 1
+            (__install_the_given_package "$INSTALLING_PACKAGE")
         fi
     done
 }
@@ -5238,7 +5255,7 @@ __install_the_given_package() {
     # brew install meson
     # Error: The current work directory doesn't exist, cannot proceed.
     # beacuse previous package's work direcotory is deleted.
-    cd ~ || return 1
+    cd ~
 
     unset PACKAGE_WORKING_DIR
     unset PACKAGE_SRC_DIR
@@ -5263,9 +5280,9 @@ __install_the_given_package() {
                 return 0
             fi
             if [ -z "$TARGET_ITEM" ] ; then
-                die "install $INSTALLING_PACKAGE failed! you can go to $PACKAGE_WORKING_DIR to see see."
+                die "install $INSTALLING_PACKAGE failed! you can go to $PACKAGE_WORKING_DIR to look at the details."
             else
-                die "install $INSTALLING_PACKAGE/$TARGET_ITEM failed! you can go to $PACKAGE_WORKING_DIR to see see."
+                die "install $INSTALLING_PACKAGE/$TARGET_ITEM failed! you can go to $PACKAGE_WORKING_DIR to look at the details."
             fi
         fi
     }
@@ -5300,15 +5317,15 @@ __install_the_given_package() {
     step "handle required dependencies"
     for item in $PACKAGE_DEP_CMD
     do
-        handle_dependency $(__parse_require_dependency_item exe "$item") || return 1
+        handle_dependency $(__parse_require_dependency_item exe "$item")
     done
     for item in $PACKAGE_DEP_PYM
     do
-        handle_dependency $(__parse_require_dependency_item pym "$item") || return 1
+        handle_dependency $(__parse_require_dependency_item pym "$item")
     done
     for item in $PACKAGE_DEP_PLM
     do
-        handle_dependency $(__parse_require_dependency_item plm "$item") || return 1
+        handle_dependency $(__parse_require_dependency_item plm "$item")
     done
 
     step "printf required dependencies"
@@ -5388,61 +5405,61 @@ __install_the_given_package() {
     fi
 
     step "fetch sources if needed"
-    __fetch_sources_of_the_given_package "$1" || return 1
+    __fetch_sources_of_the_given_package "$1"
 
     step "fetch patches if needed"
-    __fetch_patches_of_the_given_package "$1" || return 1
+    __fetch_patches_of_the_given_package "$1"
 
     case $PACKAGE_SRC_URL in
         dir://*)
             if [ "$PACKAGE_SRC_PATH" = '/dev/null' ] ; then
                 step "create the directory where source files will be stored in"
-                run install -d "$PACKAGE_SRC_DIR" || return 1
+                run install -d "$PACKAGE_SRC_DIR"
             elif [ -d "$PACKAGE_SRC_PATH" ] ; then
                 if [ -d "$PACKAGE_SRC_PATH/.git" ] && command -v git > /dev/null ; then
                     PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
                 fi
 
                 step "create the directory where source files will be copied to"
-                run install -d "$PACKAGE_SRC_DIR" || return 1
+                run install -d "$PACKAGE_SRC_DIR"
 
                 step "copy source files to the directory i just created"
-                run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_DIR" || return 1
+                run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_DIR"
             else
                 die "src.url point to dir is not exist."
             fi
             ;;
         *.git)
             if [ -z "$PACKAGE_GIT_REV" ] ; then
-                PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD) || return 1
+                PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD)
             fi
 
             step "create the directory where source files will be copied to"
-            run install -d "$PACKAGE_SRC_DIR" || return 1
+            run install -d "$PACKAGE_SRC_DIR"
 
             step "copy source files to the directory i just created"
-            run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_DIR" || return 1
+            run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_DIR"
             ;;
         *.c|*.cc|*.cxx|*.cpp)
             step "create the directory where source files will be copied to"
-            run install -d "$PACKAGE_SRC_DIR" || return 1
+            run install -d "$PACKAGE_SRC_DIR"
 
             step "copy source files to the directory i just created"
-            run cp    "$PACKAGE_SRC_PATH"   "$PACKAGE_SRC_DIR" || return 1
+            run cp    "$PACKAGE_SRC_PATH"   "$PACKAGE_SRC_DIR"
             ;;
         *.zip)
             step "create the directory where source file will be uncompressed to"
-            run install -d "$PACKAGE_SRC_DIR" || return 1
+            run install -d "$PACKAGE_SRC_DIR"
 
             step "uncompressed source file to the directory i just created"
-            run unzip "$PACKAGE_SRC_PATH" -d "$PACKAGE_SRC_DIR" || return 1
+            run unzip "$PACKAGE_SRC_PATH" -d "$PACKAGE_SRC_DIR"
             ;;
         *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
             step "create the directory where source file will be uncompressed to"
-            run install -d "$PACKAGE_SRC_DIR" || return 1
+            run install -d "$PACKAGE_SRC_DIR"
 
             step "uncompressed source file to the directory i just created"
-            run tar xf "$PACKAGE_SRC_PATH" -C "$PACKAGE_SRC_DIR" --strip-components 1 || return 1
+            run tar xf "$PACKAGE_SRC_PATH" -C "$PACKAGE_SRC_DIR" --strip-components 1
             ;;
         *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
@@ -5462,7 +5479,7 @@ __install_the_given_package() {
     fi
 
     step "change to build script directory"
-    run cd "$PACKAGE_BSCRIPT_DIR" || return 1
+    run cd "$PACKAGE_BSCRIPT_DIR"
 
     step "build for native"
     if command -v build0 > /dev/null ; then
@@ -5481,8 +5498,8 @@ __install_the_given_package() {
             NATIVE_BUILD_DIR="$PACKAGE_WORKING_DIR/native"
 
             [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] || {
-                run install -d "$NATIVE_BUILD_DIR" || return 1
-                run cd         "$NATIVE_BUILD_DIR" || return 1
+                run install -d "$NATIVE_BUILD_DIR"
+                run cd         "$NATIVE_BUILD_DIR"
             }
 
             for TOOL in PKG_CONFIG MESON CMAKE GMAKE NINJA
@@ -5541,7 +5558,7 @@ PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
 
 EOF
 
-            run build0 || return 1
+            run build0
 
             echo "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
 
@@ -5560,18 +5577,18 @@ EOF
     step "do some preparation works"
     if command -v prepare > /dev/null ; then
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR" || return 1
+            run cd "$PACKAGE_BSCRIPT_DIR"
         fi
-        prepare "$1" || return 1
+        prepare "$1"
     else
         case $PACKAGE_BUILD_SYSTEM in
             autogen)
                 note "no prepare function defined in formula."
-                run NOCONFIGURE=yes ./autogen.sh    || return 1
+                run NOCONFIGURE=yes ./autogen.sh
                 ;;
             autotools)
                 note "no prepare function defined in formula."
-                run autoreconf -ivf || return 1
+                run autoreconf -ivf
                 ;;
             *)  note "no prepare function defined in formula, skipped."
         esac
@@ -5581,7 +5598,7 @@ EOF
     do
         TARGET_INDEX=$(expr ${TARGET_INDEX-0} + 1)
         step "${COLOR_PURPLE}Installing ${COLOR_OFF}${COLOR_GREEN}$1 $TARGET_ITEM${COLOR_OFF}"
-        (__install_the_given_package_for_the_given_target "$1" "$TARGET_ITEM") || return 1
+        (__install_the_given_package_for_the_given_target "$1" "$TARGET_ITEM")
     done
 
     [ "$DRYRUN" = yes ] && exit
@@ -5640,10 +5657,10 @@ __install_the_given_package_for_the_given_target() {
     __printf_variables_for_the_given_target $@
 
     step2 "create needed directories for ${COLOR_GREEN}$@${COLOR_OFF}"
-    run install -d "$TARGET_WORKING_DIR/build"   || return 1
-    run install -d "$TARGET_WORKING_DIR/include" || return 1
-    run install -d "$TARGET_WORKING_DIR/lib"     || return 1
-    run install -d "$TARGET_WORKING_DIR/bin"     || return 1
+    run install -d "$TARGET_WORKING_DIR/build"
+    run install -d "$TARGET_WORKING_DIR/include"
+    run install -d "$TARGET_WORKING_DIR/lib"
+    run install -d "$TARGET_WORKING_DIR/bin"
 
     step2 "create symbolic link for CC and CXX to use ccache"
     if [ "$CCACHE_ENABLED" = yes ] ; then
@@ -5659,16 +5676,16 @@ __install_the_given_package_for_the_given_target() {
 
     if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR" || return 1
+            run cd "$PACKAGE_BSCRIPT_DIR"
         fi
     else
-        run cd "$TARGET_BUILD_DIR" || return 1
+        run cd "$TARGET_BUILD_DIR"
     fi
 
     [ "$DRYRUN" = yes ] && {
         [ -z "$SHELL" ] && SHELL=$(command -v zsh || command -v bash || command -v sh)
         [ -z "$SHELL" ] && SHELL=sh
-        exec "$SHELL" || return 1
+        exec "$SHELL"
     }
 
     if [ -d        "$TARGET_INSTALL_DIR" ] ; then
@@ -5678,25 +5695,23 @@ __install_the_given_package_for_the_given_target() {
     step2 "build for ${COLOR_GREEN}$@${COLOR_OFF}"
 
     if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
-        run rustup target add "$RUST_TARGET" || return 1
+        run rustup target add "$RUST_TARGET"
     fi
 
     if command -v build > /dev/null ; then
-        build $@ || return 1
+        build $@
     else
-        {
-            case $PACKAGE_BUILD_SYSTEM in
-                autogen)   configure ;;
-                autotools) configure ;;
-                configure) configure ;;
-                cmake*)    cmakew ;;
-                meson)     mesonw ;;
-                ninja)     ninja clean && ninja && ninja install ;;
-                make)      makew clean && makew && makew install ;;
-                cargo)     cargow install ;;
-                go)        gow ;;
-            esac
-        } || return 1
+        case $PACKAGE_BUILD_SYSTEM in
+            autogen)   configure ;;
+            autotools) configure ;;
+            configure) configure ;;
+            cmake*)    cmakew ;;
+            meson)     mesonw ;;
+            ninja)     ninja clean && ninja && ninja install ;;
+            make)      makew clean && makew && makew install ;;
+            cargo)     cargow install ;;
+            go)        gow ;;
+        esac
     fi
 
     [ -d "$TARGET_INSTALL_DIR" ] || {
@@ -5705,7 +5720,7 @@ __install_the_given_package_for_the_given_target() {
     }
 
     [ -d "$TARGET_INSTALL_DIR/lib" ] && {
-        cd  "$TARGET_INSTALL_DIR/lib" || return 1
+        cd  "$TARGET_INSTALL_DIR/lib"
         for SO_FILENAME_WITH_VERSION in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so.*' -exec basename {} \;)
         do
             unset SO_FILENAME_WITHOUT_VERSION
@@ -5838,16 +5853,16 @@ EOF
     fi
 
     step2 "justfy ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __justfy_elf_files_for_the_given_target $@ || return 1
+    __justfy_elf_files_for_the_given_target $@
 
     step2 "justfy .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __justfy_la_files_for_the_given_target $@ || return 1
+    __justfy_la_files_for_the_given_target $@
 
     step2 "justfy .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __justfy_pc_files_for_the_given_target $@ || return 1
+    __justfy_pc_files_for_the_given_target $@
 
     step2 "install logs for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __install_logs_for_the_given_target $@ || return 1
+    __install_logs_for_the_given_target $@
 
     run "echo '$TARGET_OS_ABI' >> $PACKAGE_WORKING_DIR/installed-abis"
 }
@@ -5887,11 +5902,11 @@ __justfy_la_files_for_the_given_target() {
     if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
         for lafile in $(find "$TARGET_INSTALL_DIR/lib" -name "*.la")
         do
-            sed_in_place 's|-lpthread||g'                    "$lafile" || return 1
-            sed_in_place 's|-Wl,--strip-debug||g'            "$lafile" || return 1
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$lafile" || return 1
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$lafile" || return 1
-            sed_in_place "s|--sysroot $SYSROOT||g"           "$lafile" || return 1
+            sed_in_place 's|-lpthread||g'                    "$lafile"
+            sed_in_place 's|-Wl,--strip-debug||g'            "$lafile"
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$lafile"
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$lafile"
+            sed_in_place "s|--sysroot $SYSROOT||g"           "$lafile"
         done
     fi
 }
@@ -5900,17 +5915,17 @@ __justfy_pc_files_for_the_given_target() {
     if [ -d "$TARGET_INSTALL_DIR/lib/pkgconfig" ] ; then
         for pcfile in $(find "$TARGET_INSTALL_DIR/lib/pkgconfig" -name "*.pc")
         do
-            sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile" || return 1
-            sed_in_place 's|-lpthread||g'                    "$pcfile" || return 1
-            sed_in_place 's|-Wl,--strip-debug||g'            "$pcfile" || return 1
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$pcfile" || return 1
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$pcfile" || return 1
-            sed_in_place "s|--sysroot $SYSROOT||"            "$pcfile" || return 1
+            sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
+            sed_in_place 's|-lpthread||g'                    "$pcfile"
+            sed_in_place 's|-Wl,--strip-debug||g'            "$pcfile"
+            sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$pcfile"
+            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$pcfile"
+            sed_in_place "s|--sysroot $SYSROOT||"            "$pcfile"
             if grep 'Libs.private:' "$pcfile" > /dev/null ; then
-                LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile" || return 1)
-                LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile" || return 1)
-                sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile" || return 1
-                sed_in_place '/Libs.private/d' "$pcfile" || return 1
+                LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
+                LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
+                sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
+                sed_in_place '/Libs.private/d' "$pcfile"
             fi
         done
     fi
@@ -5934,9 +5949,10 @@ __install_logs_for_the_given_target() {
         for item2 in 'config.log' 'compile_commands.json' 'install.log.txt'
         do
             if [ -f "$item/$item2" ] ; then
-                echo "-- Installing: $TARGET_LOG_DIR/$item2"
-                [ -d "$TARGET_LOG_DIR" ] || run install -d "$TARGET_LOG_DIR"
-                install -m 644 "$item/$item2" "$TARGET_LOG_DIR" || return 1
+                if [ !          -d "$TARGET_LOG_DIR" ] ; then
+                    run install -d "$TARGET_LOG_DIR"
+                fi
+                run install -m 644 "$item/$item2" "$TARGET_LOG_DIR"
             fi
         done
     done
@@ -5954,20 +5970,20 @@ install_incs() {
             unset X2
         fi
 
-        install -v -d         "$TARGET_INSTALL_DIR/include/$X2" || return 1
-        install -v -m 644 $X1 "$TARGET_INSTALL_DIR/include/$X2" || return 1
+        install -v -d         "$TARGET_INSTALL_DIR/include/$X2"
+        install -v -m 644 $X1 "$TARGET_INSTALL_DIR/include/$X2"
 
         shift
     done
 }
 
 install_libs() {
-    install -v -d "$TARGET_INSTALL_DIR/lib" || return 1
+    install -v -d "$TARGET_INSTALL_DIR/lib"
     for item in $@
     do
         case $item in
-            *.a) install -v -m 644 $item "$TARGET_INSTALL_DIR/lib" || return 1 ;;
-            *)   install -v -m 755 $item "$TARGET_INSTALL_DIR/lib" || return 1 ;;
+            *.a) install -v -m 644 $item "$TARGET_INSTALL_DIR/lib" ;;
+            *)   install -v -m 755 $item "$TARGET_INSTALL_DIR/lib" ;;
         esac
     done
 }
@@ -6024,7 +6040,7 @@ __show_infomation_of_all_available_packages() {
     unset PACKAGE_LIST
     unset PACKAGE_LIST_LENGTH
 
-    PACKAGE_LIST=$(__list_available_packages) || return 1
+    PACKAGE_LIST=$(__list_available_packages)
     PACKAGE_LIST_LENGTH=$(list_length $PACKAGE_LIST)
 
     if [ "$OUTPUT_FORMAT" = 'json' ] ; then
@@ -6060,7 +6076,7 @@ __show_infomation_of_all_available_packages() {
 
 # __show_infomation_of_the_given_package_as_shell <PACKAGE-NAME>
 __show_infomation_of_the_given_package_as_shell() {
-    __load_formula_of_the_given_package "$1" || return 1
+    __load_formula_of_the_given_package "$1"
 
     while read KEY
     do
@@ -6859,7 +6875,7 @@ gow() {
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS $GO_BUILD_ARGS_EXTRA"
 
-    run go build $GO_BUILD_ARGS || return 1
+    run go build $GO_BUILD_ARGS
 
     for item in $(ls "$TARGET_BUILD_DIR")
     do
@@ -7010,13 +7026,13 @@ configure() {
             do
                 CONFIG_XX="$MY_SOURCE_DIR/config/$item"
                 if [ ! -f "$CONFIG_XX" ] ; then
-                    fetch "$(config_url "$item")" --output-path="$CONFIG_XX" || return 1
-                    run chmod a+x "$CONFIG_XX" || return 1
+                    fetch "$(config_url "$item")" --output-path="$CONFIG_XX"
+                    run chmod a+x "$CONFIG_XX"
                     if [ "$item" = 'config.sub' ] ; then
-                        sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$CONFIG_XX" || return 1
+                        sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$CONFIG_XX"
                     fi
                 fi
-                run cp -f "$CONFIG_XX" "$file" || return 1
+                run cp -f "$CONFIG_XX" "$file"
             done
         done
     fi
@@ -7098,8 +7114,8 @@ configure() {
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
-            sed_in_place 's|\t@|\t|g'     "$Makefile" || return 1
-            sed_in_place 's|@echo|echo|g' "$Makefile" || return 1
+            sed_in_place 's|\t@|\t|g'     "$Makefile"
+            sed_in_place 's|@echo|echo|g' "$Makefile"
         done
         unset Makefile
     fi
@@ -7470,7 +7486,7 @@ EOF
 
 list_all_installed_libs() {
     if [ -d "$MY_INSTALL_DIR" ] ; then
-        cd  "$MY_INSTALL_DIR" || return 1
+        cd  "$MY_INSTALL_DIR"
     else
         return 0
     fi
@@ -7517,7 +7533,7 @@ __ldd() {
         [ -f "$FILE_PATH" ] || die "$FILE_PATH not exist."
         echo "$FILE_PATH"
 
-        DLL=$("$READELF" -d "$FILE_PATH" | grep ".so" | sed 's/.*\[\(.*\)\].*/\1/')
+        DLL=$("$READELF" -d "$FILE_PATH" | sed -n "/\.so/p" | sed 's/.*\[\(.*\)\].*/\1/')
         for item in $DLL
         do
             ldd_recursion $(read_ldd_cache $item) $(expr "$5" + 1)
@@ -7644,14 +7660,14 @@ calculate_TARGET_OS_VERS() {
 }
 
 ndk_version() {
-    if   command -v cut  > /dev/null ; then
+    if   command -v cut  > /dev/null && command -v grep > /dev/null ; then
         grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | cut -d " " -f3
     elif command -v awk  > /dev/null ; then
         awk -F= '/Pkg.Revision/{print(substr($2, 2))}' "$ANDROID_NDK_HOME/source.properties"
     elif command -v sed  > /dev/null ; then
-        grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | sed  's/Pkg\.Revision = \(.*\).*/\1/'
+        sed -n  "/Pkg.Revision/p" "$ANDROID_NDK_HOME/source.properties" | sed  's/Pkg\.Revision = \(.*\).*/\1/'
     elif command -v gsed > /dev/null ; then
-        grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | gsed 's/Pkg\.Revision = \(.*\).*/\1/'
+        gsed -n "/Pkg.Revision/p" "$ANDROID_NDK_HOME/source.properties" | gsed 's/Pkg\.Revision = \(.*\).*/\1/'
     elif command -v ruby > /dev/null ; then
         ruby <<EOF
 File.open(ENV['ANDROID_NDK_HOME'] + '/source.properties', 'r') {|f|
