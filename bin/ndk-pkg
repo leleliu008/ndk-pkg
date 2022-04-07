@@ -5509,7 +5509,7 @@ __install_the_given_package() {
     # https://github.com/actions/virtual-environments/issues/5360#issuecomment-1091306746
     if [ "$GITHUB_ACTIONS" = true ] && [ "$NATIVE_OS_TYPE" = ubuntu ] ; then
         step "uninstall automake autoconf libtool used to be installed from APT repo"
-        run apt -y remove automake autoconf libtool
+        run $sudo apt -y remove automake autoconf libtool
     fi
 
     step "handle required dependencies"
