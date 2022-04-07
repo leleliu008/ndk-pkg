@@ -89,14 +89,6 @@ executable() {
     file_exists "$1" && [ -x "$1" ]
 }
 
-die_if_file_is_not_exist() {
-    file_exists "$1" || die "$1 is not exist."
-}
-
-die_if_not_executable() {
-    executable "$1" || die "$1 is not executable."
-}
-
 step() {
     STEP_NUM=$(expr ${STEP_NUM-0} + 1)
     STEP_MESSAGE="$@"
@@ -171,7 +163,8 @@ sed_in_place() {
             fi
         fi
     else
-        die "please install sed utility."
+        error "please install sed utility."
+        return 1
     fi
 }
 
@@ -202,7 +195,8 @@ tolower() {
         elif command -v gawk > /dev/null ; then
             gawk '{print(tolower($0))}'
         else
-            die "please install GNU CoreUtils or awk."
+            error "please install GNU CoreUtils or awk."
+            return 1
         fi
     else
         if [ -z "$*" ] ; then
@@ -225,7 +219,8 @@ tolower() {
         elif command -v node > /dev/null ; then
             node -e 'console.log(process.argv[2].toLowerCase())' - "$*"
         else
-            die "please install GNU CoreUtils or awk."
+            error "please install GNU CoreUtils or awk."
+            return 1
         fi
     fi
 }
@@ -323,15 +318,22 @@ md5sum() {
         elif command -v openssl > /dev/null ; then
              openssl md5 | rev | cut -d ' ' -f1 | rev
         else
+            error "md5sum, neither openssl nor GNU CoreUtils Found."
             return 1
         fi
     else
+        [ -e "$1" ] || {
+            error "md5sum <PATH-OF-FILE>, PATH-OF-FILE[$1] is not exist."
+            return 1
+        }
+
         if command -v openssl > /dev/null ; then
              openssl md5    "$1" | cut -d ' ' -f2
         elif echo | command md5sum > /dev/null 2>&1 ; then
              command md5sum "$1" | cut -d ' ' -f1
         else
-            die "please install openssl or GNU CoreUtils."
+            error "md5sum <PATH-OF-FILE>, neither openssl nor GNU CoreUtils Found."
+            return 1
         fi
     fi
 }
@@ -351,94 +353,148 @@ sha256sum() {
         elif command -v openssl > /dev/null ; then
              openssl sha256 | rev | cut -d ' ' -f1 | rev
         else
+            error "sha256sum, neither openssl nor GNU CoreUtils Found."
             return 1
         fi
     else
-        die_if_file_is_not_exist "$1"
+        [ -e "$1" ] || {
+            error "sha256sum <PATH-OF-FILE>, PATH-OF-FILE[$1] is not exist."
+            return 1
+        }
+
         if command -v openssl > /dev/null ; then
              openssl sha256    "$1" | cut -d ' ' -f2
         elif echo | command sha256sum > /dev/null 2>&1 ; then
              command sha256sum "$1" | cut -d ' ' -f1
         else
-            die "please install openssl or GNU CoreUtils."
+            error "sha256sum <PATH-OF-FILE>, neither openssl nor GNU CoreUtils Found."
+            return 1
         fi
     fi
 }
 
-# $1 FILEPATH
-# $2 expect sha256sum
-file_exists_and_sha256sum_matched() {
-    die_if_file_is_not_exist "$1"
-    if [ -z "$2" ] ; then
-        die "please specify expected sha256sum."
-    fi
+# file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>
+  file_exists_and_sha256sum_matched() {
+    [ -z "$1" ] && {
+        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, PATH-OF-FILE is not given."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, EXPECTED-SHA256SUM-OF-FILE is not given."
+        return 1
+    }
+
+    [ -e "$1" ] || {
+        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, PATH-OF-FILE[$1] is not exist."
+        return 1
+    }
 
     [ "$(sha256sum $1)" = "$2" ]
-}
-
-# $1 FILEPATH
-# $2 expect sha256sum
-die_if_sha256sum_mismatch() {
-    file_exists_and_sha256sum_matched "$1" "$2" || die "sha256sum mismatch.\n    expect : $2\n    actual : $(sha256sum $1)"
 }
 
 # }}}
 ##############################################################################
 # {{{ map
 
-# $1 map_name
-__map_name_ref() {
+# 40   map name is not given.
+# 41   map key  is not given.
+
+# __map_name_ref <MAP-NAME>
+  __map_name_ref() {
+    if [ -z "$1" ] ; then
+        error "__map_name_ref <MAP-NAME>, MAP-NAME is not given."
+        return 40
+    fi
+
     printf "map_%s\n" "$(printf '%s\n' "$1" | md5sum)"
 }
 
-# $1 map_name
-# $2 key
-__map_key_ref() {
+# __map_key_ref <MAP-NAME> <MAP-KEY>
+  __map_key_ref() {
+    if [ -z "$1" ] ; then
+        error "__map_key_ref <MAP-NAME> <MAP-KEY>, MAP-NAME is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "__map_key_ref <MAP-NAME> <MAP-KEY>, MAP-KEY is not given."
+        return 41
+    fi
+
     printf "%s_key_%s\n" "$(__map_name_ref "$1")" "$(printf '%s\n' "$2" | md5sum)"
 }
 
-# $1 map_name
-# $2 key
-map_contains() {
-    die_if_map_name_is_not_specified "$1"
-    die_if_map_key__is_not_specified "$2"
+# map_contains <MAP-NAME> <MAP-KEY>
+  map_contains() {
+    if [ -z "$1" ] ; then
+        error "map_contains <MAP-NAME> <MAP-KEY>, MAP-NAME is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "map_contains <MAP-NAME> <MAP-KEY>, MAP-KEY is not given."
+        return 41
+    fi
+
     for item in $(eval echo \$$(__map_name_ref "$1"))
     do
         if [ "$item" = "$2" ] ; then
             return 0
         fi
     done
+
     return 1
 }
 
-# $1 map_name
-# $2 key
-# $3 value
-map_set() {
-    if ! map_contains "$1" "$2" ; then
+# map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>
+  map_set() {
+    if [ -z "$1" ] ; then
+        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, MAP-NAME is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, MAP-KEY is not given."
+        return 41
+    fi
+
+    map_contains "$1" "$2" || {
         unset __MAP_NAME_REF__
         __MAP_NAME_REF__="$(__map_name_ref "$1")"
         __MAP_NAME_REF_VALUE__="$(eval echo \$$__MAP_NAME_REF__)"
         eval "$__MAP_NAME_REF__=\"$__MAP_NAME_REF_VALUE__ $2\""
-    fi
+    }
+
     eval "$(__map_key_ref "$1" "$2")=$3"
 }
 
-# $1 map_name
-# $2 key
-# output: value
-map_get() {
-    die_if_map_name_is_not_specified "$1"
-    die_if_map_key__is_not_specified "$2"
+# map_get <MAP-NAME> <MAP-KEY>
+  map_get() {
+    if [ -z "$1" ] ; then
+        error "map_get <MAP-NAME> <MAP-KEY>, MAP-NAME is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "map_get <MAP-NAME> <MAP-KEY>, MAP-KEY is not given."
+        return 41
+    fi
+
     eval echo "\$$(__map_key_ref "$1" "$2")"
 }
 
-# $1 map_name
-# $2 key
-# output: value
-map_remove() {
-    die_if_map_name_is_not_specified "$1"
-    die_if_map_key__is_not_specified "$2"
+# map_remove <MAP-NAME> <MAP-KEY>
+  map_remove() {
+    if [ -z "$1" ] ; then
+        error "map_remove <MAP-NAME> <MAP-KEY>, MAP-NAME is not given."
+        return 40
+    fi
+
+    if [ -z "$2" ] ; then
+        error "map_remove <MAP-NAME> <MAP-KEY>, MAP-KEY is not given."
+        return 41
+    fi
 
     unset __MAP_NAME_REF__
     __MAP_NAME_REF__="$(__map_name_ref "$1")"
@@ -456,12 +512,16 @@ map_remove() {
             eval "$__MAP_NAME_REF__='$(eval echo \$$__MAP_NAME_REF__) $item'"
         fi
     done
+
     eval "unset $(__map_key_ref "$1" "$2")"
 }
 
-# $1 map_name
-map_clear() {
-    die_if_map_name_is_not_specified "$1"
+# map_remove <MAP-NAME>
+  map_clear() {
+    if [ -z "$1" ] ; then
+        error "map_clear <MAP-NAME>, MAP-NAME is not given."
+        return 40
+    fi
 
     unset __MAP_NAME_REF__
     __MAP_NAME_REF__="$(__map_name_ref "$1")"
@@ -470,35 +530,28 @@ map_clear() {
     do
         eval "unset $(__map_key_ref "$1" "$item")"
     done
+
     eval "unset $__MAP_NAME_REF__"
 }
 
-# $1 map_name
-# output: key list
-map_keys() {
-    die_if_map_name_is_not_specified "$1"
+# map_keys <MAP-NAME>
+  map_keys() {
+    if [ -z "$1" ] ; then
+        error "map_keys <MAP-NAME>, MAP-NAME is not given."
+        return 40
+    fi
+
     eval echo "\$$(__map_name_ref "$1")"
 }
 
-# $1 map_name
-# output: key list length
-map_size() {
-    die_if_map_name_is_not_specified "$1"
+# map_size <MAP-NAME>
+  map_size() {
+    if [ -z "$1" ] ; then
+        error "map_size <MAP-NAME>, MAP-NAME is not given."
+        return 40
+    fi
+
     list_length $(map_keys "$1")
-}
-
-# $1 map_name
-die_if_map_name_is_not_specified() {
-    if [ -z "$1" ] ; then
-        die "please specify a map name."
-    fi
-}
-
-# $1 key
-die_if_map_key__is_not_specified() {
-    if [ -z "$1" ] ; then
-        die "please specify a map key."
-    fi
 }
 
 # }}}
@@ -519,7 +572,8 @@ fetch() {
     unset FETCH_PIPE_TO_CMD
 
     if [ -z "$1" ] ; then
-        die "fetch <URL> [OPTION]... , URL must not be empty."
+        error "fetch <URL> [OPTION]... , URL must not be empty."
+        return 1
     else
         if [ "$COUNTRY" = 'china' ] ; then
             FETCH_URL="$(get_china_mirror_url "$1")"
@@ -539,25 +593,29 @@ fetch() {
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    die "fetch <URL> --output-dir=<DIR> , DIR must not be empty."
+                    error "fetch <URL> --output-dir=<DIR> , DIR must not be empty."
+                    return 1
                 fi
                 ;;
             --output-name=*)
                 FETCH_OUTPUT_NAME=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                    die "fetch <URL> --output-name=<NAME> , NAME must not be empty."
+                    error "fetch <URL> --output-name=<NAME> , NAME must not be empty."
+                    return 1
                 fi
                 ;;
             --output-path=*)
                 FETCH_OUTPUT_PATH=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-                    die "fetch <URL> --output-path=<FILEPATH> , FILEPATH must not be empty."
+                    error "fetch <URL> --output-path=<FILEPATH> , FILEPATH must not be empty."
+                    return 1
                 fi
                 ;;
             --pipe=*)
                 FETCH_PIPE_TO_CMD=$(getvalue "$1")
                 if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
-                    die "fetch <URL> --pipe=<CMD> , CMD must not be empty."
+                    error "fetch <URL> --pipe=<CMD> , CMD must not be empty."
+                    return 1
                 fi
         esac
         shift
@@ -570,12 +628,15 @@ fetch() {
             if [ -z "$FETCH_OUTPUT_DIR" ] ; then
                 FETCH_OUTPUT_DIR="$PWD"
             fi
+
             if [ -z "$FETCH_OUTPUT_NAME" ] ; then
                 FETCH_OUTPUT_NAME=$(basename "$FETCH_URL")
             fi
+
             FETCH_OUTPUT_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME"
-            if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
-                run install -d "$FETCH_OUTPUT_DIR"
+
+            if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+                run install -d "$FETCH_OUTPUT_DIR" || return 1
             fi
         fi
     elif [ "$FETCH_OUTPUT_PATH" = '-' ] ; then
@@ -584,29 +645,29 @@ fetch() {
     else
         FETCH_OUTPUT_DIR="$(dirname $FETCH_OUTPUT_PATH)"
         FETCH_OUTPUT_NAME="$(basename $FETCH_OUTPUT_PATH)"
-        if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
-            run install -d "$FETCH_OUTPUT_DIR"
+        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR" || return 1
         fi
     fi
 
     case $FETCH_URL in
         *.git)
-            if [ -d "$FETCH_OUTPUT_PATH" ] ; then
-                run cd  "$FETCH_OUTPUT_PATH"
+            if [    -d "$FETCH_OUTPUT_PATH" ] ; then
+                run cd "$FETCH_OUTPUT_PATH" || return 1
                 if      git rev-parse 2> /dev/null ; then
-                    run git pull &&
-                    run git submodule update --recursive
+                    run git pull || return 1
+                    run git submodule update --recursive || return 1
                 else
-                    run cd .. &&
-                    run rm -rf "$FETCH_OUTPUT_NAME" &&
-                    run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+                    run cd .. || return 1
+                    run rm -rf "$FETCH_OUTPUT_NAME" || return 1
+                    run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME" || return 1
                 fi
             else
-                if [ ! -d "$FETCH_OUTPUT_DIR" ] ; then
-                    run install -d "$FETCH_OUTPUT_DIR"
+                if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+                    run install -d "$FETCH_OUTPUT_DIR" || return 1
                 fi
-                run cd "$FETCH_OUTPUT_DIR"
-                run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME"
+                run cd "$FETCH_OUTPUT_DIR" || return 1
+                run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME" || return 1
             fi
             ;;
         *)
@@ -617,7 +678,7 @@ fetch() {
                         return 0
                     fi
                 fi
-                rm -f "$FETCH_OUTPUT_PATH"
+                rm -f "$FETCH_OUTPUT_PATH" || return 1
             fi
 
             for FETCH_TOOL in curl wget http lynx aria2c axel
@@ -680,12 +741,18 @@ fetch() {
                         run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
                     fi
                     ;;
-                *)  die "fetch() unimplementation: $FETCH_TOOL"
+                *)  error "fetch() unimplementation: $FETCH_TOOL"
+                    return 1
                     ;;
             esac
 
+            [ $? -eq 0 ] || return 1
+
             if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -n "$FETCH_SHA256" ] ; then
-                die_if_sha256sum_mismatch "$FETCH_OUTPUT_PATH" "$FETCH_SHA256"
+                file_exists_and_sha256sum_matched "$FETCH_OUTPUT_PATH" "$FETCH_SHA256" || {
+                    error "sha256sum mismatch.\n    expect : $FETCH_SHA256\n    actual : $(sha256sum $FETCH_OUTPUT_PATH)"
+                    return 1
+                }
             fi
     esac
 }
@@ -728,7 +795,8 @@ __upgrade_self() {
     set -e
 
     if [ -z "$1" ] ; then
-        die "__upgrade_self <URL> [--china] [-x] , URL must not be empty."
+        error "__upgrade_self <URL> [--china] [-x] , URL must not be empty."
+        return 1
     else
         UPGRADE_SELF_URL="$1"
     fi
@@ -748,7 +816,7 @@ __upgrade_self() {
             --china)
                 COUNTRY=china
                 ;;
-            *)  die "__upgrade_self <URL> [--china] [-x] , unrecognized argument: $arg"
+            *)  error "__upgrade_self <URL> [--china] [-x] , unrecognized argument: $arg" ; return 1
         esac
     done
 
@@ -798,7 +866,8 @@ __integrate_zsh_completions() {
     set -e
 
     if [ -z "$1" ] ; then
-        die "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , URL must not be empty."
+        error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , URL must not be empty."
+        return 1
     else
         ZSH_COMPLETIONS_SCRIPT_URL="$1"
     fi
@@ -822,11 +891,13 @@ __integrate_zsh_completions() {
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$OUTPUT_DIR" ] ; then
-                    die "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , DIR must not be empty."
+                    error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , DIR must not be empty."
+                    return 1
                 fi
                 OUTPUT_DIR=$(globing "$OUTPUT_DIR")
                 ;;
-            *)  die "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , unrecognized argument: $arg"
+            *)  error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , unrecognized argument: $arg"
+                return 1
         esac
     done
 
@@ -1265,7 +1336,8 @@ version_of_python_module() {
     unset PIP_COMMAND
     PIP_COMMAND=$(command -v pip3 || command -v pip)
     if [ -z "$PIP_COMMAND" ] ; then
-        die "can't found pip command."
+        error "can't found pip command."
+        return 1
     else
         "$PIP_COMMAND" show $1 | sed -n '/Version:/p' | cut -d ' ' -f2
     fi
@@ -1447,7 +1519,7 @@ version_match() {
             fi
             [ "$1" = "$(version_sort "$1" "$3" | tail -n 1)" ]
             ;;
-        *)  die "version_compare: $2: not supported operator."
+        *)  error "version_compare: $2: not supported operator." ; return 1
     esac
 }
 
@@ -2180,9 +2252,20 @@ __pmw_get_available_pm_list() {
 # __pmw_install_the_given_package yum epel    ccache
 # __pmw_install_the_given_package dnf epel    ccache
 __pmw_install_the_given_package() {
-    [ -z "$1" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PM   must not be empty."
-    [ -z "$2" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , REPO must not be empty."
-    [ -z "$3" ] && die "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG  must not be empty."
+    [ -z "$1" ] && {
+        error "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PM   must not be empty."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , REPO must not be empty."
+        return 1
+    }
+
+    [ -z "$3" ] && {
+        error "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG  must not be empty."
+        return 1
+    }
 
     {
         case $1 in
@@ -2207,7 +2290,7 @@ __pmw_install_the_given_package() {
                 case $2 in
                     default) run "$sudo" "$1" -y update ;;
                     ppa:*)   run "$sudo" "$1" -y update ;;
-                    *)       die "$1: unrecognized repo: $2" ;;
+                    *)       error "$1: unrecognized repo: $2" ; return 1 ;;
                 esac
         esac
     } || return 1
@@ -2316,7 +2399,8 @@ __pmw_is_the_given_package_available() {
     elif [ $# -eq 5 ] ; then
         __pmw_is_the_given_package_available "$1" "$2" "$3" && version_match "$(__pmw_get_available_package_version_by_package_name "$1" "$3")" "$4" "$5"
     else
-        die "USAGE:  __pmw_is_the_given_package_available <PM> <REPO> <PKG> [OP VERSION]\n    ACTUAL: __pmw_is_the_given_package_available $@"
+        error "USAGE:  __pmw_is_the_given_package_available <PM> <REPO> <PKG> [OP VERSION]\n    ACTUAL: __pmw_is_the_given_package_available $@"
+        return 1
     fi
 }
 
@@ -2373,19 +2457,23 @@ darwin|  -   |  -  |android-sdk|7583922|6929a1957f3e71008adfade0cebd08ebea9b9f50
 EOF
 }
 
-# __uppm_is_the_given_package_available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
+# __uppm_is_the_given_package_available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
 __uppm_is_the_given_package_available() {
-    if [ -z "$1" ] ; then
-        die "uppm is-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], PKG-NAME must not be empty."
-    fi
+    [ -z "$1" ] && {
+        error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], PACKAGE-NAME must not be empty."
+        return 1
+    }
 
     if [ $# -ge 3 ] ; then
         case $2 in
             eq|ne|lt|ge|lt|gt) ;;
-            *) die "uppm is-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
+            *)  error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
+                return 1
         esac
+
         if [ -z "$3" ] ; then
-            die "uppm is-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>],  VERSION must not be empty."
+            error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>],  VERSION must not be empty."
+            return 1
         fi
     fi
 
@@ -2442,21 +2530,25 @@ __uppm_is_the_given_package_installed() {
 }
 
 # __uppm_list_the_available_packages
-# __uppm_list_the_available_packages <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
+# __uppm_list_the_available_packages <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
 __uppm_list_the_available_packages() {
     if [ $# -ge 1 ] ; then
         if [ -z "$1" ] ; then
-            die "uppm ls-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], PKG-NAME must not be empty."
+            error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], PACKAGE-NAME must not be empty."
+            return 1
         fi
     fi
 
     if [ $# -ge 3 ] ; then
         case $2 in
             eq|ne|lt|ge|lt|gt) ;;
-            *) die "uppm ls-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
+            *)  error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
+                return 1
         esac
+
         if [ -z "$3" ] ; then
-            die "uppm ls-available <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], VERSION must not be empty."
+            error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], VERSION must not be empty."
+            return 1
         fi
     fi
 
@@ -2527,7 +2619,7 @@ __uppm_list_the_installed_packages() {
 }
 
 # __uppm_show_infomation
-# __uppm_show_infomation <PKG-NAME>
+# __uppm_show_infomation <PACKAGE-NAME>
 __uppm_show_infomation_of_the_given_package() {
     __uppm_list_the_available_packages $@
 }
@@ -2549,8 +2641,8 @@ __uppm_get_filetype_from_url() {
 }
 
 # __uppm_fetch
-# __uppm_fetch <PKG-NAME>
-# __uppm_fetch <PKG-NAME> eq|ne|le|gr|lt|gt <VERSION>
+# __uppm_fetch <PACKAGE-NAME>
+# __uppm_fetch <PACKAGE-NAME> eq|ne|le|gr|lt|gt <VERSION>
 __uppm_fetch() {
     for UPPM_PKG_LINE in $(__uppm_list_the_available_packages $@)
     do
@@ -2588,21 +2680,23 @@ __uppm_fetch() {
     done
 }
 
-# __uppm_install_the_given_package <PKG-NAME> [eq|ne|le|ge|lt|gt <VERSION>]
+# __uppm_install_the_given_package <PACKAGE-NAME> [eq|ne|le|ge|lt|gt <VERSION>]
 __uppm_install_the_given_package() {
-    set -e
-
-    if [ -z "$1" ] ; then
-        die "uppm install <PKG-NAME> [eq|ne|le|ge|lt|gt <VERSION>], PKG-NAME must not be empty."
-    fi
+    [ -z "$1" ] && {
+        error "uppm install <PACKAGE-NAME> [eq|ne|le|ge|lt|gt <VERSION>], PACKAGE-NAME must not be empty."
+        return 1
+    }
 
     if [ $# -ge 3 ] ; then
         case $2 in
             eq|ne|lt|ge|lt|gt) ;;
-            *) die "uppm install <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
+            *)  error "uppm install <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
+                return 1
         esac
+
         if [ -z "$3" ] ; then
-            die "uppm install <PKG-NAME> [eq|ne|le|gr|lt|gt <VERSION>], VERSION must not be empty."
+            error "uppm install <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], VERSION must not be empty."
+            return 1
         fi
     fi
 
@@ -2811,16 +2905,16 @@ __uppm_help() {
     uppm ls-available
     uppm ls-installed
 
-    uppm is-available <PKG-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
-    uppm is-installed <PKG-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
+    uppm is-available <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
+    uppm is-installed <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
 
     uppm search       <keyword>
 
-    uppm info         [PKG-NAME]
+    uppm info         [PACKAGE-NAME]
 
-    uppm fetch        <PKG-NAME> [OUTPUT-DIR]
+    uppm fetch        <PACKAGE-NAME> [OUTPUT-DIR]
 
-    uppm install      <PKG-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
+    uppm install      <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
     "
 }
 
@@ -2861,9 +2955,10 @@ uppm() {
 }
 
 __uppm_get_package_name_by_command_name() {
-    if [ -z "$1" ] ; then
-        die "__uppm_get_package_name_by_command_name <CMD>, CMD must not be empty."
-    fi
+    [ -z "$1" ] && {
+        error "__uppm_get_package_name_by_command_name <CMD>, CMD must not be empty."
+        return 1
+    }
 
     case $1 in
         python|python3) printf '%s\n' 'python3' ;;
@@ -2880,9 +2975,10 @@ __uppm_get_package_name_by_command_name() {
 
 # __install_command_via_uppm <CMD> [eq|ne|le|ge|lt|gt <VERSION>]
 __install_command_via_uppm() {
-    if [ -z "$1" ] ; then
-        die "__install_command_via_uppm <CMD>, CMD must not be empty."
-    fi
+    [ -z "$1" ] && {
+        error "__install_command_via_uppm <CMD>, CMD must not be empty."
+        return 1
+    }
 
     if command_exists_in_filesystem_and_version_matched $@ ; then
         return 0
@@ -2899,9 +2995,10 @@ __install_command_via_uppm() {
 
 # __install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>]
 __install_command_via_pmw() {
-    if [ -z "$1" ] ; then
-        die "__install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>] , CMD must not be empty."
-    fi
+    [ -z "$1" ] && {
+        error "__install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>] , CMD must not be empty."
+        return 1
+    }
 
     if command_exists_in_filesystem_and_version_matched $@ ; then
         return 0
@@ -2953,12 +3050,12 @@ __install_command_via_run_install_script() {
             install_android_sdk_if_needed
             ;;
         gclient)
-            handle_dependency required exe git
+            handle_dependency required exe git || return 1
 
             # https://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html
 
             if [ !          -d "$MY_HOME_DIR/native" ] ; then
-                run install -d "$MY_HOME_DIR/native"
+                run install -d "$MY_HOME_DIR/native" || return 1
             fi
 
             if [ -d "$MY_HOME_DIR/native/depot_tools" ] ; then
@@ -2966,40 +3063,40 @@ __install_command_via_run_install_script() {
                     # do nothing. depot_tools will be automatically updated when you running 'yes | gclient sync' command
                     :
                 else
-                    run rm -rf "$MY_HOME_DIR/native/depot_tools"
-                    run git -C "$MY_HOME_DIR/native/depot_tools" clone https://gitlab.com/webrtc-mirror/depot_tools.git
+                    run rm -rf "$MY_HOME_DIR/native/depot_tools" || return 1
+                    run git -C "$MY_HOME_DIR/native/depot_tools" clone https://gitlab.com/webrtc-mirror/depot_tools.git || return 1
                 fi
             else
-                run git -C "$MY_HOME_DIR/native" clone https://gitlab.com/webrtc-mirror/depot_tools.git
+                run git -C "$MY_HOME_DIR/native" clone https://gitlab.com/webrtc-mirror/depot_tools.git || return 1
             fi
 
             export PATH="$MY_HOME_DIR/native/depot_tools:$PATH"
             ;;
         xmake)
-            handle_dependency required exe bash
+            handle_dependency required exe bash || return 1
 
             # https://xmake.io/#/guide/installation
             note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
 
             if [ -f    "$MY_HOME_DIR/tmp.d/get-xmake.sh" ] ; then
-                run rm "$MY_HOME_DIR/tmp.d/get-xmake.sh"
+                run rm "$MY_HOME_DIR/tmp.d/get-xmake.sh" || return 1
             fi
 
-            fetch 'https://xmake.io/shget.text' --output-path="$MY_HOME_DIR/tmp.d/get-xmake.sh"
+            fetch 'https://xmake.io/shget.text' --output-path="$MY_HOME_DIR/tmp.d/get-xmake.sh" || return 1
 
             run bash "$MY_HOME_DIR/tmp.d/get-xmake.sh"
             ;;
         rustup)
-            handle_dependency required exe bash:zsh:dash:ash
+            handle_dependency required exe bash:zsh:dash:ash || return 1
 
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running shell script.${COLOR_OFF}"
 
             if [ -f    "$MY_HOME_DIR/tmp.d/rustup-init.sh" ] ; then
-                run rm "$MY_HOME_DIR/tmp.d/rustup-init.sh"
+                run rm "$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
             fi
 
-            fetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/tmp.d/rustup-init.sh"
+            fetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
 
             run $(command -v bash || command -v zsh || command -v dash || command -v ash || command -v sh) "$MY_HOME_DIR/tmp.d/rustup-init.sh" -y
 
@@ -3010,9 +3107,9 @@ __install_command_via_run_install_script() {
             # https://github.com/nvm-sh/nvm
             note "${COLOR_GREEN}$1${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via running bash shell script.${COLOR_OFF}"
 
-            handle_dependency required exe bash:zsh
+            handle_dependency required exe bash:zsh || return 1
 
-	        fetch "$(github_user_content_base_url)/nvm-sh/nvm/master/install.sh" --pipe="$(command -v bash || command -v zsh || echo bash)"
+	        fetch "$(github_user_content_base_url)/nvm-sh/nvm/master/install.sh" --pipe="$(command -v bash || command -v zsh || echo bash)" || return 1
 
 	        export NVM_DIR="${HOME}/.nvm"
 	        . "${HOME}/.nvm/nvm.sh"
@@ -3026,7 +3123,7 @@ __install_command_via_pip() {
         return 1
     fi
 
-    handle_dependency required exe pip3:pip
+    handle_dependency required exe pip3:pip || return 1
 
     (
         unset __PIP_COMMAND__
@@ -3095,20 +3192,22 @@ handle_dependency() {
             shift
             case $1 in
                 *:*)
-                    for CMD in $(echo "$1" | tr ':' ' ')
+                    for CMD in $(printf '%s\n' "$1" | tr ':' ' ')
                     do
                         if command_exists_in_filesystem_and_version_matched "$CMD" $2 $3 ; then
                             map_set MAP_REQUIRED_DEPENDENCIES "$1" "$CMD"
                             return 0
                         fi
                     done
-                    for CMD in $(echo "$1" | tr ':' ' ')
+
+                    for CMD in $(printf '%s\n' "$1" | tr ':' ' ')
                     do
                         if __install_command "$CMD" $2 $3 ; then
                             map_set MAP_REQUIRED_DEPENDENCIES "$1" "$CMD"
                             return 0
                         fi
                     done
+
                     return 1
                     ;;
                 *)  __install_command $@
@@ -3122,7 +3221,7 @@ handle_dependency() {
             shift
             perl_module   install $@
             ;;
-        *) die "handle_dependency() unrecognized argument:$1"
+        *)  error "handle_dependency() unrecognized argument:$1" ; return 1
     esac
 }
 
@@ -3168,7 +3267,7 @@ printf_dependency() {
                         REQUIRED_ITEM="$(map_get MAP_REQUIRED_DEPENDENCIES "$3")"
                         __printf_dependency "$2" "$REQUIRED_ITEM" "$4" "$5" "$(version_of_command $REQUIRED_ITEM)" "$(command -v $REQUIRED_ITEM)"
                     else
-                        for item in $(echo "$3" | tr ':' ' ')
+                        for item in $(printf '%s\n' "$3" | tr ':' ' ')
                         do
                             __printf_dependency "$2" "$item" "$4" "$5" "$(version_of_command $item)" "$(command -v $item)"
                         done
@@ -3183,7 +3282,7 @@ printf_dependency() {
         plm)
             __printf_dependency "$2" "$3" "$4" "$5" "$(perl_module get-version "$item")" "$(perl_module get-location "$item")"
             ;;
-        *)  die "printf_dependency() unrecognized argument: $2"
+        *)  error "printf_dependency() unrecognized argument: $2" ; return 1
     esac
 }
 
@@ -3225,24 +3324,30 @@ __printf_optional_dependencies() {
 python_module() {
     case $1 in
         is)
-            [ $# -eq 3 ] || die "[python_module is] command accept 2 arguments."
+            [ $# -eq 3 ] || {
+                error "[python_module is] command accept 2 arguments."
+                return 1
+            }
 
-            handle_dependency required exe python3:python3.9:python3.8:python3.7:python3.6:python3.5:python
-            handle_dependency required exe pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip
+            handle_dependency required exe python3:python3.9:python3.8:python3.7:python3.6:python3.5:python || return 1
+            handle_dependency required exe pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip || return 1
 
             __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || echo python)
             __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
 
             case $2 in
                 installed)  "$__PYTHON_COMMAND__" -c "import $3" 2> /dev/null ;;
-                *) die "python_module is $2: not support."
+                *) error "python_module is $2: not support." ; return 1
             esac
             ;;
         get)
-            [ $# -eq 3 ] || die "[python_module get] command accept 2 arguments."
+            [ $# -eq 3 ] || {
+                error "[python_module get] command accept 2 arguments."
+                return 1
+            }
 
-            handle_dependency required exe python3:python3.9:python3.8:python3.7:python3.6:python3.5:python
-            handle_dependency required exe pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip
+            handle_dependency required exe python3:python3.9:python3.8:python3.7:python3.6:python3.5:python || return 1
+            handle_dependency required exe pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip || return 1
 
             __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || echo python)
             __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
@@ -3250,20 +3355,22 @@ python_module() {
             case $2 in
                 version)  "$__PIP_COMMAND__" show "$3" 2> /dev/null | sed -n '/Version:/p'  | cut -d ' ' -f2 ;;
                 location) "$__PIP_COMMAND__" show "$3" 2> /dev/null | sed -n '/Location:/p' | cut -d ' ' -f2 ;;
-                *) die "python_module get $2: not support."
+                *) error "python_module get $2: not support." ; return 1
             esac
             ;;
         install)
-            if [ -z "$2" ] ; then
-                die "please specify a python module name."
-            fi
+            [ -z "$2" ] && {
+                error "please specify a python module name."
+                return 1
+            }
+
             if ! python_module is installed "$2" ; then
                 note "${COLOR_GREEN}$2${COLOR_OFF} ${COLOR_YELLOW}python module is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$__PIP_COMMAND__${COLOR_OFF}"
                 run "$__PIP_COMMAND__" install -U pip
                 run "$__PIP_COMMAND__" install -U "$2"
             fi
             ;;
-        *)  die "python_module $1: not support."
+        *)  error "python_module $1: not support." ; return 1
     esac
 }
 
@@ -3298,7 +3405,7 @@ perl_module() {
             ;;
         is-installed)
             shift
-            handle_dependency required exe perl
+            handle_dependency required exe perl || return 1
             perl -M"$1" -le 'print "installed"' > /dev/null 2>&1
             ;;
         install)
@@ -3312,11 +3419,11 @@ perl_module() {
                 note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}perl module is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}cpanm${COLOR_OFF}"
                 run cpanm "$1"
             else
-                handle_dependency required exe cpan:cpanm
+                handle_dependency required exe cpan:cpanm || return 1
                 perl_module install $@
             fi
             ;;
-        *)  die "perl_module $1: not support."
+        *)  error "perl_module $1: not support." ; return 1
     esac
 }
 
@@ -3431,14 +3538,18 @@ regist_dependency() {
 
 # package set sdk.api '23'
 package() {
+    [ $# -lt 2 ] && {
+        error "package <set|add|get> <KEY> [VALUE]..."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "key can not be empty."
+        return 1
+    }
+
     unset __PACKAGE_KEY__
 
-    if [ $# -lt 2 ] ; then
-        die "package <set|add|get> <KEY> [VALUE]..."
-    fi
-    if [ -z "$2" ] ; then
-        die "key can not be empty."
-    fi
     case $1 in
         set)
             shift
@@ -3462,8 +3573,8 @@ package() {
             __PACKAGE_VAL__="$(eval echo \$PACKAGE_$__PACKAGE_KEY__)"
             eval "PACKAGE_$__PACKAGE_KEY__=\"$__PACKAGE_VAL__ $@\"" || exit 1
             ;;
-        '') die "operation can not be empty." ;;
-        *)  die "$1: operation not support "
+        '') error "operation can not be empty." ; return 1 ;;
+        *)  error "$1: operation not support "  ; return 1 ;;
     esac
 }
 
@@ -3483,8 +3594,12 @@ __parse_require_dependency_item() {
 ##############################################################################
 # {{{ operations of formula
 
-__load_formula_of_the_given_package() {
-    die_if_package_is_not_available "$1"
+# __load_formula_of_the_given_package <PACKAGE-NAME>
+  __load_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__load_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
     unset PACKAGE_FORMULA_LOADED
 
@@ -3573,13 +3688,9 @@ __load_formula_of_the_given_package() {
 
     PACKAGE_NAME="$1"
 
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
-    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
-        die "$1 package's formula is not found."
-    fi
-
-    . "$PACKAGE_FORMULA_FILEPATH" || die "$PACKAGE_FORMULA_FILEPATH is broken."
+    . "$PACKAGE_FORMULA_FILEPATH" || return 1
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
@@ -3755,15 +3866,14 @@ __load_formula_of_the_given_package() {
 # examples:
 # __view_formula_of_the_given_package curl
 # __view_formula_of_the_given_package curl --paging=never
-__view_formula_of_the_given_package() {
-    die_if_package_is_not_specified "$1"
+  __view_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__view_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
     unset PACKAGE_FORMULA_FILEPATH
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
-
-    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
-        die "$1 package is not available."
-    fi
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
     shift
 
@@ -3815,15 +3925,15 @@ __view_formula_of_the_given_package() {
     esac
 }
 
-__edit_formula_of_the_given_package() {
-    die_if_package_is_not_specified "$1"
+# __edit_formula_of_the_given_package <PACKAGE-NAME>
+  __edit_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__edit_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
     unset PACKAGE_FORMULA_FILEPATH
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
-
-    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
-        die "$1 package is not available."
-    fi
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
     [ -z "$2" ] || warn "edit action accept only one argument."
 
@@ -3834,8 +3944,12 @@ __edit_formula_of_the_given_package() {
     "$EDITOR" "$PACKAGE_FORMULA_FILEPATH"
 }
 
-__create_formula_of_the_given_package() {
-    die_if_package_is_not_specified "$1"
+# __create_formula_of_the_given_package <PACKAGE-NAME>
+  __create_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__create_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
     unset REPO_NAME
     REPO_NAME=offical
@@ -3884,29 +3998,33 @@ EOF
     __edit_formula_of_the_given_package "$1"
 }
 
-__delete_formula_of_the_given_package() {
-    die_if_package_is_not_specified "$1"
+# __delete_formula_of_the_given_package <PACKAGE-NAME>
+  __delete_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__delete_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
     unset PACKAGE_FORMULA_FILEPATH
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
-
-    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
-        die "$1 package is not available."
-    fi
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
     run rm "$PACKAGE_FORMULA_FILEPATH"
 }
 
+# __rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>
 __rename_formula_of_the_given_package() {
-    die_if_package_is_not_specified "$1"
-    die_if_package_is_not_specified "$2"
+    [ -z "$1" ] && {
+        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, OLD-PACKAGE-NAME is not given."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, NEW-PACKAGE-NAME is not given."
+        return 1
+    }
 
     unset PACKAGE_FORMULA_REPO
-    PACKAGE_FORMULA_REPO="$(__repo_of_formula_of_the_given_package $1)"
-
-    if [ -z "$PACKAGE_FORMULA_REPO" ] ; then
-        die "$1 package is not available."
-    fi
+    PACKAGE_FORMULA_REPO="$(__repo_of_formula_of_the_given_package $1)" || return 1
 
     unset PACKAGE_FORMULA_FILEPATH_OLD
     unset PACKAGE_FORMULA_FILEPATH_NEW
@@ -3934,7 +4052,7 @@ __list_formulas() {
     done
 }
 
-# __add_a_formula_repo NAME URL
+# __add_a_formula_repo <REPO-NAME> <REPO-URL>
 __add_a_formula_repo() {
     if [ -z "$1" ] ; then
         die "please specify a repo name."
@@ -3964,8 +4082,8 @@ __add_a_formula_repo() {
     echo "$1=$2" >> "$MY_HOME_DIR/repos"
 }
 
-# __del_a_formula_repo NAME
-__del_a_formula_repo() {
+# __del_a_formula_repo <REPO-NAME>
+  __del_a_formula_repo() {
     if [ -z "$1" ] ; then
         die "please specify a repo name."
     fi
@@ -3981,6 +4099,7 @@ __del_a_formula_repo() {
             REPO_EXISTS=yes
         fi
     done
+
     if [ "$REPO_EXISTS" = yes ] ; then
         sed_in_place "/^$1=/d" "$MY_HOME_DIR/repos"
     else
@@ -3989,21 +4108,29 @@ __del_a_formula_repo() {
 }
 
 __repo_of_formula_of_the_given_package() {
-    die_if_package_is_not_specified "$1"
+    [ -z "$1" ] && {
+        error "__repo_of_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
     for repo in $(__list_formula_repositories | cut -d= -f1)
     do
         if [ -e "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
-            echo "$repo"
+            printf '%s\n' "$repo"
             return 0
         fi
     done
 
+    error "package [$1] is not available."
     return 1
 }
 
-__path_of_formula_of_the_given_package() {
-    die_if_package_is_not_specified "$1"
+# __path_of_formula_of_the_given_package <PACKAGE-NAME>
+  __path_of_formula_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__path_of_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
     for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
     do
@@ -4012,6 +4139,9 @@ __path_of_formula_of_the_given_package() {
             return 0
         fi
     done
+
+    error "package [$1] is not available."
+    return 1
 }
 
 __list_formula_repositories() {
@@ -4120,8 +4250,12 @@ __fetch_patches_of_the_given_package() {
 }
 
 __fetch_resources_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__fetch_resources_of_the_given_package <PKG>, PKG is not given."
+        return 1
+    }
+
     case $1 in
-        '') die "$_0 fetch <PKG> , PKG must not be empty." ;;
         @all)
             shift
             unset STEP_NUM
@@ -4138,18 +4272,6 @@ __fetch_resources_of_the_given_package() {
             __fetch_sources_of_the_given_package $@
             __fetch_patches_of_the_given_package $@
     esac
-}
-
-die_if_package_is_not_specified() {
-    [ -n "$1" ] || die "no package is specified."
-}
-
-die_if_package_is_not_available() {
-    is_package_available "$1" || die "$1 is not available."
-}
-
-die_if_package_is_not_installed() {
-    is_package_installed "$1" || die "$1 is not installed."
 }
 
 # check if the given package is available
@@ -4170,20 +4292,28 @@ die_if_package_is_not_installed() {
 # is_package_available automake le 1.16.0
 # is_package_available automake ge 1.16.0
 # is_package_available automake
-is_package_available() {
+  is_package_available() {
+    [ -z "$1" ] && {
+        error "is_package_available <PACKAGE-NAME> [<eq|lt|gt|le|ge> <VERSION>], PACKAGE-NAME is not given."
+        return 1
+    }
+
     case $# in
-        0)  die_if_package_is_not_specified ;;
         1)  [ -n "$(__path_of_formula_of_the_given_package $1)" ] ;;
-        3)  __load_formula_of_the_given_package "$1"
+        3)  __load_formula_of_the_given_package "$1" || return 1
             shift
             version_match $PACKAGE_VERSION $@
             ;;
-        *)  die "is available command only accept 1 or 3 argument."
+        *)  error "is available command only accept 1 or 3 argument." ; return 1
     esac
 }
 
-is_package_installed() {
-    die_if_package_is_not_specified "$1"
+# is_package_installed <PACKAGE-NAME>
+  is_package_installed() {
+    [ -z "$1" ] && {
+        error "is_package_installed <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
     [ -d "$MY_INSTALL_DIR/$1" ]                    || return 10
     [ -f "$MY_INSTALL_DIR/$1/installed-metadata" ] || return 11
@@ -4192,10 +4322,8 @@ is_package_installed() {
 }
 
 is_package__outdated() {
-    __load_formula_of_the_given_package "$1"
-
-    __load_installed_metadata_of_the_given_package "$1"
-
+    __load_formula_of_the_given_package "$1" &&
+    __load_installed_metadata_of_the_given_package "$1" &&
     version_match "$PACKAGE_VERSION" gt "$INSTALLED_PKG_VERS"
 }
 
@@ -4323,7 +4451,7 @@ __list_installed_packages() {
     for packageName in *
     do
         if is_package_installed "$packageName" ; then
-            echo "$packageName"
+            printf '%s\n' "$packageName"
         fi
     done
 }
@@ -4344,14 +4472,28 @@ __list__outdated_packages() {
     done
 }
 
-__tree_the_given_installed_package() {
-    die_if_package_is_not_installed "$1"
-    handle_dependency required exe tree
+# __tree_the_given_installed_package <PACKAGE-NAME>
+  __tree_the_given_installed_package() {
+    [ -z "$1" ] && {
+        error "__tree_the_given_installed_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
+
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
+    handle_dependency required exe tree || return 1
+
     run tree $(shiftn 1 $@) "$MY_INSTALL_DIR/$1"
 }
 
 __uninstall_the_given_packages() {
-    die_if_package_is_not_specified "$1"
+    [ -z "$1" ] && {
+        error "__uninstall_the_given_packages <PACKAGE-NAME>..., PACKAGE-NAME is not given."
+        return 1
+    }
 
     for packageName in $@
     do
@@ -4360,7 +4502,15 @@ __uninstall_the_given_packages() {
 }
 
 __uninstall_the_given_package() {
-    die_if_package_is_not_installed "$1"
+    [ -z "$1" ] && {
+        error "__uninstall_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
+
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
 
     run rm -rf "$MY_INSTALL_DIR/$1"
 }
@@ -4368,12 +4518,21 @@ __uninstall_the_given_package() {
 __reinstall_the_given_packages() {
     inspect_install_arguments $@
 
-    die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
+    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && {
+        error "$_0 reinstall <PACKAGE-NAME>..., PACKAGE-NAME is not given."
+        return 1
+    }
 
     for packageName in $USER_SPECIFIED_PACKAGE_LIST
     do
-        die_if_package_is_not_available "$packageName"
-        die_if_package_is_not_installed "$packageName"
+        is_package_available "$packageName" || {
+            error "package [$packageName] is not available."
+            return 1
+        }
+        is_package_installed "$packageName" || {
+            error "package [$packageName] is not installed."
+            return 1
+        }
     done
 
     __config_native_toolchain_environment_variables
@@ -4401,8 +4560,14 @@ __upgrade_packages() {
 
     for packageName in $USER_SPECIFIED_PACKAGE_LIST
     do
-        die_if_package_is_not_available "$packageName"
-        die_if_package_is_not_installed "$packageName"
+        is_package_available "$packageName" || {
+            error "package [$packageName] is not available."
+            return 1
+        }
+        is_package_installed "$packageName" || {
+            error "package [$packageName] is not installed."
+            return 1
+        }
     done
 
     __config_native_toolchain_environment_variables
@@ -4440,9 +4605,10 @@ __cleanup() {
 }
 
 __search_packages() {
-    if [ -z "$1" ] ; then
-        die "please specify a keyword."
-    fi
+    [ -z "$1" ] && {
+        error "please specify a keyword."
+        return 1
+    }
 
     handle_dependency required exe grep
 
@@ -4509,7 +4675,7 @@ __show_or_open_homepage_of_the_given_package() {
                 ACTION=open
                 ;;
             -*|--*)
-                die "unrecognized argument: 41"
+                die "unrecognized argument: $1"
                 ;;
             *)  if [ -z "$PACKAGE" ] ; then
                     PACKAGE=$1
@@ -4553,9 +4719,12 @@ __open_homepage_of_the_given_package() {
     fi
 }
 
-# __show_packages_depended_by_the_given_package <PKG-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>]
+# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>]
 __show_packages_depended_by_the_given_package() {
-    die_if_package_is_not_specified "$1"
+    [ -z "$1" ] && {
+        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], PACKAGE-NAME is not given."
+        return 1
+    }
 
     PACKAGE_NAME="$1"
 
@@ -4601,7 +4770,7 @@ __show_packages_depended_by_the_given_package() {
                     shift
                 fi
                 ;;
-            *)  die "$_0 depends <PKG-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], unrecognized argumet: $1"
+            *)  die "$_0 depends <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], unrecognized argumet: $1"
         esac
         shift
     done
@@ -4745,12 +4914,22 @@ $LINE"
     esac
 }
 
+# __logs_the_given_installed_package <PACKAGE-NAME> <ABI>
 __logs_the_given_installed_package() {
-    die_if_package_is_not_installed "$1"
+    [ -z "$1" ] && {
+        error "$_0 logs <PACKAGE-NAME> <ABI>, PACKAGE-NAME is not given."
+        return 1
+    }
 
-    if [ -z "$2" ] ; then
-        die "please specify a abi."
-    fi
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "$_0 logs <PACKAGE-NAME> <ABI>, ABI is not given."
+        return 1
+    }
 
     for ABI in $(cat "$MY_INSTALL_DIR/$1/installed-abis")
     do
@@ -4761,9 +4940,10 @@ __logs_the_given_installed_package() {
         fi
     done
 
-    if [ -z "$ABI" ] ; then
-        die "unsupported abi: $1"
-    fi
+    [ -z "$ABI" ] && {
+        error "$_0 logs <PACKAGE-NAME> <ABI>, unsupported ABI: $2"
+        return 1
+    }
 
     if command -v bat > /dev/null ; then
         VIEWER=bat
@@ -4800,7 +4980,7 @@ __logs_the_given_installed_package() {
 }
 
 # examples:
-# __pack_the_given_installed_package <PKG-NAME> <TYPE>
+# __pack_the_given_installed_package <PACKAGE-NAME> <TYPE>
 # __pack_the_given_installed_package  autoconf  tar.xz
 __pack_the_given_installed_package() {
     __load_installed_metadata_of_the_given_package "$1"
@@ -4824,8 +5004,8 @@ __pack_the_given_installed_package() {
             handle_dependency required exe tar
             handle_dependency required exe bzip2
             ;;
-        '')die "$_0 pack <PKG-NAME> <TYPE>, TYPE must not be empty." ;;
-        *) die "$_0 pack <PKG-NAME> <TYPE>, unsupported TYPE: $2, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
+        '')die "$_0 pack <PACKAGE-NAME> <TYPE>, TYPE must not be empty." ;;
+        *) die "$_0 pack <PACKAGE-NAME> <TYPE>, unsupported TYPE: $2, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
     esac
 
     unset PACKED_DIR_NAME
@@ -4877,12 +5057,18 @@ __pack_the_given_installed_package() {
 
 # https://developer.android.com/studio/projects/android-library#aar-contents
 #
-# __create_aar_for_the_given_installed_package <PKG-NAME>
+# __create_aar_for_the_given_installed_package <PACKAGE-NAME>
 # __create_aar_for_the_given_installed_package     v8
-__create_aar_for_the_given_installed_package() {
-    set -e
+  __create_aar_for_the_given_installed_package() {
+    [ -z "$1" ] && {
+        error "__create_aar_for_the_given_installed_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
-    die_if_package_is_not_installed "$1"
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
 
     unset PACKAGE_HAVE_INCLUDE
     unset PACKAGE_HAVE_LIBRARY
@@ -5040,14 +5226,10 @@ EOF
 }
 
 # this fuction should be run in subshell
-# __get_packages_directly_depended_by_the_given_package <PKG-NAME>
+# __get_packages_directly_depended_by_the_given_package <PACKAGE-NAME>
 __get_packages_directly_depended_by_the_given_package() {
     unset PACKAGE_FORMULA_FILEPATH
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)"
-
-    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
-        die "$1 package's formula is not found."
-    fi
+    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
     sed -n '/^[[:space:]]*package[[:space:]]\{1,\}set[[:space:]]\{1,\}dep\.pkg[[:space:]]\{1,\}".*"[[:space:]]*/p' "$PACKAGE_FORMULA_FILEPATH" | sed 's/^[[:space:]]*package[[:space:]]\{1,\}set[[:space:]]\{1,\}dep\.pkg[[:space:]]\{1,\}"[[:space:]]*\(.*\)[[:space:]]*"[[:space:]]*/\1/'
 }
@@ -5055,9 +5237,9 @@ __get_packages_directly_depended_by_the_given_package() {
 # this fuction should be run in subshell
 #
 # __get_packages_recursively_depended_by_the_given_package
-# __get_packages_recursively_depended_by_the_given_package <PKG-NAME> [yes]
+# __get_packages_recursively_depended_by_the_given_package <PACKAGE-NAME> [yes]
 #
-# if PKG-NAME is not specified, $USER_SPECIFIED_PACKAGE_LIST will be used
+# if PACKAGE-NAME is not specified, $USER_SPECIFIED_PACKAGE_LIST will be used
 # yes means invoked by myself
 __get_packages_recursively_depended_by_the_given_package() {
     if [ "$2" != yes ] ; then
@@ -5076,7 +5258,10 @@ __get_packages_recursively_depended_by_the_given_package() {
 
     for DIRECT_DEPENDENCY_PACKAGE_NAME in $DIRECT_DEPENDENCY_PACKAGE_LIST
     do
-        die_if_package_is_not_available "$DIRECT_DEPENDENCY_PACKAGE_NAME"
+        is_package_available "$DIRECT_DEPENDENCY_PACKAGE_NAME" || {
+            error "package [$DIRECT_DEPENDENCY_PACKAGE_NAME] is not available."
+            return 1
+        }
 
         if [ "$(printf '%s\n' "$RESULT" | sed -n "/^$DIRECT_DEPENDENCY_PACKAGE_NAME$/p")" = "$DIRECT_DEPENDENCY_PACKAGE_NAME" ] ; then
             RESULT=$(printf '%s\n' "$RESULT" | sed "/^$DIRECT_DEPENDENCY_PACKAGE_NAME$/d")
@@ -5133,7 +5318,7 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
     unset GEN_DEPENDENCY_GRAPH_WORKING_DIR
     unset GEN_DEPENDENCY_GRAPH_DOT_FILEPATH
 
-    GEN_DEPENDENCY_GRAPH_WORKING_DIR=$(mktemp -d)
+    GEN_DEPENDENCY_GRAPH_WORKING_DIR=$(mktemp -d) || return 1
     GEN_DEPENDENCY_GRAPH_DOT_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.dot"
     GEN_DEPENDENCY_GRAPH_TXT_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.txt"
     GEN_DEPENDENCY_GRAPH_PNG_FILEPATH="$GEN_DEPENDENCY_GRAPH_WORKING_DIR/dependencies.png"
@@ -5151,7 +5336,7 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
         esac
 
         if [ !      -d "$GEN_DEPENDENCY_GRAPH_OUTPUT_DIR" ] ; then
-            install -d "$GEN_DEPENDENCY_GRAPH_OUTPUT_DIR"
+            install -d "$GEN_DEPENDENCY_GRAPH_OUTPUT_DIR" || return 1
         fi
     fi
 
@@ -5164,7 +5349,8 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
             fi
             ;;
         txt)
-            handle_dependency required exe curl
+            handle_dependency required exe curl || return 1
+
             # https://github.com/ggerganov/dot-to-ascii
             curl \
                 -o "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH" \
@@ -5172,7 +5358,7 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
                 -G \
                 --data-urlencode "boxart=1" \
                 --data-urlencode "src=$(cat $GEN_DEPENDENCY_GRAPH_DOT_FILEPATH)" \
-                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php"
+                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || return 1
 
             if [ "$3" = '/dev/tty' ] ; then
                 cat   "$GEN_DEPENDENCY_GRAPH_TXT_FILEPATH"
@@ -5181,12 +5367,12 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
             fi
             ;;
         png)
-            handle_dependency required exe dot
+            handle_dependency required exe dot || return 1
 
             if command -v fc-match > /dev/null ; then
                 # Error: fontconfig: Couldn't find font.
                 if [ -z "$(fc-match)" ] ; then
-                    fetch 'https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/Meslo/M/Regular/complete/Meslo%20LG%20M%20Regular%20Nerd%20Font%20Complete%20Mono%20Windows%20Compatible.ttf?raw=true' --output-dir="$HOME/.fonts" --output-name='Meslo LG M DZ Regular Nerd Font Complete Mono.ttf'
+                    fetch 'https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/Meslo/M/Regular/complete/Meslo%20LG%20M%20Regular%20Nerd%20Font%20Complete%20Mono%20Windows%20Compatible.ttf?raw=true' --output-dir="$HOME/.fonts" --output-name='Meslo LG M DZ Regular Nerd Font Complete Mono.ttf' || return 1
                 fi
             fi
 
@@ -5227,7 +5413,10 @@ __config_native_toolchain_environment_variables() {
 __install_the_given_packages() {
     inspect_install_arguments $@
 
-    die_if_package_is_not_specified $USER_SPECIFIED_PACKAGE_LIST
+    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && {
+        error "$_0 install <PACKAGE-NAME>..., PACKAGE-NAME is not given."
+        return 1
+    }
 
     __config_native_toolchain_environment_variables
 
@@ -5276,15 +5465,15 @@ __install_the_given_package() {
         is_package_installed "$INSTALLING_PACKAGE" && return 0
 
         if [ -z "$PACKAGE_WORKING_DIR" ] ; then
-            die "install $INSTALLING_PACKAGE failed!"
+            die "package [$INSTALLING_PACKAGE] install failed!"
         else
             if [ "$DRYRUN" = yes ] ; then
                 return 0
             fi
             if [ -z "$TARGET_ITEM" ] ; then
-                die "install $INSTALLING_PACKAGE failed! you can go to $PACKAGE_WORKING_DIR to look at the details."
+                die "package [$INSTALLING_PACKAGE] install failed! you can go to directory[$PACKAGE_WORKING_DIR] to look at the details."
             else
-                die "install $INSTALLING_PACKAGE/$TARGET_ITEM failed! you can go to $PACKAGE_WORKING_DIR to look at the details."
+                die "target [$INSTALLING_PACKAGE/$TARGET_ITEM] install failed! you can go to directory[$PACKAGE_WORKING_DIR] to look at the details."
             fi
         fi
     }
@@ -5314,6 +5503,13 @@ __install_the_given_package() {
         if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
             package add dep.cmd bear
         fi
+    fi
+
+    # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+    # https://github.com/actions/virtual-environments/issues/5360#issuecomment-1091306746
+    if [ "$GITHUB_ACTIONS" = true ] && [ "$NATIVE_OS_TYPE" = ubuntu ] ; then
+        step "uninstall automake autoconf libtool used to be installed from APT repo"
+        run apt -y remove automake autoconf libtool
     fi
 
     step "handle required dependencies"
@@ -6077,7 +6273,7 @@ __show_infomation_of_all_available_packages() {
 }
 
 # __show_infomation_of_the_given_package_as_shell <PACKAGE-NAME>
-__show_infomation_of_the_given_package_as_shell() {
+  __show_infomation_of_the_given_package_as_shell() {
     __load_formula_of_the_given_package "$1"
 
     while read KEY
@@ -6145,20 +6341,15 @@ EOF
 # __show_infomation_of_the_given_package curl version
 # __show_infomation_of_the_given_package curl webpage
 __show_infomation_of_the_given_package() {
-    set -e
+    [ -z "$1" ] && {
+        error "__show_infomation_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
-    if [ $# -eq 0 ] ; then
-        die_if_package_is_not_specified
-    fi
-
-    if [ $# -gt 2 ] ; then
-        die "too many arguments."
-    fi
-
-    if [ $# -eq 2 ] ; then
+    if [ $# -ge 2 ] ; then
         case $2 in
             --json)
-                __load_formula_of_the_given_package "$1"
+                __load_formula_of_the_given_package "$1" || return 1
                 printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"git_url\":\"%s\"}\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
                 ;;
             --shell)
@@ -6168,39 +6359,71 @@ __show_infomation_of_the_given_package() {
                 __path_of_formula_of_the_given_package "$1"
                 ;;
             installed-dir)
-                die_if_package_is_not_installed "$1"
-                echo "$MY_INSTALL_DIR/$1"
+                if is_package_installed "$1" ; then
+                    printf '%s\n' "$MY_INSTALL_DIR/$1"
+                else
+                    error "package [$1] is not installed."
+                    return 1
+                fi
                 ;;
             installed-abis)
-                die_if_package_is_not_installed "$1"
-                cat "$MY_INSTALL_DIR/$1/installed-abis"
+                if is_package_installed "$1" ; then
+                    cat "$MY_INSTALL_DIR/$1/installed-abis"
+                else
+                    error "package [$1] is not installed."
+                    return 1
+                fi
                 ;;
             installed-metadata)
-                die_if_package_is_not_installed "$1"
-                cat "$MY_INSTALL_DIR/$1/installed-metadata"
+                if is_package_installed "$1" ; then
+                    cat "$MY_INSTALL_DIR/$1/installed-metadata"
+                else
+                    error "package [$1] is not installed."
+                    return 1
+                fi
                 ;;
             installed-files)
-                die_if_package_is_not_installed "$1"
-                cat "$MY_INSTALL_DIR/$1/installed-files"
+                if is_package_installed "$1" ; then
+                    cat "$MY_INSTALL_DIR/$1/installed-files"
+                else
+                    error "package [$1] is not installed."
+                    return 1
+                fi
                 ;;
             installed-datetime-unix)
-                __load_installed_metadata_of_the_given_package "$1"
-                echo "$INSTALLED_DATETIME"
+                if is_package_installed "$1" ; then
+                    __load_installed_metadata_of_the_given_package "$1" &&
+                    printf '%s\n' "$INSTALLED_DATETIME"
+                else
+                    error "package [$1] is not installed."
+                    return 1
+                fi
                 ;;
             installed-datetime-formatted)
-                __load_installed_metadata_of_the_given_package "$1"
-                format_unix_timestamp "$INSTALLED_DATETIME" '+%Y/%m/%d %H:%M:%S'
+                if is_package_installed "$1" ; then
+                    __load_installed_metadata_of_the_given_package "$1" &&
+                    format_unix_timestamp "$INSTALLED_DATETIME" '+%Y/%m/%d %H:%M:%S'
+                else
+                    error "package [$1] is not installed."
+                    return 1
+                fi
                 ;;
             installed-pkg-version)
-                __load_installed_metadata_of_the_given_package "$1"
-                echo "$INSTALLED_PKG_VERS"
+                if is_package_installed "$1" ; then
+                    __load_installed_metadata_of_the_given_package "$1" &&
+                    printf '%s\n' "$INSTALLED_PKG_VERS"
+                else
+                    error "package [$1] is not installed."
+                    return 1
+                fi
                 ;;
+            -x) ;;
             *)  package get "$1" "$2"
         esac
         return $?
     fi
 
-    __load_formula_of_the_given_package "$1"
+    __load_formula_of_the_given_package "$1" || return 1
 
     echo "name    : $(mark_is_package_installed_or_not $1)"
 
@@ -6247,7 +6470,7 @@ __show_infomation_of_the_given_package() {
 
     is_package_installed "$1" || return 0
 
-    __load_installed_metadata_of_the_given_package "$1"
+    __load_installed_metadata_of_the_given_package "$1" || return 1
 
     echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$MY_INSTALL_DIR/$1" | awk '{print $2, $1}')"
 
@@ -6323,8 +6546,12 @@ __record_installed_files_of_the_given_package() {
     fi
 }
 
-__record_installed_metadata_of_the_given_package() {
-    die_if_package_is_not_specified "$1"
+# __record_installed_metadata_of_the_given_package <PACKAGE-NAME>
+  __record_installed_metadata_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__record_installed_metadata_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
 
     INSTALLED_METADATA_FILEPATH="$MY_INSTALL_DIR/$1/installed-metadata"
 
@@ -6343,8 +6570,17 @@ BUILD_USE_TOOLCHAIN_VERS='$TOOLCHAIN_VERS'
 EOF
 }
 
-__load_installed_metadata_of_the_given_package() {
-    die_if_package_is_not_installed "$1"
+# __load_installed_metadata_of_the_given_package <PACKAGE-NAME>
+  __load_installed_metadata_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "__load_installed_metadata_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
+
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
 
     unset INSTALLED_DATETIME
     unset INSTALLED_PKG_NAME
@@ -6355,9 +6591,7 @@ __load_installed_metadata_of_the_given_package() {
     unset BUILD_USE_TOOLCHAIN_NAME
     unset BUILD_USE_TOOLCHAIN_VERS
 
-    INSTALLED_METADATA_FILEPATH="$MY_INSTALL_DIR/$1/installed-metadata"
-
-    . "$INSTALLED_METADATA_FILEPATH" || die "$INSTALLED_METADATA_FILEPATH is broken."
+    . "$MY_INSTALL_DIR/$1/installed-metadata"
 }
 
 # __config_variables_for_the_given_target <PACKAGE-NAME> <TARGET>
@@ -7506,8 +7740,16 @@ list_all_installed_libs() {
 __ldd() {
     setup_build_toolchains_env
 
-    die_if_package_is_not_installed "$1"
-    die_if_abi_____is_not_supported "$2"
+    [ -z "$1" ] && {
+        error "__ldd <PACKAGE-NAME> <ABI>, PACKAGE-NAME is not given."
+        return 1
+    }
+
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
 
     if [ -z "$3" ] ; then
         die "type is not specified."
@@ -7522,8 +7764,16 @@ __ldd() {
     READELF="$(path_of_tool_in_the_toolchain readelf)"
 
     ldd_recursion() {
-        die_if_package_is_not_installed "$1"
-        die_if_abi_____is_not_supported "$2"
+        [ -z "$1" ] && {
+            error "ldd_recursion <PACKAGE-NAME> <ABI>, PACKAGE-NAME is not given."
+            return 1
+        }
+
+        is_package_installed "$1" || {
+            error "package [$1] is not installed."
+            return 1
+        }
+
         if [ -z "$3" ] ; then
             die "type is not specified."
         fi
@@ -7545,9 +7795,17 @@ __ldd() {
     ldd_recursion "$1" "$2" "$3" "$4" 0
 }
 
-list_dynamic_library_names_of_the_given_package() {
-    die_if_package_is_not_specified "$1"
-    die_if_package_is_not_installed "$1"
+# list_dynamic_library_names_of_the_given_package <PACKAGE-NAME>
+  list_dynamic_library_names_of_the_given_package() {
+    [ -z "$1" ] && {
+        error "list_dynamic_library_names_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        return 1
+    }
+
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
 
     ABI=$(__list_supported_target_abis | head -n 1)
     TARGET_LIBRARY_DIR="$MY_INSTALL_DIR/$1/$ABI/lib"
@@ -7578,31 +7836,46 @@ __list_supported_target_triples() {
     done
 }
 
-print_target_arch_by_abi() {
+# print_target_arch_by_abi <ABI>
+  print_target_arch_by_abi() {
+    [ -z "$1" ] && {
+        error "print_target_arch_by_abi <ABI>, ABI is not given."
+        return 1
+    }
+
     case $1 in
-        '')          die  "abi is not specified." ;;
-        armeabi-v7a) echo armv7a  ;;
-        arm64-v8a)   echo aarch64 ;;
-        x86)         echo i686    ;;
-        x86_64)      echo x86_64  ;;
+        armeabi-v7a) printf '%s\n' armv7a  ;;
+        arm64-v8a)   printf '%s\n' aarch64 ;;
+        x86)         printf '%s\n' i686    ;;
+        x86_64)      printf '%s\n' x86_64  ;;
     esac
 }
 
-print_target_abi_by_arch() {
+# print_target_abi_by_arch <ARCH>
+  print_target_abi_by_arch() {
+    [ -z "$1" ] && {
+        error "print_target_abi_by_arch <ARCH>, ARCH is not given."
+        return 1
+    }
+
     case $1 in
-        '')          die  "arch is not specified." ;;
-        armv7a)      echo armeabi-v7a ;;
-        aarch64)     echo arm64-v8a   ;;
-        i686)        echo x86         ;;
-        x86_64)      echo x86_64      ;;
+        armv7a)      printf '%s\n' armeabi-v7a ;;
+        aarch64)     printf '%s\n' arm64-v8a   ;;
+        i686)        printf '%s\n' x86         ;;
+        x86_64)      printf '%s\n' x86_64      ;;
     esac
 }
 
-print_target_triple_by_arch() {
+# print_target_triple_by_arch <ARCH>
+  print_target_triple_by_arch() {
+    [ -z "$1" ] && {
+        error "print_target_triple_by_arch <ARCH>, ARCH is not given."
+        return 1
+    }
+
     case $1 in
-        '')     die   "arch is not specified."   ;;
-        armv7a) echo  "armv7a-linux-androideabi" ;;
-        *)      echo  "$1-linux-android"         ;;
+        armv7a) printf '%s\n' "armv7a-linux-androideabi" ;;
+        *)      printf '%s\n' "$1-linux-android"         ;;
     esac
 }
 
@@ -7614,46 +7887,68 @@ list_flags_used_by_tools_in_the_toolchain() {
     list CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
 }
 
-path_of_tool_in_the_toolchain() {
-    unset EXE
+# this function should be run in a subshell
+#
+# path_of_tool_in_the_toolchain <TOOL-NAME>
+  path_of_tool_in_the_toolchain() {
     if [ "$NATIVE_OS_KIND" = windows ] ; then
         EXE=.exe
+    else
+        EXE=
     fi
 
     unset TOOL_FILENAME
+
     case $1 in
         cc)  TOOL_FILENAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang"   ;;
         cxx) TOOL_FILENAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang++" ;;
-        ld)  TOOL_FILENAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
+        ld)  TOOL_FILENAME="$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/arm/')-$1"
             # https://github.com/android/ndk/wiki/Changelog-r22
              if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME$EXE" ] ; then
                  TOOL_FILENAME=ld.lld
              fi
              ;;
-        *)   TOOL_FILENAME="$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')-$1"
+        *)   TOOL_FILENAME="$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/arm/')-$1"
 
              # https://github.com/android/ndk/wiki/Changelog-r23
              if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME$EXE" ] ; then
                  TOOL_FILENAME=llvm-$1
              fi
     esac
-    die_if_not_executable "$TOOLCHAIN_BIND/$TOOL_FILENAME"
-    echo "$TOOL_FILENAME"
+
+    TOOL_FILEPATH="$TOOLCHAIN_BIND/$TOOL_FILENAME"
+
+    [ -e "$TOOL_FILEPATH" ] || {
+        error "path_of_tool_in_the_toolchain <TOOL-NAME>, $1[$TOOL_FILEPATH] is not exist."
+        return 1
+    }
+
+    [ -x "$TOOL_FILEPATH" ] || {
+        error "path_of_tool_in_the_toolchain <TOOL-NAME>, $1[$TOOL_FILEPATH] is not executable."
+        return 1
+    }
+
+    printf '%s\n' "$TOOL_FILENAME"
 }
 
-# calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER_EXPECTED_TARGET_OS_VERS>
-calculate_TARGET_OS_VERS() {
-    die_if_package_is_not_specified "$1"
+# calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER-EXPECTED-TARGET_OS_VERS>
+  calculate_TARGET_OS_VERS() {
+    if [ -z "$1" ] ; then
+        error "calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER-EXPECTED-TARGET_OS_VERS>, PACKAGE-NAME is not given."
+        return 1
+    fi
 
     if [ -z "$2" ] ; then
         calculate_TARGET_OS_VERS "$1" "$(__list_supported_target_sdk_api_levels | head -n 1)" $3
     else
         unset TARGET_OS_VERS
+
         if [ -z "$3" ] ; then
             TARGET_OS_VERS="$2"
         else
             if [ "$2" -gt "$3" ] ; then
-                die "$1 package's supportted min-sdk-api-level is $2, but you want is $3"
+                error "package [$1] supportted min-sdk-api-level is $2, but you want is $3"
+                return 1
             else
                 TARGET_OS_VERS="$3"
             fi
@@ -7715,7 +8010,7 @@ EOF
         PYTHON=$(command -v python2)
 
         if [ -z "$PYTHON" ] ; then
-            die "please install GNU CoreUtils."
+            die "please install Python."
         else
             "$PYTHON" << EOF
 import re;
@@ -7782,9 +8077,13 @@ ndkmanager_list_all_available() {
 }
 
 ndkmanager_install_the_given_rversion() {
+    [ -z "$1" ] && {
+        error "ndk-pkg ndkmanager install <Rversion>, Rversion is not given."
+        return 1
+    }
+
     case $1 in
-        '') die "ndk-pkg ndkmanager install <Rversion>, Rversion must not be empty." ;;
-        r2[1-3][a-e])     ;;
+        r2[1-3][a-e]) ;;
         *)  die "ndkmanager install unrecognized argument: $1"
     esac
 
@@ -8134,7 +8433,8 @@ install_jdk_if_needed() {
         run java -version
         return 0
     else
-        die "no JDK Found"
+        error "no JDK Found"
+        return 1
     fi
 }
 
@@ -8505,31 +8805,31 @@ ${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
     list the outdated  packages.
 
-${COLOR_GREEN}ndk-pkg is-available <PKG-NAME> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-available <PACKAGE-NAME> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
     is PACKAGE available?
 
-${COLOR_GREEN}ndk-pkg is-installed <PKG-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-NAME>${COLOR_OFF}
     is PACKAGE installed?
 
-${COLOR_GREEN}ndk-pkg is-outdated  <PKG-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
     is PACKAGE outdated?
 
 ${COLOR_GREEN}ndk-pkg search <KEYWORD>${COLOR_OFF}
     search available packages.
  
-${COLOR_GREEN}ndk-pkg formula create <PKG-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg formula create <PACKAGE-NAME>${COLOR_OFF}
     create a new formula.
 
-${COLOR_GREEN}ndk-pkg formula delete <PKG-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg formula delete <PACKAGE-NAME>${COLOR_OFF}
     delete a exist formula.
 
 ${COLOR_GREEN}ndk-pkg formula rename <P1> <P2>${COLOR_OFF}
     rename a exist formula to new name.
 
-${COLOR_GREEN}ndk-pkg formula view <PKG-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg formula view <PACKAGE-NAME>${COLOR_OFF}
     view the formula of the given package.
 
-${COLOR_GREEN}ndk-pkg formula edit <PKG-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg formula edit <PACKAGE-NAME>${COLOR_OFF}
     edit the formula of the given package.
 
 ${COLOR_GREEN}ndk-pkg formula list${COLOR_OFF}
@@ -8544,46 +8844,46 @@ ${COLOR_GREEN}ndk-pkg formula-repo add <NAME> <URL>${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg formula-repo del <NAME>${COLOR_OFF}
     delete a exist formula-repo.
 
-${COLOR_GREEN}ndk-pkg tree <PKG-NAME> [--dirsfirst | -L N]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
     list files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ndk-pkg pack <PKG-NAME> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
-${COLOR_GREEN}ndk-pkg logs <PKG-NAME> <armeabi-v7a|arm64-v8a|x86|x86_64>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg logs <PACKAGE-NAME> <armeabi-v7a|arm64-v8a|x86|x86_64>${COLOR_OFF}
     show logs of the given installed package.
 
-${COLOR_GREEN}ndk-pkg info <PKG-NAME> [KEY|--json|--shell]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg info <PACKAGE-NAME> [KEY|--json|--shell]${COLOR_OFF}
     show information of the given package.
 
 ${COLOR_GREEN}ndk-pkg info @all [--json]${COLOR_OFF}
     show information of all the available packages.
 
-${COLOR_GREEN}ndk-pkg fetch <PKG-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
     download formula resources of the given package to the cache.
 
 ${COLOR_GREEN}ndk-pkg fetch @all${COLOR_OFF}
     download formula resources of all available packages to the cache.
 
-${COLOR_GREEN}ndk-pkg depends <PKG-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>]${COLOR_OFF}
     show or save packages that are depended by the given package.
 
-${COLOR_GREEN}ndk-pkg homepage [--open] [PKG-NAME]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg homepage [--open] [PACKAGE-NAME]${COLOR_OFF}
     show or open the homepage of the given package or this project in web browser.
 
-${COLOR_GREEN}ndk-pkg install   <PKG-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg install   <PACKAGE-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
     install the given packages.
 
-${COLOR_GREEN}ndk-pkg reinstall <PKG-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ndk-pkg upgrade   [PKG-NAME]... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg upgrade   [PACKAGE-NAME]... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
 ${COLOR_GREEN}ndk-pkg upgrade @self  [-x | --china]${COLOR_OFF}
     upgrade this software.
 
-${COLOR_GREEN}ndk-pkg uninstall <PKG-NAME>...${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
     uninstall the given packages.
     "
 
