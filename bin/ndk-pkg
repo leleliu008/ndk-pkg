@@ -5758,7 +5758,9 @@ EOF
 
             run build0
 
-            echo "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
+            if [ -d "$NATIVE_INSTALL_DIR" ] ; then
+                echo "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
+            fi
 
             if [ -d "$NATIVE_INSTALL_DIR/bin" ] ; then
                 export PATH="$NATIVE_INSTALL_DIR/bin:$PATH"
