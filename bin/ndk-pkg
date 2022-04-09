@@ -3870,7 +3870,7 @@ __parse_require_dependency_item() {
     fi
 
     package add dep.cmd 'find'
-    package add dep.cmd 'file'
+    package add dep.cmd 'file>=5.41'
     package add dep.cmd 'tree'
     package add dep.cmd 'hexdump'
     package add dep.cmd 'patchelf'
@@ -5961,28 +5961,35 @@ __create_no_versioning_so_files_for_the_given_target() {
         return 0
     }
 
+    SO_FILE_NAMES_HAVE_VERSION="$(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so.*' -exec basename {} \;)"
+
+    [ -z "$SO_FILE_NAMES_HAVE_VERSION" ] || {
+        note "no so files installed, skipped"
+        return 0
+    }
+
     run cd "$TARGET_INSTALL_DIR/lib"
 
-    for SO_FILE_THAT_NAME_HAVE_VERSION in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so.*' -exec basename {} \;)
+    for SO_FILE_NAME_HAVE_VERSION in $SO_FILE_NAMES_HAVE_VERSION
     do
-        unset SO_FILE_THAT_NAME_NO_VERSION
-        SO_FILE_THAT_NAME_NO_VERSION="$(printf '%s\n' "$SO_FILE_THAT_NAME_HAVE_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
+        unset SO_FILE_NAME_NO_VERSION
+        SO_FILE_NAME_NO_VERSION="$(printf '%s\n' "$SO_FILE_NAME_HAVE_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
 
-        if [ !     -f "$SO_FILE_THAT_NAME_NO_VERSION" ] ; then
-            run cp -f "$SO_FILE_THAT_NAME_HAVE_VERSION" "$SO_FILE_THAT_NAME_NO_VERSION"
+        if [ !     -f "$SO_FILE_NAME_NO_VERSION" ] ; then
+            run cp -f "$SO_FILE_NAME_HAVE_VERSION" "$SO_FILE_NAME_NO_VERSION"
         fi
 
-        SO_FILE_PRESETED_DT_SONAME="$($READELF -d "$SO_FILE_THAT_NAME_NO_VERSION" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
+        SO_FILE_PRESETED_DT_SONAME="$($READELF -d "$SO_FILE_NAME_NO_VERSION" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
 
         if [ -n "$SO_FILE_PRESETED_DT_SONAME" ] ; then
             SO_FILE_EXPECTED_DT_SONAME="$(printf '%s\n' "$SO_FILE_PRESETED_DT_SONAME" | sed 's|\.[0-9].*||g')"
 
             if [ -n "$SO_FILE_PRESETED_DT_SONAME" ] && [ "$SO_FILE_PRESETED_DT_SONAME" != "$SO_FILE_EXPECTED_DT_SONAME" ] ; then
-                run patchelf --set-soname "$SO_FILE_EXPECTED_DT_SONAME" "$SO_FILE_THAT_NAME_NO_VERSION"
+                run patchelf --set-soname "$SO_FILE_EXPECTED_DT_SONAME" "$SO_FILE_NAME_NO_VERSION"
             fi
         fi
 
-        for SO_FILE_PRESETED_DT_NEEDED in $($READELF -d "$SO_FILE_THAT_NAME_NO_VERSION" | sed -n '/NEEDED/p' | cut -d '[' -f2 | sed 's/]//')
+        for SO_FILE_PRESETED_DT_NEEDED in $($READELF -d "$SO_FILE_NAME_NO_VERSION" | sed -n '/NEEDED/p' | cut -d '[' -f2 | sed 's/]//')
         do
             case $SO_FILE_PRESETED_DT_NEEDED in
                 lib*.so) ;;
@@ -5990,7 +5997,7 @@ __create_no_versioning_so_files_for_the_given_target() {
                     SO_FILE_EXPECTED_DT_NEEDED="$(printf '%s\n' "$SO_FILE_PRESETED_DT_NEEDED" | sed 's|\.[0-9].*||g')"
 
                     if [ "$SO_FILE_PRESETED_DT_NEEDED" != "$SO_FILE_EXPECTED_DT_NEEDED" ] ; then
-                        run patchelf --replace-needed "$SO_FILE_PRESETED_DT_NEEDED" "$SO_FILE_EXPECTED_DT_NEEDED" "$SO_FILE_THAT_NAME_NO_VERSION"
+                        run patchelf --replace-needed "$SO_FILE_PRESETED_DT_NEEDED" "$SO_FILE_EXPECTED_DT_NEEDED" "$SO_FILE_NAME_NO_VERSION"
                     fi
             esac
         done
@@ -6145,14 +6152,9 @@ __justfy_elf_files_for_the_given_target() {
                     unset FILEATTR
                     FILEATTR="$(file -L -b "$FILEPATH")"
 
-                    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-                        printf '%s\n' "CONTAINS=$CONTAINS"
-                        printf '%s\n' "FILEATTR=$FILEATTR"
-                    fi
-
                     case "$FILEATTR" in
                          "$CONTAINS"*) ;;
-                         *) die "$FILEPATH: $FILEATTR"
+                         *) die "invalid elf file: $FILEATTR\n    Expected: $CONTAINS\n    Actually: $FILEATTR"
                     esac
 
                     if [ "$BUILD_TYPE" = release ] ; then
