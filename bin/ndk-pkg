@@ -241,6 +241,20 @@ is_integer () {
     esac
 }
 
+is_elf_file() {
+    [ -z "$1" ] && {
+        error "is_elf_file <FILE-PATH>, FILE-PATH is not given."
+        return 1
+    }
+
+    if command -v hexdump > /dev/null ; then
+        [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$1")" = '7F454C46' ]
+    else
+        error "hexdump command is needed, please install it."
+        return 1
+    fi
+}
+
 format_unix_timestamp() {
    date -jf "%s" "$1" "$2" 2> /dev/null ||
    date -d      "@$1" "$2"
@@ -3859,6 +3873,7 @@ __parse_require_dependency_item() {
     package add dep.cmd 'file'
     package add dep.cmd 'tree'
     package add dep.cmd 'hexdump'
+    package add dep.cmd 'patchelf'
 
     PACKAGE_FORMULA_LOADED=yes
 }
@@ -5914,39 +5929,96 @@ __install_the_given_package_for_the_given_target() {
         esac
     fi
 
-    [ -d "$TARGET_INSTALL_DIR" ] || {
-        error "nothing was installed."
-        return 1
+    step2 "list installed for ${COLOR_GREEN}$@${COLOR_OFF}"
+    run ls -l "$TARGET_INSTALL_DIR"
+
+    step2 "install logs for ${COLOR_GREEN}$@${COLOR_OFF}"
+    __install_logs_for_the_given_target $@
+
+    step2 "justfy ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
+    __justfy_elf_files_for_the_given_target $@
+
+    if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
+        step2 "justfy .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __justfy_la_files_for_the_given_target $@
+
+        step2 "justfy .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __justfy_pc_files_for_the_given_target $@
+
+        step2 "create no versioning so files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __create_no_versioning_so_files_for_the_given_target $@
+
+        step2 "create cmake config files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __create_cmake_config_files_for_the_given_target $@
+    fi
+
+    run "echo '$TARGET_OS_ABI' >> $PACKAGE_WORKING_DIR/installed-abis"
+}
+
+__create_no_versioning_so_files_for_the_given_target() {
+    [ -d "$TARGET_INSTALL_DIR/lib" ] || {
+        note "no so files installed, skipped"
+        return 0
     }
 
-    [ -d "$TARGET_INSTALL_DIR/lib" ] && {
-        cd  "$TARGET_INSTALL_DIR/lib"
-        for SO_FILENAME_WITH_VERSION in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so.*' -exec basename {} \;)
-        do
-            unset SO_FILENAME_WITHOUT_VERSION
-            SO_FILENAME_WITHOUT_VERSION="$(printf '%s\n' "$SO_FILENAME_WITH_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
-            if [ ! -e "$SO_FILENAME_WITHOUT_VERSION" ] ; then
-                run ln -s "$SO_FILENAME_WITH_VERSION" "$SO_FILENAME_WITHOUT_VERSION"
+    run cd "$TARGET_INSTALL_DIR/lib"
+
+    for SO_FILE_THAT_NAME_HAVE_VERSION in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so.*' -exec basename {} \;)
+    do
+        unset SO_FILE_THAT_NAME_NO_VERSION
+        SO_FILE_THAT_NAME_NO_VERSION="$(printf '%s\n' "$SO_FILE_THAT_NAME_HAVE_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
+
+        if [ !     -f "$SO_FILE_THAT_NAME_NO_VERSION" ] ; then
+            run cp -f "$SO_FILE_THAT_NAME_HAVE_VERSION" "$SO_FILE_THAT_NAME_NO_VERSION"
+        fi
+
+        SO_FILE_PRESETED_DT_SONAME="$($READELF -d "$SO_FILE_THAT_NAME_NO_VERSION" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
+
+        if [ -n "$SO_FILE_PRESETED_DT_SONAME" ] ; then
+            SO_FILE_EXPECTED_DT_SONAME="$(printf '%s\n' "$SO_FILE_PRESETED_DT_SONAME" | sed 's|\.[0-9].*||g')"
+
+            if [ -n "$SO_FILE_PRESETED_DT_SONAME" ] && [ "$SO_FILE_PRESETED_DT_SONAME" != "$SO_FILE_EXPECTED_DT_SONAME" ] ; then
+                run patchelf --set-soname "$SO_FILE_EXPECTED_DT_SONAME" "$SO_FILE_THAT_NAME_NO_VERSION"
             fi
+        fi
+
+        for SO_FILE_PRESETED_DT_NEEDED in $($READELF -d "$SO_FILE_THAT_NAME_NO_VERSION" | sed -n '/NEEDED/p' | cut -d '[' -f2 | sed 's/]//')
+        do
+            case $SO_FILE_PRESETED_DT_NEEDED in
+                lib*.so) ;;
+                *)  unset SO_FILE_EXPECTED_DT_NEEDED
+                    SO_FILE_EXPECTED_DT_NEEDED="$(printf '%s\n' "$SO_FILE_PRESETED_DT_NEEDED" | sed 's|\.[0-9].*||g')"
+
+                    if [ "$SO_FILE_PRESETED_DT_NEEDED" != "$SO_FILE_EXPECTED_DT_NEEDED" ] ; then
+                        run patchelf --replace-needed "$SO_FILE_PRESETED_DT_NEEDED" "$SO_FILE_EXPECTED_DT_NEEDED" "$SO_FILE_THAT_NAME_NO_VERSION"
+                    fi
+            esac
         done
+    done
+}
 
-        [ -d "$TARGET_INSTALL_DIR/lib/cmake" ] || {
-            unset TARGET_LIBRARY_NAMES
-            unset TARGET_LIBRARY_COUNT
+__create_cmake_config_files_for_the_given_target() {
+    [ -d "$TARGET_INSTALL_DIR/lib/cmake" ] && {
+        note "cmake config files already installed, skipped"
+        return 0
+    }
 
-            TARGET_LIBRARY_NAMES=$(find . -maxdepth 1 -mindepth 1 \( -type f -o -type l \) -a \( -name 'lib*.a' -o -name 'lib*.so' \) -exec basename {} \; | sed 's|\(lib.*\)\..*|\1|' | uniq)
+    unset TARGET_LIBRARY_NAMES
+    unset TARGET_LIBRARY_COUNT
 
-            TARGET_LIBRARY_COUNT=$(printf '%s\n' "$TARGET_LIBRARY_NAMES" | wc -l)
+    TARGET_LIBRARY_NAMES=$(find . -maxdepth 1 -mindepth 1 \( -type f -o -type l \) -a \( -name 'lib*.a' -o -name 'lib*.so' \) -exec basename {} \; | sed 's|\(lib.*\)\..*|\1|' | uniq)
 
-            if [ -n "$TARGET_LIBRARY_NAMES" ] ; then
-                unset PACKAGE_NAME_UPPERCASE
-                PACKAGE_NAME_UPPERCASE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z)
+    TARGET_LIBRARY_COUNT=$(printf '%s\n' "$TARGET_LIBRARY_NAMES" | wc -l)
 
-                run install -d "$TARGET_INSTALL_DIR/lib/cmake/$PACKAGE_NAME"
+    if [ -n "$TARGET_LIBRARY_NAMES" ] ; then
+        unset PACKAGE_NAME_UPPERCASE
+        PACKAGE_NAME_UPPERCASE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z)
 
-                TARGET_CMAKE_CONFIG_FILEPATH="$TARGET_INSTALL_DIR/lib/cmake/$PACKAGE_NAME/$PACKAGE_NAME-config.cmake"
+        run install -d "$TARGET_INSTALL_DIR/lib/cmake/$PACKAGE_NAME"
 
-                cat > "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
+        TARGET_CMAKE_CONFIG_FILEPATH="$TARGET_INSTALL_DIR/lib/cmake/$PACKAGE_NAME/$PACKAGE_NAME-config.cmake"
+
+        cat > "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 # generated by ndk-pkg $MY_VERSION
 
 get_filename_component(${PACKAGE_NAME_UPPERCASE}_INSTALL_DIR "\${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
@@ -5957,114 +6029,85 @@ set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR "\${${PACKAGE_NAME_UPPERCASE}_INSTALL_
 set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_COUNT $TARGET_LIBRARY_COUNT)
 
 EOF
-                if [ -n "$PACKAGE_GIT_REV" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_GIT_REV       \"$PACKAGE_GIT_REV\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-                fi
+        if [ -n "$PACKAGE_GIT_REV" ] ; then
+            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_GIT_REV       \"$PACKAGE_GIT_REV\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
+        fi
 
-                if [ -n "$PACKAGE_VERSION" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION       \"$PACKAGE_VERSION\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-                fi
+        if [ -n "$PACKAGE_VERSION" ] ; then
+            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION       \"$PACKAGE_VERSION\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
+        fi
 
-                if [ -n "$PACKAGE_VERSION_MAJOR" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MAJOR \"$PACKAGE_VERSION_MAJOR\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-                fi
+        if [ -n "$PACKAGE_VERSION_MAJOR" ] ; then
+            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MAJOR \"$PACKAGE_VERSION_MAJOR\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
+        fi
 
-                if [ -n "$PACKAGE_VERSION_MINOR" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MINOR \"$PACKAGE_VERSION_MINOR\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-                fi
+        if [ -n "$PACKAGE_VERSION_MINOR" ] ; then
+            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MINOR \"$PACKAGE_VERSION_MINOR\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
+        fi
 
-                if [ -n "$PACKAGE_VERSION_PATCH" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_PATCH \"$PACKAGE_VERSION_PATCH\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-                fi
+        if [ -n "$PACKAGE_VERSION_PATCH" ] ; then
+            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_PATCH \"$PACKAGE_VERSION_PATCH\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
+        fi
 
-                if [ -n "$PACKAGE_VERSION_TWEAK" ] ; then
-                    printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_TWEAK \"$PACKAGE_VERSION_TWEAK\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-                fi
+        if [ -n "$PACKAGE_VERSION_TWEAK" ] ; then
+            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_TWEAK \"$PACKAGE_VERSION_TWEAK\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
+        fi
 
-                for libname in $TARGET_LIBRARY_NAMES
-                do
-                    unset LIBNAME_UPPERCASE
-                    LIBNAME_UPPERCASE="$(printf '%s\n' "$libname" | tr a-z A-Z)"
-                    if [ -e "$TARGET_INSTALL_DIR/lib/$libname.a" ] ; then
-                        cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
+        for libname in $TARGET_LIBRARY_NAMES
+        do
+            unset LIBNAME_UPPERCASE
+            LIBNAME_UPPERCASE="$(printf '%s\n' "$libname" | tr a-z A-Z)"
+            if [ -e "$TARGET_INSTALL_DIR/lib/$libname.a" ] ; then
+                cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
 set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.a")
 add_library($PACKAGE_NAME::$libname::static STATIC IMPORTED)
 set_target_properties($PACKAGE_NAME::$libname::static PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
 EOF
-                    fi
+            fi
 
-                    if [ -e "$TARGET_INSTALL_DIR/lib/$libname.so" ] ; then
-                        cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
+            if [ -e "$TARGET_INSTALL_DIR/lib/$libname.so" ] ; then
+                cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
 set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.so")
 add_library($PACKAGE_NAME::$libname::shared SHARED IMPORTED)
 set_target_properties($PACKAGE_NAME::$libname::shared PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
 EOF
-                    fi
+            fi
 
-                    cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
+            cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
 if (CMAKE_LINK_LIBRARY_PREFER_STATIC)
-    if(TARGET $PACKAGE_NAME::$libname::static)
-        set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
-        add_library($PACKAGE_NAME::$libname STATIC IMPORTED)
-        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
-    else()
-        set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
-        add_library($PACKAGE_NAME::$libname SHARED IMPORTED)
-        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
-    endif()
+if(TARGET $PACKAGE_NAME::$libname::static)
+set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
+add_library($PACKAGE_NAME::$libname STATIC IMPORTED)
+set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
 else()
-    if(TARGET $PACKAGE_NAME::$libname::shared)
-        set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
-        add_library($PACKAGE_NAME::$libname SHARED IMPORTED)
-        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
-    else()
-        set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
-        add_library($PACKAGE_NAME::$libname STATIC IMPORTED)
-        set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
-    endif()
+set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
+add_library($PACKAGE_NAME::$libname SHARED IMPORTED)
+set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
+endif()
+else()
+if(TARGET $PACKAGE_NAME::$libname::shared)
+set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
+add_library($PACKAGE_NAME::$libname SHARED IMPORTED)
+set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
+else()
+set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
+add_library($PACKAGE_NAME::$libname STATIC IMPORTED)
+set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
+endif()
 endif()
 
 EOF
-                done
+        done
 
-                if [ "$TARGET_LIBRARY_COUNT" -eq 1 ] ; then
-                    printf '%s\n\n' "set(${PACKAGE_NAME_UPPERCASE}_LIBRARY \"\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}}\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-                fi
-
-                printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_FOUND TRUE)" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-            fi
-        }
-    }
-
-    if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
-        step2 "show .so files"
-
-        unset PACKAGE_INSTALLED_SHARED_LIBRARIES
-        PACKAGE_INSTALLED_SHARED_LIBRARIES="$(find "$TARGET_INSTALL_DIR/lib" -name "lib*.so*")"
-
-        if [ -z "$PACKAGE_INSTALLED_SHARED_LIBRARIES" ] ; then
-            warn "no .so files installed."
-        else
-            run file $PACKAGE_INSTALLED_SHARED_LIBRARIES
+        if [ "$TARGET_LIBRARY_COUNT" -eq 1 ] ; then
+            printf '%s\n\n' "set(${PACKAGE_NAME_UPPERCASE}_LIBRARY \"\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}}\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
         fi
+
+        printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_FOUND TRUE)" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
     fi
-
-    step2 "justfy ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __justfy_elf_files_for_the_given_target $@
-
-    step2 "justfy .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __justfy_la_files_for_the_given_target $@
-
-    step2 "justfy .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __justfy_pc_files_for_the_given_target $@
-
-    step2 "install logs for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __install_logs_for_the_given_target $@
-
-    run "echo '$TARGET_OS_ABI' >> $PACKAGE_WORKING_DIR/installed-abis"
 }
 
 __justfy_elf_files_for_the_given_target() {
@@ -6073,24 +6116,47 @@ __justfy_elf_files_for_the_given_target() {
         if [ -d "$TARGET_INSTALL_DIR/$x" ] ; then
             for y in $(ls "$TARGET_INSTALL_DIR/$x")
             do
-                if [ -d "$TARGET_INSTALL_DIR/$x/$y" ] ; then
+                FILEPATH="$TARGET_INSTALL_DIR/$x/$y"
+
+                if [ -d "$FILEPATH" ] ; then
                     continue
                 fi
-                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$TARGET_INSTALL_DIR/$x/$y")" = '7F454C46' ] ; then
-                    #OLD_SONAME="$($READELF -d "$TARGET_INSTALL_DIR/$x/$y" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
-                    #if [ -n "$OLD_SONAME" ] ; then
-                    #    NEW_SONAME="$(printf '%s\n' "$OLD_SONAME" | sed 's|\.[0-9].*||g')"
-                    #    run patchelf --set-soname "$NEW_SONAME" "$TARGET_INSTALL_DIR/$x/$y"
-                    #fi
-                    #for soname in $($READELF -d "$TARGET_INSTALL_DIR/$x/$y" | sed -n '/NEEDED/p' | cut -d '[' -f2 | sed 's/]//')
-                    #do
-                    #    case $soname in
-                    #        lib*.so) ;;
-                    #        *) run patchelf --replace-needed "$soname" "$(printf '%s\n' "$soname" | sed 's|\.[0-9].*||g')" "$TARGET_INSTALL_DIR/$x/$y"
-                    #    esac
-                    #done
+
+                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$FILEPATH")" = '7F454C46' ] ; then
+                    unset WHAT
+
+                    if [ "$x" = bin ] || [ "$x" = sbin ] ; then
+                        WHAT='pie executable'
+                    elif [ "$x" = lib ] ; then
+                        WHAT='shared object'
+                    fi
+
+                    unset ARCH
+
+                    case $TARGET_OS_ABI in
+                        armeabi-v7a) ARCH='ARM, EABI5'   ;;
+                        arm64-v8a)   ARCH='ARM aarch64,' ;;
+                        x86)         ARCH='Intel 80386,' ;;
+                        x86_64)      ARCH='x86-64,'
+                    esac
+
+                    CONTAINS="ELF $TARGET_OS_BIT-bit LSB $WHAT, $ARCH version 1 (SYSV), dynamically linked"
+
+                    unset FILEATTR
+                    FILEATTR="$(file -L -b "$FILEPATH")"
+
+                    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+                        printf '%s\n' "CONTAINS=$CONTAINS"
+                        printf '%s\n' "FILEATTR=$FILEATTR"
+                    fi
+
+                    case "$FILEATTR" in
+                         "$CONTAINS"*) ;;
+                         *) die "$FILEPATH: $FILEATTR"
+                    esac
+
                     if [ "$BUILD_TYPE" = release ] ; then
-                        run "$STRIP" "$TARGET_INSTALL_DIR/$x/$y" || true
+                        run "$STRIP" "$FILEPATH" || true
                     fi
                 fi
             done
@@ -6099,46 +6165,57 @@ __justfy_elf_files_for_the_given_target() {
 }
 
 __justfy_la_files_for_the_given_target() {
-    if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
-        for lafile in $(find "$TARGET_INSTALL_DIR/lib" -name "*.la")
-        do
-            sed_in_place 's|-lpthread||g'                    "$lafile"
-            sed_in_place 's|-Wl,--strip-debug||g'            "$lafile"
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$lafile"
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$lafile"
-            sed_in_place "s|--sysroot $SYSROOT||g"           "$lafile"
-        done
-    fi
+    [ -d "$TARGET_INSTALL_DIR/lib" ] || {
+        note "no .la files installed, skipped"
+        return 0
+    }
+
+    LA_FILES="$(find "$TARGET_INSTALL_DIR/lib" -name "*.la")"
+
+    [ -z "$LA_FILES" ] && {
+        note "no .la files installed, skipped"
+        return 0
+    }
+
+    for lafile in $LA_FILES
+    do
+        sed_in_place 's|-lpthread||g'                    "$lafile"
+        sed_in_place 's|-Wl,--strip-debug||g'            "$lafile"
+        sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$lafile"
+        sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$lafile"
+        sed_in_place "s|--sysroot $SYSROOT||g"           "$lafile"
+    done
 }
 
 __justfy_pc_files_for_the_given_target() {
-    if [ -d "$TARGET_INSTALL_DIR/lib/pkgconfig" ] ; then
-        for pcfile in $(find "$TARGET_INSTALL_DIR/lib/pkgconfig" -name "*.pc")
-        do
-            sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
-            sed_in_place 's|-lpthread||g'                    "$pcfile"
-            sed_in_place 's|-Wl,--strip-debug||g'            "$pcfile"
-            sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$pcfile"
-            sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$pcfile"
-            sed_in_place "s|--sysroot $SYSROOT||"            "$pcfile"
-            if grep 'Libs.private:' "$pcfile" > /dev/null ; then
-                LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
-                LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
-                sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
-                sed_in_place '/Libs.private/d' "$pcfile"
-            fi
-        done
-    fi
-}
+    [ -d "$TARGET_INSTALL_DIR/lib/pkgconfig" ] || {
+        note "no .pc files installed, skipped"
+        return 0
+    }
 
-__install_pc_file_if_needed_for_the_given_target() {
-    if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
-        if [ ! -d "$TARGET_INSTALL_DIR/lib/pkgconfig" ] ; then
-            cat > "$TARGET_BUILD_DIR/$1.pc" << EOF
-EOF
-            run install_pcfs "$TARGET_BUILD_DIR/$1.pc"
+    PC_FILES="$(find "$TARGET_INSTALL_DIR/lib/pkgconfig" -name "*.pc")"
+
+    [ -z "$PC_FILES" ] && {
+        note "no .pc files installed, skipped"
+        return 0
+    }
+
+    for pcfile in $PC_FILES
+    do
+        sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
+        sed_in_place 's|-lpthread||g'                    "$pcfile"
+        sed_in_place 's|-Wl,--strip-debug||g'            "$pcfile"
+        sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$pcfile"
+        sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$pcfile"
+        sed_in_place "s|--sysroot $SYSROOT||"            "$pcfile"
+
+        if grep 'Libs.private:' "$pcfile" > /dev/null ; then
+            LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
+            LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
+            sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
+            sed_in_place '/Libs.private/d' "$pcfile"
         fi
-    fi
+    done
 }
 
 __install_logs_for_the_given_target() {
@@ -8660,7 +8737,7 @@ init() {
     TIMESTAMP_UNIX="$(date +%s)"
 
     # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
-    # https://github.com/actions/virtual-environments/blob/ubuntu18/20211212.1/images/linux/Ubuntu1804-README.md
+    # https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#environment-variables-3
     if [ "$GITHUB_ACTIONS" = true ] ; then
         if [ -n "$ANDROID_NDK_LATEST_HOME" ] ; then
             export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
@@ -8718,10 +8795,10 @@ __setup_PATH_env() {
     fi
 
     # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
-    # https://github.com/actions/virtual-environments/blob/ubuntu18/20211212.1/images/linux/Ubuntu1804-README.md
+    # https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md
     if [ "$GITHUB_ACTIONS" = true ] ; then
-        if [ -n "$GOROOT_1_17_X64" ] && [ -d "$GOROOT_1_17_X64/bin" ] ; then
-            bppend_to_PATH "$GOROOT_1_17_X64/bin"
+        if [ -n "$GOROOT_1_18_X64" ] && [ -d "$GOROOT_1_18_X64/bin" ] ; then
+            bppend_to_PATH "$GOROOT_1_18_X64/bin"
         fi
     fi
 
