@@ -2027,6 +2027,7 @@ __pmw_get_available_package_name_by_command_name_dnf() {
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
+    patchelf) echo 'epel:patchelf' ;;
     ccache)
         # EPEL repo is shipped with Fedora
         if [ "$NATIVE_OS_TYPE" = fedora ] ; then
@@ -2089,6 +2090,7 @@ __pmw_get_available_package_name_by_command_name_yum() {
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
+    patchelf) echo 'epel:patchelf' ;;
     ccache)   echo 'epel:ccache' ;;
     sphinx-build) echo "python-sphinx" ;;
     glib-mkenums) echo 'glib2-devel' ;;
