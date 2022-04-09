@@ -2027,7 +2027,14 @@ __pmw_get_available_package_name_by_command_name_dnf() {
       ps2pdf) echo "ghostscript" ;;
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
-    patchelf) echo 'epel:patchelf' ;;
+    patchelf)
+        # EPEL repo is shipped with Fedora
+        if [ "$NATIVE_OS_TYPE" = fedora ] ; then
+            echo 'ccache'
+        else
+            echo 'epel:patchelf'
+        fi
+        ;;
     ccache)
         # EPEL repo is shipped with Fedora
         if [ "$NATIVE_OS_TYPE" = fedora ] ; then
