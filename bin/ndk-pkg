@@ -2468,6 +2468,8 @@ darwin|x86_64|  -  |jdk     |17.0.1|b8905d88a14e60f873064a8b25737e2ec2e3688611ad
 
 linux |x86_64|  -  |android-sdk|7583922|124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf|https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
 darwin|  -   |  -  |android-sdk|7583922|6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf|https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip
+
+linux |x86_64|glibc|file|5.41|d8135cdf0979caffa33330908b92a76e6eefa63a6243e2b7bdce3848036405d4|https://github.com/leleliu008/test/releases/download/20220409-2015/file-5.41-linux-glibc.tar.xz
 EOF
 }
 
@@ -2980,6 +2982,7 @@ __uppm_get_package_name_by_command_name() {
         autoreconf)     printf '%s\n' 'autoconf';;
         go)             printf '%s\n' 'golang'  ;;
         git)            printf '%s\n' 'git'     ;;
+        file)           printf '%s\n' 'file'    ;;
         java)           printf '%s\n' 'jdk'     ;;
         cmake)          printf '%s\n' 'cmake'   ;;
         ninja)          printf '%s\n' 'ninja'   ;;
@@ -6149,8 +6152,15 @@ __justfy_elf_files_for_the_given_target() {
 
                     CONTAINS="ELF $TARGET_OS_BIT-bit LSB $WHAT, $ARCH version 1 (SYSV), dynamically linked"
 
+                    FILE_COMMAND_PATH=$(command -v file)
+
+                    if [ "$FILE_COMMAND_PATH" = "$HOME/.uppm/install.d/file/bin/file" ] ; then
+                        # https://github.com/file/file/blob/master/src/magic.c#L259
+                        export MAGIC="$HOME/.uppm/install.d/file/share/misc/magic.mgc"
+                    fi
+
                     unset FILEATTR
-                    FILEATTR="$(file -L -b "$FILEPATH")"
+                    FILEATTR="$($FILE_COMMAND_PATH -L -b "$FILEPATH")"
 
                     case "$FILEATTR" in
                          "$CONTAINS"*) ;;
@@ -8703,9 +8713,19 @@ init() {
     MY_BACKUP_DIR="$MY_HOME_DIR/backup.d"
     MY_PATCH__DIR="$MY_HOME_DIR/patch.d"
 
-    [ -e "$MY_HOME_DIR/repos" ] || {
-        install -d "$MY_HOME_DIR"
+    MY_INIT_RC="$MY_HOME_DIR/init.rc"
+
+    [ -d "$MY_HOME_DIR" ] || install -d "$MY_HOME_DIR"
+
+    [ -f "$MY_HOME_DIR/repos" ] || {
         echo "offical=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
+    }
+
+    [ -f "$MY_INIT_RC" ] || {
+        cat >> "$MY_INIT_RC" <<EOF
+# In general, you do not need to modify this file.
+# If this file modified, be carefull
+EOF
     }
 
     unset NATIVE_OS_KIND
