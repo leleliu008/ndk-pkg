@@ -8218,7 +8218,7 @@ ndkmanager_install_the_given_rversion() {
         die "$ANDROID_NDK_SUM is not sha256sum"
     fi
 
-    fetch "$ANDROID_NDK_URL" --sha256="$ANDROID_NDK_SUM" --output-dir="$MY_HOME_DIR"
+    fetch "$ANDROID_NDK_URL" --sha256="$ANDROID_NDK_SUM" --output-dir="$MY_HOME_DIR" || return 1
 
     unset ANDROID_NDK_FILEPATH
     unset ANDROID_NDK_FILENAME
@@ -8230,18 +8230,18 @@ ndkmanager_install_the_given_rversion() {
         success "$ANDROID_NDK_FILEPATH already have been unpacked to $ANDROID_NDK_INSTALL_DIR."
     else
         if [ -d "$ANDROID_NDK_INSTALL_DIR" ] ; then
-            run rm -rf "$ANDROID_NDK_INSTALL_DIR"
+            run rm -rf "$ANDROID_NDK_INSTALL_DIR" || return 1
         fi
         case $ANDROID_NDK_URL in
             *.zip)
-                handle_dependency required exe unzip
-                run unzip -q "$ANDROID_NDK_FILEPATH" -d "$MY_HOME_DIR"
+                handle_dependency required exe unzip &&
+                run unzip -q "$ANDROID_NDK_FILEPATH" -d "$MY_HOME_DIR" &&
                 run touch "$ANDROID_NDK_INSTALL_DIR/.installed"
                 ;;
             *.tar.xz)
-                handle_dependency required exe tar
-                handle_dependency required exe xz
-                run tar xf   "$ANDROID_NDK_FILEPATH" -C "$MY_HOME_DIR"
+                handle_dependency required exe tar &&
+                handle_dependency required exe xz &&
+                run tar xf   "$ANDROID_NDK_FILEPATH" -C "$MY_HOME_DIR" &&
                 run touch "$ANDROID_NDK_INSTALL_DIR/.installed"
                 ;;
         esac
