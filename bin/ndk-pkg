@@ -6134,11 +6134,16 @@ __justfy_elf_files_for_the_given_target() {
 
                 if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$FILEPATH")" = '7F454C46' ] ; then
                     unset WHAT
+                    unset LINK
 
                     if [ "$x" = bin ] || [ "$x" = sbin ] ; then
                         WHAT='pie executable'
+                        LINK='dynamically linked'
                     elif [ "$x" = lib ] ; then
-                        WHAT='shared object'
+                        case $y in
+                            *.o) WHAT='relocatable' ;;
+                            *)   WHAT='shared object' ; LINK='dynamically linked'
+                        esac
                     fi
 
                     unset ARCH
@@ -6150,7 +6155,7 @@ __justfy_elf_files_for_the_given_target() {
                         x86_64)      ARCH='x86-64,'
                     esac
 
-                    CONTAINS="ELF $TARGET_OS_BIT-bit LSB $WHAT, $ARCH version 1 (SYSV), dynamically linked"
+                    CONTAINS="ELF $TARGET_OS_BIT-bit LSB $WHAT, $ARCH version 1 (SYSV), $LINK"
 
                     FILE_COMMAND_PATH=$(command -v file)
 
@@ -6159,12 +6164,16 @@ __justfy_elf_files_for_the_given_target() {
                         export MAGIC="$HOME/.uppm/install.d/file/share/misc/magic.mgc"
                     fi
 
+                    if [ "$FILE_COMMAND_PATH" = "$HOME/.ndk-pkg/native/file/bin/file" ] ; then
+                        # https://github.com/file/file/blob/master/src/magic.c#L259
+                        export MAGIC="$HOME/.ndk-pkg/native/file/share/misc/magic.mgc"
+                    fi
                     unset FILEATTR
                     FILEATTR="$($FILE_COMMAND_PATH -L -b "$FILEPATH")"
 
                     case "$FILEATTR" in
                          "$CONTAINS"*) ;;
-                         *) die "invalid elf file: $FILEATTR\n    Expected: $CONTAINS\n    Actually: $FILEATTR"
+                         *) die "invalid elf file\n    Expected: $CONTAINS\n    Actually: $FILEATTR"
                     esac
 
                     if [ "$BUILD_TYPE" = release ] ; then
