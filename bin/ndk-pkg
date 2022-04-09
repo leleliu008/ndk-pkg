@@ -2469,7 +2469,7 @@ darwin|x86_64|  -  |jdk     |17.0.1|b8905d88a14e60f873064a8b25737e2ec2e3688611ad
 linux |x86_64|  -  |android-sdk|7583922|124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf|https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
 darwin|  -   |  -  |android-sdk|7583922|6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf|https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip
 
-linux |x86_64|glibc|file|5.41|d8135cdf0979caffa33330908b92a76e6eefa63a6243e2b7bdce3848036405d4|https://github.com/leleliu008/test/releases/download/20220409-2015/file-5.41-linux-glibc.tar.xz
+linux |x86_64|glibc|file|5.41|cd99dbd24fc55e79d5bab627e591219891acce97f787cafc8eb2d5c41b1d4db7|https://github.com/leleliu008/test/releases/download/20220409-2015/file-5.41-x86_64-linux-glibc.tar.xz
 EOF
 }
 
