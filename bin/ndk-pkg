@@ -6164,7 +6164,7 @@ __justfy_elf_files_for_the_given_target() {
                         x86_64)      ARCH='x86-64,'
                     esac
 
-                    CONTAINS="ELF $TARGET_OS_BIT-bit LSB $WHAT, $ARCH version 1 (SYSV), $LINK"
+                    CONTAINS="ELF $TARGET_OS_BIT-bit LSB $WHAT, $ARCH version 1 (SYSV),"
 
                     FILE_COMMAND_PATH=$(command -v file)
 
@@ -6182,11 +6182,11 @@ __justfy_elf_files_for_the_given_target() {
 
                     case "$FILEATTR" in
                          "$CONTAINS"*) ;;
-                         *) die "invalid elf file\n    Expected: $CONTAINS\n    Actually: $FILEATTR"
+                         *) die "invalid elf file: $FILEPATH\n    Expected: $CONTAINS\n    Actually: $FILEATTR"
                     esac
 
                     if [ "$BUILD_TYPE" = release ] ; then
-                        run "$STRIP" "$FILEPATH" || true
+                        run "$STRIP" $STRIP_ARGS "$FILEPATH" || true
                     fi
                 fi
             done
@@ -8592,6 +8592,8 @@ inspect_install_arguments() {
 
     PACK_ARGS=
 
+    STRIP_ARGS='--strip-debug'
+
     while [ -n "$1" ]
     do
         case "$1" in
@@ -8630,6 +8632,9 @@ inspect_install_arguments() {
                 ;;
             --tree-args=*)
                 TREE_ARGS=$(getvalue "$1")
+                ;;
+            --strip-args=*)
+                STRIP_ARGS=$(getvalue "$1")
                 ;;
             --pack)
                 NEED_RUN_PACK=yes
@@ -8992,13 +8997,32 @@ ${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [--format=<list|json|graph>] [--bri
 ${COLOR_GREEN}ndk-pkg homepage [--open] [PACKAGE-NAME]${COLOR_OFF}
     show or open the homepage of the given package or this project in web browser.
 
-${COLOR_GREEN}ndk-pkg install   <PACKAGE-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg install   <PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     install the given packages.
 
-${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-NAME>... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
+    INSTALL-OPTIONS:
+        ${COLOR_BLUE}--min-sdk-api-level=N${COLOR_OFF}
+        ${COLOR_BLUE}--jobs=N${COLOR_OFF}
+        ${COLOR_BLUE}-q|--quiet${COLOR_OFF}
+        ${COLOR_BLUE}-v|--verbose${COLOR_OFF}
+        ${COLOR_BLUE}-d|--debug${COLOR_OFF}
+        ${COLOR_BLUE}-x|--xtrace${COLOR_OFF}
+        ${COLOR_BLUE}--build-type=<debug|release>${COLOR_OFF}
+        ${COLOR_BLUE}--link-type=<static-only|shared-only|static-prefered|shared-prefered>${COLOR_OFF}
+        ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
+        ${COLOR_BLUE}--export-compile-commands-json${COLOR_OFF}
+        ${COLOR_BLUE}--tree${COLOR_OFF}
+        ${COLOR_BLUE}--tree-args=ARGS${COLOR_OFF}
+        ${COLOR_BLUE}--pack${COLOR_OFF}
+        ${COLOR_BLUE}--pack-type=<tar.bz2|tar.gz|tar.xz|zip|7z|aar>
+        ${COLOR_BLUE}--strip-args=ARGS${COLOR_OFF}
+        ${COLOR_BLUE}--dry-run${COLOR_OFF}
+        ${COLOR_BLUE}--keep-work-dir${COLOR_OFF}
+
+${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ndk-pkg upgrade   [PACKAGE-NAME]... [--min-sdk-api-level=21 --jobs=N -q -v -d -x --dry-run --keep-work-dir --tree --disable-ccache]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg upgrade   [PACKAGE-NAME]... [INSTALL-OPTIONS]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
 ${COLOR_GREEN}ndk-pkg upgrade @self  [-x | --china]${COLOR_OFF}
