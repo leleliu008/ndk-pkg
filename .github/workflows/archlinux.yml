@@ -16,6 +16,8 @@ jobs:
       - run: pacman -Syyuu --noconfirm
       - run: pacman -S     --noconfirm git
 
+      - run: git config --global --add safe.directory /__w/ndk-pkg/ndk-pkg
+
       - uses: actions/checkout@v2
 
       - run: bin/ndk-pkg --help
