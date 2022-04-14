@@ -5834,7 +5834,9 @@ EOF
         step "record dependencies files."
         for file in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG
         do
-            run cp "$file" "$MY_INSTALL_DIR/$1"
+            if [    -f "$file" ] ; then
+                run cp "$file" "$MY_INSTALL_DIR/$1"
+            fi
         done
     fi
 
@@ -8720,7 +8722,7 @@ inspect_install_arguments() {
 init() {
     # MY represents this software's
 
-    MY_VERSION=0.1.32
+    MY_VERSION=0.1.33
 
     MY_HOME_PAGE='https://github.com/leleliu008/ndk-pkg.git'
     MY_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository.git'
