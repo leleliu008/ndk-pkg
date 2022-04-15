@@ -5903,6 +5903,32 @@ __install_the_given_package_for_the_given_target() {
         note "ccache is disabled, skipped."
     fi
 
+    [ -n "$DEPENDENCY_PACKAGE_LIST" ] && {
+        step2 "create symbolic links for dependency libs"
+        case $LINK_TYPE in
+            static-only|static-prefered) LINK_LIBRARY_TYPE=a  ;;
+            shared-only|shared-prefered) LINK_LIBRARY_TYPE=so ;;
+        esac
+
+        for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
+        do
+            DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR="$MY_INSTALL_DIR/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI/lib"
+            if [ -d "$DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR" ] ; then
+                cd  "$DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR"
+                for item in $(find . -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -exec basename {} \;)
+                do
+                    if [ -e "$TARGET_WORKING_DIR/lib/$item" ] ; then
+                        continue
+                    else
+                        ln -s $DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR/$item $TARGET_WORKING_DIR/lib/$item
+                    fi
+                done
+            fi
+        done
+
+        unset LINK_LIBRARY_TYPE
+    }
+
     if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
             run cd "$PACKAGE_BSCRIPT_DIR"
@@ -5975,16 +6001,9 @@ __create_no_versioning_so_files_for_the_given_target() {
         return 0
     }
 
-    SO_FILE_NAMES_HAVE_VERSION="$(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so.*' -exec basename {} \;)"
-
-    [ -z "$SO_FILE_NAMES_HAVE_VERSION" ] || {
-        note "no so files installed, skipped"
-        return 0
-    }
-
     run cd "$TARGET_INSTALL_DIR/lib"
 
-    for SO_FILE_NAME_HAVE_VERSION in $SO_FILE_NAMES_HAVE_VERSION
+    for SO_FILE_NAME_HAVE_VERSION in $(find . -maxdepth 1 -mindepth 1 -name 'lib*.so.*' -exec basename {} \;)
     do
         unset SO_FILE_NAME_NO_VERSION
         SO_FILE_NAME_NO_VERSION="$(printf '%s\n' "$SO_FILE_NAME_HAVE_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
@@ -5992,13 +6011,23 @@ __create_no_versioning_so_files_for_the_given_target() {
         if [ !     -f "$SO_FILE_NAME_NO_VERSION" ] ; then
             run cp -f "$SO_FILE_NAME_HAVE_VERSION" "$SO_FILE_NAME_NO_VERSION"
         fi
+    done
 
+    SO_FILE_NAMES_NO_VERSION="$(find . -maxdepth 1 -mindepth 1 -name 'lib*.so' -exec basename {} \;)"
+
+    [ -z "$SO_FILE_NAMES_NO_VERSION" ] && {
+        note "no so files installed, skipped"
+        return 0
+    }
+
+    for SO_FILE_NAME_NO_VERSION in $SO_FILE_NAMES_NO_VERSION
+    do
         SO_FILE_PRESETED_DT_SONAME="$($READELF -d "$SO_FILE_NAME_NO_VERSION" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
 
         if [ -n "$SO_FILE_PRESETED_DT_SONAME" ] ; then
-            SO_FILE_EXPECTED_DT_SONAME="$(printf '%s\n' "$SO_FILE_PRESETED_DT_SONAME" | sed 's|\.[0-9].*||g')"
+            SO_FILE_EXPECTED_DT_SONAME="$(printf '%s\n' "$SO_FILE_PRESETED_DT_SONAME" | sed 's|\(.*\.so\).*|\1|g')"
 
-            if [ -n "$SO_FILE_PRESETED_DT_SONAME" ] && [ "$SO_FILE_PRESETED_DT_SONAME" != "$SO_FILE_EXPECTED_DT_SONAME" ] ; then
+            if [ "$SO_FILE_PRESETED_DT_SONAME" != "$SO_FILE_EXPECTED_DT_SONAME" ] ; then
                 run patchelf --set-soname "$SO_FILE_EXPECTED_DT_SONAME" "$SO_FILE_NAME_NO_VERSION"
             fi
         fi
@@ -6008,7 +6037,7 @@ __create_no_versioning_so_files_for_the_given_target() {
             case $SO_FILE_PRESETED_DT_NEEDED in
                 lib*.so) ;;
                 *)  unset SO_FILE_EXPECTED_DT_NEEDED
-                    SO_FILE_EXPECTED_DT_NEEDED="$(printf '%s\n' "$SO_FILE_PRESETED_DT_NEEDED" | sed 's|\.[0-9].*||g')"
+                    SO_FILE_EXPECTED_DT_NEEDED="$(printf '%s\n' "$SO_FILE_PRESETED_DT_NEEDED" | sed 's|\(.*\.so\).*|\1|g')"
 
                     if [ "$SO_FILE_PRESETED_DT_NEEDED" != "$SO_FILE_EXPECTED_DT_NEEDED" ] ; then
                         run patchelf --replace-needed "$SO_FILE_PRESETED_DT_NEEDED" "$SO_FILE_EXPECTED_DT_NEEDED" "$SO_FILE_NAME_NO_VERSION"
