@@ -7620,7 +7620,7 @@ cmakew() {
         -DANDROID_PLATFORM=$TARGET_OS_VERS"
 
         if [ "$CCACHE_ENABLED" = yes ] ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DNDK_CCACHE=ccache"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DNDK_CCACHE=$CCACHE"
         fi
 
         # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
@@ -7779,6 +7779,35 @@ to_meson_array() {
     echo "$RESULT"
 }
 
+# https://developer.android.com/ndk/guides/ndk-build
+ndk_build() {
+    # https://developer.android.com/ndk/downloads/revision_history#expandable-33
+    # Android NDK r7 (November 2011)
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        export NDK_CCACHE=$CCACHE
+    fi
+
+    NDK_BUILD_ARGS="NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=Android.mk APP_PLATFORM=android-$TARGET_OS_VERS APP_STRIP_MODE=-S"
+
+    case $BUILD_TYPE in
+        debug)   NDK_BUILD_ARGS="$NDK_BUILD_ARGS NDK_DEBUG=1" ;;
+        release) NDK_BUILD_ARGS="$NDK_BUILD_ARGS NDK_DEBUG=0" ;;
+    esac
+
+    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] ; then
+        NDK_BUILD_ARGS="$NDK_BUILD_ARGS GEN_COMPILE_COMMANDS_DB=true"
+    fi
+
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        NDK_BUILD_ARGS="$NDK_BUILD_ARGS V=1"
+    fi
+
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
+        NDK_BUILD_ARGS="$NDK_BUILD_ARGS NDK_LOG=1"
+    fi
+
+    run ndk-build $NDK_BUILD_ARGS
+}
 
 ########################################################################
 
