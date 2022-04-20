@@ -106,7 +106,9 @@ Invoke-WebRequest -OutFile /path/of/your/android/project/ndk-pkg.cmake https://r
 
 **step2** : add following code to your Android project's CMakeLists.txt
 ```cmake
-include(ndk-pkg.cmake)
+if (ANDROID)
+    include(ndk-pkg.cmake)
+endif()
 ```
 
 **step3** : invoke [find_package(PKG)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt

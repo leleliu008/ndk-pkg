@@ -34,6 +34,7 @@ _commands=(
     'env:show current machine os and android-ndk toolchain info.'
     'depends:show the depends of the given package.'
     'pack:pack the given installed package.'
+    'deploy:pack the given installed package as prefab aar and then deploy the prefab aar to sonatype nexus OSSRH.'
     'logs:show logs of the given installed package.'
     'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
@@ -135,6 +136,12 @@ function _ndk_pkg() {
                     ;;
                 fetch)
                     _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' ;;
+                deploy)
+                    _arguments \
+                        ':package-name:_ndk_pkg_installed_packages' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
+                        '(--debug -d)'{--debug,-d}'[debug the process of deployment]'
+                    ;;
                 depends)
                     _arguments \
                         '1:package-name:_ndk_pkg_available_packages' \
@@ -145,7 +152,8 @@ function _ndk_pkg() {
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:type:(7z zip aar tar.gz tar.xz tar.bz2)'
+                        '2:type:(7z zip aar tar.gz tar.xz tar.bz2)' \
+                        '--keep-work-dir[do not delete work-dir even if packed success]'
                     ;;
                 homepage)
                     _arguments \
@@ -172,8 +180,8 @@ function _ndk_pkg() {
                         '--keep-work-dir[do not delete work-dir even if installed success]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                         '(--debug -d)'{--debug,-d}'[debug output]' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output]' \
-                        '(--quiet -q)'{--quiet,-q}'[no output]' \
+                        '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
+                        '(--quiet -q)'{--quiet,-q}'[silent mode. no any messages will be output to terminal]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -182,11 +190,8 @@ function _ndk_pkg() {
                         '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '--tree[list installed files in a tree-like format after installed successfully]' \
-                        '--pack[pack after installed successfully]' \
-                        '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
-                        '--pack-type=-[set packed file type]:pack-type:(aar 7z zip tar.gz tar.xz tar.bz2)' \
-                        '--strip-args=-[set arguments of strip]:strip-args:(--strip-debug --strip-unneeded)'
+                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
+                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)'
                     ;;
                 reinstall)
                     _arguments \
@@ -197,8 +202,8 @@ function _ndk_pkg() {
                         '--keep-work-dir[do not delete work-dir even if installed success]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                         '(--debug -d)'{--debug,-d}'[debug output]' \
-                        '(--verbose -v)'{--verbose,-v}'[verbose output]' \
-                        '(--quiet -q)'{--quiet,-q}'[no output]' \
+                        '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
+                        '(--quiet -q)'{--quiet,-q}'[silent mode. no any messages will be output to terminal]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -207,11 +212,8 @@ function _ndk_pkg() {
                         '--install-man[install manpages]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
-                        '--tree[list installed files in a tree-like format after installed successfully]' \
-                        '--pack[pack after installed successfully]' \
-                        '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
-                        '--pack-type=-[set packed file type]:pack-type:(aar 7z zip tar.gz tar.xz tar.bz2)' \
-                        '--strip-args=-[set arguments of strip]:strip-args:(--strip-debug --strip-unneeded)'
+                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
+                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)'
                     ;;
                 upgrade)
                     _arguments \
@@ -233,8 +235,8 @@ function _ndk_pkg() {
                                         '--keep-work-dir[do not delete work-dir even if installed success]' \
                                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                                         '(--debug -d)'{--debug,-d}'[debug output]' \
-                                        '(--verbose -v)'{--verbose,-v}'[verbose output]' \
-                                        '(--quiet -q)'{--quiet,-q}'[no output]' \
+                                        '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
+                                        '(--quiet -q)'{--quiet,-q}'[silent mode. no any messages will be output to terminal]' \
                                         '--build-type=-[set build type]:build-type:(debug release)' \
                                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                                         '--install-lib=-[install static or shared library]:install-lib:(static shared both yes no)' \
@@ -243,11 +245,8 @@ function _ndk_pkg() {
                                         '--install-man[install manpages]' \
                                         '--export-compile-commands-json[generates compile_commands.json]' \
                                         '--disable-ccache[do not use ccache]' \
-                                        '--tree[list installed files in a tree-like format after installed successfully]' \
-                                        '--pack[pack after installed successfully]' \
-                                        '--tree-args=-[set arguments of tree]:tree-args:(--dirsfirst)' \
-                                        '--pack-type=-[set packed file type]:pack-type:(aar 7z zip tar.gz tar.xz tar.bz2)' \
-                                        '--strip-args=-[set arguments of strip]:strip-args:(--strip-debug --strip-unneeded)'
+                                        '--tree-args=-[set arguments of tree command]:tree-args:(--dirsfirst)' \
+                                        '--strip-args=-[set arguments of strip command]:strip-args:(--strip-debug --strip-unneeded)'
                                     ;;
                             esac
                         esac

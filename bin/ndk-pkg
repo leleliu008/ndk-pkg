@@ -243,7 +243,7 @@ is_integer () {
 
 is_elf_file() {
     [ -z "$1" ] && {
-        error "is_elf_file <FILE-PATH>, FILE-PATH is not given."
+        error "is_elf_file <FILE-PATH>, <FILE-PATH> is not given."
         return 1
     }
 
@@ -255,9 +255,10 @@ is_elf_file() {
     fi
 }
 
-format_unix_timestamp() {
-   date -jf "%s" "$1" "$2" 2> /dev/null ||
-   date -d      "@$1" "$2"
+# format_unix_timestamp <TIMESTAMP-UNIX> <TO-FORMAT> [-u]
+  format_unix_timestamp() {
+   date $3 -jf "%s" "$1" "$2" 2> /dev/null ||
+   date $3 -d      "@$1" "$2"
 }
 
 # https://equa.space/sh/lolcat/
@@ -390,12 +391,12 @@ sha256sum() {
 # file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>
   file_exists_and_sha256sum_matched() {
     [ -z "$1" ] && {
-        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, PATH-OF-FILE is not given."
+        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, <PATH-OF-FILE> is not given."
         return 1
     }
 
     [ -z "$2" ] && {
-        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, EXPECTED-SHA256SUM-OF-FILE is not given."
+        error "file_exists_and_sha256sum_matched <PATH-OF-FILE> <EXPECTED-SHA256SUM-OF-FILE>, <EXPECTED-SHA256SUM-OF-FILE> is not given."
         return 1
     }
 
@@ -417,7 +418,7 @@ sha256sum() {
 # __map_name_ref <MAP-NAME>
   __map_name_ref() {
     if [ -z "$1" ] ; then
-        error "__map_name_ref <MAP-NAME>, MAP-NAME is not given."
+        error "__map_name_ref <MAP-NAME>, <MAP-NAME> is not given."
         return 40
     fi
 
@@ -427,12 +428,12 @@ sha256sum() {
 # __map_key_ref <MAP-NAME> <MAP-KEY>
   __map_key_ref() {
     if [ -z "$1" ] ; then
-        error "__map_key_ref <MAP-NAME> <MAP-KEY>, MAP-NAME is not given."
+        error "__map_key_ref <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
         return 40
     fi
 
     if [ -z "$2" ] ; then
-        error "__map_key_ref <MAP-NAME> <MAP-KEY>, MAP-KEY is not given."
+        error "__map_key_ref <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
         return 41
     fi
 
@@ -442,12 +443,12 @@ sha256sum() {
 # map_contains <MAP-NAME> <MAP-KEY>
   map_contains() {
     if [ -z "$1" ] ; then
-        error "map_contains <MAP-NAME> <MAP-KEY>, MAP-NAME is not given."
+        error "map_contains <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
         return 40
     fi
 
     if [ -z "$2" ] ; then
-        error "map_contains <MAP-NAME> <MAP-KEY>, MAP-KEY is not given."
+        error "map_contains <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
         return 41
     fi
 
@@ -464,12 +465,12 @@ sha256sum() {
 # map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>
   map_set() {
     if [ -z "$1" ] ; then
-        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, MAP-NAME is not given."
+        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, <MAP-NAME> is not given."
         return 40
     fi
 
     if [ -z "$2" ] ; then
-        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, MAP-KEY is not given."
+        error "map_set <MAP-NAME> <MAP-KEY> <MAP-VALUE>, <MAP-KEY> is not given."
         return 41
     fi
 
@@ -486,12 +487,12 @@ sha256sum() {
 # map_get <MAP-NAME> <MAP-KEY>
   map_get() {
     if [ -z "$1" ] ; then
-        error "map_get <MAP-NAME> <MAP-KEY>, MAP-NAME is not given."
+        error "map_get <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
         return 40
     fi
 
     if [ -z "$2" ] ; then
-        error "map_get <MAP-NAME> <MAP-KEY>, MAP-KEY is not given."
+        error "map_get <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
         return 41
     fi
 
@@ -501,12 +502,12 @@ sha256sum() {
 # map_remove <MAP-NAME> <MAP-KEY>
   map_remove() {
     if [ -z "$1" ] ; then
-        error "map_remove <MAP-NAME> <MAP-KEY>, MAP-NAME is not given."
+        error "map_remove <MAP-NAME> <MAP-KEY>, <MAP-NAME> is not given."
         return 40
     fi
 
     if [ -z "$2" ] ; then
-        error "map_remove <MAP-NAME> <MAP-KEY>, MAP-KEY is not given."
+        error "map_remove <MAP-NAME> <MAP-KEY>, <MAP-KEY> is not given."
         return 41
     fi
 
@@ -533,7 +534,7 @@ sha256sum() {
 # map_remove <MAP-NAME>
   map_clear() {
     if [ -z "$1" ] ; then
-        error "map_clear <MAP-NAME>, MAP-NAME is not given."
+        error "map_clear <MAP-NAME>, <MAP-NAME> is not given."
         return 40
     fi
 
@@ -551,7 +552,7 @@ sha256sum() {
 # map_keys <MAP-NAME>
   map_keys() {
     if [ -z "$1" ] ; then
-        error "map_keys <MAP-NAME>, MAP-NAME is not given."
+        error "map_keys <MAP-NAME>, <MAP-NAME> is not given."
         return 40
     fi
 
@@ -561,7 +562,7 @@ sha256sum() {
 # map_size <MAP-NAME>
   map_size() {
     if [ -z "$1" ] ; then
-        error "map_size <MAP-NAME>, MAP-NAME is not given."
+        error "map_size <MAP-NAME>, <MAP-NAME> is not given."
         return 40
     fi
 
@@ -586,7 +587,7 @@ fetch() {
     unset FETCH_PIPE_TO_CMD
 
     if [ -z "$1" ] ; then
-        error "fetch <URL> [OPTION]... , URL must not be empty."
+        error "fetch <URL> [OPTION]... , <URL> must not be empty."
         return 1
     else
         if [ "$COUNTRY" = 'china' ] ; then
@@ -607,28 +608,28 @@ fetch() {
             --output-dir=*)
                 FETCH_OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    error "fetch <URL> --output-dir=<DIR> , DIR must not be empty."
+                    error "fetch <URL> --output-dir=<DIR> , <DIR> must not be empty."
                     return 1
                 fi
                 ;;
             --output-name=*)
                 FETCH_OUTPUT_NAME=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                    error "fetch <URL> --output-name=<NAME> , NAME must not be empty."
+                    error "fetch <URL> --output-name=<NAME> , <NAME> must not be empty."
                     return 1
                 fi
                 ;;
             --output-path=*)
                 FETCH_OUTPUT_PATH=$(getvalue "$1")
                 if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-                    error "fetch <URL> --output-path=<FILEPATH> , FILEPATH must not be empty."
+                    error "fetch <URL> --output-path=<FILEPATH> , <FILEPATH> must not be empty."
                     return 1
                 fi
                 ;;
             --pipe=*)
                 FETCH_PIPE_TO_CMD=$(getvalue "$1")
                 if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
-                    error "fetch <URL> --pipe=<CMD> , CMD must not be empty."
+                    error "fetch <URL> --pipe=<CMD> , <CMD> must not be empty."
                     return 1
                 fi
         esac
@@ -809,7 +810,7 @@ __upgrade_self() {
     set -e
 
     if [ -z "$1" ] ; then
-        error "__upgrade_self <URL> [--china] [-x] , URL must not be empty."
+        error "__upgrade_self <URL> [--china] [-x] , <URL> must not be empty."
         return 1
     else
         UPGRADE_SELF_URL="$1"
@@ -880,7 +881,7 @@ __integrate_zsh_completions() {
     set -e
 
     if [ -z "$1" ] ; then
-        error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , URL must not be empty."
+        error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] [--china] [-x] , <URL> must not be empty."
         return 1
     else
         ZSH_COMPLETIONS_SCRIPT_URL="$1"
@@ -905,7 +906,7 @@ __integrate_zsh_completions() {
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
                 if [ -z "$OUTPUT_DIR" ] ; then
-                    error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , DIR must not be empty."
+                    error "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <DIR> must not be empty."
                     return 1
                 fi
                 OUTPUT_DIR=$(globing "$OUTPUT_DIR")
@@ -2276,17 +2277,17 @@ __pmw_get_available_pm_list() {
 # __pmw_install_the_given_package dnf epel    ccache
 __pmw_install_the_given_package() {
     [ -z "$1" ] && {
-        error "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PM   must not be empty."
+        error "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , <PM> must not be empty."
         return 1
     }
 
     [ -z "$2" ] && {
-        error "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , REPO must not be empty."
+        error "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , <REPO> must not be empty."
         return 1
     }
 
     [ -z "$3" ] && {
-        error "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , PKG  must not be empty."
+        error "USAGE: __pmw_install_the_given_package <PM> <REPO> <PKG> [eq|ne|le|ge|lt|gt <VERSION>] , <PKG> must not be empty."
         return 1
     }
 
@@ -2485,7 +2486,7 @@ EOF
 # __uppm_is_the_given_package_available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
 __uppm_is_the_given_package_available() {
     [ -z "$1" ] && {
-        error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], PACKAGE-NAME must not be empty."
+        error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <PACKAGE-NAME> must not be empty."
         return 1
     }
 
@@ -2497,7 +2498,7 @@ __uppm_is_the_given_package_available() {
         esac
 
         if [ -z "$3" ] ; then
-            error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>],  VERSION must not be empty."
+            error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>],  <VERSION> must not be empty."
             return 1
         fi
     fi
@@ -2559,7 +2560,7 @@ __uppm_is_the_given_package_installed() {
 __uppm_list_the_available_packages() {
     if [ $# -ge 1 ] ; then
         if [ -z "$1" ] ; then
-            error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], PACKAGE-NAME must not be empty."
+            error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <PACKAGE-NAME> must not be empty."
             return 1
         fi
     fi
@@ -2572,7 +2573,7 @@ __uppm_list_the_available_packages() {
         esac
 
         if [ -z "$3" ] ; then
-            error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], VERSION must not be empty."
+            error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <VERSION> must not be empty."
             return 1
         fi
     fi
@@ -2708,7 +2709,7 @@ __uppm_fetch() {
 # __uppm_install_the_given_package <PACKAGE-NAME> [eq|ne|le|ge|lt|gt <VERSION>]
 __uppm_install_the_given_package() {
     [ -z "$1" ] && {
-        error "uppm install <PACKAGE-NAME> [eq|ne|le|ge|lt|gt <VERSION>], PACKAGE-NAME must not be empty."
+        error "uppm install <PACKAGE-NAME> [eq|ne|le|ge|lt|gt <VERSION>], <PACKAGE-NAME> must not be empty."
         return 1
     }
 
@@ -2720,7 +2721,7 @@ __uppm_install_the_given_package() {
         esac
 
         if [ -z "$3" ] ; then
-            error "uppm install <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], VERSION must not be empty."
+            error "uppm install <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <VERSION> must not be empty."
             return 1
         fi
     fi
@@ -2852,7 +2853,7 @@ __uppm_install_the_given_package() {
 
     if [ -f "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" ] ; then
         if [ $# -ge 3 ] ; then
-            if version_match "$(. "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" && printf '%s\n' "$INSTALLED_PKG_VERS")" "$2" "$3" ; then
+            if version_match "$(. "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" && printf '%s\n' "$INSTALLED_PACKAGE_VERSION")" "$2" "$3" ; then
                 success "$UPPM_PKG_FILEPATH already have been unpacked to $UPPM_PKG_INSTALLD."
             else
                 run rm -rf "$UPPM_PKG_INSTALLD"
@@ -2876,9 +2877,9 @@ __uppm_install_the_given_package() {
         esac
 
         cat > "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" <<EOF
-INSTALLED_DATETIME='$(date +%s)'
-INSTALLED_PKG_NAME='$UPPM_PKG_NAME'
-INSTALLED_PKG_VERS='$UPPM_PKG_VERS'
+INSTALLED_TIMESTAMP_UNIX='$(date +%s)'
+INSTALLED_PACKAGE_NAME='$UPPM_PKG_NAME'
+INSTALLED_PACKAGE_VERSION='$UPPM_PKG_VERS'
 INSTALLED_PKG_URL_='$UPPM_PKG_URL_'
 INSTALLED_PKG_SUM_='$UPPM_PKG_SUM_'
 EOF
@@ -2981,7 +2982,7 @@ uppm() {
 
 __uppm_get_package_name_by_command_name() {
     [ -z "$1" ] && {
-        error "__uppm_get_package_name_by_command_name <CMD>, CMD must not be empty."
+        error "__uppm_get_package_name_by_command_name <CMD>, <CMD> must not be empty."
         return 1
     }
 
@@ -3002,7 +3003,7 @@ __uppm_get_package_name_by_command_name() {
 # __install_command_via_uppm <CMD> [eq|ne|le|ge|lt|gt <VERSION>]
 __install_command_via_uppm() {
     [ -z "$1" ] && {
-        error "__install_command_via_uppm <CMD>, CMD must not be empty."
+        error "__install_command_via_uppm <CMD>, <CMD> must not be empty."
         return 1
     }
 
@@ -3022,7 +3023,7 @@ __install_command_via_uppm() {
 # __install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>]
 __install_command_via_pmw() {
     [ -z "$1" ] && {
-        error "__install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>] , CMD must not be empty."
+        error "__install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>] , <CMD> must not be empty."
         return 1
     }
 
@@ -3623,7 +3624,7 @@ __parse_require_dependency_item() {
 # __load_formula_of_the_given_package <PACKAGE-NAME>
   __load_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__load_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__load_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -3724,6 +3725,10 @@ __parse_require_dependency_item() {
 
     if [ -z "$PACKAGE_SUMMARY" ] ; then
         die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
+    fi
+
+    if [ -z "$PACKAGE_LICENSE" ] ; then
+        die "license must be configed in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     if [ -z "$PACKAGE_WEBPAGE" ] ; then
@@ -3895,7 +3900,7 @@ __parse_require_dependency_item() {
 # __view_formula_of_the_given_package curl --paging=never
   __view_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__view_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__view_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -3913,7 +3918,7 @@ __parse_require_dependency_item() {
                 VIEW_FORMULA_PAGING=$(getvalue "$1")
                 case $VIEW_FORMULA_PAGING in
                     auto|always|never) ;;
-                    *) die "--paging=VALUE VALUE must be one of auto, always, never"
+                    *) die "--paging=<VALUE>, <VALUE> must be one of auto, always, never"
                 esac
                 ;;
             *)  die "unrecognized argument: $1"
@@ -3955,7 +3960,7 @@ __parse_require_dependency_item() {
 # __edit_formula_of_the_given_package <PACKAGE-NAME>
   __edit_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__edit_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__edit_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -3974,7 +3979,7 @@ __parse_require_dependency_item() {
 # __create_formula_of_the_given_package <PACKAGE-NAME>
   __create_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__create_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__create_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4028,7 +4033,7 @@ EOF
 # __delete_formula_of_the_given_package <PACKAGE-NAME>
   __delete_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__delete_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__delete_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4041,12 +4046,12 @@ EOF
 # __rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>
 __rename_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, OLD-PACKAGE-NAME is not given."
+        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, <OLD-PACKAGE-NAME> is not given."
         return 1
     }
 
     [ -z "$2" ] && {
-        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, NEW-PACKAGE-NAME is not given."
+        error "__rename_formula_of_the_given_package <OLD-PACKAGE-NAME> <NEW-PACKAGE-NAME>, <NEW-PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4136,7 +4141,7 @@ __add_a_formula_repo() {
 
 __repo_of_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__repo_of_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__repo_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4155,7 +4160,7 @@ __repo_of_formula_of_the_given_package() {
 # __path_of_formula_of_the_given_package <PACKAGE-NAME>
   __path_of_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__path_of_formula_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4278,7 +4283,7 @@ __fetch_patches_of_the_given_package() {
 
 __fetch_resources_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__fetch_resources_of_the_given_package <PKG>, PKG is not given."
+        error "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4321,7 +4326,7 @@ __fetch_resources_of_the_given_package() {
 # is_package_available automake
   is_package_available() {
     [ -z "$1" ] && {
-        error "is_package_available <PACKAGE-NAME> [<eq|lt|gt|le|ge> <VERSION>], PACKAGE-NAME is not given."
+        error "is_package_available <PACKAGE-NAME> [<eq|lt|gt|le|ge> <VERSION>], <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4338,7 +4343,7 @@ __fetch_resources_of_the_given_package() {
 # is_package_installed <PACKAGE-NAME>
   is_package_installed() {
     [ -z "$1" ] && {
-        error "is_package_installed <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "is_package_installed <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4351,7 +4356,7 @@ __fetch_resources_of_the_given_package() {
 is_package__outdated() {
     __load_formula_of_the_given_package "$1" &&
     __load_installed_metadata_of_the_given_package "$1" &&
-    version_match "$PACKAGE_VERSION" gt "$INSTALLED_PKG_VERS"
+    version_match "$PACKAGE_VERSION" gt "$INSTALLED_PACKAGE_VERSION"
 }
 
 __gen_github_workflows() {
@@ -4374,7 +4379,7 @@ __gen_github_workflows() {
             --output-dir=*)
                 OUTPUT_DIR=$(getvalue "$1")
                 case "$OUTPUT_DIR" in
-                    '') die "--output-dir=<DIR>, DIR must not be empty." ;;
+                    '') die "--output-dir=<DIR>, <DIR> must not be empty." ;;
                     /*) ;;
                     \~|\~/) OUTPUT_DIR="${HOME}" ;;
                     \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | cut -c3-)" ;;
@@ -4502,7 +4507,7 @@ __list__outdated_packages() {
 # __tree_the_given_installed_package <PACKAGE-NAME>
   __tree_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "__tree_the_given_installed_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__tree_the_given_installed_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4518,7 +4523,7 @@ __list__outdated_packages() {
 
 __uninstall_the_given_packages() {
     [ -z "$1" ] && {
-        error "__uninstall_the_given_packages <PACKAGE-NAME>..., PACKAGE-NAME is not given."
+        error "__uninstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4530,7 +4535,7 @@ __uninstall_the_given_packages() {
 
 __uninstall_the_given_package() {
     [ -z "$1" ] && {
-        error "__uninstall_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__uninstall_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4546,7 +4551,7 @@ __reinstall_the_given_packages() {
     inspect_install_arguments $@
 
     [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && {
-        error "$_0 reinstall <PACKAGE-NAME>..., PACKAGE-NAME is not given."
+        error "$_0 reinstall <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4749,7 +4754,7 @@ __open_homepage_of_the_given_package() {
 # __show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>]
 __show_packages_depended_by_the_given_package() {
     [ -z "$1" ] && {
-        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], PACKAGE-NAME is not given."
+        error "__show_packages_depended_by_the_given_package <PACKAGE-NAME> [--format=<list|json|graph>] [--brief] [-o <OUTPUT-FILE-PATH>], <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4791,7 +4796,7 @@ __show_packages_depended_by_the_given_package() {
             -x) set -x ;;
             -o)
                 if [ -z "$2" ] ; then
-                    die "-o <OUTPUT-FILE-PATH>, OUTPUT-FILE-PATH must not be empty."
+                    die "-o <OUTPUT-FILE-PATH>, <OUTPUT-FILE-PATH> must not be empty."
                 else
                     OUTPUT_FILEPATH="$2"
                     shift
@@ -4944,7 +4949,7 @@ $LINE"
 # __logs_the_given_installed_package <PACKAGE-NAME> <ABI>
 __logs_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "$_0 logs <PACKAGE-NAME> <ABI>, PACKAGE-NAME is not given."
+        error "$_0 logs <PACKAGE-NAME> <ABI>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4954,7 +4959,7 @@ __logs_the_given_installed_package() {
     }
 
     [ -z "$2" ] && {
-        error "$_0 logs <PACKAGE-NAME> <ABI>, ABI is not given."
+        error "$_0 logs <PACKAGE-NAME> <ABI>, <ABI> is not given."
         return 1
     }
 
@@ -5006,14 +5011,24 @@ __logs_the_given_installed_package() {
     fi
 }
 
-# examples:
-# __pack_the_given_installed_package <PACKAGE-NAME> <TYPE>
-# __pack_the_given_installed_package  autoconf  tar.xz
-__pack_the_given_installed_package() {
+# __pack_the_given_installed_package <PACKAGE-NAME> <TYPE> [--keep-work-dir]
+# __pack_the_given_installed_package    autoconf    tar.xz
+  __pack_the_given_installed_package() {
     __load_installed_metadata_of_the_given_package "$1"
 
+    for option in $(shiftn 2 $@)
+    do
+        case $option in
+            --keep-work-dir) KEEP_WORKING_DIR=yes ;;
+            *) break
+        esac
+    done
+
     case $2 in
-        aar)__create_aar_for_the_given_installed_package "$1"; return $? ;;
+        aar)
+            __create_prefab_aar_for_the_given_installed_package $@
+            return $?
+            ;;
         7z) handle_dependency required exe 7za ;;
         zip)
             handle_dependency required exe zip
@@ -5031,14 +5046,19 @@ __pack_the_given_installed_package() {
             handle_dependency required exe tar
             handle_dependency required exe bzip2
             ;;
-        '')die "$_0 pack <PACKAGE-NAME> <TYPE>, TYPE must not be empty." ;;
+        '')die "$_0 pack <PACKAGE-NAME> <TYPE>, <TYPE> must not be empty." ;;
         *) die "$_0 pack <PACKAGE-NAME> <TYPE>, unsupported TYPE: $2, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
     esac
 
     unset PACKED_DIR_NAME
     unset PACKED_FILE_NAME
 
-    PACKED_DIR_NAME="$INSTALLED_PKG_NAME-$INSTALLED_PKG_VERS-bin"
+    if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
+        PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_TIMESTAMP_UNIX"
+    else
+        PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION"
+    fi
+
     PACKED_FILE_NAME="$PACKED_DIR_NAME.$2"
 
     step "create working directory"
@@ -5048,8 +5068,8 @@ __pack_the_given_installed_package() {
     step "change to working directory"
     run cd $WORKING_DIR
 
-    step "make link refer to installed package root dir"
-    run ln -s "$MY_INSTALL_DIR/$INSTALLED_PKG_NAME" "$PACKED_DIR_NAME"
+    step "make link point to installed package root dir"
+    run ln -s "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
     case $2 in
@@ -5078,17 +5098,22 @@ __pack_the_given_installed_package() {
     step "copy packed file to cache dir"
     run cp "$PACKED_FILE_NAME" "$MY_BINARY_DIR/"
 
-    step "delete working directory"
-    run rm -rf $WORKING_DIR
+    if [ "$KEEP_WORKING_DIR" = yes ] ; then
+        echo
+        note "the work dir [$WORKING_DIR] is not deleted as --keep-work-dir option is given."
+    else
+        step "delete working directory"
+        run rm -rf $WORKING_DIR
+    fi
 }
 
 # https://developer.android.com/studio/projects/android-library#aar-contents
 #
-# __create_aar_for_the_given_installed_package <PACKAGE-NAME>
-# __create_aar_for_the_given_installed_package     v8
-  __create_aar_for_the_given_installed_package() {
+# __create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME>
+# __create_prefab_aar_for_the_given_installed_package       v8
+  __create_prefab_aar_for_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "__create_aar_for_the_given_installed_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -5097,11 +5122,14 @@ __pack_the_given_installed_package() {
         return 1
     }
 
+    __load_installed_metadata_of_the_given_package "$1"
+
     unset PACKAGE_HAVE_INCLUDE
     unset PACKAGE_HAVE_LIBRARY
 
     unset PACKAGE_INSTALLED_DIR
     unset PACKAGE_INSTALLED_ABIS
+    unset PACKAGE_INSTALLED_LIBS
 
     PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/$1"
 
@@ -5114,6 +5142,17 @@ __pack_the_given_installed_package() {
         fi
 
         if [ -d "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib" ] ; then
+            for item in $(cd "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib" && ls)
+            do
+                [ -d "$item" ] && continue
+
+                case $item in
+                    lib*.a|lib*.so) PACKAGE_INSTALLED_LIBS="$PACKAGE_INSTALLED_LIBS $item"
+                esac
+            done
+        fi
+
+        if [ -n "$PACKAGE_INSTALLED_LIBS" ] ; then
             PACKAGE_HAVE_LIBRARY=yes
         fi
 
@@ -5124,132 +5163,291 @@ __pack_the_given_installed_package() {
 
     step "handle required tools"
     handle_dependency required exe zip
+    handle_dependency required exe grep
     handle_dependency required exe tree
     handle_dependency required exe unzip
 
     step "printf required tools"
     printf_dependency required exe zip
+    printf_dependency required exe grep
     printf_dependency required exe tree
     printf_dependency required exe unzip
 
     step "create working directory"
-    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    WORKING_DIR=$(mktemp -d)
+    WORKING_DIR="$MY_HOME_DIR/prefab.d/android-$INSTALLED_FOR_MIN_SDK_API_LEVEL/$INSTALLED_PACKAGE_NAME"
+
+    if [ -d "$WORKING_DIR" ] ; then
+        run rm -rf "$WORKING_DIR"
+    fi
+    run install -d  "$WORKING_DIR"
 
     step "change to working directory"
     run cd $WORKING_DIR
 
-    __load_installed_metadata_of_the_given_package "$1"
-
-    unset PACKAGE_NAME_UNDERSCORE
-
-    PACKAGE_NAME_UNDERSCORE="$(printf '%s\n' "$1" | tr '+-.' '_')"
-
     step "create META-INF entry"
-    run install -d aar/META-INF
-    cat > aar/META-INF/README <<EOF
-This package is created by ndk-pkg $MY_VERSION. For more details, please look at https://github.com/leleliu008/ndk-pkg
+    run install -d META-INF
+    cat > META-INF/README <<EOF
+built  by ndk-pkg $INSTALLED_BY_NDK_PKG_VERSION in $(format_unix_timestamp "$INSTALLED_TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S' -u) UTC
+packed by ndk-pkg $MY_VERSION in $(date -u '+%Y-%m-%d %H:%M:%S') UTC
+
+For more details, please refer to https://github.com/leleliu008/ndk-pkg
 EOF
+    if [ -f "$PACKAGE_INSTALLED_DIR/LICENSE" ] ; then
+        run cp "$PACKAGE_INSTALLED_DIR/LICENSE" META-INF/
+    else
+        run cp "$PACKAGE_INSTALLED_DIR/LICENSE-[1-9]" META-INF/
+    fi
+
+    unset JAVA_PACKAGE_NAME
+
+    # java package name characters [a-z0-9_.]
+    JAVA_PACKAGE_NAME="$(printf '%s\n' "$1" | tr '+-.' '_' | tr A-Z a-z)"
 
     step "create AndroidManifest.xml entry"
-    cat > aar/AndroidManifest.xml <<EOF
+    cat > AndroidManifest.xml <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fpliu.android.ndk.pkg.$PACKAGE_NAME_UNDERSCORE"
-    android:versionCode="$INSTALLED_DATETIME"
-    android:versionName="$INSTALLED_PKG_VERS" >
+    package="com.fpliu.ndk.pkg.prefab.android.21.$JAVA_PACKAGE_NAME"
+    android:versionCode="$INSTALLED_TIMESTAMP_UNIX"
+    android:versionName="$INSTALLED_PACKAGE_VERSION" >
 
     <uses-sdk
-        android:minSdkVersion="$BUILD_USE_SDK_VERS"
+        android:minSdkVersion="$INSTALLED_FOR_MIN_SDK_API_LEVEL"
         android:targetSdkVersion="30" />
 
 </manifest>
 EOF
 
-    if [ no = yes ] ; then
-        step "create jni entry"
-        for INSTALLED_ABI in $PACKAGE_INSTALLED_ABIS
+    step "create prefab entry"
+    run install -d prefab
+
+    # https://google.github.io/prefab/#package-metadata
+
+    unset PREFAB_JSON_VERSION
+
+    if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
+        PREFAB_JSON_VERSION="$INSTALLED_TIMESTAMP_UNIX"
+    else
+        unset SED_E
+
+        I=0
+
+        for CHAR in a b c d e f g h i j k l m n o p q r s t u v w x y z
         do
-            run install -d "aar/jni/$INSTALLED_ABI"
-            run cp "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib/*.so" "aar/jni/$INSTALLED_ABI"
+            I=$(expr "$I" + 1)
+            SED_E="$SED_E -e s|$CHAR|.$I|g"
         done
+
+        # r3060
+        # 1.4.rc5
+        # 2022-03-28
+        # 2.4+20151223
+        # 1.1.1n
+        # 9e
+        # 2.8.9rel.1
+        # 0.14.1-beta
+        # 0.99.beta20
+        # 3.0-11
+        # 1.4g
+        # 0.15.2e
+        PREFAB_JSON_VERSION="$(printf '%s\n' "$INSTALLED_PACKAGE_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
+
+        printf '%s\n' "$PREFAB_JSON_VERSION" | {
+            grep -q '[0-9]*' ||
+            grep -q '[0-9]*\.[0-9]*' ||
+            grep -q '[0-9]*\.[0-9]*\.[0-9]*' ||
+            grep -q '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'
+        } || die "version[$PREFAB_JSON_VERSION] not expected."
     fi
 
-    step "create prefab entry"
-    run install -d aar/prefab
-
-    cat > aar/prefab/prefab.json <<EOF
+    cat > prefab/prefab.json <<EOF
 {
   "schema_version": 2,
-  "name": "$INSTALLED_PKG_NAME",
-  "version": "$INSTALLED_PKG_VERS",
+  "name": "$INSTALLED_PACKAGE_NAME",
+  "version": "$PREFAB_JSON_VERSION",
   "dependencies": []
 }
 EOF
 
     if [ "$PACKAGE_HAVE_LIBRARY" = yes ] ; then
-        for LIBRARY_FILENAME in $(cd "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib"; ls lib*.so)
+        for LIBRARY_FILENAME in $PACKAGE_INSTALLED_LIBS
         do
-            LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}"
+            unset LIBRARY_FILENAME_PREFIX
+            unset IS_STATIC_LIBRARY
+
+            case $LIBRARY_FILENAME in
+                *.a)  LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.a}"  ; IS_STATIC_LIBRARY=true  ;;
+                *.so) LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}" ; IS_STATIC_LIBRARY=false ;;
+            esac
+
             LIBRARY_NAME="$(printf '%s\n' "$LIBRARY_FILENAME_PREFIX" | cut -c4-)"
-            MODULE_DIR="aar/prefab/modules/$LIBRARY_NAME"
+
+            MODULE_DIR="prefab/modules/$LIBRARY_FILENAME"
+
             run install -d "$MODULE_DIR"
+
             cat > "$MODULE_DIR/module.json" <<EOF
 {
   "export_libraries": [],
   "android": {
+    "library_name": "lib$LIBRARY_NAME",
     "export_libraries": ["-l$LIBRARY_NAME"]
   }
 }
 EOF
-            if [ "$PACKAGE_HAVE_INCLUDE" = yes ] ; then
-                run cp -r "$PACKAGE_INSTALLED_DIR/armeabi-v7a/include" "$MODULE_DIR"
-            fi
-
             for INSTALLED_ABI in $PACKAGE_INSTALLED_ABIS
             do
-                ABI_DIR="aar/prefab/modules/$LIBRARY_NAME/libs/android.$INSTALLED_ABI"
+                ABI_DIR="$MODULE_DIR/libs/android.$INSTALLED_ABI"
+
                 run install -d "$ABI_DIR"
+
+                if [ "$PACKAGE_HAVE_INCLUDE" = yes ] ; then
+                    run cp -r "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/include" "$ABI_DIR"
+                fi
+
                 run cp "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib/$LIBRARY_FILENAME" "$ABI_DIR"
-                printf '%s\n' "{\"api\": $BUILD_USE_SDK_VERS,\"abi\": \"$INSTALLED_ABI\",\"ndk\": 21,\"stl\": \"c++_shared\"}" > "$ABI_DIR/abi.json"
+
+                printf '%s\n' "{\"api\": $INSTALLED_FOR_MIN_SDK_API_LEVEL,\"abi\": \"$INSTALLED_ABI\",\"ndk\": 21,\"stl\": \"c++_shared\",\"static\":$IS_STATIC_LIBRARY}" > "$ABI_DIR/abi.json"
             done
         done
     else
         # header only
-        MODULE_DIR="aar/prefab/modules/$1"
+        MODULE_DIR="prefab/modules/$INSTALLED_PACKAGE_NAME"
         run install -d "$MODULE_DIR"
         run cp -r "$PACKAGE_INSTALLED_DIR/armeabi-v7a/include" "$MODULE_DIR"
     fi
 
-    PACKED_FILE_NAME="$1-$INSTALLED_PKG_VERS.aar"
+    if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
+        PACKED_FILE_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_TIMESTAMP_UNIX.aar"
+    else
+        PACKED_FILE_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION.aar"
+    fi
 
     if command -v tree > /dev/null ; then
-        step "tree aar"
-        run tree aar --dirsfirst
+        step "tree $PWD"
+        run tree --dirsfirst
     fi
 
     step "packing"
-    run cd aar
-    run zip -9 -r "../$PACKED_FILE_NAME" .
-    run cd ..
+    run zip -9 -r "$PACKED_FILE_NAME" .
 
     step "check integrity of packed file"
     run unzip -t "$PACKED_FILE_NAME"
 
     step "show size of packed file"
-    run "du -sh $PACKED_FILE_NAME | cut -f1"
+    run du -sh $PACKED_FILE_NAME
+}
 
-    if [ ! -d "$MY_BINARY_DIR" ] ; then
-        step "create cached binary dir"
-        run install -d "$MY_BINARY_DIR"
+# https://central.sonatype.org/publish/release/
+# https://central.sonatype.org/publish/requirements/
+__deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package() {
+    unset DEBUG
+
+    for option in $(shiftn 1 $@)
+    do
+        case $option in
+            -d|--debug)
+                DEBUG=yes
+                ;;
+            -x|--xtrace)
+                ;;
+            *)  die "unrecognized option: $option"
+        esac
+    done
+
+    __create_prefab_aar_for_the_given_installed_package $@
+
+    if [ -z "$INSTALLED_PACKAGE_GIT_URL" ] ; then
+        INSTALLED_PACKAGE_GIT_URL='https://github.com/leleliu008/ndk-pkg.git'
     fi
 
-    step "copy packed file to cache dir"
-    run cp "$PACKED_FILE_NAME" "$MY_BINARY_DIR/"
+    POM_FILE="${PACKED_FILE_NAME%.aar}.pom"
 
-    step "delete working directory"
-    run rm -rf $WORKING_DIR
+    step "generating $POM_FILE"
+    cat > "$POM_FILE" <<EOF
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.fpliu.ndk.pkg.prefab.android.$INSTALLED_FOR_MIN_SDK_API_LEVEL</groupId>
+    <artifactId>$INSTALLED_PACKAGE_NAME</artifactId>
+    <version>$INSTALLED_PACKAGE_VERSION</version>
+    <packaging>aar</packaging>
+
+    <name>$INSTALLED_PACKAGE_NAME</name>
+    <description>$INSTALLED_PACKAGE_SUMMARY</description>
+    <url>$INSTALLED_PACKAGE_WEBPAGE</url>
+
+    <scm>
+        <connection>scm:git:$INSTALLED_PACKAGE_GIT_URL</connection>
+        <developerConnection>scm:git:$INSTALLED_PACKAGE_GIT_URL</developerConnection>
+        <url>$INSTALLED_PACKAGE_GIT_URL</url>
+    </scm>
+
+    <developers>
+        <developer>
+            <name>leleliu008</name>
+            <email>leleliu008@gmail.com</email>
+            <organization>com.fpliu</organization>
+            <organizationUrl>https://github.com/leleliu008/ndk-pkg</organizationUrl>
+        </developer>
+    </developers>
+
+    <licenses>
+EOF
+
+    for item in $INSTALLED_PACKAGE_LICENSE
+    do
+        unset LICENSE_NAME
+        unset LICENSE_URL_
+
+        case $item in
+            *\;*)
+                LICENSE_NAME=$(printf '%s\n' "$item" | cut -d ';' -f1)
+                LICENSE_URL_=$(printf '%s\n' "$item" | cut -d ';' -f3)
+                if [ -z "$LICENSE_NAME" ] ; then
+                    LICENSE_NAME="$INSTALLED_PACKAGE_NAME License"
+                fi
+                ;;
+            *)  LICENSE_NAME="$item"
+                LICENSE_URL_="https://raw.githubusercontent.com/spdx/license-list-data/master/text/$item.txt"
+        esac
+
+        cat >> "$POM_FILE" <<EOF
+        <license>
+            <name>$LICENSE_NAME</name>
+            <url>$LICENSE_URL_</url>
+        </license>
+EOF
+    done
+
+    cat >> "$POM_FILE" <<EOF
+    </licenses>
+</project>
+EOF
+
+    # here I can use maven-deploy-plugin and maven-gpg-plugin
+    # maven-gpg-plugin is prefered as it is automatically signed with gpg.
+    # 
+    # https://maven.apache.org/plugins/maven-gpg-plugin/sign-and-deploy-file-mojo.html
+    # https://maven.apache.org/plugins/maven-deploy-plugin/deploy-file-mojo.html
+    # https://maven.apache.org/resolver/configuration.html
+
+    if [ "$DEBUG" = yes ] ; then
+        MVN_GPG_SIGN_AND_DEPLOY_FILE_OPTIONS=-X
+    else
+        MVN_GPG_SIGN_AND_DEPLOY_FILE_OPTIONS=
+    fi
+
+    step "deploying"
+    run mvn gpg:sign-and-deploy-file \
+        $MVN_GPG_SIGN_AND_DEPLOY_FILE_OPTIONS \
+        -Dfile=$PACKED_FILE_NAME \
+        -DgeneratePom=false \
+        -DpomFile=$POM_FILE \
+        -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 \
+        -DrepositoryId=OSSRH \
+        -Durl=https://s01.oss.sonatype.org/service/local/repositories/comfpliu-1001/content/
 }
 
 # this fuction should be run in subshell
@@ -5339,7 +5537,7 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
     esac
 
     if [ -z "$3" ] ; then
-        die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, OUTPUT-FILEPATH must be not empty."
+        die "__gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>, <OUTPUT-FILEPATH> must be not empty."
     fi
 
     unset GEN_DEPENDENCY_GRAPH_WORKING_DIR
@@ -5441,7 +5639,7 @@ __install_the_given_packages() {
     inspect_install_arguments $@
 
     [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && {
-        error "$_0 install <PACKAGE-NAME>..., PACKAGE-NAME is not given."
+        error "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -5703,6 +5901,37 @@ __install_the_given_package() {
         run ls -l "$PACKAGE_BSCRIPT_DIR"
     fi
 
+    step "copy or fetch licenses"
+
+    I=0
+
+    for item in $PACKAGE_LICENSE
+    do
+        unset LICENSE_PATH
+        unset LICENSE_URL_
+
+        I=$(expr "$I" + 1)
+
+        case $item in
+            *\;*)
+                LICENSE_PATH="$(printf '%s\n' "$item" | cut -d ';' -f2)"
+                LICENSE_URL_="$(printf '%s\n' "$item" | cut -d ';' -f3)"
+                ;;
+            *)  LICENSE_URL_="https://raw.githubusercontent.com/spdx/license-list-data/master/text/$item.txt"
+        esac
+
+        # https://github.com/spdx/license-list-data
+
+        if [ -z "$LICENSE_PATH" ] ; then
+            fetch "$LICENSE_URL_"  --output-dir="$PACKAGE_WORKING_DIR" --output-name="LICENSE$I"
+        else
+            cp "$PACKAGE_SRC_DIR/$LICENSE_PATH" "$PACKAGE_WORKING_DIR/LICENSE$I"
+        fi
+    done
+
+    unset LICENSE_PATH
+    unset LICENSE_URL_
+
     step "change to build script directory"
     run cd "$PACKAGE_BSCRIPT_DIR"
 
@@ -5840,6 +6069,13 @@ EOF
         done
     fi
 
+    step "install licenses"
+    run cp -r "$PACKAGE_WORKING_DIR/LICENSE[1-9]" "$MY_INSTALL_DIR/$1"
+
+    if [ -f "$MY_INSTALL_DIR/$1/LICENSE1" ] && [ ! -f "$MY_INSTALL_DIR/$1/LICENSE2" ] ; then
+        mv  "$MY_INSTALL_DIR/$1/LICENSE1" "$MY_INSTALL_DIR/$1/LICENSE"
+    fi
+
     step "record installed abis"
     run cp "$PACKAGE_WORKING_DIR/installed-abis" "$MY_INSTALL_DIR/$1/installed-abis"
 
@@ -5862,15 +6098,8 @@ EOF
         run rm -rf "$PACKAGE_WORKING_DIR"
     fi
 
-    if [ "$NEED_RUN_TREE" = yes ] ; then
-        step "list installed files in a tree-like format"
-        __tree_the_given_installed_package "$1" $TREE_ARGS
-    fi
-
-    if [ "$NEED_RUN_PACK" = yes ] ; then
-        step "packing"
-        __pack_the_given_installed_package "$1" $PACK_ARGS
-    fi
+    step "list installed files in a tree-like format"
+    __tree_the_given_installed_package "$1" $TREE_ARGS
 
     echo
     success "$1 installed successfully."
@@ -6482,7 +6711,7 @@ EOF
 # __show_infomation_of_the_given_package curl webpage
 __show_infomation_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__show_infomation_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__show_infomation_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -6533,7 +6762,7 @@ __show_infomation_of_the_given_package() {
             installed-datetime-unix)
                 if is_package_installed "$1" ; then
                     __load_installed_metadata_of_the_given_package "$1" &&
-                    printf '%s\n' "$INSTALLED_DATETIME"
+                    printf '%s\n' "$INSTALLED_TIMESTAMP_UNIX"
                 else
                     error "package [$1] is not installed."
                     return 1
@@ -6542,7 +6771,7 @@ __show_infomation_of_the_given_package() {
             installed-datetime-formatted)
                 if is_package_installed "$1" ; then
                     __load_installed_metadata_of_the_given_package "$1" &&
-                    format_unix_timestamp "$INSTALLED_DATETIME" '+%Y/%m/%d %H:%M:%S'
+                    format_unix_timestamp "$INSTALLED_TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S'
                 else
                     error "package [$1] is not installed."
                     return 1
@@ -6551,7 +6780,7 @@ __show_infomation_of_the_given_package() {
             installed-pkg-version)
                 if is_package_installed "$1" ; then
                     __load_installed_metadata_of_the_given_package "$1" &&
-                    printf '%s\n' "$INSTALLED_PKG_VERS"
+                    printf '%s\n' "$INSTALLED_PACKAGE_VERSION"
                 else
                     error "package [$1] is not installed."
                     return 1
@@ -6643,10 +6872,10 @@ __show_infomation_of_the_given_package() {
     done
 
     echo "
-installed-datetime    : $(format_unix_timestamp $INSTALLED_DATETIME '+%Y/%m/%d %H:%M:%S')
-installed-pkg-version : $INSTALLED_PKG_VERS
-build-use-toolchain   : $BUILD_USE_TOOLCHAIN_NAME $BUILD_USE_TOOLCHAIN_VERS
-build-use-sdk-version : $BUILD_USE_SDK_VERS"
+installed date & time : $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S')
+installed pkg version : $INSTALLED_PACKAGE_VERSION
+build using toolchain : $BUILD_USE_TOOLCHAIN_NAME $BUILD_USE_TOOLCHAIN_VERS
+support min-api-level : $INSTALLED_FOR_MIN_SDK_API_LEVEL"
 }
 
 mark_is_package_installed_or_not() {
@@ -6689,7 +6918,7 @@ __record_installed_files_of_the_given_package() {
 # __record_installed_metadata_of_the_given_package <PACKAGE-NAME>
   __record_installed_metadata_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__record_installed_metadata_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__record_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -6698,12 +6927,27 @@ __record_installed_files_of_the_given_package() {
     echo "-- Installing: $INSTALLED_METADATA_FILEPATH"
 
     cat > "$INSTALLED_METADATA_FILEPATH" <<EOF
-INSTALLED_DATETIME='$TIMESTAMP_UNIX'
+#This file is automatically generated by ndk-pkg.
+#Please do not manually modify this file.
 
-INSTALLED_PKG_NAME='$PACKAGE_NAME'
-INSTALLED_PKG_VERS='$PACKAGE_VERSION'
+INSTALLED_BY_NDK_PKG_VERSION='$MY_VERSION'
 
-BUILD_USE_SDK_VERS='$TARGET_OS_VERS'
+INSTALLED_TIMESTAMP_UNIX='$TIMESTAMP_UNIX'
+
+INSTALLED_PACKAGE_NAME='$PACKAGE_NAME'
+INSTALLED_PACKAGE_VERSION='$PACKAGE_VERSION'
+INSTALLED_PACKAGE_SUMMARY='$PACKAGE_SUMMARY'
+INSTALLED_PACKAGE_WEBPAGE='$PACKAGE_WEBPAGE'
+INSTALLED_PACKAGE_LICENSE='$PACKAGE_LICENSE'
+
+INSTALLED_PACKAGE_GIT_URL='$PACKAGE_GIT_URL'
+INSTALLED_PACKAGE_GIT_TAG='$PACKAGE_GIT_TAG'
+INSTALLED_PACKAGE_GIT_REV='$PACKAGE_GIT_REV'
+
+INSTALLED_PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
+INSTALLED_PACKAGE_SRC_SUM='$PACKAGE_SRC_SUM'
+
+INSTALLED_FOR_MIN_SDK_API_LEVEL='$TARGET_OS_VERS'
 
 BUILD_USE_TOOLCHAIN_NAME='$TOOLCHAIN_NAME'
 BUILD_USE_TOOLCHAIN_VERS='$TOOLCHAIN_VERS'
@@ -6713,7 +6957,7 @@ EOF
 # __load_installed_metadata_of_the_given_package <PACKAGE-NAME>
   __load_installed_metadata_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__load_installed_metadata_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "__load_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -6722,16 +6966,97 @@ EOF
         return 1
     }
 
-    unset INSTALLED_DATETIME
-    unset INSTALLED_PKG_NAME
-    unset INSTALLED_PKG_VERS
+    unset INSTALLED_BY_NDK_PKG_VERSION
 
-    unset BUILD_USE_SDK_VERS
+    unset INSTALLED_TIMESTAMP_UNIX
+
+    unset INSTALLED_PACKAGE_NAME
+    unset INSTALLED_PACKAGE_SUMMARY
+    unset INSTALLED_PACKAGE_WEBPAGE
+    unset INSTALLED_PACKAGE_LICENSE
+
+    unset INSTALLED_PACKAGE_GIT_URL
+    unset INSTALLED_PACKAGE_GIT_REV
+    unset INSTALLED_PACKAGE_GIT_TAG
+
+    unset INSTALLED_PACKAGE_SRC_URL
+    unset INSTALLED_PACKAGE_SRC_SUM
+    unset INSTALLED_PACKAGE_SRC_NAME
+    unset INSTALLED_PACKAGE_SRC_PATH
+    unset INSTALLED_PACKAGE_SRC_TYPE
+
+    unset INSTALLED_PACKAGE_FIX_URL
+    unset INSTALLED_PACKAGE_FIX_SUM
+    unset INSTALLED_PACKAGE_FIX_NAME
+    unset INSTALLED_PACKAGE_FIX_PATH
+    unset INSTALLED_PACKAGE_FIX_TYPE
+
+    unset INSTALLED_PACKAGE_VERSION
+    unset INSTALLED_PACKAGE_VERSION_MAJOR
+    unset INSTALLED_PACKAGE_VERSION_MINOR
+    unset INSTALLED_PACKAGE_VERSION_PATCH
+    unset INSTALLED_PACKAGE_VERSION_TWEAK
+
+    unset INSTALLED_PACKAGE_BUILD_SYSTEM
+
+    unset INSTALLED_FOR_MIN_SDK_API_LEVEL
 
     unset BUILD_USE_TOOLCHAIN_NAME
     unset BUILD_USE_TOOLCHAIN_VERS
 
-    . "$MY_INSTALL_DIR/$1/installed-metadata"
+    INSTALLED_METADATA_FILEPATH="$MY_INSTALL_DIR/$1/installed-metadata"
+
+    . "$INSTALLED_METADATA_FILEPATH" || return 1
+
+    if [ -z "$INSTALLED_BY_NDK_PKG_VERSION" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_BY_NDK_PKG_VERSION must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_TIMESTAMP_UNIX" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_TIMESTAMP_UNIX must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_PACKAGE_NAME" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_NAME must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_PACKAGE_VERSION" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_VERSION must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_PACKAGE_SUMMARY" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_SUMMARY must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_PACKAGE_WEBPAGE" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_WEBPAGE must not be empty."
+        return 1
+    fi
+
+    if [ -z "$INSTALLED_PACKAGE_LICENSE" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_LICENSE must not be empty."
+        return 1
+    fi
+
+    if [ "$INSTALLED_PACKAGE_NAME" != "$1" ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. INSTALLED_PACKAGE_NAME mismatch.\n    Actually: $INSTALLED_PACKAGE_NAME\n    Expected: $1"
+        return 1
+    fi
+
+    if [ "${#INSTALLED_TIMESTAMP_UNIX}" -ne 10 ] ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. length of \$INSTALLED_TIMESTAMP_UNIX must be 10."
+        return 1
+    fi
+
+    if ! is_integer "$INSTALLED_FOR_MIN_SDK_API_LEVEL" ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_FOR_MIN_SDK_API_LEVEL must be a integer."
+        return 1
+    fi
 }
 
 # __config_variables_for_the_given_target <PACKAGE-NAME> <TARGET>
@@ -7812,7 +8137,7 @@ ndk_build() {
 ########################################################################
 
 create_common_linker_script() {
-    [ -z  "$1" ] && die "create_common_linker_script <DIR>, DIR must not be empty."
+    [ -z  "$1" ] && die "create_common_linker_script <DIR>, <DIR> must not be empty."
 
     # https://developer.android.com/ndk/guides/stable_apis#c_library
     run "echo 'INPUT(-lc)' > $1/libpthread.a"
@@ -7824,7 +8149,7 @@ create_common_linker_script() {
 }
 
 create_common_include_h() {
-    [ -z  "$1" ] && die "create_common_include_h <FILEPATH>, FILEPATH must not be empty."
+    [ -z  "$1" ] && die "create_common_include_h <FILEPATH>, <FILEPATH> must not be empty."
     cat > "$1" <<EOF
 // https://linux.die.net/man/3/index
 #define rindex(str,ch) strrchr(str,ch)
@@ -7910,7 +8235,7 @@ __ldd() {
     setup_build_toolchains_env
 
     [ -z "$1" ] && {
-        error "__ldd <PACKAGE-NAME> <ABI>, PACKAGE-NAME is not given."
+        error "__ldd <PACKAGE-NAME> <ABI>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -7934,7 +8259,7 @@ __ldd() {
 
     ldd_recursion() {
         [ -z "$1" ] && {
-            error "ldd_recursion <PACKAGE-NAME> <ABI>, PACKAGE-NAME is not given."
+            error "ldd_recursion <PACKAGE-NAME> <ABI>, <PACKAGE-NAME> is not given."
             return 1
         }
 
@@ -7967,7 +8292,7 @@ __ldd() {
 # list_dynamic_library_names_of_the_given_package <PACKAGE-NAME>
   list_dynamic_library_names_of_the_given_package() {
     [ -z "$1" ] && {
-        error "list_dynamic_library_names_of_the_given_package <PACKAGE-NAME>, PACKAGE-NAME is not given."
+        error "list_dynamic_library_names_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -8008,7 +8333,7 @@ __list_supported_target_triples() {
 # print_target_arch_by_abi <ABI>
   print_target_arch_by_abi() {
     [ -z "$1" ] && {
-        error "print_target_arch_by_abi <ABI>, ABI is not given."
+        error "print_target_arch_by_abi <ABI>, <ABI> is not given."
         return 1
     }
 
@@ -8023,7 +8348,7 @@ __list_supported_target_triples() {
 # print_target_abi_by_arch <ARCH>
   print_target_abi_by_arch() {
     [ -z "$1" ] && {
-        error "print_target_abi_by_arch <ARCH>, ARCH is not given."
+        error "print_target_abi_by_arch <ARCH>, <ARCH> is not given."
         return 1
     }
 
@@ -8038,7 +8363,7 @@ __list_supported_target_triples() {
 # print_target_triple_by_arch <ARCH>
   print_target_triple_by_arch() {
     [ -z "$1" ] && {
-        error "print_target_triple_by_arch <ARCH>, ARCH is not given."
+        error "print_target_triple_by_arch <ARCH>, <ARCH> is not given."
         return 1
     }
 
@@ -8103,7 +8428,7 @@ list_flags_used_by_tools_in_the_toolchain() {
 # calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER-EXPECTED-TARGET_OS_VERS>
   calculate_TARGET_OS_VERS() {
     if [ -z "$1" ] ; then
-        error "calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER-EXPECTED-TARGET_OS_VERS>, PACKAGE-NAME is not given."
+        error "calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER-EXPECTED-TARGET_OS_VERS>, <PACKAGE-NAME> is not given."
         return 1
     fi
 
@@ -8247,7 +8572,7 @@ ndkmanager_list_all_available() {
 
 ndkmanager_install_the_given_rversion() {
     [ -z "$1" ] && {
-        error "ndk-pkg ndkmanager install <Rversion>, Rversion is not given."
+        error "ndk-pkg ndkmanager install <Rversion>, <Rversion> is not given."
         return 1
     }
 
@@ -8645,12 +8970,7 @@ inspect_install_arguments() {
 
     KEEP_WORKING_DIR=no
 
-    NEED_RUN_TREE=no
-    NEED_RUN_PACK=no
-
     TREE_ARGS='--dirsfirst'
-
-    PACK_ARGS=
 
     STRIP_ARGS='--strip-debug'
 
@@ -8659,7 +8979,7 @@ inspect_install_arguments() {
         case "$1" in
             --min-sdk-api-level=*)
                 USER_EXPECTED_TARGET_OS_VERS=$(getvalue "$1")
-                is_integer "$USER_EXPECTED_TARGET_OS_VERS" || die "--min-sdk-api-level=<VALUE>, VALUE must be a integer."
+                is_integer "$USER_EXPECTED_TARGET_OS_VERS" || die "--min-sdk-api-level=<VALUE>, <VALUE> must be a integer."
                 ;;
             --china)
                 ;;
@@ -8687,34 +9007,18 @@ inspect_install_arguments() {
             --keep-work-dir)
                 KEEP_WORKING_DIR=yes
                 ;;
-            --tree)
-                NEED_RUN_TREE=yes
-                ;;
             --tree-args=*)
                 TREE_ARGS=$(getvalue "$1")
                 ;;
             --strip-args=*)
                 STRIP_ARGS=$(getvalue "$1")
                 ;;
-            --pack)
-                NEED_RUN_PACK=yes
-                ;;
-            --pack-type=*)
-                unset PACK_TYPE
-                PACK_TYPE=$(getvalue "$1")
-                case $PACK_TYPE in
-                    7z|zip|tar.gz|tar.xz|tar.bz2)
-                        PACK_ARGS="--type=$PACK_TYPE" ;;
-                    '') die "--pack-type=<VALUE>, VALUE must not be empty." ;;
-                    *)  die "--pack-type=<VALUE>, VALUE must be one of 7z zip tar.gz tar.xz tar.bz2."
-                esac
-                ;;
             --build-type=*)
                 BUILD_TYPE=$(getvalue "$1")
                 case $BUILD_TYPE in
                     debug|release) ;;
-                    '') die "--build-type=<VALUE>, VALUE must not be empty." ;;
-                    *)  die "--build-type=<VALUE>, VALUE must be one of debug release"
+                    '') die "--build-type=<VALUE>, <VALUE> must not be empty." ;;
+                    *)  die "--build-type=<VALUE>, <VALUE> must be one of debug release"
                 esac
                 ;;
             --export-compile-commands-json)
@@ -8733,21 +9037,21 @@ inspect_install_arguments() {
                 INSTALL_LIB=$(getvalue "$1")
                 case $INSTALL_LIB in
                     static|shared|both|yes|no) ;;
-                    '') die "--install-lib=<VALUE>, VALUE must not be empty." ;;
-                    *)  die "--install-lib=<VALUE>, VALUE must be one of static shared both yes no"
+                    '') die "--install-lib=<VALUE>, <VALUE> must not be empty." ;;
+                    *)  die "--install-lib=<VALUE>, <VALUE> must be one of static shared both yes no"
                 esac
                 ;;
             --link-type=*)
                 LINK_TYPE=$(getvalue "$1")
                 case $LINK_TYPE in
                     static-only|shared-only|static-prefered|shared-prefered) ;;
-                    '') die "--link-type=<VALUE>, VALUE must not be empty." ;;
-                    *)  die "--link-type=<VALUE>, VALUE must be one of static-only shared-only static-prefered shared-prefered"
+                    '') die "--link-type=<VALUE>, <VALUE> must not be empty." ;;
+                    *)  die "--link-type=<VALUE>, <VALUE> must be one of static-only shared-only static-prefered shared-prefered"
                 esac
                 ;;
             --jobs=*)
                 BUILD_NJOBS=$(getvalue "$1")
-                is_integer "$BUILD_NJOBS" || die "--jobs=<VALUE>, VALUE must be a integer."
+                is_integer "$BUILD_NJOBS" || die "--jobs=<VALUE>, <VALUE> must be a integer."
                 ;;
             @all)
                 USER_SPECIFIED_PACKAGE_LIST="$(__list_available_packages)"
@@ -9036,6 +9340,9 @@ ${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
+${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> [-d] [-x]${COLOR_OFF}
+    pack the given installed package as prefab aar and then deploy prefab aar to sonatype nexus OSSRH.
+
 ${COLOR_GREEN}ndk-pkg logs <PACKAGE-NAME> <armeabi-v7a|arm64-v8a|x86|x86_64>${COLOR_OFF}
     show logs of the given installed package.
 
@@ -9071,10 +9378,7 @@ ${COLOR_GREEN}ndk-pkg install   <PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
         ${COLOR_BLUE}--link-type=<static-only|shared-only|static-prefered|shared-prefered>${COLOR_OFF}
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
         ${COLOR_BLUE}--export-compile-commands-json${COLOR_OFF}
-        ${COLOR_BLUE}--tree${COLOR_OFF}
         ${COLOR_BLUE}--tree-args=ARGS${COLOR_OFF}
-        ${COLOR_BLUE}--pack${COLOR_OFF}
-        ${COLOR_BLUE}--pack-type=<tar.bz2|tar.gz|tar.xz|zip|7z|aar>
         ${COLOR_BLUE}--strip-args=ARGS${COLOR_OFF}
         ${COLOR_BLUE}--dry-run${COLOR_OFF}
         ${COLOR_BLUE}--keep-work-dir${COLOR_OFF}
@@ -9218,7 +9522,7 @@ main() {
                             --output-dir=*)
                                 OUTPUT_DIR=$(getvalue "$1")
                                 if [ -z "$OUTPUT_DIR" ] ; then
-                                    die "ndk-pkg integrate cmake [--output-dir=<DIR>] , DIR must not be empty."
+                                    die "ndk-pkg integrate cmake [--output-dir=<DIR>] , <DIR> must not be empty."
                                 fi
                                 OUTPUT_DIR=$(globing "$OUTPUT_DIR")
                                 ;;
@@ -9236,6 +9540,8 @@ main() {
         homepage) shift;  __show_or_open_homepage_of_the_given_package $@ ;;
         depends)  shift; __show_packages_depended_by_the_given_package $@ ;;
         fetch)    shift;        __fetch_resources_of_the_given_package $@ ;;
+
+        deploy) shift; __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package $@ ;;
 
         logs) shift; __logs_the_given_installed_package $@ ;;
         pack) shift; __pack_the_given_installed_package $@ ;;
