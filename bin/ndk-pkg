@@ -5174,7 +5174,7 @@ __logs_the_given_installed_package() {
     printf_dependency required exe unzip
 
     step "create working directory"
-    WORKING_DIR="$MY_HOME_DIR/prefab.d/android-$INSTALLED_FOR_MIN_SDK_API_LEVEL/$INSTALLED_PACKAGE_NAME"
+    WORKING_DIR="$MY_HOME_DIR/prefab.d/android-$INSTALLED_PACKAGE_SDK_API/$INSTALLED_PACKAGE_NAME"
 
     if [ -d "$WORKING_DIR" ] ; then
         run rm -rf "$WORKING_DIR"
@@ -5213,7 +5213,7 @@ EOF
     android:versionName="$INSTALLED_PACKAGE_VERSION" >
 
     <uses-sdk
-        android:minSdkVersion="$INSTALLED_FOR_MIN_SDK_API_LEVEL"
+        android:minSdkVersion="$INSTALLED_PACKAGE_SDK_API"
         android:targetSdkVersion="30" />
 
 </manifest>
@@ -5308,7 +5308,7 @@ EOF
 
                 run cp "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib/$LIBRARY_FILENAME" "$ABI_DIR"
 
-                printf '%s\n' "{\"api\": $INSTALLED_FOR_MIN_SDK_API_LEVEL,\"abi\": \"$INSTALLED_ABI\",\"ndk\": 21,\"stl\": \"c++_shared\",\"static\":$IS_STATIC_LIBRARY}" > "$ABI_DIR/abi.json"
+                printf '%s\n' "{\"api\": $INSTALLED_PACKAGE_SDK_API,\"abi\": \"$INSTALLED_ABI\",\"ndk\": 21,\"stl\": \"c++_shared\",\"static\":$IS_STATIC_LIBRARY}" > "$ABI_DIR/abi.json"
             done
         done
     else
@@ -5369,7 +5369,7 @@ __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package() {
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.fpliu.ndk.pkg.prefab.android.$INSTALLED_FOR_MIN_SDK_API_LEVEL</groupId>
+    <groupId>com.fpliu.ndk.pkg.prefab.android.$INSTALLED_PACKAGE_SDK_API</groupId>
     <artifactId>$INSTALLED_PACKAGE_NAME</artifactId>
     <version>$INSTALLED_PACKAGE_VERSION</version>
     <packaging>aar</packaging>
@@ -6875,7 +6875,7 @@ __show_infomation_of_the_given_package() {
 installed date & time : $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S')
 installed pkg version : $INSTALLED_PACKAGE_VERSION
 build using toolchain : $BUILD_USE_TOOLCHAIN_NAME $BUILD_USE_TOOLCHAIN_VERS
-support min-api-level : $INSTALLED_FOR_MIN_SDK_API_LEVEL"
+support min-api-level : $INSTALLED_PACKAGE_SDK_API"
 }
 
 mark_is_package_installed_or_not() {
@@ -6947,7 +6947,9 @@ INSTALLED_PACKAGE_GIT_REV='$PACKAGE_GIT_REV'
 INSTALLED_PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
 INSTALLED_PACKAGE_SRC_SUM='$PACKAGE_SRC_SUM'
 
-INSTALLED_FOR_MIN_SDK_API_LEVEL='$TARGET_OS_VERS'
+INSTALLED_PACKAGE_DEP_PKG='$PACKAGE_DEP_PKG'
+
+INSTALLED_PACKAGE_SDK_API='$TARGET_OS_VERS'
 
 BUILD_USE_TOOLCHAIN_NAME='$TOOLCHAIN_NAME'
 BUILD_USE_TOOLCHAIN_VERS='$TOOLCHAIN_VERS'
@@ -6999,7 +7001,7 @@ EOF
 
     unset INSTALLED_PACKAGE_BUILD_SYSTEM
 
-    unset INSTALLED_FOR_MIN_SDK_API_LEVEL
+    unset INSTALLED_PACKAGE_SDK_API
 
     unset BUILD_USE_TOOLCHAIN_NAME
     unset BUILD_USE_TOOLCHAIN_VERS
@@ -7053,8 +7055,8 @@ EOF
         return 1
     fi
 
-    if ! is_integer "$INSTALLED_FOR_MIN_SDK_API_LEVEL" ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_FOR_MIN_SDK_API_LEVEL must be a integer."
+    if ! is_integer "$INSTALLED_PACKAGE_SDK_API" ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_SDK_API must be a integer."
         return 1
     fi
 }
