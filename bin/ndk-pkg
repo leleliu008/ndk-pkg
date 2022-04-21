@@ -5341,10 +5341,40 @@ EOF
 
 # https://central.sonatype.org/publish/release/
 # https://central.sonatype.org/publish/requirements/
-__deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package() {
+# __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package <PACKAGE-NAME> <CONFIG-FILE-PATH> [-d] [-x]
+  __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package() {
+    [ -z "$1" ] && {
+        error "$_0 deploy <PACKAGE-NAME> <CONFIG-FILE-PATH>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    is_package_installed "$1" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "$_0 deploy <PACKAGE-NAME> <CONFIG-FILE-PATH>, <CONFIG-FILE-PATH> is not given."
+        return 1
+    }
+
+    [ -e "$2" ] || die "file is not exist: $2"
+
+    unset OSSRH_REPO_URL
+    unset OSSRH_USERNAME
+    unset OSSRH_PASSWORD
+    unset GPG_PASSPHRASE
+
+    . "$2"
+
+    [ -z "$OSSRH_REPO_URL" ] && die "OSSRH_REPO_URL must be set in $2"
+    [ -z "$OSSRH_USERNAME" ] && die "OSSRH_USERNAME must be set in $2"
+    [ -z "$OSSRH_PASSWORD" ] && die "OSSRH_PASSWORD must be set in $2"
+    [ -z "$GPG_PASSPHRASE" ] && die "GPG_PASSPHRASE must be set in $2"
+
     unset DEBUG
 
-    for option in $(shiftn 1 $@)
+    for option in $(shiftn 2 $@)
     do
         case $option in
             -d|--debug)
@@ -5426,6 +5456,34 @@ EOF
 </project>
 EOF
 
+    on_exit_deploy() {
+        rm -f settings.xml
+    }
+
+    trap on_exit_deploy EXIT
+
+    # https://maven.apache.org/plugins/maven-gpg-plugin/usage.html
+    step "generating settings.xml"
+    cat > settings.xml <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <servers>
+    <server>
+      <id>OSSRH</id>
+      <username>$OSSRH_USERNAME</username>
+      <password>$OSSRH_PASSWORD</password>
+    </server>
+
+    <server>
+      <id>gpg.passphrase</id>
+      <passphrase>$GPG_PASSPHRASE</passphrase>
+    </server>
+  </servers>
+</settings>
+EOF
+
     # here I can use maven-deploy-plugin and maven-gpg-plugin
     # maven-gpg-plugin is prefered as it is automatically signed with gpg.
     # 
@@ -5440,14 +5498,16 @@ EOF
     fi
 
     step "deploying"
-    run mvn gpg:sign-and-deploy-file \
+    run mvn \
+        --settings settings.xml \
+        gpg:sign-and-deploy-file \
         $MVN_GPG_SIGN_AND_DEPLOY_FILE_OPTIONS \
         -Dfile=$PACKED_FILE_NAME \
         -DgeneratePom=false \
         -DpomFile=$POM_FILE \
         -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 \
         -DrepositoryId=OSSRH \
-        -Durl=https://s01.oss.sonatype.org/service/local/repositories/comfpliu-1001/content/
+        -Durl=$OSSRH_REPO_URL
 }
 
 # this fuction should be run in subshell
@@ -9342,8 +9402,15 @@ ${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
-${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> [-d] [-x]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> <CONFIG-FILE-PATH> [-d] [-x]${COLOR_OFF}
     pack the given installed package as prefab aar and then deploy prefab aar to sonatype nexus OSSRH.
+
+    <CONFIG-FILE-PATH> contains following content:
+
+    OSSRH_REPO_URL=
+    OSSRH_USERNAME=
+    OSSRH_PASSWORD=
+    GPG_PASSPHRASE=
 
 ${COLOR_GREEN}ndk-pkg logs <PACKAGE-NAME> <armeabi-v7a|arm64-v8a|x86|x86_64>${COLOR_OFF}
     show logs of the given installed package.

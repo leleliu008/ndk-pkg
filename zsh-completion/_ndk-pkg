@@ -138,7 +138,8 @@ function _ndk_pkg() {
                     _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' ;;
                 deploy)
                     _arguments \
-                        ':package-name:_ndk_pkg_installed_packages' \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:config-file:_files' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                         '(--debug -d)'{--debug,-d}'[debug the process of deployment]'
                     ;;
