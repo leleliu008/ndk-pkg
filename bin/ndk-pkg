@@ -5208,7 +5208,7 @@ EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fpliu.ndk.pkg.prefab.android.21.$JAVA_PACKAGE_NAME"
+    package="com.fpliu.ndk.pkg.prefab.android$INSTALLED_PACKAGE_SDK_API.$JAVA_PACKAGE_NAME"
     android:versionCode="$INSTALLED_TIMESTAMP_UNIX"
     android:versionName="$INSTALLED_PACKAGE_VERSION" >
 
@@ -5292,7 +5292,7 @@ EOF
   "export_libraries": [],
   "android": {
     "library_name": "lib$LIBRARY_NAME",
-    "export_libraries": ["-l$LIBRARY_NAME"]
+    "export_libraries": []
   }
 }
 EOF
