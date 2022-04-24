@@ -3656,6 +3656,8 @@ __parse_require_dependency_item() {
     unset PACKAGE_VERSION_PATCH
     unset PACKAGE_VERSION_TWEAK
 
+    unset PACKAGE_DEVELOPER
+
     unset PACKAGE_LICENSE
 
     unset PACKAGE_BSYSTEM
@@ -3725,10 +3727,6 @@ __parse_require_dependency_item() {
 
     if [ -z "$PACKAGE_SUMMARY" ] ; then
         die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
-    fi
-
-    if [ -z "$PACKAGE_LICENSE" ] ; then
-        die "license must be configed in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     if [ -z "$PACKAGE_WEBPAGE" ] ; then
@@ -5388,8 +5386,36 @@ EOF
 
     __create_prefab_aar_for_the_given_installed_package $@
 
+    if [ -z "$INSTALLED_PACKAGE_LICENSE" ] ; then
+        error "$1 can not be deployed due to INSTALLED_PACKAGE_LICENSE is empty."
+        return 1
+    fi
+
     if [ -z "$INSTALLED_PACKAGE_GIT_URL" ] ; then
         INSTALLED_PACKAGE_GIT_URL='https://github.com/leleliu008/ndk-pkg.git'
+    fi
+
+    if [ -n "$INSTALLED_PACKAGE_DEVELOPER" ] ; then
+        PACKAGE_DEVELOPER_NAME="$( printf '%s\n' "$PACKAGE_DEVELOPER" | cut -d ';' -f1)"
+        PACKAGE_DEVELOPER_EMAIL="$(printf '%s\n' "$PACKAGE_DEVELOPER" | cut -d ';' -f2)"
+        PACKAGE_DEVELOPER_ORGANIZATION_NAME="$(printf '%s\n' "$PACKAGE_DEVELOPER" | cut -d ';' -f3)"
+        PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE="$(printf '%s\n' "$PACKAGE_DEVELOPER" | cut -d ';' -f4)"
+    fi
+
+    if [ -z "$PACKAGE_DEVELOPER_NAME" ] ; then
+        PACKAGE_DEVELOPER_NAME="$INSTALLED_PACKAGE_NAME developers"
+    fi
+
+    if [ -z "$PACKAGE_DEVELOPER_EMAIL" ] ; then
+        PACKAGE_DEVELOPER_EMAIL="unknow"
+    fi
+
+    if [ -z "$PACKAGE_DEVELOPER_ORGANIZATION_NAME" ] ; then
+        PACKAGE_DEVELOPER_ORGANIZATION_NAME="$INSTALLED_PACKAGE_NAME"
+    fi
+
+    if [ -z "$PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE" ] ; then
+        PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE="$INSTALLED_PACKAGE_WEBPAGE"
     fi
 
     POM_FILE="${PACKED_FILE_NAME%.aar}.pom"
@@ -5961,36 +5987,38 @@ __install_the_given_package() {
         run ls -l "$PACKAGE_BSCRIPT_DIR"
     fi
 
-    step "copy or fetch licenses"
+    if [ -n "$PACKAGE_LICENSE" ] ; then
+        step "copy or fetch licenses"
 
-    I=0
+        I=0
 
-    for item in $PACKAGE_LICENSE
-    do
+        for item in $PACKAGE_LICENSE
+        do
+            unset LICENSE_PATH
+            unset LICENSE_URL_
+
+            I=$(expr "$I" + 1)
+
+            case $item in
+                *\;*)
+                    LICENSE_PATH="$(printf '%s\n' "$item" | cut -d ';' -f2)"
+                    LICENSE_URL_="$(printf '%s\n' "$item" | cut -d ';' -f3)"
+                    ;;
+                *)  LICENSE_URL_="https://raw.githubusercontent.com/spdx/license-list-data/master/text/$item.txt"
+            esac
+
+            # https://github.com/spdx/license-list-data
+
+            if [ -z "$LICENSE_PATH" ] ; then
+                fetch "$LICENSE_URL_"  --output-dir="$PACKAGE_WORKING_DIR" --output-name="LICENSE$I"
+            else
+                cp "$PACKAGE_SRC_DIR/$LICENSE_PATH" "$PACKAGE_WORKING_DIR/LICENSE$I"
+            fi
+        done
+
         unset LICENSE_PATH
         unset LICENSE_URL_
-
-        I=$(expr "$I" + 1)
-
-        case $item in
-            *\;*)
-                LICENSE_PATH="$(printf '%s\n' "$item" | cut -d ';' -f2)"
-                LICENSE_URL_="$(printf '%s\n' "$item" | cut -d ';' -f3)"
-                ;;
-            *)  LICENSE_URL_="https://raw.githubusercontent.com/spdx/license-list-data/master/text/$item.txt"
-        esac
-
-        # https://github.com/spdx/license-list-data
-
-        if [ -z "$LICENSE_PATH" ] ; then
-            fetch "$LICENSE_URL_"  --output-dir="$PACKAGE_WORKING_DIR" --output-name="LICENSE$I"
-        else
-            cp "$PACKAGE_SRC_DIR/$LICENSE_PATH" "$PACKAGE_WORKING_DIR/LICENSE$I"
-        fi
-    done
-
-    unset LICENSE_PATH
-    unset LICENSE_URL_
+    fi
 
     step "change to build script directory"
     run cd "$PACKAGE_BSCRIPT_DIR"
@@ -7097,11 +7125,6 @@ EOF
 
     if [ -z "$INSTALLED_PACKAGE_WEBPAGE" ] ; then
         error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_WEBPAGE must not be empty."
-        return 1
-    fi
-
-    if [ -z "$INSTALLED_PACKAGE_LICENSE" ] ; then
-        error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_LICENSE must not be empty."
         return 1
     fi
 
