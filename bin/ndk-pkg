@@ -5396,10 +5396,10 @@ EOF
     fi
 
     if [ -n "$INSTALLED_PACKAGE_DEVELOPER" ] ; then
-        PACKAGE_DEVELOPER_NAME="$( printf '%s\n' "$PACKAGE_DEVELOPER" | cut -d ';' -f1)"
-        PACKAGE_DEVELOPER_EMAIL="$(printf '%s\n' "$PACKAGE_DEVELOPER" | cut -d ';' -f2)"
-        PACKAGE_DEVELOPER_ORGANIZATION_NAME="$(printf '%s\n' "$PACKAGE_DEVELOPER" | cut -d ';' -f3)"
-        PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE="$(printf '%s\n' "$PACKAGE_DEVELOPER" | cut -d ';' -f4)"
+        PACKAGE_DEVELOPER_NAME="$( printf '%s\n' "$INSTALLED_PACKAGE_DEVELOPER" | cut -d ';' -f1)"
+        PACKAGE_DEVELOPER_EMAIL="$(printf '%s\n' "$INSTALLED_PACKAGE_DEVELOPER" | cut -d ';' -f2)"
+        PACKAGE_DEVELOPER_ORGANIZATION_NAME="$(printf '%s\n' "$INSTALLED_PACKAGE_DEVELOPER" | cut -d ';' -f3)"
+        PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE="$(printf '%s\n' "$INSTALLED_PACKAGE_DEVELOPER" | cut -d ';' -f4)"
     fi
 
     if [ -z "$PACKAGE_DEVELOPER_NAME" ] ; then
@@ -5442,10 +5442,10 @@ EOF
 
     <developers>
         <developer>
-            <name>leleliu008</name>
-            <email>leleliu008@gmail.com</email>
-            <organization>com.fpliu</organization>
-            <organizationUrl>https://github.com/leleliu008/ndk-pkg</organizationUrl>
+            <name>$PACKAGE_DEVELOPER_NAME</name>
+            <email>$PACKAGE_DEVELOPER_EMAIL</email>
+            <organization>$PACKAGE_DEVELOPER_ORGANIZATION_NAME</organization>
+            <organizationUrl>$PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE</organizationUrl>
         </developer>
     </developers>
 
@@ -6758,6 +6758,7 @@ PACKAGE_VERSION_MAJOR
 PACKAGE_VERSION_MINOR
 PACKAGE_VERSION_PATCH
 PACKAGE_VERSION_TWEAK
+PACKAGE_DEVELOPER
 PACKAGE_LICENSE
 PACKAGE_BSCRIPT
 PACKAGE_BSYSTEM
@@ -7027,6 +7028,7 @@ INSTALLED_PACKAGE_VERSION='$PACKAGE_VERSION'
 INSTALLED_PACKAGE_SUMMARY='$PACKAGE_SUMMARY'
 INSTALLED_PACKAGE_WEBPAGE='$PACKAGE_WEBPAGE'
 INSTALLED_PACKAGE_LICENSE='$PACKAGE_LICENSE'
+INSTALLED_PACKAGE_DEVELOPER='$PACKAGE_DEVELOPER'
 
 INSTALLED_PACKAGE_GIT_URL='$PACKAGE_GIT_URL'
 INSTALLED_PACKAGE_GIT_TAG='$PACKAGE_GIT_TAG'
@@ -7064,6 +7066,7 @@ EOF
     unset INSTALLED_PACKAGE_SUMMARY
     unset INSTALLED_PACKAGE_WEBPAGE
     unset INSTALLED_PACKAGE_LICENSE
+    unset INSTALLED_PACKAGE_DEVELOPER
 
     unset INSTALLED_PACKAGE_GIT_URL
     unset INSTALLED_PACKAGE_GIT_REV
