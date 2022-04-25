@@ -3615,14 +3615,14 @@ __parse_require_dependency_item() {
     unset PACKAGE_SRC_URL
     unset PACKAGE_SRC_SHA
     unset PACKAGE_SRC_NAME
-    unset PACKAGE_SRC_PATH
     unset PACKAGE_SRC_TYPE
+    unset PACKAGE_SRC_PATH
 
     unset PACKAGE_FIX_URL
     unset PACKAGE_FIX_SHA
     unset PACKAGE_FIX_NAME
-    unset PACKAGE_FIX_PATH
     unset PACKAGE_FIX_TYPE
+    unset PACKAGE_FIX_PATH
 
     unset PACKAGE_VERSION
     unset PACKAGE_VERSION_MAJOR
@@ -6718,40 +6718,77 @@ __show_infomation_as_json__of_all_available_packages() {
   __show_infomation_as_json__of_the_given_package() {
     __load_formula_of_the_given_package "$1"
 
-    cat <<EOF
-{
-    "name":"$PACKAGE_NAME",
-    "version":"$PACKAGE_VERSION",
-    "summary":"$PACKAGE_SUMMARY",
-    "webpage":"$PACKAGE_WEBPAGE",
-    "license":"$PACKAGE_LICENSE",
+    handle_dependency required exe jq >&2
+
+    if [ "$PACKAGE_BUILD_IN_PARALLEL" = yes ] ; then
+        PARALLEL=true
+    else
+        PARALLEL=false
+    fi
+
+    jq  --null-input \
+        --arg name "$PACKAGE_NAME" \
+        --arg version "$PACKAGE_VERSION" \
+        --arg summary "$PACKAGE_SUMMARY" \
+        --arg webpage "$PACKAGE_WEBPAGE" \
+        --arg license "$PACKAGE_LICENSE" \
+        --arg git_url "$PACKAGE_GIT_URL" \
+        --arg git_sha "$PACKAGE_GIT_SHA" \
+        --arg git_tag "$PACKAGE_GIT_TAG" \
+        --arg src_url "$PACKAGE_SRC_URL" \
+        --arg src_sha "$PACKAGE_SRC_SHA" \
+        --arg fix_url "$PACKAGE_FIX_URL" \
+        --arg fix_sha "$PACKAGE_FIX_SHA" \
+        --arg dep_cmd "$PACKAGE_DEP_CMD" \
+        --arg dep_pym "$PACKAGE_DEP_PYM" \
+        --arg dep_plm "$PACKAGE_DEP_PLM" \
+        --arg dep_pkg "$PACKAGE_DEP_PKG" \
+        --arg bsystem "$PACKAGE_BUILD_SYSTEM" \
+        --arg binsrcd "$PACKAGE_BUILD_IN_BSCRIPT_DIR" \
+        --arg sdk_api "$PACKAGE_SDK_API" \
+        --arg parallel "$PARALLEL" \
+        --arg cdefine "$PACKAGE_CDEFINE" \
+        --arg ccflags "$PACKAGE_CCFLAGS" \
+        --arg xxflags "$PACKAGE_XXFLAGS" \
+        --arg ldflags "$PACKAGE_LDFLAGS" \
+        --arg developer "$PACKAGE_DEVELOPER" \
+'{
+    "name":$name,
+    "version":$version,
+    "summary":$summary,
+    "webpage":$webpage,
+    "license":$license,
     "git": {
-        "url":"$PACKAGE_GIT_URL",
-        "tag":"$PACKAGE_GIT_TAG",
-        "sha":"$PACKAGE_GIT_SHA"
+        "url":$git_url,
+        "tag":$git_tag,
+        "sha":$git_sha
     },
     "src": {
-        "url":"$PACKAGE_SRC_URL",
-        "sha":"$PACKAGE_SRC_SHA"
+        "url":$src_url,
+        "sha":$src_sha
     },
     "fix": {
-        "url":"$PACKAGE_FIX_URL",
-        "sha":"$PACKAGE_FIX_SHA"
+        "url":$fix_url,
+        "sha":$fix_sha
     },
     "dep": {
-        "cmd":"$PACKAGE_DEP_CMD",
-        "pkg":"$PACKAGE_DEP_PKG",
-        "pym":"$PACKAGE_DEP_PYM",
-        "plm":"$PACKAGE_DEP_PLM"
+        "cmd":$dep_cmd,
+        "pkg":$dep_pkg,
+        "pym":$dep_pym,
+        "plm":$dep_plm
     },
     "build": {
-        "system":"$PACKAGE_BUILD_SYSTEM",
-        "binsrcd":"$PACKAGE_BUILD_IN_BSCRIPT_DIR",
-        "parallel":"$PACKAGE_BUILD_IN_PARALLEL"
+        "system":$bsystem,
+        "ccflags":$ccflags,
+        "cdefine":$cdefine,
+        "xxflags":$xxflags,
+        "ldflags":$ldflags,
+        "binsrcd":$binsrcd,
+        "parallel":$parallel
     },
-    "sdk.api":"$PACKAGE_SDK_API"
-}
-EOF
+    "sdk_api":$sdk_api,
+    "developer":$developer
+}'
 }
 
 # __show_infomation_as_shell_of_the_given_package <PACKAGE-NAME>
