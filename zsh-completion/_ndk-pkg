@@ -129,8 +129,8 @@ function _ndk_pkg() {
                     case $state in
                         info-subcommand)
                             case $words[1] in
-                                @all) _arguments '--json[output format is json]' ;;
-                                *) _arguments '1:key:(formula summary webpage version license git.url src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-files installed-abis --json --shell)'
+                                @all) _arguments ':output-format:(--json --yaml --shell)' ;;
+                                *) _arguments '1:key:(formula summary webpage version license git.url src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-files installed-abis --json --yaml --shell)'
                             esac
                     esac
                     ;;

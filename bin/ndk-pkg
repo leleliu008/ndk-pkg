@@ -2586,7 +2586,7 @@ __uppm_list_the_available_packages() {
 
         unset UPPM_PKG_NAME
         unset UPPM_PKG_VERS
-        unset UPPM_PKG_SUM_
+        unset UPPM_PKG_SHA_
         unset UPPM_PKG_URL_
 
         if [ -z "$UPPM_PKG_LINE" ] ; then
@@ -2613,7 +2613,7 @@ __uppm_list_the_available_packages() {
 
         UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
         UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
-        UPPM_PKG_SUM_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
+        UPPM_PKG_SHA_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
         UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f7)
 
         if [ $# -eq 0 ] ; then
@@ -2678,7 +2678,7 @@ __uppm_fetch() {
 
         unset UPPM_PKG_NAME
         unset UPPM_PKG_VERS
-        unset UPPM_PKG_SUM_
+        unset UPPM_PKG_SHA_
         unset UPPM_PKG_URL_
 
         UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
@@ -2687,7 +2687,7 @@ __uppm_fetch() {
 
         UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
         UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
-        UPPM_PKG_SUM_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
+        UPPM_PKG_SHA_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
         UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f7)
 
         UPPM_PKG_FILETYPE=$(__uppm_get_filetype_from_url "$UPPM_PKG_URL_")
@@ -2702,7 +2702,7 @@ __uppm_fetch() {
 
         UPPM_PKG_FILEPATH="$HOME/.uppm/downloads/$UPPM_PKG_FILENAME"
 
-        fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SUM_" --output-path="$UPPM_PKG_FILEPATH"
+        fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SHA_" --output-path="$UPPM_PKG_FILEPATH"
     done
 }
 
@@ -2787,7 +2787,7 @@ __uppm_install_the_given_package() {
 
     unset UPPM_PKG_NAME
     unset UPPM_PKG_VERS
-    unset UPPM_PKG_SUM_
+    unset UPPM_PKG_SHA_
     unset UPPM_PKG_URL_
 
     UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
@@ -2796,7 +2796,7 @@ __uppm_install_the_given_package() {
 
     UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
     UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
-    UPPM_PKG_SUM_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
+    UPPM_PKG_SHA_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
     UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f7)
 
     UPPM_PKG_FILETYPE=$(__uppm_get_filetype_from_url "$UPPM_PKG_URL_")
@@ -2811,7 +2811,7 @@ __uppm_install_the_given_package() {
 
     UPPM_PKG_FILEPATH="$HOME/.uppm/downloads/$UPPM_PKG_FILENAME"
 
-    fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SUM_" --output-path="$UPPM_PKG_FILEPATH"
+    fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SHA_" --output-path="$UPPM_PKG_FILEPATH"
 
     case $UPPM_PKG_FILETYPE in
         zip)
@@ -2881,7 +2881,7 @@ INSTALLED_TIMESTAMP_UNIX='$(date +%s)'
 INSTALLED_PACKAGE_NAME='$UPPM_PKG_NAME'
 INSTALLED_PACKAGE_VERSION='$UPPM_PKG_VERS'
 INSTALLED_PKG_URL_='$UPPM_PKG_URL_'
-INSTALLED_PKG_SUM_='$UPPM_PKG_SUM_'
+INSTALLED_PKG_SHA_='$UPPM_PKG_SHA_'
 EOF
     fi
 
@@ -2917,31 +2917,30 @@ EOF
 }
 
 __uppm_help() {
-    echo "
-    uppm (universal prebuild package manager)
+    printf '%b\n' "
+uppm (universal prebuild package manager)
 
-    uppm <ACTION> <ARGUMENT>...
+uppm <ACTION> <ARGUMENT>...
 
-    uppm -h
-    uppm --help
+uppm -h
+uppm --help
 
-    uppm -V
-    uppm --version
+uppm -V
+uppm --version
 
-    uppm ls-available
-    uppm ls-installed
+uppm ls-available
+uppm ls-installed
 
-    uppm is-available <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
-    uppm is-installed <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
+uppm is-available <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
+uppm is-installed <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
 
-    uppm search       <keyword>
+uppm search       <keyword>
 
-    uppm info         [PACKAGE-NAME]
+uppm info         [PACKAGE-NAME]
 
-    uppm fetch        <PACKAGE-NAME> [OUTPUT-DIR]
+uppm fetch        <PACKAGE-NAME> [OUTPUT-DIR]
 
-    uppm install      <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
-    "
+uppm install      <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]"
 }
 
 uppm() {
@@ -3526,83 +3525,58 @@ regist_dependency() {
 ##############################################################################
 # {{{ define formula syntax
 
-# set/add/get the given package's information
+# set the given package's information
 #
 # USAGE:
-# package set <KEY> <VALUE>
-# package add <KEY> <VALUE>
+# pkg_set <KEY> <VALUE>
 #
-# package get <PKG> <KEY>
-# 
 # EXAMPLES:
-# package set summary "JPEG image codec that aids compression and decompression"
-# package set webpage "https://www.libjpeg-turbo.org"
+# pkg_set summary "JPEG image codec that aids compression and decompression"
+# pkg_set webpage "https://www.libjpeg-turbo.org"
 
-# package set git.url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
-# package set git.rev "5db6aa6cab1b146e07b60cc1736a01f21da01154"
+# pkg_set git.url "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
+# pkg_set git.rev "5db6aa6cab1b146e07b60cc1736a01f21da01154"
 
-# package set src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
-# package set src.sum "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
+# pkg_set src.url "https://downloads.sourceforge.net/project/libjpeg-turbo/2.0.6/libjpeg-turbo-2.1.2.tar.gz"
+# pkg_set src.sha "d74b92ac33b0e3657123ddcf6728788c90dc84dcb6a52013d758af3c4af481bb"
 
-# package set version "1.0.0"
+# pkg_set version "1.0.0"
 
-# package set license "IJG"
+# pkg_set license "IJG"
 
-# package set dep.cmd "nasm"
-# package set dep.cmd "nasm flex bison"
-# package add dep.cmd "flex bison"
+# pkg_set dep.cmd "nasm"
+# pkg_set dep.cmd "nasm flex bison"
 
-# package set dep.pkg "openssl"
-# package set dep.pkg "openssl zlib"
-# package add dep.pkg "openssl zlib"
+# pkg_set dep.pkg "openssl"
+# pkg_set dep.pkg "openssl zlib"
 
-# package set bsystem "cmake"
+# pkg_set bsystem "cmake"
 
-# package set bscript "src"
+# pkg_set bscript "src"
 
-# package set binbstd 'yes'
-# package set binbstd 'no'
+# pkg_set binbstd 'yes'
+# pkg_set binbstd 'no'
 
-# package set sdk.api '23'
-package() {
-    [ $# -lt 2 ] && {
-        error "package <set|add|get> <KEY> [VALUE]..."
+# pkg_set sdk.api '23'
+pkg_set() {
+    [ -z "$1" ] && {
+        error "pkg_set <KEY> <VALUE>..., <KEY> must not be empty."
         return 1
     }
 
     [ -z "$2" ] && {
-        error "key can not be empty."
+        error "pkg_set <KEY> <VALUE>..., <VALUE> must not be empty."
         return 1
     }
 
-    unset __PACKAGE_KEY__
 
-    case $1 in
-        set)
-            shift
-            __PACKAGE_KEY__="$1"
-            shift
-            __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr '+-.' '_' | tr a-z A-Z)"
-            eval "PACKAGE_$__PACKAGE_KEY__=\"$@\"" || exit 1
-            ;;
-        get)
-            shift
-            __load_formula_of_the_given_package "$1"
-            shift
-            __PACKAGE_KEY__="$(echo "$1" | tr '+-.' '_' | tr a-z A-Z)"
-            eval echo \$PACKAGE_$__PACKAGE_KEY__ || exit 1
-            ;;
-        add)
-            shift
-            __PACKAGE_KEY__="$1"
-            shift
-            __PACKAGE_KEY__="$(echo "$__PACKAGE_KEY__" | tr '+-.' '_' | tr a-z A-Z)"
-            __PACKAGE_VAL__="$(eval echo \$PACKAGE_$__PACKAGE_KEY__)"
-            eval "PACKAGE_$__PACKAGE_KEY__=\"$__PACKAGE_VAL__ $@\"" || exit 1
-            ;;
-        '') error "operation can not be empty." ; return 1 ;;
-        *)  error "$1: operation not support "  ; return 1 ;;
-    esac
+    unset __PACKAGE_SET_KEY__
+
+    __PACKAGE_SET_KEY__="$(printf '%s\n' "$1" | tr '+-.' '_' | tr a-z A-Z)"
+
+    shift
+
+    eval "PACKAGE_$__PACKAGE_SET_KEY__='$@'"
 }
 
 #__parse_require_dependency_item <exe|pym|plm> <cmake>=3.19>
@@ -3635,17 +3609,17 @@ __parse_require_dependency_item() {
     unset PACKAGE_WEBPAGE
 
     unset PACKAGE_GIT_URL
-    unset PACKAGE_GIT_REV
+    unset PACKAGE_GIT_SHA
     unset PACKAGE_GIT_TAG
 
     unset PACKAGE_SRC_URL
-    unset PACKAGE_SRC_SUM
+    unset PACKAGE_SRC_SHA
     unset PACKAGE_SRC_NAME
     unset PACKAGE_SRC_PATH
     unset PACKAGE_SRC_TYPE
 
     unset PACKAGE_FIX_URL
-    unset PACKAGE_FIX_SUM
+    unset PACKAGE_FIX_SHA
     unset PACKAGE_FIX_NAME
     unset PACKAGE_FIX_PATH
     unset PACKAGE_FIX_TYPE
@@ -3747,18 +3721,18 @@ __parse_require_dependency_item() {
 
     case $PACKAGE_SRC_URL in
         dir://*)   PACKAGE_SRC_TYPE=dir ;;
-        *.git)     PACKAGE_SRC_TYPE=git    ; package add dep.cmd git ;;
-        *.zip)     PACKAGE_SRC_TYPE=zip    ; package add dep.cmd curl unzip ;;
-        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ; package add dep.cmd curl tar xz ;;
-        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ; package add dep.cmd curl tar gzip ;;
-        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ; package add dep.cmd curl tar lzip ;;
-        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2; package add dep.cmd curl tar bzip2 ;;
-        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ; package add dep.cmd curl tar gzip ;;
-        *.txz)     PACKAGE_SRC_TYPE=tar.xz ; package add dep.cmd curl tar xz ;;
-        *.c)       PACKAGE_SRC_TYPE=c      ; package add dep.cmd curl ;;
-        *.cc)      PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
-        *.cxx)     PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
-        *.cpp)     PACKAGE_SRC_TYPE=cxx    ; package add dep.cmd curl ;;
+        *.git)     PACKAGE_SRC_TYPE=git    ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD git" ;;
+        *.zip)     PACKAGE_SRC_TYPE=zip    ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl unzip" ;;
+        *.tar.xz)  PACKAGE_SRC_TYPE=tar.xz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl tar xz" ;;
+        *.tar.gz)  PACKAGE_SRC_TYPE=tar.gz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl tar gzip" ;;
+        *.tar.lz)  PACKAGE_SRC_TYPE=tar.lz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl tar lzip" ;;
+        *.tar.bz2) PACKAGE_SRC_TYPE=tar.bz2; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl tar bzip2" ;;
+        *.tgz)     PACKAGE_SRC_TYPE=tar.gz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl tar gzip" ;;
+        *.txz)     PACKAGE_SRC_TYPE=tar.xz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl tar xz" ;;
+        *.c)       PACKAGE_SRC_TYPE=c      ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl" ;;
+        *.cc)      PACKAGE_SRC_TYPE=cxx    ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl" ;;
+        *.cxx)     PACKAGE_SRC_TYPE=cxx    ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl" ;;
+        *.cpp)     PACKAGE_SRC_TYPE=cxx    ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD curl" ;;
         *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
@@ -3771,8 +3745,8 @@ __parse_require_dependency_item() {
             PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
             ;;
         *)
-            if [ -z "$PACKAGE_SRC_SUM" ] ; then
-                die "src.sum is not configed in $PACKAGE_FORMULA_FILEPATH"
+            if [ -z "$PACKAGE_SRC_SHA" ] ; then
+                die "src.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
             fi
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
@@ -3787,21 +3761,21 @@ __parse_require_dependency_item() {
 
     if [ -n "$PACKAGE_FIX_URL" ] ; then
         case $PACKAGE_FIX_URL in
-            *.fix)     PACKAGE_FIX_TYPE=patch  ; package add dep.cmd patch           ;;
-            *.diff)    PACKAGE_FIX_TYPE=patch  ; package add dep.cmd patch           ;;
-            *.patch)   PACKAGE_FIX_TYPE=patch  ; package add dep.cmd patch           ;;
-            *.zip)     PACKAGE_FIX_TYPE=zip    ; package add dep.cmd patch unzip     ;;
-            *.tar.xz)  PACKAGE_FIX_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
-            *.tar.gz)  PACKAGE_FIX_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
-            *.tar.lz)  PACKAGE_FIX_TYPE=tar.lz ; package add dep.cmd patch tar lzip  ;;
-            *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2; package add dep.cmd patch tar bzip2 ;;
-            *.tgz)     PACKAGE_FIX_TYPE=tar.gz ; package add dep.cmd patch tar gzip  ;;
-            *.txz)     PACKAGE_FIX_TYPE=tar.xz ; package add dep.cmd patch tar xz    ;;
+            *.fix)     PACKAGE_FIX_TYPE=patch  ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch"           ;;
+            *.diff)    PACKAGE_FIX_TYPE=patch  ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch"           ;;
+            *.patch)   PACKAGE_FIX_TYPE=patch  ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch"           ;;
+            *.zip)     PACKAGE_FIX_TYPE=zip    ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch unzip"     ;;
+            *.tar.xz)  PACKAGE_FIX_TYPE=tar.xz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch tar xz"    ;;
+            *.tar.gz)  PACKAGE_FIX_TYPE=tar.gz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch tar gzip"  ;;
+            *.tar.lz)  PACKAGE_FIX_TYPE=tar.lz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch tar lzip"  ;;
+            *.tar.bz2) PACKAGE_FIX_TYPE=tar.bz2; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch tar bzip2" ;;
+            *.tgz)     PACKAGE_FIX_TYPE=tar.gz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch tar gzip"  ;;
+            *.txz)     PACKAGE_FIX_TYPE=tar.xz ; PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD patch tar xz"    ;;
             *)  die "unrecognized fix extension : $PACKAGE_FIX_URL.\n    supported fix extensons are: .fix .diff .patch .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
         esac
 
-        if [ -z "$PACKAGE_FIX_SUM" ] ; then
-            die "fix.sum is not configed in $PACKAGE_FORMULA_FILEPATH"
+        if [ -z "$PACKAGE_FIX_SHA" ] ; then
+            die "fix.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
         fi
 
         PACKAGE_FIX_NAME=$(basename "$PACKAGE_FIX_URL")
@@ -3838,20 +3812,20 @@ __parse_require_dependency_item() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            autogen)     package add dep.cmd perl m4 autoconf automake make ;;
-            autotools)   package add dep.cmd perl m4 autoconf automake make ;;
-            configure)   package add dep.cmd make ;;
-            ndk-build)   package add dep.cmd make ;;
-            cmake-make)  package add dep.cmd 'cmake>=3.19.0' make  ;;
-            cmake-ninja) package add dep.cmd 'cmake>=3.19.0' ninja ;;
-            cmake)       package add dep.cmd 'cmake>=3.19.0' ninja ;;
-            xmake)       package add dep.cmd xmake ;;
-            meson)       package add dep.cmd meson ninja ;;
-            ninja)       package add dep.cmd ninja ;;
-            make)        package add dep.cmd make  ;;
-            rake)        package add dep.cmd ruby gem rake ;;
-            cargo)       package add dep.cmd rustup rustc cargo ;;
-            go)          package add dep.cmd 'go>=1.18' ;;
+            autogen)     PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD perl m4 autoconf automake make" ;;
+            autotools)   PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD perl m4 autoconf automake make" ;;
+            configure)   PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD make" ;;
+            ndk-build)   PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD make" ;;
+            cmake-make)  PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake>=3.19.0 make"  ;;
+            cmake-ninja) PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake>=3.19.0 ninja" ;;
+            cmake)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake>=3.19.0 ninja" ;;
+            xmake)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD xmake" ;;
+            meson)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD meson ninja" ;;
+            ninja)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD ninja" ;;
+            make)        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD make"  ;;
+            rake)        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD ruby gem rake" ;;
+            cargo)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD rustup rustc cargo" ;;
+            go)          PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD go>=1.18" ;;
         esac
     done
 
@@ -3875,20 +3849,14 @@ __parse_require_dependency_item() {
     fi
 
     if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        package add dep.cmd 'gsed'
+        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD gsed"
     fi
 
     # I don't known why
     # If bash is not installed, ccache and make can not work correctly on VoidLinux.
     if [ "$NATIVE_OS_TYPE" = 'void' ] ; then
-        package add dep.cmd 'bash'
+        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD bash"
     fi
-
-    package add dep.cmd 'find'
-    package add dep.cmd 'file>=5.41'
-    package add dep.cmd 'tree'
-    package add dep.cmd 'hexdump'
-    package add dep.cmd 'patchelf'
 
     PACKAGE_FORMULA_LOADED=yes
 }
@@ -3989,27 +3957,27 @@ __parse_require_dependency_item() {
     fi
 
     cat > "$MY_FORMULA_REPO_DIR/$REPO_NAME/formula/$1.sh" <<EOF
-package set summary "Summary of this package"
+pkg_set summary "Summary of this package"
 
-package set webpage "https://www.xx.com"
+pkg_set webpage "https://www.xx.com"
 
 # the source code download url of this package. the value of src.url must end with one of .git .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz
-package set src.url "https://www.xx.com/pkgname-x.y.z.tar.gz"
+pkg_set src.url "https://www.xx.com/pkgname-x.y.z.tar.gz"
 
 # the sha256sum of source code. If the value of src.url end with .git, this function is optional, otherwise, this function must be invoked.
-package set src.sum "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
+pkg_set src.sha "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
 
 # the version of this package. If this function is not invoked, it will be calculated from src.url.
-#package set version "x.y.z"
+#pkg_set version "x.y.z"
 
 # the license of this package.
-#package set license "MIT"
+#pkg_set license "MIT"
 
 # the required commands of this package when installing. If specify multiple values, separate them with spaces.
-#package set dep.cmd "a b c"
+#pkg_set dep.cmd "a b c"
 
 # the packages are depended by this package. If specify multiple values, separate them with spaces.
-#package set dep.pkg "a b c"
+#pkg_set dep.pkg "a b c"
 
 prepare() {
     :
@@ -4227,23 +4195,23 @@ __fetch_sources_of_the_given_package() {
             if [ -d "$PACKAGE_SRC_PATH" ] ; then
                 run cd  "$PACKAGE_SRC_PATH"
                 if git rev-parse 2> /dev/null ; then
-                    if [ -n "$PACKAGE_GIT_REV" ] ; then
-                        if [ "$PACKAGE_GIT_REV" = "$(git rev-parse HEAD)" ] ; then
+                    if [ -n "$PACKAGE_GIT_SHA" ] ; then
+                        if [ "$PACKAGE_GIT_SHA" = "$(git rev-parse HEAD)" ] ; then
                             success "$PACKAGE_SRC_PATH already have been fetched."
                             return 0
                         fi
-                        run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_REV:refs/remotes/origin/master &&
+                        run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_SHA:refs/remotes/origin/master &&
                         run git checkout --progress --force -B master refs/remotes/origin/master
                     else
                         run git pull &&
                         run git submodule update --recursive
                     fi
                 else
-                    if [ -n "$PACKAGE_GIT_REV" ] ; then
+                    if [ -n "$PACKAGE_GIT_SHA" ] ; then
                         run rm -rf * &&
                         run git init &&
                         run git remote add origin "$PACKAGE_SRC_URL" &&
-                        run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_REV:refs/remotes/origin/master &&
+                        run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_SHA:refs/remotes/origin/master &&
                         run git checkout --progress --force -B master refs/remotes/origin/master
                     else
                         run cd .. &&
@@ -4252,12 +4220,12 @@ __fetch_sources_of_the_given_package() {
                     fi
                 fi
             else
-                if [ -n "$PACKAGE_GIT_REV" ] ; then
+                if [ -n "$PACKAGE_GIT_SHA" ] ; then
                     run install -d "$PACKAGE_SRC_PATH" &&
                     run cd         "$PACKAGE_SRC_PATH" &&
                     run git init &&
                     run git remote add origin "$PACKAGE_SRC_URL" &&
-                    run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_REV:refs/remotes/origin/master &&
+                    run git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +$PACKAGE_GIT_SHA:refs/remotes/origin/master &&
                     run git checkout --progress --force -B master refs/remotes/origin/master
                 else
                     if [ !          -d "$MY_SOURCE_DIR" ] ; then
@@ -4269,13 +4237,13 @@ __fetch_sources_of_the_given_package() {
             fi
             ;;
         dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
-        *)  fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SUM" --output-path="$PACKAGE_SRC_PATH"
+        *)  fetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_PATH"
     esac
 }
 
 __fetch_patches_of_the_given_package() {
     if [ -n "$PACKAGE_FIX_URL" ] ; then
-        fetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SUM" --output-path="$PACKAGE_FIX_PATH"
+        fetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --output-path="$PACKAGE_FIX_PATH"
     fi
 }
 
@@ -5391,31 +5359,13 @@ EOF
         return 1
     fi
 
+    if [ -z "$INSTALLED_PACKAGE_DEVELOPER" ] ; then
+        error "$1 can not be deployed due to INSTALLED_PACKAGE_DEVELOPER is empty."
+        return 1
+    fi
+
     if [ -z "$INSTALLED_PACKAGE_GIT_URL" ] ; then
         INSTALLED_PACKAGE_GIT_URL='https://github.com/leleliu008/ndk-pkg.git'
-    fi
-
-    if [ -n "$INSTALLED_PACKAGE_DEVELOPER" ] ; then
-        PACKAGE_DEVELOPER_NAME="$( printf '%s\n' "$INSTALLED_PACKAGE_DEVELOPER" | cut -d ';' -f1)"
-        PACKAGE_DEVELOPER_EMAIL="$(printf '%s\n' "$INSTALLED_PACKAGE_DEVELOPER" | cut -d ';' -f2)"
-        PACKAGE_DEVELOPER_ORGANIZATION_NAME="$(printf '%s\n' "$INSTALLED_PACKAGE_DEVELOPER" | cut -d ';' -f3)"
-        PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE="$(printf '%s\n' "$INSTALLED_PACKAGE_DEVELOPER" | cut -d ';' -f4)"
-    fi
-
-    if [ -z "$PACKAGE_DEVELOPER_NAME" ] ; then
-        PACKAGE_DEVELOPER_NAME="$INSTALLED_PACKAGE_NAME developers"
-    fi
-
-    if [ -z "$PACKAGE_DEVELOPER_EMAIL" ] ; then
-        PACKAGE_DEVELOPER_EMAIL="unknow"
-    fi
-
-    if [ -z "$PACKAGE_DEVELOPER_ORGANIZATION_NAME" ] ; then
-        PACKAGE_DEVELOPER_ORGANIZATION_NAME="$INSTALLED_PACKAGE_NAME"
-    fi
-
-    if [ -z "$PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE" ] ; then
-        PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE="$INSTALLED_PACKAGE_WEBPAGE"
     fi
 
     POM_FILE="${PACKED_FILE_NAME%.aar}.pom"
@@ -5441,14 +5391,48 @@ EOF
     </scm>
 
     <developers>
-        <developer>
-            <name>$PACKAGE_DEVELOPER_NAME</name>
-            <email>$PACKAGE_DEVELOPER_EMAIL</email>
-            <organization>$PACKAGE_DEVELOPER_ORGANIZATION_NAME</organization>
-            <organizationUrl>$PACKAGE_DEVELOPER_ORGANIZATION_WEBPAGE</organizationUrl>
-        </developer>
-    </developers>
+EOF
 
+    for DEVELOPER in $INSTALLED_PACKAGE_DEVELOPER
+    do
+        unset DEVELOPER_NAME
+        unset DEVELOPER_EMAIL
+        unset DEVELOPER_ORGANIZATION_NAME
+        unset DEVELOPER_ORGANIZATION_WEBPAGE
+
+        DEVELOPER_NAME="$( printf '%s\n' "$DEVELOPER" | cut -d ';' -f1 | tr '+' ' ')"
+        DEVELOPER_EMAIL="$(printf '%s\n' "$DEVELOPER" | cut -d ';' -f2)"
+        DEVELOPER_ORGANIZATION_NAME="$(printf '%s\n' "$DEVELOPER" | cut -d ';' -f3 | tr '+' ' ')"
+        DEVELOPER_ORGANIZATION_WEBPAGE="$(printf '%s\n' "$DEVELOPER" | cut -d ';' -f4)"
+
+        if [ -z "$DEVELOPER_NAME" ] ; then
+            DEVELOPER_NAME="$INSTALLED_PACKAGE_NAME developers"
+        fi
+
+        if [ -z "$DEVELOPER_EMAIL" ] ; then
+            DEVELOPER_EMAIL="unknow"
+        fi
+
+        if [ -z "$DEVELOPER_ORGANIZATION_NAME" ] ; then
+            DEVELOPER_ORGANIZATION_NAME="$INSTALLED_PACKAGE_NAME"
+        fi
+
+        if [ -z "$DEVELOPER_ORGANIZATION_WEBPAGE" ] ; then
+            DEVELOPER_ORGANIZATION_WEBPAGE="$INSTALLED_PACKAGE_WEBPAGE"
+        fi
+
+        cat >> "$POM_FILE" <<EOF
+        <developer>
+            <name>$DEVELOPER_NAME</name>
+            <email>$DEVELOPER_EMAIL</email>
+            <organization>$DEVELOPER_ORGANIZATION_NAME</organization>
+            <organizationUrl>$DEVELOPER_ORGANIZATION_WEBPAGE</organizationUrl>
+        </developer>
+EOF
+    done
+
+    cat >> "$POM_FILE" <<EOF
+    </developers>
     <licenses>
 EOF
 
@@ -5542,7 +5526,7 @@ __get_packages_directly_depended_by_the_given_package() {
     unset PACKAGE_FORMULA_FILEPATH
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
-    sed -n '/^[[:space:]]*package[[:space:]]\{1,\}set[[:space:]]\{1,\}dep\.pkg[[:space:]]\{1,\}".*"[[:space:]]*/p' "$PACKAGE_FORMULA_FILEPATH" | sed 's/^[[:space:]]*package[[:space:]]\{1,\}set[[:space:]]\{1,\}dep\.pkg[[:space:]]\{1,\}"[[:space:]]*\(.*\)[[:space:]]*"[[:space:]]*/\1/'
+    sed -n '/^[[:space:]]*pkg_set[[:space:]]\{1,\}dep\.pkg[[:space:]]\{1,\}".*"[[:space:]]*/p' "$PACKAGE_FORMULA_FILEPATH" | sed 's/^[[:space:]]*pkg_set[[:space:]]\{1,\}dep\.pkg[[:space:]]\{1,\}"[[:space:]]*\(.*\)[[:space:]]*"[[:space:]]*/\1/'
 }
 
 # this fuction should be run in subshell
@@ -5735,6 +5719,7 @@ __install_the_given_packages() {
     DEPENDENCY_PACKAGE_LIST="$(__get_packages_recursively_depended_by_the_given_package)"
 
     if [ $(list_length $DEPENDENCY_PACKAGE_LIST) -gt 1 ] ; then
+        DEPENDENCY_PACKAGE_LIST="$(printf '%s\n' "$DEPENDENCY_PACKAGE_LIST" | tr '\n' ' ')"
         echo "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
     fi
 
@@ -5807,14 +5792,16 @@ __install_the_given_package() {
     calculate_TARGET_OS_VERS "$PACKAGE_NAME" "$PACKAGE_SDK_API" "$USER_EXPECTED_TARGET_OS_VERS"
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
-        package add dep.cmd ccache
+        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD ccache"
     fi
 
     if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] ; then
         if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
-            package add dep.cmd bear
+            PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD bear"
         fi
     fi
+
+    PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD find file>=5.41 tree hexdump patchelf"
 
     # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
     # https://github.com/actions/virtual-environments/issues/5360#issuecomment-1091306746
@@ -5926,7 +5913,7 @@ __install_the_given_package() {
                 run install -d "$PACKAGE_SRC_DIR"
             elif [ -d "$PACKAGE_SRC_PATH" ] ; then
                 if [ -d "$PACKAGE_SRC_PATH/.git" ] && command -v git > /dev/null ; then
-                    PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
+                    PACKAGE_GIT_SHA=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
                 fi
 
                 step "create the directory where source files will be copied to"
@@ -5939,8 +5926,8 @@ __install_the_given_package() {
             fi
             ;;
         *.git)
-            if [ -z "$PACKAGE_GIT_REV" ] ; then
-                PACKAGE_GIT_REV=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD)
+            if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                PACKAGE_GIT_SHA=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD)
             fi
 
             step "create the directory where source files will be copied to"
@@ -6396,8 +6383,8 @@ set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR "\${${PACKAGE_NAME_UPPERCASE}_INSTALL_
 set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_COUNT $TARGET_LIBRARY_COUNT)
 
 EOF
-        if [ -n "$PACKAGE_GIT_REV" ] ; then
-            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_GIT_REV       \"$PACKAGE_GIT_REV\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
+        if [ -n "$PACKAGE_GIT_SHA" ] ; then
+            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_GIT_SHA       \"$PACKAGE_GIT_SHA\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
         fi
 
         if [ -n "$PACKAGE_VERSION" ] ; then
@@ -6677,20 +6664,18 @@ install_pc_file() {
     cat >         "$TARGET_INSTALL_DIR/lib/pkgconfig/$1.pc"
 }
 
-__show_infomation_of_all_available_packages() {
-    shift
+# __show_infomation_of_all_available_packages [--json|--yaml|--shell]
+  __show_infomation_of_all_available_packages() {
+    case $1 in
+        --json) __show_infomation_as_json__of_all_available_packages ;;
+        --yaml) __show_infomation_as_yaml__of_all_available_packages ;;
+        --shell)__show_infomation_as_shell_of_all_available_packages ;;
+        '')     __show_infomation_as_mixed_of_all_available_packages ;;
+        *)    die "__show_infomation_of_all_available_packages [--json|--yaml|--shell], unrecognized option: $1"
+    esac
+}
 
-    unset OUTPUT_FORMAT
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --json) OUTPUT_FORMAT=json ;;
-            *)      die "unrecognized argument: $1"
-        esac
-        shift
-    done
-
+__show_infomation_as_mixed_of_all_available_packages() {
     unset I
     unset PACKAGE_LIST
     unset PACKAGE_LIST_LENGTH
@@ -6698,39 +6683,79 @@ __show_infomation_of_all_available_packages() {
     PACKAGE_LIST=$(__list_available_packages)
     PACKAGE_LIST_LENGTH=$(list_length $PACKAGE_LIST)
 
-    if [ "$OUTPUT_FORMAT" = 'json' ] ; then
-        for PACKAGE in $PACKAGE_LIST
-        do
-            __load_formula_of_the_given_package "$PACKAGE"
+    for PACKAGE in $PACKAGE_LIST
+    do
+        I=$(expr ${I-0} + 1)
 
-            I=$(expr ${I-0} + 1)
+        if [ "$I" -gt 1 ] ; then
+            echo "============================================================"
+        fi
 
-            if [ "$I" -eq 1 ] ; then
-                echo "["
-            fi
-
-            if [ "$I" -eq "$PACKAGE_LIST_LENGTH" ] ; then
-                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"git_url\":\"%s\"}]\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
-            else
-                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"git_url\":\"%s\"},\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
-            fi
-        done
-    else
-        for PACKAGE in $PACKAGE_LIST
-        do
-            I=$(expr ${I-0} + 1)
-
-            if [ "$I" -gt 1 ] ; then
-                echo "============================================================"
-            fi
-
-            __show_infomation_of_the_given_package "$PACKAGE"
-        done
-    fi
+        __show_infomation_of_the_given_package "$PACKAGE"
+    done
 }
 
-# __show_infomation_of_the_given_package_as_shell <PACKAGE-NAME>
-  __show_infomation_of_the_given_package_as_shell() {
+__show_infomation_as_json__of_all_available_packages() {
+    printf '%s\n' '['
+
+    FIRST=yes
+
+    for PACKAGE in $(__list_available_packages)
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+        else
+            printf '%s\n' ','
+        fi
+
+        __show_infomation_as_json__of_the_given_package "$PACKAGE"
+    done
+
+    printf '%s\n' ']'
+}
+
+# __show_infomation_as_json__of_the_given_package <PACKAGE-NAME>
+  __show_infomation_as_json__of_the_given_package() {
+    __load_formula_of_the_given_package "$1"
+
+    cat <<EOF
+{
+    "name":"$PACKAGE_NAME",
+    "version":"$PACKAGE_VERSION",
+    "summary":"$PACKAGE_SUMMARY",
+    "webpage":"$PACKAGE_WEBPAGE",
+    "license":"$PACKAGE_LICENSE",
+    "git": {
+        "url":"$PACKAGE_GIT_URL",
+        "tag":"$PACKAGE_GIT_TAG",
+        "sha":"$PACKAGE_GIT_SHA"
+    },
+    "src": {
+        "url":"$PACKAGE_SRC_URL",
+        "sha":"$PACKAGE_SRC_SHA"
+    },
+    "fix": {
+        "url":"$PACKAGE_FIX_URL",
+        "sha":"$PACKAGE_FIX_SHA"
+    },
+    "dep": {
+        "cmd":"$PACKAGE_DEP_CMD",
+        "pkg":"$PACKAGE_DEP_PKG",
+        "pym":"$PACKAGE_DEP_PYM",
+        "plm":"$PACKAGE_DEP_PLM"
+    },
+    "build": {
+        "system":"$PACKAGE_BUILD_SYSTEM",
+        "binsrcd":"$PACKAGE_BUILD_IN_BSCRIPT_DIR",
+        "parallel":"$PACKAGE_BUILD_IN_PARALLEL"
+    },
+    "sdk.api":"$PACKAGE_SDK_API"
+}
+EOF
+}
+
+# __show_infomation_as_shell_of_the_given_package <PACKAGE-NAME>
+  __show_infomation_as_shell_of_the_given_package() {
     __load_formula_of_the_given_package "$1"
 
     while read KEY
@@ -6741,15 +6766,15 @@ PACKAGE_NAME
 PACKAGE_SUMMARY
 PACKAGE_WEBPAGE
 PACKAGE_GIT_URL
-PACKAGE_GIT_REV
+PACKAGE_GIT_SHA
 PACKAGE_GIT_TAG
 PACKAGE_SRC_URL
-PACKAGE_SRC_SUM
+PACKAGE_SRC_SHA
 PACKAGE_SRC_NAME
 PACKAGE_SRC_PATH
 PACKAGE_SRC_TYPE
 PACKAGE_FIX_URL
-PACKAGE_FIX_SUM
+PACKAGE_FIX_SHA
 PACKAGE_FIX_NAME
 PACKAGE_FIX_PATH
 PACKAGE_FIX_TYPE
@@ -6792,145 +6817,179 @@ PACKAGE_SDK_API
 EOF
 }
 
-# examples:
+# __show_infomation_of_the_given_package <PACKAGE-NAME> [OPTIONS]
+#
+# __show_infomation_of_the_given_package @all
+# __show_infomation_of_the_given_package @all --json
+# __show_infomation_of_the_given_package @all --yaml
+# __show_infomation_of_the_given_package @all --shell
+#
 # __show_infomation_of_the_given_package curl
 # __show_infomation_of_the_given_package curl --json
+# __show_infomation_of_the_given_package curl --yaml
 # __show_infomation_of_the_given_package curl --shell
+#
 # __show_infomation_of_the_given_package curl version
 # __show_infomation_of_the_given_package curl webpage
-__show_infomation_of_the_given_package() {
+  __show_infomation_of_the_given_package() {
     [ -z "$1" ] && {
         error "__show_infomation_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
-    if [ $# -ge 2 ] ; then
-        case $2 in
-            --json)
-                __load_formula_of_the_given_package "$1" || return 1
-                printf "{\"name\":\"%s\",\"version\":\"%s\",\"summary\":\"%s\",\"license\":\"%s\",\"webpage\":\"%s\",\"bsystem\":\"%s\",\"git_url\":\"%s\"}\n"  "$PACKAGE_NAME" "$PACKAGE_VERSION" "$PACKAGE_SUMMARY" "$PACKAGE_LICENSE" "$PACKAGE_WEBPAGE" "$PACKAGE_BUILD_SYSTEM" "$PACKAGE_GIT_URL"
+    case $1 in
+        @all) shift ; __show_infomation_of_all_available_packages $@ ; return $?
+    esac
+
+    unset SHOW_INFOMATION_ARGS
+
+    for arg in $@
+    do
+        case $arg in
+            "$1")
                 ;;
-            --shell)
-                __show_infomation_of_the_given_package_as_shell "$1"
+            -x|--xtrace)
                 ;;
-            formula)
-                __path_of_formula_of_the_given_package "$1"
-                ;;
-            installed-dir)
-                if is_package_installed "$1" ; then
-                    printf '%s\n' "$MY_INSTALL_DIR/$1"
+            *)  if [ -z "$SHOW_INFOMATION_ARGS" ] ; then
+                    SHOW_INFOMATION_ARGS="$arg"
                 else
-                    error "package [$1] is not installed."
-                    return 1
+                    SHOW_INFOMATION_ARGS="$SHOW_INFOMATION_ARGS $arg"
                 fi
-                ;;
-            installed-abis)
-                if is_package_installed "$1" ; then
-                    cat "$MY_INSTALL_DIR/$1/installed-abis"
-                else
-                    error "package [$1] is not installed."
-                    return 1
-                fi
-                ;;
-            installed-metadata)
-                if is_package_installed "$1" ; then
-                    cat "$MY_INSTALL_DIR/$1/installed-metadata"
-                else
-                    error "package [$1] is not installed."
-                    return 1
-                fi
-                ;;
-            installed-files)
-                if is_package_installed "$1" ; then
-                    cat "$MY_INSTALL_DIR/$1/installed-files"
-                else
-                    error "package [$1] is not installed."
-                    return 1
-                fi
-                ;;
-            installed-datetime-unix)
-                if is_package_installed "$1" ; then
-                    __load_installed_metadata_of_the_given_package "$1" &&
-                    printf '%s\n' "$INSTALLED_TIMESTAMP_UNIX"
-                else
-                    error "package [$1] is not installed."
-                    return 1
-                fi
-                ;;
-            installed-datetime-formatted)
-                if is_package_installed "$1" ; then
-                    __load_installed_metadata_of_the_given_package "$1" &&
-                    format_unix_timestamp "$INSTALLED_TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S'
-                else
-                    error "package [$1] is not installed."
-                    return 1
-                fi
-                ;;
-            installed-pkg-version)
-                if is_package_installed "$1" ; then
-                    __load_installed_metadata_of_the_given_package "$1" &&
-                    printf '%s\n' "$INSTALLED_PACKAGE_VERSION"
-                else
-                    error "package [$1] is not installed."
-                    return 1
-                fi
-                ;;
-            -x) ;;
-            *)  package get "$1" "$2"
         esac
-        return $?
-    fi
+    done
 
-    __load_formula_of_the_given_package "$1" || return 1
-
-    echo "name    : $(mark_is_package_installed_or_not $1)"
-
-    if [ -n "$PACKAGE_VERSION" ] ; then
-        echo "version : $PACKAGE_VERSION"
-    fi
-
-    echo "summary : $PACKAGE_SUMMARY"
-    echo "webpage : $PACKAGE_WEBPAGE"
-
-    [ -z "$PACKAGE_DEP_PKG" ] || {
-        unset DEPENDENCIES
-
-        for dependencyPkgName in $PACKAGE_DEP_PKG
-        do
-            if [ -z "$DEPENDENCIES" ] ; then
-                DEPENDENCIES="depends : $(mark_is_package_installed_or_not $dependencyPkgName)"
+    case $SHOW_INFOMATION_ARGS in
+        --json)
+            __show_infomation_as_json__of_the_given_package "$1"
+            ;;
+        --shell)
+            __show_infomation_as_shell_of_the_given_package "$1"
+            ;;
+        formula)
+            __path_of_formula_of_the_given_package "$1"
+            ;;
+        installed-dir)
+            if is_package_installed "$1" ; then
+                printf '%s\n' "$MY_INSTALL_DIR/$1"
             else
-                DEPENDENCIES="$DEPENDENCIES | $(mark_is_package_installed_or_not $dependencyPkgName)"
+                error "package [$1] is not installed."
+                return 1
             fi
-        done
+            ;;
+        installed-abis)
+            if is_package_installed "$1" ; then
+                cat "$MY_INSTALL_DIR/$1/installed-abis"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-metadata)
+            if is_package_installed "$1" ; then
+                cat "$MY_INSTALL_DIR/$1/installed-metadata"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-files)
+            if is_package_installed "$1" ; then
+                cat "$MY_INSTALL_DIR/$1/installed-files"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-datetime-unix)
+            if is_package_installed "$1" ; then
+                __load_installed_metadata_of_the_given_package "$1" &&
+                printf '%s\n' "$INSTALLED_TIMESTAMP_UNIX"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-datetime-formatted)
+            if is_package_installed "$1" ; then
+                __load_installed_metadata_of_the_given_package "$1" &&
+                format_unix_timestamp "$INSTALLED_TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S'
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-pkg-version)
+            if is_package_installed "$1" ; then
+                __load_installed_metadata_of_the_given_package "$1" &&
+                printf '%s\n' "$INSTALLED_PACKAGE_VERSION"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        '') __show_infomation_as_mixed_of_the_given_package $@
+            ;;
+        *)  __load_formula_of_the_given_package "$1"
+            __PACKAGE_GET__KEY__="$(printf '%s\n' "$2" | tr '+-.' '_' | tr a-z A-Z)"
+            eval echo \$PACKAGE_$__PACKAGE_GET__KEY__
+    esac
+}
 
-        echo "$DEPENDENCIES"
-    }
+# __show_infomation_as_mixed_of_the_given_package <PACKAGE-NAME>
+  __show_infomation_as_mixed_of_the_given_package() {
+    __load_formula_of_the_given_package "$1"
 
-    echo "src_url : $PACKAGE_SRC_URL"
+    unset DEPENDENCY_PACKAGE_NAME_LIST
+
+    for DEP_PKG_NAME in $PACKAGE_DEP_PKG
+    do
+        if [ -z "$DEPENDENCY_PACKAGE_NAME_LIST" ] ; then
+            DEPENDENCY_PACKAGE_NAME_LIST="$(mark_is_package_installed_or_not $DEP_PKG_NAME)"
+        else
+            DEPENDENCY_PACKAGE_NAME_LIST="$DEPENDENCY_PACKAGE_NAME_LIST | $(mark_is_package_installed_or_not $DEP_PKG_NAME)"
+        fi
+    done
 
     case $PACKAGE_SRC_TYPE in
         dir) ;;
         git)
-            if [ -d "$PACKAGE_SRC_PATH" ] ; then
-                echo "src_cache ${COLOR_PURPLE}==>${COLOR_OFF} $PACKAGE_SRC_PATH"
-            else
-                echo "src_cache : ${COLOR_RED}Not cached${COLOR_OFF}"
+            if [ ! -d "$PACKAGE_SRC_PATH" ] ; then
+                PACKAGE_SRC_PATH="${COLOR_RED}Not cached${COLOR_OFF}"
             fi
             ;;
         *)
-            if [ -f "$PACKAGE_SRC_PATH" ] ; then
-                echo "src_cache ${COLOR_PURPLE}==>${COLOR_OFF} $PACKAGE_SRC_PATH"
-            else
-                echo "src_cache : ${COLOR_RED}Not cached${COLOR_OFF}"
+            if [ ! -f "$PACKAGE_SRC_PATH" ] ; then
+                PACKAGE_SRC_PATH="${COLOR_RED}Not cached${COLOR_OFF}"
             fi
     esac
+
+    unset OUTPUT_CONTENT
+
+    OUTPUT_CONTENT="name    : $(mark_is_package_installed_or_not $1)
+version : $PACKAGE_VERSION
+summary : $PACKAGE_SUMMARY
+webpage : $PACKAGE_WEBPAGE
+src:
+    url : $PACKAGE_SRC_URL
+    path: $PACKAGE_SRC_PATH"
+
+    if [ -n "$PACKAGE_DEP_PKG" ] ; then
+    OUTPUT_CONTENT="$OUTPUT_CONTENT
+depends : $DEPENDENCY_PACKAGE_NAME_LIST"
+    fi
+
+    printf '%b\n' "$OUTPUT_CONTENT"
+
+    unset OUTPUT_CONTENT
 
     is_package_installed "$1" || return 0
 
     __load_installed_metadata_of_the_given_package "$1" || return 1
 
-    echo "installed ${COLOR_PURPLE}==>${COLOR_OFF} $(du -sh "$MY_INSTALL_DIR/$1" | awk '{print $2, $1}')"
+    OUTPUT_CONTENT="
+installed:
+    root: $(du -sh "$MY_INSTALL_DIR/$1" | awk '{print $2, $1}')
+    abis:"
 
     unset I
     unset ABI
@@ -6943,28 +7002,31 @@ __show_infomation_of_the_given_package() {
     MAX=0
     for ABI in $INSTALLED_ABIS
     do
-        unset V
-        V=$(printf '%s\n' "$ABI" | wc -m)
-        if [ "$V" -gt "$MAX" ] ; then
-            MAX=$V
+        ABI_PATH="$MY_INSTALL_DIR/$1/$ABI"
+        ABI_PATH_LENGTH="${#ABI_PATH}"
+        if [ "$ABI_PATH_LENGTH" -gt "$MAX" ] ; then
+            MAX=$ABI_PATH_LENGTH
         fi
     done
 
     for ABI in $INSTALLED_ABIS
     do
-        I=$(expr ${I-0} + 1)
-        if [ "$I" -eq "$INSTALLED_ABIS_LENGTH" ] ; then
-            printf "              └── %-${MAX}s %s\n" "$ABI" "$(du -sh "$MY_INSTALL_DIR/$1/$ABI" | cut -f1)"
-        else
-            printf "              ├── %-${MAX}s %s\n" "$ABI" "$(du -sh "$MY_INSTALL_DIR/$1/$ABI" | cut -f1)"
-        fi
+        ABI_PATH="$MY_INSTALL_DIR/$1/$ABI"
+
+        unset ABI_SIZE
+        ABI_SIZE="$(du -sh "$ABI_PATH" | cut -f1)"
+
+        OUTPUT_CONTENT="$OUTPUT_CONTENT
+        - $(printf "%-${MAX}s %s\n" "$ABI_PATH" "$ABI_SIZE")"
     done
 
-    echo "
-installed date & time : $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S')
-installed pkg version : $INSTALLED_PACKAGE_VERSION
-build using toolchain : $BUILD_USE_TOOLCHAIN_NAME $BUILD_USE_TOOLCHAIN_VERS
-support min-api-level : $INSTALLED_PACKAGE_SDK_API"
+    OUTPUT_CONTENT="$OUTPUT_CONTENT
+    datetime : $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S') CST
+    pkg-version : $INSTALLED_PACKAGE_VERSION
+    toolchain : $BUILD_USE_TOOLCHAIN_NAME $BUILD_USE_TOOLCHAIN_VERS
+    min-api-level : $INSTALLED_PACKAGE_SDK_API"
+
+    printf '%b\n' "$OUTPUT_CONTENT"
 }
 
 mark_is_package_installed_or_not() {
@@ -7024,20 +7086,28 @@ INSTALLED_BY_NDK_PKG_VERSION='$MY_VERSION'
 INSTALLED_TIMESTAMP_UNIX='$TIMESTAMP_UNIX'
 
 INSTALLED_PACKAGE_NAME='$PACKAGE_NAME'
+
 INSTALLED_PACKAGE_VERSION='$PACKAGE_VERSION'
 INSTALLED_PACKAGE_SUMMARY='$PACKAGE_SUMMARY'
 INSTALLED_PACKAGE_WEBPAGE='$PACKAGE_WEBPAGE'
 INSTALLED_PACKAGE_LICENSE='$PACKAGE_LICENSE'
+
 INSTALLED_PACKAGE_DEVELOPER='$PACKAGE_DEVELOPER'
 
 INSTALLED_PACKAGE_GIT_URL='$PACKAGE_GIT_URL'
+INSTALLED_PACKAGE_GIT_SHA='$PACKAGE_GIT_SHA'
 INSTALLED_PACKAGE_GIT_TAG='$PACKAGE_GIT_TAG'
-INSTALLED_PACKAGE_GIT_REV='$PACKAGE_GIT_REV'
 
 INSTALLED_PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
-INSTALLED_PACKAGE_SRC_SUM='$PACKAGE_SRC_SUM'
+INSTALLED_PACKAGE_SRC_SHA='$PACKAGE_SRC_SHA'
+
+INSTALLED_PACKAGE_FIX_URL='$PACKAGE_FIX_URL'
+INSTALLED_PACKAGE_FIX_SHA='$PACKAGE_FIX_SHA'
 
 INSTALLED_PACKAGE_DEP_PKG='$PACKAGE_DEP_PKG'
+INSTALLED_PACKAGE_DEP_CMD='$PACKAGE_DEP_CMD'
+INSTALLED_PACKAGE_DEP_PYM='$PACKAGE_DEP_PYM'
+INSTALLED_PACKAGE_DEP_PLM='$PACKAGE_DEP_PLM'
 
 INSTALLED_PACKAGE_SDK_API='$TARGET_OS_VERS'
 
@@ -7063,32 +7133,26 @@ EOF
     unset INSTALLED_TIMESTAMP_UNIX
 
     unset INSTALLED_PACKAGE_NAME
+    unset INSTALLED_PACKAGE_VERSION
     unset INSTALLED_PACKAGE_SUMMARY
     unset INSTALLED_PACKAGE_WEBPAGE
     unset INSTALLED_PACKAGE_LICENSE
     unset INSTALLED_PACKAGE_DEVELOPER
 
     unset INSTALLED_PACKAGE_GIT_URL
-    unset INSTALLED_PACKAGE_GIT_REV
+    unset INSTALLED_PACKAGE_GIT_SHA
     unset INSTALLED_PACKAGE_GIT_TAG
 
     unset INSTALLED_PACKAGE_SRC_URL
-    unset INSTALLED_PACKAGE_SRC_SUM
-    unset INSTALLED_PACKAGE_SRC_NAME
-    unset INSTALLED_PACKAGE_SRC_PATH
-    unset INSTALLED_PACKAGE_SRC_TYPE
+    unset INSTALLED_PACKAGE_SRC_SHA
 
     unset INSTALLED_PACKAGE_FIX_URL
-    unset INSTALLED_PACKAGE_FIX_SUM
-    unset INSTALLED_PACKAGE_FIX_NAME
-    unset INSTALLED_PACKAGE_FIX_PATH
-    unset INSTALLED_PACKAGE_FIX_TYPE
+    unset INSTALLED_PACKAGE_FIX_SHA
 
-    unset INSTALLED_PACKAGE_VERSION
-    unset INSTALLED_PACKAGE_VERSION_MAJOR
-    unset INSTALLED_PACKAGE_VERSION_MINOR
-    unset INSTALLED_PACKAGE_VERSION_PATCH
-    unset INSTALLED_PACKAGE_VERSION_TWEAK
+    unset INSTALLED_PACKAGE_DEP_PKG
+    unset INSTALLED_PACKAGE_DEP_CMD
+    unset INSTALLED_PACKAGE_DEP_PYM
+    unset INSTALLED_PACKAGE_DEP_PLM
 
     unset INSTALLED_PACKAGE_BUILD_SYSTEM
 
@@ -8685,13 +8749,13 @@ ndkmanager_install_the_given_rversion() {
     fi
 
     ANDROID_NDK_URL=$(printf '%s\n' "$ANDROID_NDK_SELECTED" | cut -d '|' -f2)
-    ANDROID_NDK_SUM=$(printf '%s\n' "$ANDROID_NDK_SELECTED" | cut -d '|' -f1)
+    ANDROID_NDK_SHA=$(printf '%s\n' "$ANDROID_NDK_SELECTED" | cut -d '|' -f1)
 
-    if [ "${#ANDROID_NDK_SUM}" -ne 64 ] ; then
-        die "$ANDROID_NDK_SUM is not sha256sum"
+    if [ "${#ANDROID_NDK_SHA}" -ne 64 ] ; then
+        die "$ANDROID_NDK_SHA is not sha256sum"
     fi
 
-    fetch "$ANDROID_NDK_URL" --sha256="$ANDROID_NDK_SUM" --output-dir="$MY_HOME_DIR" || return 1
+    fetch "$ANDROID_NDK_URL" --sha256="$ANDROID_NDK_SHA" --output-dir="$MY_HOME_DIR" || return 1
 
     unset ANDROID_NDK_FILEPATH
     unset ANDROID_NDK_FILENAME
@@ -8921,15 +8985,15 @@ install_android_sdk_if_needed() {
         case $NATIVE_OS_KIND in
             linux)
                 ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip'
-                ANDROID_SDK_SUM='124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf'
+                ANDROID_SDK_SHA='124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf'
                 ;;
             darwin)
                 ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip'
-                ANDROID_SDK_SUM='6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf'
+                ANDROID_SDK_SHA='6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf'
                 ;;
             windows)
                 ANDROID_SDK_URL='https://dl.google.com/android/repository/commandlinetools-win-7583922_latest.zip'
-                ANDROID_SDK_SUM='f9e6f91743bcb1cc6905648ca751bc33975b0dd11b50d691c2085d025514278c'
+                ANDROID_SDK_SHA='f9e6f91743bcb1cc6905648ca751bc33975b0dd11b50d691c2085d025514278c'
                 ;;
             *)  die "No Android SDK for $NATIVE_OS_KIND"
         esac
@@ -8937,7 +9001,7 @@ install_android_sdk_if_needed() {
         ANDROID_SDK_FILENAME='android-sdk-commandline-tools.zip'
         ANDROID_SDK_FILEPATH="$MY_HOME_DIR/$ANDROID_SDK_FILENAME"
 
-        fetch "$ANDROID_SDK_URL" --sha256="$ANDROID_SDK_SUM" --output-path="$ANDROID_SDK_FILEPATH"
+        fetch "$ANDROID_SDK_URL" --sha256="$ANDROID_SDK_SHA" --output-path="$ANDROID_SDK_FILEPATH"
 
         run install -d "$MY_HOME_DIR/android-sdk/cmdline-tools"
 
@@ -9644,10 +9708,7 @@ main() {
 
         info)
             shift
-            case $1 in
-                @all) __show_infomation_of_all_available_packages $@ ;;
-                *)    __show_infomation_of_the_given_package $@ ;;
-            esac
+            __show_infomation_of_the_given_package $@
             ;;
         ldd)
             shift
