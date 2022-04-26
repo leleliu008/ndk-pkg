@@ -5161,7 +5161,7 @@ EOF
     if [ -f "$PACKAGE_INSTALLED_DIR/LICENSE" ] ; then
         run cp "$PACKAGE_INSTALLED_DIR/LICENSE" META-INF/
     else
-        run cp "$PACKAGE_INSTALLED_DIR/LICENSE-[1-9]" META-INF/
+        run cp "$PACKAGE_INSTALLED_DIR/LICENSE[1-9]" META-INF/
     fi
 
     unset JAVA_PACKAGE_NAME
@@ -6676,21 +6676,15 @@ install_pc_file() {
 }
 
 __show_infomation_as_mixed_of_all_available_packages() {
-    unset I
-    unset PACKAGE_LIST
-    unset PACKAGE_LIST_LENGTH
+    FIRST=yes
 
-    PACKAGE_LIST=$(__list_available_packages)
-    PACKAGE_LIST_LENGTH=$(list_length $PACKAGE_LIST)
-
-    for PACKAGE in $PACKAGE_LIST
+    for PACKAGE in $(__list_available_packages)
     do
-        I=$(expr ${I-0} + 1)
-
-        if [ "$I" -gt 1 ] ; then
-            echo "============================================================"
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+        else
+            printf '%s\n' '========'
         fi
-
         __show_infomation_of_the_given_package "$PACKAGE"
     done
 }
@@ -6707,7 +6701,6 @@ __show_infomation_as_json__of_all_available_packages() {
         else
             printf '%s\n' ','
         fi
-
         __show_infomation_as_json__of_the_given_package "$PACKAGE"
     done
 
@@ -6789,6 +6782,51 @@ __show_infomation_as_json__of_all_available_packages() {
     "sdk_api":$sdk_api,
     "developer":$developer
 }'
+}
+
+# __show_infomation_as_yaml__of_the_given_package <PACKAGE-NAME>
+  __show_infomation_as_yaml__of_the_given_package() {
+    __load_formula_of_the_given_package "$1"
+
+    cat <<EOF
+name: $PACKAGE_NAME
+version: $PACKAGE_VERSION
+summary: $PACKAGE_SUMMARY
+webpage: $PACKAGE_WEBPAGE
+license: $PACKAGE_LICENSE
+
+git:
+    url: $PACKAGE_GIT_URL
+    sha: $PACKAGE_GIT_SHA
+    tag: $PACKAGE_GIT_TAG
+
+src:
+    url: $PACKAGE_SRC_URL
+    sha: $PACKAGE_SRC_SHA
+
+fix:
+    url: $PACKAGE_FIX_URL
+    sha: $PACKAGE_FIX_SHA
+
+dep:
+    cmd: $PACKAGE_DEP_CMD
+    pym: $PACKAGE_DEP_PYM
+    plm: $PACKAGE_DEP_PLM
+    pkg: $PACKAGE_DEP_PKG
+
+build:
+    system: $PACKAGE_BUILD_SYSTEM
+    binsrcd: $PACKAGE_BUILD_IN_BSCRIPT_DIR
+    cdefine: $PACKAGE_CDEFINE
+    ccflags: $PACKAGE_CCFLAGS
+    xxflags: $PACKAGE_XXFLAGS
+    ldflags: $PACKAGE_LDFLAGS
+    parallel: $PARALLEL
+
+sdk_api: $PACKAGE_SDK_API
+
+developer: $PACKAGE_DEVELOPER
+EOF
 }
 
 # __show_infomation_as_shell_of_the_given_package <PACKAGE-NAME>
@@ -6899,6 +6937,9 @@ EOF
         --json)
             __show_infomation_as_json__of_the_given_package "$1"
             ;;
+        --yaml)
+            __show_infomation_as_yaml__of_the_given_package "$1"
+            ;;
         --shell)
             __show_infomation_as_shell_of_the_given_package "$1"
             ;;
@@ -7006,9 +7047,8 @@ EOF
 version : $PACKAGE_VERSION
 summary : $PACKAGE_SUMMARY
 webpage : $PACKAGE_WEBPAGE
-src:
-    url : $PACKAGE_SRC_URL
-    path: $PACKAGE_SRC_PATH"
+src.url : $PACKAGE_SRC_URL
+src.path: $PACKAGE_SRC_PATH"
 
     if [ -n "$PACKAGE_DEP_PKG" ] ; then
     OUTPUT_CONTENT="$OUTPUT_CONTENT
