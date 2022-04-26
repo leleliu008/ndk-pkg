@@ -3612,6 +3612,8 @@ __parse_require_dependency_item() {
     unset PACKAGE_GIT_SHA
     unset PACKAGE_GIT_TAG
 
+    unset PACKAGE_SVN_URL
+
     unset PACKAGE_SRC_URL
     unset PACKAGE_SRC_SHA
     unset PACKAGE_SRC_NAME
@@ -3658,7 +3660,8 @@ __parse_require_dependency_item() {
     unset PACKAGE_BUILD_IN_BSCRIPT_DIR
 
     # if build in parallel
-    PACKAGE_BUILD_IN_PARALLEL=yes
+    unset PACKAGE_BUILD_IN_PARALLEL
+    unset PACKAGE_PARALLEL
 
     # dependency commands       List
     unset PACKAGE_DEP_CMD
@@ -3698,6 +3701,13 @@ __parse_require_dependency_item() {
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
     PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
+
+    if [ -z "$PACKAGE_PARALLEL" ] ; then
+        PACKAGE_PARALLEL=yes
+        PACKAGE_BUILD_IN_PARALLEL=yes
+    else
+        PACKAGE_BUILD_IN_PARALLEL="$PACKAGE_PARALLEL"
+    fi
 
     if [ -z "$PACKAGE_SUMMARY" ] ; then
         die "summary must be configed in $PACKAGE_FORMULA_FILEPATH"
@@ -5359,14 +5369,24 @@ EOF
         return 1
     fi
 
-    if [ -z "$INSTALLED_PACKAGE_DEVELOPER" ] ; then
-        error "$1 can not be deployed due to INSTALLED_PACKAGE_DEVELOPER is empty."
-        return 1
-    fi
+    select_scm() {
+        if [ -n "$INSTALLED_PACKAGE_GIT_URL" ] ; then
+            INSTALLED_PACKAGE_SCM_TYPE=git
+            INSTALLED_PACKAGE_SCM_URL="$INSTALLED_PACKAGE_GIT_URL"
+            return 0
+        fi
 
-    if [ -z "$INSTALLED_PACKAGE_GIT_URL" ] ; then
-        INSTALLED_PACKAGE_GIT_URL='https://github.com/leleliu008/ndk-pkg.git'
-    fi
+        if [ -n "$INSTALLED_PACKAGE_SVN_URL" ] ; then
+            INSTALLED_PACKAGE_SCM_TYPE=svn
+            INSTALLED_PACKAGE_SCM_URL="$INSTALLED_PACKAGE_SVN_URL"
+            return 0
+        fi
+
+        error "$1 can not be deployed due to INSTALLED_PACKAGE_GIT_URL and INSTALLED_PACKAGE_SVN_URL is empty."
+        return 1
+    }
+
+    select_scm
 
     POM_FILE="${PACKED_FILE_NAME%.aar}.pom"
 
@@ -5385,13 +5405,17 @@ EOF
     <url>$INSTALLED_PACKAGE_WEBPAGE</url>
 
     <scm>
-        <connection>scm:git:$INSTALLED_PACKAGE_GIT_URL</connection>
-        <developerConnection>scm:git:$INSTALLED_PACKAGE_GIT_URL</developerConnection>
-        <url>$INSTALLED_PACKAGE_GIT_URL</url>
+        <connection>scm:$INSTALLED_PACKAGE_SCM_TYPE:$INSTALLED_PACKAGE_SCM_URL</connection>
+        <developerConnection>scm:$INSTALLED_PACKAGE_SCM_TYPE:$INSTALLED_PACKAGE_SCM_URL</developerConnection>
+        <url>$INSTALLED_PACKAGE_SCM_URL</url>
     </scm>
 
     <developers>
 EOF
+
+    if [ -z "$INSTALLED_PACKAGE_DEVELOPER" ] ; then
+        INSTALLED_PACKAGE_DEVELOPER=";"
+    fi
 
     for DEVELOPER in $INSTALLED_PACKAGE_DEVELOPER
     do
@@ -5410,7 +5434,7 @@ EOF
         fi
 
         if [ -z "$DEVELOPER_EMAIL" ] ; then
-            DEVELOPER_EMAIL="unknow"
+            DEVELOPER_EMAIL="unknown"
         fi
 
         if [ -z "$DEVELOPER_ORGANIZATION_NAME" ] ; then
@@ -5433,6 +5457,7 @@ EOF
 
     cat >> "$POM_FILE" <<EOF
     </developers>
+
     <licenses>
 EOF
 
@@ -6843,6 +6868,7 @@ PACKAGE_WEBPAGE
 PACKAGE_GIT_URL
 PACKAGE_GIT_SHA
 PACKAGE_GIT_TAG
+PACKAGE_SVN_URL
 PACKAGE_SRC_URL
 PACKAGE_SRC_SHA
 PACKAGE_SRC_NAME
@@ -7175,6 +7201,8 @@ INSTALLED_PACKAGE_GIT_URL='$PACKAGE_GIT_URL'
 INSTALLED_PACKAGE_GIT_SHA='$PACKAGE_GIT_SHA'
 INSTALLED_PACKAGE_GIT_TAG='$PACKAGE_GIT_TAG'
 
+INSTALLED_PACKAGE_SVN_URL='$PACKAGE_SVN_URL'
+
 INSTALLED_PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
 INSTALLED_PACKAGE_SRC_SHA='$PACKAGE_SRC_SHA'
 
@@ -7219,6 +7247,8 @@ EOF
     unset INSTALLED_PACKAGE_GIT_URL
     unset INSTALLED_PACKAGE_GIT_SHA
     unset INSTALLED_PACKAGE_GIT_TAG
+
+    unset INSTALLED_PACKAGE_SVN_URL
 
     unset INSTALLED_PACKAGE_SRC_URL
     unset INSTALLED_PACKAGE_SRC_SHA
