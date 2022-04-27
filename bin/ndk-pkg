@@ -92,15 +92,15 @@ executable() {
 step() {
     STEP_NUM=$(expr ${STEP_NUM-0} + 1)
     STEP_MESSAGE="$@"
-    echo
-    echo "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
+    printf '%s\n'
+    printf '%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
 }
 
 step2() {
     STEP2_NUM=$(expr ${STEP2_NUM-0} + 1)
     STEP2_MESSAGE="$@"
-    echo
-    echo "${COLOR_BLUE}>>> STEP ${STEP_NUM}.${STEP2_NUM} : ${STEP2_MESSAGE} ${COLOR_OFF}"
+    printf '%s\n'
+    printf '%b\n' "${COLOR_BLUE}>>> STEP ${STEP_NUM}.${STEP2_NUM} : ${STEP2_MESSAGE} ${COLOR_OFF}"
 }
 
 run() {
@@ -114,16 +114,16 @@ run() {
 list() {
     for item in $@
     do
-        echo "$item"
+        printf '%s\n' "$item"
     done
 }
 
 list_length() {
-    echo $#
+    printf '%s\n' $#
 }
 
 shiftn() {
-    shift "$1" && shift && echo "$@"
+    shift "$1" && shift && printf '%s\n' "$@"
 }
 
 globing() {
@@ -184,7 +184,7 @@ trim() {
         sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
     else
         if [ -n "$*" ] ; then
-            echo "$*" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
+            printf '%s\n' "$*" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
         fi
     fi
 }
@@ -206,11 +206,11 @@ tolower() {
             return 0
         fi
         if command -v tr > /dev/null ; then
-            echo "$*" | tr A-Z a-z
+            printf '%s\n' "$*" | tr A-Z a-z
         elif command -v  awk > /dev/null ; then
-            echo "$*" | awk '{print(tolower($0))}'
+            printf '%s\n' "$*" | awk '{print(tolower($0))}'
         elif command -v gawk > /dev/null ; then
-            echo "$*" | gawk '{print(tolower($0))}'
+            printf '%s\n' "$*" | gawk '{print(tolower($0))}'
         elif command -v python > /dev/null ; then
             python  -c 'import sys; print(sys.argv[1].lower());' "$*"
         elif command -v python3 > /dev/null ; then
@@ -863,7 +863,7 @@ __upgrade_self() {
         CURRENT_SCRIPT_REALPATH="$CURRENT_SCRIPT_FILEPATH"
     fi
 
-    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
     WORKING_DIR=$(mktemp -d)
 
     run cd $WORKING_DIR
@@ -950,7 +950,7 @@ __integrate_zsh_completions() {
         fi
     fi
 
-    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
     WORKING_DIR=$(mktemp -d)
 
     run cd $WORKING_DIR
@@ -1281,10 +1281,10 @@ __get_os_ncpu() {
                 elif command -v sed > /dev/null && command -v wc > /dev/null ; then
                     sed -n '/^processor/p' /proc/cpuinfo | wc -l
                 else
-                    echo 4
+                    printf '%s\n' 4
                 fi
             else
-                echo 4
+                printf '%s\n' 4
             fi
     esac
 }
@@ -1434,8 +1434,8 @@ version_of_command() {
           tar)
             VERSION_MSG=$("$1" --version 2> /dev/null | head -n 1)
             case $VERSION_MSG in
-                  tar*) echo "$VERSION_MSG" | cut -d ' ' -f4 ;;
-               bsdtar*) echo "$VERSION_MSG" | cut -d ' ' -f2 ;;
+                  tar*) printf '%s\n' "$VERSION_MSG" | cut -d ' ' -f4 ;;
+               bsdtar*) printf '%s\n' "$VERSION_MSG" | cut -d ' ' -f2 ;;
             esac
             ;;
           git) "$1" --version 2> /dev/null | head -n 1 | cut -d ' ' -f3 ;;
@@ -1478,13 +1478,13 @@ version_minor_of_command() {
 # retrive the major part of the given version
 # Note: the given version must have form: major.minor.patch
 version_major_of_version() {
-    echo "$1" | cut -d. -f1
+    printf '%s\n' "$1" | cut -d. -f1
 }
 
 # retrive the minor part of the given version
 # Note: the given version must have form: major.minor.patch
 version_minor_of_version() {
-    echo "$1" | cut -d. -f2
+    printf '%s\n' "$1" | cut -d. -f2
 }
 
 version_sort() {
@@ -1494,10 +1494,10 @@ version_sort() {
     # sort: unrecognized option: V
     # BusyBox v1.29.3 (2019-01-24 07:45:07 UTC) multi-call binary.
     # Usage: sort [-nrugMcszbdfiokt] [-o FILE] [-k start[.offset][opts][,end[.offset][opts]] [-t CHAR] [FILE]...
-    if  echo | (sort -V > /dev/null 2>&1) ; then
-        echo "$@" | tr ' ' '\n' | sort -V
+    if  printf '%s\n' | (sort -V > /dev/null 2>&1) ; then
+        printf '%s\n' "$@" | tr ' ' '\n' | sort -V
     else
-        echo "$@" | tr ' ' '\n' | sort -t. -n -k1,1 -k2,2 -k3,3 -k4,4
+        printf '%s\n' "$@" | tr ' ' '\n' | sort -t. -n -k1,1 -k2,2 -k3,3 -k4,4
     fi
 }
 
@@ -3375,8 +3375,8 @@ python_module() {
             handle_dependency required exe python3:python3.9:python3.8:python3.7:python3.6:python3.5:python || return 1
             handle_dependency required exe pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip || return 1
 
-            __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || echo python)
-            __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
+            __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || printf '%s\n' python)
+            __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || printf '%s\n' pip)
 
             case $2 in
                 installed)  "$__PYTHON_COMMAND__" -c "import $3" 2> /dev/null ;;
@@ -3392,8 +3392,8 @@ python_module() {
             handle_dependency required exe python3:python3.9:python3.8:python3.7:python3.6:python3.5:python || return 1
             handle_dependency required exe pip3:pip3.9:pip3.8:pip3.7:pip3.6:pip3.5:pip || return 1
 
-            __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || echo python)
-            __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || echo pip)
+            __PYTHON_COMMAND__=$(command -v python3 || command -v python3.9 || command -v python3.8 || command -v python3.7 || command -v python3.6 || command -v python3.5 || command -v python || printf '%s\n' python)
+            __PIP_COMMAND__=$(command -v pip3 || command -v pip3.9 || command -v pip3.8 || command -v pip3.7 || command -v pip3.6 || command -v pip3.5 || command -v pip || printf '%s\n' pip)
 
             case $2 in
                 version)  "$__PIP_COMMAND__" show "$3" 2> /dev/null | sed -n '/Version:/p'  | cut -d ' ' -f2 ;;
@@ -3437,8 +3437,8 @@ perl_module() {
             __PERL_MODULE_NAME_TO_PATH=$(printf "%s.pm\n" "$1" | sed 's|::|/|g')
             for item in $(perl -e 'print "@INC"')
             do
-                if [ -e  "$item/$__PERL_MODULE_NAME_TO_PATH" ] ; then
-                    echo "$item/$__PERL_MODULE_NAME_TO_PATH"
+                if [ -e           "$item/$__PERL_MODULE_NAME_TO_PATH" ] ; then
+                    printf '%s\n' "$item/$__PERL_MODULE_NAME_TO_PATH"
                     return 0
                 else
                     continue
@@ -3599,12 +3599,12 @@ pkg_set() {
 #__parse_require_dependency_item <exe|pym|plm> <cmake>=3.19>
 __parse_require_dependency_item() {
     case $2 in
-        *\<=*) echo "required $1 $2" | sed 's/<=/ le /g' ;;
-        *\>=*) echo "required $1 $2" | sed 's/>=/ ge /g' ;;
-        *=*)   echo "required $1 $2" | sed 's/<=/ eq /g' ;;
-        *\<*)  echo "required $1 $2" | sed 's/<=/ lt /g' ;;
-        *\>*)  echo "required $1 $2" | sed 's/<=/ gt /g' ;;
-        *)     echo "required $1 $2"
+        *\<=*) printf '%s\n' "required $1 $2" | sed 's/<=/ le /g' ;;
+        *\>=*) printf '%s\n' "required $1 $2" | sed 's/>=/ ge /g' ;;
+        *=*)   printf '%s\n' "required $1 $2" | sed 's/<=/ eq /g' ;;
+        *\<*)  printf '%s\n' "required $1 $2" | sed 's/<=/ lt /g' ;;
+        *\>*)  printf '%s\n' "required $1 $2" | sed 's/<=/ gt /g' ;;
+        *)     printf '%s\n' "required $1 $2"
     esac
 }
 
@@ -4104,7 +4104,7 @@ __add_a_formula_repo() {
         fi
     done
 
-    echo "$1=$2" >> "$MY_HOME_DIR/repos"
+    printf '%s=%s\n' "$1" "$2" >> "$MY_HOME_DIR/repos"
 }
 
 # __del_a_formula_repo <REPO-NAME>
@@ -4159,8 +4159,8 @@ __repo_of_formula_of_the_given_package() {
 
     for repo in $(cut -d= -f1 "$MY_HOME_DIR/repos")
     do
-        if [ -e  "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
-            echo "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh"
+        if [ -e           "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh" ] ; then
+            printf '%s\n' "$MY_FORMULA_REPO_DIR/$repo/formula/$1.sh"
             return 0
         fi
     done
@@ -4174,7 +4174,7 @@ __list_formula_repositories() {
         cat "$MY_HOME_DIR/repos"
     else
         install -d "$MY_HOME_DIR"
-        echo "offical=$MY_OFFICAL_FORMULA_REPO_URL" | tee "$MY_HOME_DIR/repos"
+        printf 'offical=%s\n' "$MY_OFFICAL_FORMULA_REPO_URL" | tee "$MY_HOME_DIR/repos"
     fi
 }
 
@@ -4191,7 +4191,7 @@ __update_formula_repositories() {
         FORMULA_REPO_NAME=$(printf '%s\n' "$item" | cut -d= -f1)
         FORMULA_REPO_URL_=$(printf '%s\n' "$item" | cut -d= -f2)
 
-        echo "${COLOR_PURPLE}=== Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
+        printf '%b\n' "${COLOR_PURPLE}=== Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
 
         if [ -d     "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME" ] ; then
             run cd  "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME"
@@ -4434,7 +4434,7 @@ __gen_github_workflows() {
 
                 I=$(expr ${I-0} + 1)
                 OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
-                NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
+                NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
 
                 echo
                 run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
@@ -4450,7 +4450,7 @@ __gen_github_workflows() {
 
         I=$(expr ${I-0} + 1)
         OUTPUT_FILEPATH="$OUTPUT_DIR/ci$I.yml"
-        NDEPENDED_PACKAGES=$(echo "$NDEPENDED_PACKAGES" | tr ' ' ,)
+        NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
 
         run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
         sed_in_place "s/INDEX/$I/"                     "$OUTPUT_FILEPATH"
@@ -4493,7 +4493,7 @@ __list__outdated_packages() {
         is_package_available "$packageName" || continue
         is_package_installed "$packageName" || continue
         is_package__outdated "$packageName" || continue
-        echo "$packageName"
+        printf '%s\n' "$packageName"
     done
 }
 
@@ -4621,7 +4621,7 @@ __cleanup() {
             if [ -f "$item" ] ; then
                 case $item in
                     *.sh)
-                        __load_formula_of_the_given_package $(echo "$item" | sed 's/\.sh//g')
+                        __load_formula_of_the_given_package $(printf '%s\n' "$item" | sed 's/\.sh//g')
                 esac
             fi
         done
@@ -4752,7 +4752,7 @@ __show_homepage_of_the_given_package() {
         __load_formula_of_the_given_package "$1"
     fi
 
-    echo "$PACKAGE_WEBPAGE"
+    printf '%s\n' "$PACKAGE_WEBPAGE"
 }
 
 __open_homepage_of_the_given_package() {
@@ -5082,7 +5082,7 @@ __logs_the_given_installed_package() {
     PACKED_FILE_NAME="$PACKED_DIR_NAME.$2"
 
     step "create working directory"
-    echo "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
+    printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
     WORKING_DIR=$(mktemp -d)
 
     step "change to working directory"
@@ -5789,7 +5789,7 @@ __install_the_given_packages() {
 
     if [ $(list_length $DEPENDENCY_PACKAGE_LIST) -gt 1 ] ; then
         DEPENDENCY_PACKAGE_LIST="$(printf '%s\n' "$DEPENDENCY_PACKAGE_LIST" | tr '\n' ' ')"
-        echo "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
+        printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
     fi
 
     for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
@@ -5806,7 +5806,7 @@ __install_the_given_packages() {
 
 # Note: this function must run in a subshell
 __install_the_given_package() {
-    echo "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
+    printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
 
     # brew install meson
     # Error: The current work directory doesn't exist, cannot proceed.
@@ -6122,9 +6122,9 @@ __install_the_given_package() {
                 do
                     if [ "$FIRST" = yes ] ; then
                         FIRST=no
-                        echo "$item"
+                        printf '%s\n' "$item"
                     else
-                        echo "                      $item"
+                        printf '%s\n' "                      $item"
                     fi
                 done
             done
@@ -6159,7 +6159,7 @@ EOF
             run build0
 
             if [ -d "$NATIVE_INSTALL_DIR" ] ; then
-                echo "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
+                printf '%s\n' "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
             fi
 
             if [ -d "$NATIVE_INSTALL_DIR/bin" ] ; then
@@ -6269,8 +6269,8 @@ __install_the_given_package_for_the_given_target() {
         if [ -z "$CCACHE" ] ; then
             die "ccache is not installed."
         fi
-        run ln -s "$CCACHE" "$TARGET_WORKING_DIR/bin/$CC"
-        run ln -s "$CCACHE" "$TARGET_WORKING_DIR/bin/$CXX"
+        run ln -s "$CCACHE" "$TARGET_WORKING_DIR/bin/$(basename "$CC")"
+        run ln -s "$CCACHE" "$TARGET_WORKING_DIR/bin/$(basename "$CXX")"
         run export PATH="'$TARGET_WORKING_DIR/bin:$PATH'"
     else
         note "ccache is disabled, skipped."
@@ -6674,8 +6674,8 @@ install_incs() {
     do
         unset X1
         unset X2
-        X1=$(echo "$1" | cut -d: -f1)
-        X2=$(echo "$1" | cut -d: -f2)
+        X1=$(printf '%s\n' "$1" | cut -d: -f1)
+        X2=$(printf '%s\n' "$1" | cut -d: -f2)
 
         if [ "$X1" = "$X2" ] ; then
             unset X2
@@ -6718,7 +6718,7 @@ install_mans() {
     for item in $@
     do
         unset NUMBER
-        NUMBER=$(echo "$item" | cut -c ${#item}-${#item})
+        NUMBER=$(printf '%s\n' "$item" | cut -c ${#item}-${#item})
         case $NUMBER in
             [1-8]);;
             *)    die "$item: not a manpage."
@@ -7209,16 +7209,16 @@ installed:
 
 mark_is_package_installed_or_not() {
     if is_package_installed "$1" ; then
-        echo "${COLOR_GREEN}$1${COLOR_OFF}"
+        printf '%b\n' "${COLOR_GREEN}$1${COLOR_OFF}"
     else
-        echo "${COLOR_RED}$1${COLOR_OFF}"
+        printf '%b\n' "${COLOR_RED}$1${COLOR_OFF}"
     fi
 }
 
 __record_installed_files_of_the_given_package() {
     if [ -z "$2" ] ; then
         INSTALLED_FILES_FILEPATH="$MY_INSTALL_DIR/$1/installed-files"
-        echo "-- Installing: $INSTALLED_FILES_FILEPATH"
+        printf '%s\n' "-- Installing: $INSTALLED_FILES_FILEPATH"
 
         touch "$INSTALLED_FILES_FILEPATH"
         return 0
@@ -7253,7 +7253,7 @@ __record_installed_files_of_the_given_package() {
 
     INSTALLED_METADATA_FILEPATH="$MY_INSTALL_DIR/$1/installed-metadata"
 
-    echo "-- Installing: $INSTALLED_METADATA_FILEPATH"
+    printf '%b\n' "-- Installing: $INSTALLED_METADATA_FILEPATH"
 
     cat > "$INSTALLED_METADATA_FILEPATH" <<EOF
 #This file is automatically generated by ndk-pkg.
@@ -7404,7 +7404,7 @@ __config_variables_for_the_given_target() {
 
     TARGET_TRIPLE=$(print_target_triple_by_arch "$TARGET_OS_ARCH")
 
-    TARGET_TRIPLE2=$(echo $TARGET_TRIPLE | sed 's/armv7a/arm/')
+    TARGET_TRIPLE2=$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/arm/')
 
     case $TARGET_OS_ARCH in
         i686|armv7a)
@@ -7422,7 +7422,7 @@ __config_variables_for_the_given_target() {
         if [ "$tool" = 'cpp' ] ; then
             CPP="$CC -E"
         else
-            eval $(echo "$tool" | tr a-z A-Z)=$(path_of_tool_in_the_toolchain "$tool")
+            eval $(printf '%s\n' "$tool" | tr a-z A-Z)=$(path_of_tool_in_the_toolchain "$tool")
         fi
     done
 
@@ -7693,7 +7693,7 @@ __config_variables_for_the_given_target() {
 # __printf_variables_for_the_given_target <PACKAGE-NAME> <TARGET>
 # __printf_variables_for_the_given_target      curl       x86_64
 __printf_variables_for_the_given_target() {
-    echo "
+    printf '%s\n' "
         BUILD_NJOBS = $BUILD_NJOBS
         BUILD_TYPE  = $BUILD_TYPE
 
@@ -7757,9 +7757,9 @@ __printf_variables_for_the_given_target() {
         do
             if [ "$FIRST" = yes ] ; then
                 FIRST=no
-                echo "$item"
+                printf '%s\n' "$item"
             else
-                echo "                      $item"
+                printf '%s\n' "                      $item"
             fi
         done
     done
@@ -7820,7 +7820,7 @@ EOF
         done
     fi
 
-    echo "
+    printf '%s\n' "
 PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
 PACKAGE_SRC_DIR     = $PACKAGE_SRC_DIR
 PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
@@ -8046,7 +8046,7 @@ cargow() {
 }
 
 config_url() {
-    echo "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$1;hb=HEAD"
+    printf '%s\n' "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$1;hb=HEAD"
 }
 
 # run in a subshell
@@ -8435,7 +8435,7 @@ to_meson_array() {
         RESULT="$RESULT, '$item'"
     done
     RESULT="$RESULT]"
-    echo "$RESULT"
+    printf '%s\n' "$RESULT"
 }
 
 # https://developer.android.com/ndk/guides/ndk-build
@@ -8611,7 +8611,7 @@ __ldd() {
 
         FILE_PATH="$MY_INSTALL_DIR/$1/$2/$3/$4"
         [ -f "$FILE_PATH" ] || die "$FILE_PATH not exist."
-        echo "$FILE_PATH"
+        printf '%s\n' "$FILE_PATH"
 
         DLL=$("$READELF" -d "$FILE_PATH" | sed -n "/\.so/p" | sed 's/.*\[\(.*\)\].*/\1/')
         for item in $DLL
@@ -8756,7 +8756,7 @@ list_flags_used_by_tools_in_the_toolchain() {
         return 1
     }
 
-    printf '%s\n' "$TOOL_FILENAME"
+    printf '%s\n' "$TOOL_FILEPATH"
 }
 
 # calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER-EXPECTED-TARGET_OS_VERS>
@@ -8975,7 +8975,7 @@ ndkmanager_install_the_given_rversion() {
 }
 
 ndkmanager_help() {
-    echo "
+    printf '%b\n' "
 ${COLOR_GREEN}ndkmanager ls-available${COLOR_OFF}
     list available Android NDK
 
@@ -9018,7 +9018,7 @@ ndkmanager() {
 setup_build_toolchains_env() {
     debug() {
         if [ -n "$LOG_LEVEL" ] && [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
-            echo "$*"
+            printf '%b\n' "$*"
         fi
     }
  
@@ -9439,7 +9439,7 @@ init() {
     [ -d "$MY_HOME_DIR" ] || install -d "$MY_HOME_DIR"
 
     [ -f "$MY_HOME_DIR/repos" ] || {
-        echo "offical=$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
+        printf 'offical=%s\n' "$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
     }
 
     [ -f "$MY_INIT_RC" ] || {
@@ -9574,7 +9574,7 @@ ICAgICB8X19fLyAK'
         fi
     fi
 
-    echo "
+    printf '%b\n' "
 ${COLOR_GREEN}A package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}
 
 ${COLOR_GREEN}ndk-pkg <ACTION> [ARGUMENT...]${COLOR_OFF}
@@ -9768,21 +9768,21 @@ main() {
             help
             ;;
         --version|-V)
-            echo "$MY_VERSION"
+            printf '%s\n' "$MY_VERSION"
             ;;
         --homedir)
-            echo "$MY_HOME_DIR"
+            printf '%s\n' "$MY_HOME_DIR"
             ;;
         --homepage)
-            echo "$MY_HOME_PAGE"
+            printf '%s\n' "$MY_HOME_PAGE"
             ;;
         env)
-            echo "${COLOR_GREEN}$_0 $MY_VERSION is a package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}"
-            echo
+            printf '%b\n' "${COLOR_GREEN}$_0 $MY_VERSION is a package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}"
+            printf '%s\n'
             run os
-            echo
+            printf '%s\n'
             run "id | tr ' ' '\n'"
-            echo
+            printf '%s\n'
             setup_build_toolchains_env
             ;;
 
