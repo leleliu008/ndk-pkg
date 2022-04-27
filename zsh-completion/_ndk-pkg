@@ -39,6 +39,7 @@ _commands=(
     'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
     'ndkmanager:install android-ndk to ~/.ndk-pkg.'
+    'compare-versions:compare package versions with brew or maven central.'
 )
 
 function _ndk_pkg_commands() {
@@ -74,6 +75,9 @@ function _ndk_pkg() {
     case $state in
         option)
             case $words[1] in
+                compare-versions)
+                    _arguments ':which:(brew maven)'
+                    ;;
                 ndkmanager)
                     _arguments \
                         ':action:(ls-available install)' \

@@ -104,7 +104,10 @@ step2() {
 }
 
 run() {
-    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
+    if [ "$RUN_SILENT" != yes ] ; then
+        echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
+    fi
+
     eval "$*"
 }
 
@@ -573,18 +576,17 @@ sha256sum() {
 ##############################################################################
 # {{{ fetch
 
-# fetch <URL> [--sha256=SHA256] <--output-path=PATH>
-# fetch <URL> [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
-# fetch <URL> [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
-# fetch <URL> [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
-# fetch <URL> [--pipe=CMD]
+# fetch <URL> [--silent] [--sha256=SHA256] <--output-path=PATH>
+# fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+# fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+# fetch <URL> [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
 fetch() {
     unset FETCH_URL
     unset FETCH_SHA256
     unset FETCH_OUTPUT_DIR
     unset FETCH_OUTPUT_NAME
     unset FETCH_OUTPUT_PATH
-    unset FETCH_PIPE_TO_CMD
+    unset FETCH_SILENT
 
     if [ -z "$1" ] ; then
         error "fetch <URL> [OPTION]... , <URL> must not be empty."
@@ -602,6 +604,10 @@ fetch() {
     while [ -n "$1" ]
     do
         case $1 in
+            --silent)
+                FETCH_SILENT=yes
+                RUN_SILENT=yes
+                ;;
             --sha256=*)
                 FETCH_SHA256=$(getvalue "$1")
                 ;;
@@ -626,12 +632,15 @@ fetch() {
                     return 1
                 fi
                 ;;
-            --pipe=*)
-                FETCH_PIPE_TO_CMD=$(getvalue "$1")
-                if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
-                    error "fetch <URL> --pipe=<CMD> , <CMD> must not be empty."
-                    return 1
-                fi
+            *)  error "fetch <URL> [OPTION]..., unrecognized option: $1
+
+    fetch command usage:
+
+    fetch <URL> [--silent] [--sha256=SHA256] <--output-path=PATH>
+    fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
+    fetch <URL> [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
+    fetch <URL> [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>"
+                return 1
         esac
         shift
     done
@@ -715,45 +724,47 @@ fetch() {
 
             case $FETCH_TOOL in
                 curl)
-                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
-                        run "curl --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
-                    else
-                        run "curl --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                    unset FETCH_TOOL_CURL_EXTRA_OPTIONS
+
+                    if [ "$FETCH_SILENT" = yes ] ; then
+                        FETCH_TOOL_CURL_OPTIONS='--no-progress-meter'
                     fi
+
+                    run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
                     ;;
                 wget)
-                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                    if [ "$FETCH_SILENT" = yes ] ; then
                         run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
                     else
-                        run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                        run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
                     fi
                     ;;
                 http)
-                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                    if [ "$FETCH_SILENT" = yes ] ; then
                         run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
                     else
-                        run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                        run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
                     fi
                     ;;
                 lynx)
-                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                    if [ "$FETCH_SILENT" = yes ] ; then
                         run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'"
                     else
-                        run "lynx -source '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                        run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'"
                     fi
                     ;;
                 aria2c)
-                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                    if [ "$FETCH_SILENT" = yes ] ; then
                         run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'"
                     else
-                        run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                        run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'"
                     fi
                     ;;
                 axel)
-                    if [ -z "$FETCH_PIPE_TO_CMD" ] ; then
+                    if [ "$FETCH_SILENT" = yes ] ; then
                         run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
                     else
-                        run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL' | $FETCH_PIPE_TO_CMD"
+                        run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'"
                     fi
                     ;;
                 *)  error "fetch() unimplementation: $FETCH_TOOL"
@@ -3124,7 +3135,7 @@ __install_command_via_run_install_script() {
 
             fetch 'https://sh.rustup.rs' --output-path="$MY_HOME_DIR/tmp.d/rustup-init.sh" || return 1
 
-            run $(command -v bash || command -v zsh || command -v dash || command -v ash || command -v sh) "$MY_HOME_DIR/tmp.d/rustup-init.sh" -y
+            run $(command -v bash || command -v zsh || command -v dash || command -v ash || command -v sh) "$MY_HOME_DIR/tmp.d/rustup-init.sh" -y || return 1
 
             export CARGO_HOME=$HOME/.cargo
             export PATH="$CARGO_HOME/bin:$PATH"
@@ -3135,7 +3146,13 @@ __install_command_via_run_install_script() {
 
             handle_dependency required exe bash:zsh || return 1
 
-	        fetch "$(github_user_content_base_url)/nvm-sh/nvm/master/install.sh" --pipe="$(command -v bash || command -v zsh || echo bash)" || return 1
+            if [ -f    "$MY_HOME_DIR/tmp.d/install-nvm.sh" ] ; then
+                run rm "$MY_HOME_DIR/tmp.d/install-nvm.sh" || return 1
+            fi
+
+	        fetch "$(github_user_content_base_url)/nvm-sh/nvm/master/install-nvm.sh" || return 1
+
+            run $(command -v bash || command -v zsh || printf '%s\n' bash) "$MY_HOME_DIR/tmp.d/install-nvm.sh" || return 1
 
 	        export NVM_DIR="${HOME}/.nvm"
 	        . "${HOME}/.nvm/nvm.sh"
@@ -4670,6 +4687,33 @@ __compare_versions_with_brew() {
             printf "${COLOR_BLUE}%-10s %-10s  |${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION"
         fi
     done
+}
+
+# https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
+__compare_versions_with_maven_central() {
+    WORKING_DIR=$(mktemp -d)
+
+    cd "$WORKING_DIR"
+
+    fetch 'https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21' --output-name=artifacts.html --silent
+
+    for artifactId in $(sed -n '/<a href=.* title=/p' artifacts.html | sed 's|<a href="\(.*\)/" .*|\1|')
+    do
+        rm -f maven-metadata.xml
+
+        fetch "https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/${artifactId}/maven-metadata.xml" --output-name=maven-metadata.xml --silent
+
+        LATEST_VERSION_IN_MAVEN_CENTRAL=$(sed -n '/latest/p' maven-metadata.xml | sed -e 's|[[:space:]]||g' -e 's|<latest>\(.*\)</latest>|\1|')
+        AVAILABLE_VERSION_IN_FORMULA_REPO=$(__show_infomation_of_the_given_package "$artifactId" version)
+
+        if version_match "$AVAILABLE_VERSION_IN_FORMULA_REPO" gt "$LATEST_VERSION_IN_MAVEN_CENTRAL" ; then
+            printf "${COLOR_RED}%-15s %-10s %-10s${COLOR_OFF}\n" "$artifactId" "$AVAILABLE_VERSION_IN_FORMULA_REPO" "$LATEST_VERSION_IN_MAVEN_CENTRAL"
+        else
+            :
+        fi
+    done
+
+    rm -rf "$WORKING_DIR"
 }
 
 __show_or_open_homepage_of_the_given_package() {
@@ -6732,6 +6776,34 @@ __show_infomation_as_json__of_all_available_packages() {
     printf '%s\n' ']'
 }
 
+__show_infomation_as_yaml__of_all_available_packages() {
+    FIRST=yes
+
+    for PACKAGE in $(__list_available_packages)
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+        else
+            printf '%s\n' '---'
+        fi
+        __show_infomation_as_yaml__of_the_given_package "$PACKAGE"
+    done
+}
+
+__show_infomation_as_shell_of_all_available_packages() {
+    FIRST=yes
+
+    for PACKAGE in $(__list_available_packages)
+    do
+        if [ "$FIRST" = yes ] ; then
+            FIRST=no
+        else
+            printf '%s\n' '#---'
+        fi
+        __show_infomation_as_shell_of_the_given_package "$PACKAGE"
+    done
+}
+
 # __show_infomation_as_json__of_the_given_package <PACKAGE-NAME>
   __show_infomation_as_json__of_the_given_package() {
     __load_formula_of_the_given_package "$1"
@@ -6858,9 +6930,12 @@ EOF
   __show_infomation_as_shell_of_the_given_package() {
     __load_formula_of_the_given_package "$1"
 
+    unset PACKAGE_NAME_UPPERCASE_UNDERSCORE
+    PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$1" | tr a-z A-Z | tr '+-.' '_')
+
     while read KEY
     do
-        printf "%s='%s'\n" "$KEY" "$(eval echo \$$KEY)"
+        printf "%s='%s'\n" "${PACKAGE_NAME_UPPERCASE_UNDERSCORE}_${KEY}" "$(eval echo \$$KEY)"
     done <<EOF
 PACKAGE_NAME
 PACKAGE_SUMMARY
@@ -9672,6 +9747,8 @@ ${COLOR_GREEN}ndk-pkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
 main() {
     set -e
 
+    unset RUN_SILENT
+
     unset XTRACE
     unset COUNTRY
 
@@ -9834,7 +9911,18 @@ main() {
             __gen_github_workflows $@
             ;;
         test)
-            __compare_versions_with_brew
+            ;;
+        compare-versions)
+            shift
+            case $1 in
+                brew)
+                    __compare_versions_with_brew
+                    ;;
+                maven)
+                    __compare_versions_with_maven_central
+                    ;;
+                *)  die "unrecognized argument: $1"
+            esac
             ;;
         *)  die "unrecognized argument: $1"
     esac
