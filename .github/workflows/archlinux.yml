@@ -46,7 +46,9 @@ jobs:
       - run: bin/ndk-pkg info libzip
       - run: bin/ndk-pkg info libzip version
       - run: bin/ndk-pkg info libzip webpage
-      - run: bin/ndk-pkg info libzip
+      - run: bin/ndk-pkg info libzip git.url
+      - run: bin/ndk-pkg info libzip src.url
+      - run: bin/ndk-pkg info libzip fix.url
 
       - run: bin/ndk-pkg depends libzip
 
@@ -87,7 +89,7 @@ jobs:
 
       - run: bin/ndk-pkg is-available libzip
       - run: bin/ndk-pkg is-installed libzip
-      - run: bin/ndk-pkg is-outdated libzip || echo "not outdated"
+      - run: bin/ndk-pkg is-outdated  libzip || echo "not outdated"
 
       - run: bin/ndk-pkg uninstall libzip
 

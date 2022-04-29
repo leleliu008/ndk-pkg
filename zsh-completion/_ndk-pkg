@@ -54,13 +54,13 @@ function _ndk_pkg_available_packages() {
 
 function _ndk_pkg_installed_packages() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null))
+    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null | cut -d/ -f3))
     _describe 'installed-packages' _installed_packages
 }
 
 function _ndk_pkg_outdated_packages() {
     local -a _outdated_packages
-    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null))
+    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null | cut -d/ -f3))
     _describe 'outdated-packages' _outdated_packages
 }
 
@@ -75,6 +75,12 @@ function _ndk_pkg() {
     case $state in
         option)
             case $words[1] in
+                ls-installed)
+                    _arguments '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))'
+                    ;;
+                ls-outdated)
+                    _arguments '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))'
+                    ;;
                 compare-versions)
                     _arguments ':which:(brew maven)'
                     ;;
@@ -127,26 +133,26 @@ function _ndk_pkg() {
                         '--china[use china mirror url]'
                     ;;
                 info)
-                    _arguments \
-                        '1:package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
-                        '*:: :->info-subcommand'
-                    case $state in
-                        info-subcommand)
-                            case $words[1] in
-                                @all) _arguments ':output-format:(--json --yaml --shell)' ;;
-                                *) _arguments '1:key:(formula summary webpage version license git.url src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-files installed-abis --json --yaml --shell)'
-                            esac
-                    esac
+                    if [ "$words[2]" = '@all' ] ; then
+                        _arguments \
+                            '1:package-name:(@all)' \
+                            '2:output-format:(--json --yaml --shell)'
+                    else
+                        case $words[3] in
+                            installed-*)
+                                _arguments \
+                                    '1:package-name:()' \
+                                    '2:key:(installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-files installed-abis)' \
+                                    '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))'
+                                ;;
+                            *)  _arguments \
+                                    '1:package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
+                                    '2:key:(formula summary webpage version license git.url src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-files installed-abis --json --yaml --shell)'
+                        esac
+                    fi
                     ;;
                 fetch)
                     _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' ;;
-                deploy)
-                    _arguments \
-                        '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:config-file:_files' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
-                        '(--debug -d)'{--debug,-d}'[debug the process of deployment]'
-                    ;;
                 depends)
                     _arguments \
                         '1:package-name:_ndk_pkg_available_packages' \
@@ -157,8 +163,17 @@ function _ndk_pkg() {
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:type:(7z zip aar tar.gz tar.xz tar.bz2)' \
+                        '2:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
+                        '3:type:(7z zip aar tar.gz tar.xz tar.bz2)' \
                         '--keep-work-dir[do not delete work-dir even if packed success]'
+                    ;;
+                deploy)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
+                        '3:config-file:_files' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
+                        '(--debug -d)'{--debug,-d}'[debug the process of deployment]'
                     ;;
                 homepage)
                     _arguments \
@@ -168,13 +183,15 @@ function _ndk_pkg() {
                 tree)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
                         '-L[level]:level:(3)' \
                         '--dirsfirst[show dirs first]'
                     ;;
                 logs)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:abi:($(ndk-pkg ls-target-abis))'
+                        '2:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
+                        '3:abi:($(ndk-pkg ls-target-abis))'
                     ;;
                 install)
                     _arguments \
@@ -257,16 +274,25 @@ function _ndk_pkg() {
                         esac
                     ;;
                 uninstall)
-                    _arguments '*:package-name:_ndk_pkg_installed_packages' ;;
+                    _arguments \
+                        '*:package-name:_ndk_pkg_installed_packages' \
+                        '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
+                        ;;
                 is-available)
                     _arguments \
                         '1:package-name:_ndk_pkg_available_packages' \
                         '2:condition-operator:(eq ne ge gt le lt)'
                     ;;
                 is-installed)
-                    _arguments '1:package-name:_ndk_pkg_installed_packages' ;;
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:min-sdk-api-level:($(ndk-pkg ls-target-levels))'
+                        ;;
                 is-outdated)
-                    _arguments '1:package-name:_ndk_pkg_outdated_packages' ;;
+                    _arguments \
+                        '1:package-name:_ndk_pkg_outdated_packages' \
+                        '2:min-sdk-api-level:($(ndk-pkg ls-target-levels))'
+                        ;;
                 ldd)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \

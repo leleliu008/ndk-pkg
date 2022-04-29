@@ -3612,10 +3612,10 @@ __parse_require_dependency_item() {
 ##############################################################################
 # {{{ operations of formula
 
-# __load_formula_of_the_given_package <PACKAGE-NAME>
+# __load_formula_of_the_given_package <PACKAGE-NAME> [MIN-SDK-API-LEVEL]
   __load_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__load_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__load_formula_of_the_given_package <PACKAGE-NAME> [MIN-SDK-API-LEVEL], <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -3692,9 +3692,6 @@ __parse_require_dependency_item() {
     # dependency packages       List
     unset PACKAGE_DEP_PKG
 
-    # if depends on Android NDK
-    PACKAGE_DEP_NDK=yes
-
     unset PACKAGE_CDEFINE
     unset PACKAGE_CCFLAGS
     unset PACKAGE_XXFLAGS
@@ -3714,6 +3711,13 @@ __parse_require_dependency_item() {
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
     . "$PACKAGE_FORMULA_FILEPATH" || return 1
+
+    if [ -n "$PACKAGE_SDK_API" ] && [ -n "$2" ] ; then
+        if [ "$PACKAGE_SDK_API" -gt "$2" ] ; then
+            error "package [$1] supportted min sdk-api-level is $PACKAGE_SDK_API, but you want is $2"
+            return 1
+        fi
+    fi
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
@@ -4333,22 +4337,28 @@ __fetch_resources_of_the_given_package() {
     esac
 }
 
-# is_package_installed <PACKAGE-NAME>
+# is_package_installed <PACKAGE-NAME> <MIN-SDK-API-LEVEL>
   is_package_installed() {
     [ -z "$1" ] && {
-        error "is_package_installed <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "is_package_installed <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <PACKAGE-NAME> is not given."
         return 1
     }
 
-    [ -d "$MY_INSTALL_DIR/$1" ]                    || return 10
-    [ -f "$MY_INSTALL_DIR/$1/installed-metadata" ] || return 11
-    [ -f "$MY_INSTALL_DIR/$1/installed-files" ]    || return 12
-    [ -f "$MY_INSTALL_DIR/$1/installed-abis" ]     || return 13
+    [ -z "$2" ] && {
+        error "is_package_installed <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> is not given."
+        return 1
+    }
+
+    [ -d "$MY_INSTALL_DIR/android/$2/$1" ]                    || return 10
+    [ -f "$MY_INSTALL_DIR/android/$2/$1/installed-metadata" ] || return 11
+    [ -f "$MY_INSTALL_DIR/android/$2/$1/installed-files" ]    || return 12
+    [ -f "$MY_INSTALL_DIR/android/$2/$1/installed-abis" ]     || return 13
 }
 
-is_package__outdated() {
-    __load_formula_of_the_given_package "$1" &&
-    __load_installed_metadata_of_the_given_package "$1" &&
+# is_package__outdated <PACKAGE-NAME> <MIN-SDK-API-LEVEL>
+  is_package__outdated() {
+    __load_formula_of_the_given_package "$1" "$2" &&
+    __load_installed_metadata_of_the_given_package "$1" "$2" &&
     version_match "$PACKAGE_VERSION" gt "$INSTALLED_PACKAGE_VERSION"
 }
 
@@ -4466,85 +4476,193 @@ __list_available_packages() {
     done
 }
 
-__list_installed_packages() {
-    if [ -d "$MY_INSTALL_DIR" ] ; then
-         cd "$MY_INSTALL_DIR" 2>/dev/null
-    else
-        return 0
-    fi
+# __list_installed_packages [--min-sdk-api-level=<VALUE>]
+  __list_installed_packages() {
+    unset MIN_SDK_API_LEVEL
 
-    for packageName in *
+    while [ -n "$1" ]
     do
-        if is_package_installed "$packageName" ; then
-            printf '%s\n' "$packageName"
+        case "$1" in
+            --min-sdk-api-level=*)
+                MIN_SDK_API_LEVEL=$(getvalue "$1")
+                is_integer "$MIN_SDK_API_LEVEL" || die "--min-sdk-api-level=<VALUE>, <VALUE> must be a integer."
+                ;;
+            -x|--xtrace)
+                ;;
+            *)  die "__list_installed_packages [--min-sdk-api-level=<MIN-SDK-API-LEVEL>], unrecognized option: $1"
+        esac
+        shift
+    done
+
+    if [ -z "$MIN_SDK_API_LEVEL" ] ; then
+        if [ -d "$MY_INSTALL_DIR/android" ] ; then
+             cd "$MY_INSTALL_DIR/android" >/dev/null
+        else
+            return 0
         fi
-    done
-}
 
-__list__outdated_packages() {
-    if [ -d "$MY_INSTALL_DIR" ] ; then
-         cd "$MY_INSTALL_DIR" 2>/dev/null
+        for item in $(ls)
+        do
+            case $item in
+                [1-9][0-9])
+                    cd "$MY_INSTALL_DIR/android/$item" >/dev/null
+                    for fileName in $(ls)
+                    do
+                        is_package_installed "$fileName" "$item" || continue
+                        printf 'android/%s/%s\n' "$item" "$fileName"
+                    done
+            esac
+        done
     else
-        return 0
-    fi
+        if [ -d "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL" ] ; then
+             cd "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL" >/dev/null
+        else
+            return 0
+        fi
 
-    for packageName in *
-    do
-        is_package_available "$packageName" || continue
-        is_package_installed "$packageName" || continue
-        is_package__outdated "$packageName" || continue
-        printf '%s\n' "$packageName"
-    done
+        for fileName in $(ls)
+        do
+            is_package_installed "$fileName" "$MIN_SDK_API_LEVEL" || continue
+            printf 'android/%s/%s\n' "$MIN_SDK_API_LEVEL" "$fileName"
+        done
+    fi
 }
 
-# __tree_the_given_installed_package <PACKAGE-NAME>
+# __list__outdated_packages [--min-sdk-api-level=<VALUE>]
+  __list__outdated_packages() {
+    unset MIN_SDK_API_LEVEL
+
+    while [ -n "$1" ]
+    do
+        case "$1" in
+            --min-sdk-api-level=*)
+                MIN_SDK_API_LEVEL=$(getvalue "$1")
+                is_integer "$MIN_SDK_API_LEVEL" || die "--min-sdk-api-level=<VALUE>, <VALUE> must be a integer."
+                ;;
+            -x|--xtrace)
+                ;;
+            *)  die "__list__outdated_packages [--min-sdk-api-level=<MIN-SDK-API-LEVEL>], unrecognized option: $1"
+        esac
+        shift
+    done
+
+    if [ -z "$MIN_SDK_API_LEVEL" ] ; then
+        if [ -d "$MY_INSTALL_DIR/android" ] ; then
+             cd "$MY_INSTALL_DIR/android" >/dev/null
+        else
+            return 0
+        fi
+
+        for item in $(ls)
+        do
+            case $item in
+                [1-9][0-9])
+                    cd "$MY_INSTALL_DIR/android/$item" >/dev/null
+                    for fileName in $(ls)
+                    do
+                        is_package_available "$fileName"         || continue
+                        is_package_installed "$fileName" "$item" || continue
+                        is_package__outdated "$fileName" "$item" || continue
+                        printf 'android/%s/%s\n' "$item" "$fileName"
+                    done
+            esac
+        done
+    else
+        if [ -d "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL" ] ; then
+             cd "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL" >/dev/null
+        else
+            return 0
+        fi
+
+        for fileName in $(ls)
+        do
+            is_package_available "$fileName"                      || continue
+            is_package_installed "$fileName" "$MIN_SDK_API_LEVEL" || continue
+            is_package__outdated "$fileName" "$MIN_SDK_API_LEVEL" || continue
+            printf 'android/%s/%s\n' "$item" "$fileName"
+        done
+    fi
+}
+
+# __tree_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>
   __tree_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "__tree_the_given_installed_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__tree_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <PACKAGE-NAME> is not given."
         return 1
     }
 
-    is_package_installed "$1" || {
+    [ -z "$2" ] && {
+        error "__tree_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> is not given."
+        return 1
+    }
+
+    is_package_installed "$1" "$2" || {
         error "package [$1] is not installed."
         return 1
     }
 
     handle_dependency required exe tree || return 1
 
-    run tree $(shiftn 1 $@) "$MY_INSTALL_DIR/$1"
+    run tree $(shiftn 2 $@) "$MY_INSTALL_DIR/android/$2/$1"
 }
 
-__uninstall_the_given_packages() {
-    [ -z "$1" ] && {
-        error "__uninstall_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
-        return 1
-    }
+# __uninstall_the_given_packages <PACKAGE-NAME>... [--min-sdk-api-level=<MIN-SDK-API-LEVEL>]
+  __uninstall_the_given_packages() {
+    unset USER_SPECIFIED_PACKAGE_LIST
+    unset MIN_SDK_API_LEVEL
 
-    for packageName in $@
+    while [ -n "$1" ]
     do
-        __uninstall_the_given_package "$packageName"
+        case "$1" in
+            --min-sdk-api-level=*)
+                MIN_SDK_API_LEVEL=$(getvalue "$1")
+                is_integer "$MIN_SDK_API_LEVEL" || die "--min-sdk-api-level=<VALUE>, <VALUE> must be a integer."
+                ;;
+            -x|--xtrace)
+                ;;
+            -*) die "__uninstall_the_given_packages <PACKAGE-NAME>... [--min-sdk-api-level=<MIN-SDK-API-LEVEL>], unrecognized option: $1"
+                ;;
+            *)  USER_SPECIFIED_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST $1"
+        esac
+        shift
     done
-}
 
-__uninstall_the_given_package() {
-    [ -z "$1" ] && {
-        error "__uninstall_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && {
+        error "__uninstall_the_given_packages <PACKAGE-NAME>... [--min-sdk-api-level=<MIN-SDK-API-LEVEL>], <PACKAGE-NAME> is not given."
         return 1
     }
 
-    is_package_installed "$1" || {
-        error "package [$1] is not installed."
-        return 1
-    }
+    [ -d "$MY_INSTALL_DIR/android" ] || return 0
 
-    run rm -rf "$MY_INSTALL_DIR/$1"
+    if [ -z "$MIN_SDK_API_LEVEL" ] ; then
+        for item in $(ls)
+        do
+            case $item in
+                [1-9][0-9])
+                    for packageName in $USER_SPECIFIED_PACKAGE_LIST
+                    do
+                        if is_package_installed "$packageName" "$item" ; then
+                            run rm -rf "$MY_INSTALL_DIR/android/$item/$packageName"
+                        fi
+                    done
+            esac
+        done
+    else
+        for packageName in $USER_SPECIFIED_PACKAGE_LIST
+        do
+            if is_package_installed "$packageName" "$MIN_SDK_API_LEVEL" ; then
+                run rm -rf "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$packageName"
+            fi
+        done
+    fi
 }
 
-__reinstall_the_given_packages() {
+# __reinstall_the_given_packages <PACKAGE-NAME>... [OPTIONS]
+  __reinstall_the_given_packages() {
     inspect_install_arguments $@
 
     [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && {
-        error "$_0 reinstall <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+        error "$_0 reinstall <PACKAGE-NAME>... [OPTIONS], <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -4554,7 +4672,8 @@ __reinstall_the_given_packages() {
             error "package [$packageName] is not available."
             return 1
         }
-        is_package_installed "$packageName" || {
+
+        is_package_installed "$packageName" "$MIN_SDK_API_LEVEL" || {
             error "package [$packageName] is not installed."
             return 1
         }
@@ -4568,7 +4687,7 @@ __reinstall_the_given_packages() {
             install -d "$MY_BACKUP_DIR"
         fi
 
-        mv "$MY_INSTALL_DIR/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE"
+        mv "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE"
 
         (__install_the_given_package "$INSTALLING_PACKAGE")
 
@@ -4580,7 +4699,11 @@ __upgrade_packages() {
     inspect_install_arguments $@
 
     if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
-        USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
+        if [ -z "$MIN_SDK_API_LEVEL" ] ; then
+            USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
+        else
+            USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages --min-sdk-api-level=$MIN_SDK_API_LEVEL)
+        fi
     fi
 
     for packageName in $USER_SPECIFIED_PACKAGE_LIST
@@ -4589,7 +4712,8 @@ __upgrade_packages() {
             error "package [$packageName] is not available."
             return 1
         }
-        is_package_installed "$packageName" || {
+
+        is_package_installed "$packageName" "$MIN_SDK_API_LEVEL" || {
             error "package [$packageName] is not installed."
             return 1
         }
@@ -4859,18 +4983,12 @@ __show_packages_depended_by_the_given_package() {
             else
                 for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
                 do
-                    if is_package_installed "$DEPENDENCY_PACKAGE_NAME" ; then
-                        DEPENDENCY_PACKAGE_IS_INSTALLED='installed:yes'
-                    else
-                        DEPENDENCY_PACKAGE_IS_INSTALLED='installed:no '
-                    fi
-
                     unset DEPENDENCY_PACKAGE_DIRECT_DEPS
                     DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME")
                     DEPENDENCY_PACKAGE_DIRECT_DEPS=$(printf '%s\n' "$DEPENDENCY_PACKAGE_DIRECT_DEPS" | tr ' ' ',')
 
                     unset LINE
-                    LINE=$(printf '%-15s %-15s dependencies:%s\n' "$DEPENDENCY_PACKAGE_NAME" "$DEPENDENCY_PACKAGE_IS_INSTALLED" "$DEPENDENCY_PACKAGE_DIRECT_DEPS")
+                    LINE=$(printf 'name:%-15s dependencies:%s\n' "$DEPENDENCY_PACKAGE_NAME" "$DEPENDENCY_PACKAGE_DIRECT_DEPS")
                     if [ -z "$OUTPUT_CONTENT" ] ; then
                         OUTPUT_CONTENT="$LINE"
                     else
@@ -4911,16 +5029,10 @@ $LINE"
             else
                 for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
                 do
-                    if is_package_installed "$DEPENDENCY_PACKAGE_NAME" ; then
-                        DEPENDENCY_PACKAGE_IS_INSTALLED=true
-                    else
-                        DEPENDENCY_PACKAGE_IS_INSTALLED=false
-                    fi
-
                     unset DEPENDENCY_PACKAGE_DIRECT_DEPS
                     DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME" | tr ' ' ',')
 
-                    JSON_ARRAY="$JSON_ARRAY{\"name\":\"$DEPENDENCY_PACKAGE_NAME\",\"installed\":$DEPENDENCY_PACKAGE_IS_INSTALLED,\"dependencies\":\"$DEPENDENCY_PACKAGE_DIRECT_DEPS\"},"
+                    JSON_ARRAY="$JSON_ARRAY{\"name\":\"$DEPENDENCY_PACKAGE_NAME\",\"dependencies\":\"$DEPENDENCY_PACKAGE_DIRECT_DEPS\"},"
                 done
             fi
 
@@ -4966,26 +5078,33 @@ $LINE"
     esac
 }
 
-# __logs_the_given_installed_package <PACKAGE-NAME> <ABI>
+# __logs_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <ABI>
 __logs_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "$_0 logs <PACKAGE-NAME> <ABI>, <PACKAGE-NAME> is not given."
-        return 1
-    }
-
-    is_package_installed "$1" || {
-        error "package [$1] is not installed."
+        error "$_0 logs <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <ABI>, <PACKAGE-NAME> is not given."
         return 1
     }
 
     [ -z "$2" ] && {
-        error "$_0 logs <PACKAGE-NAME> <ABI>, <ABI> is not given."
+        error "$_0 logs <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <ABI>, <MIN-SDK-API-LEVEL> is not given."
         return 1
     }
 
-    for ABI in $(cat "$MY_INSTALL_DIR/$1/installed-abis")
+    is_package_installed "$1" "$2" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
+    [ -z "$3" ] && {
+        error "$_0 logs <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <ABI>, <ABI> is not given."
+        return 1
+    }
+
+    PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/android/$2/$1"
+
+    for ABI in $(cat "$PACKAGE_INSTALLED_DIR/installed-abis")
     do
-        if [ "$ABI" = "$2" ] ; then
+        if [ "$ABI" = "$3" ] ; then
             break
         else
             unset ABI
@@ -4993,7 +5112,7 @@ __logs_the_given_installed_package() {
     done
 
     [ -z "$ABI" ] && {
-        error "$_0 logs <PACKAGE-NAME> <ABI>, unsupported ABI: $2"
+        error "$_0 logs <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <ABI>, unsupported ABI: $2"
         return 1
     }
 
@@ -5004,6 +5123,7 @@ __logs_the_given_installed_package() {
     fi
 
     __logs_the_given_dir() {
+        [ -d "$1" ] || return 0
         for item in $(ls "$1")
         do
             item="$1/$item"
@@ -5023,28 +5143,32 @@ __logs_the_given_installed_package() {
         done
     }
 
-    __logs_the_given_dir "$MY_INSTALL_DIR/$1"
-    __logs_the_given_dir "$MY_INSTALL_DIR/$1/$2/share/log"
+    __logs_the_given_dir "$PACKAGE_INSTALLED_DIR"
+    __logs_the_given_dir "$PACKAGE_INSTALLED_DIR/$3/share/log"
 
     if [ "$VIEWER" != 'bat' ] ; then
         prompt_user_to_install_bat
     fi
 }
 
-# __pack_the_given_installed_package <PACKAGE-NAME> <TYPE> [--keep-work-dir]
-# __pack_the_given_installed_package    autoconf    tar.xz
+# __pack_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE> [--keep-work-dir]
+# __pack_the_given_installed_package    autoconf             21         tar.xz
   __pack_the_given_installed_package() {
-    __load_installed_metadata_of_the_given_package "$1"
+    __load_installed_metadata_of_the_given_package "$1" "$2"
 
-    for option in $(shiftn 2 $@)
+    for option in $(shiftn 3 $@)
     do
         case $option in
-            --keep-work-dir) KEEP_WORKING_DIR=yes ;;
-            *) break
+            --keep-work-dir)
+                KEEP_WORKING_DIR=yes
+                ;;
+            -x|--xtrace)
+                ;;
+            *)  die "$_0 pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE> [--keep-work-dir], unrecognized option: $option"
         esac
     done
 
-    case $2 in
+    case $3 in
         aar)
             __create_prefab_aar_for_the_given_installed_package $@
             return $?
@@ -5066,8 +5190,8 @@ __logs_the_given_installed_package() {
             handle_dependency required exe tar
             handle_dependency required exe bzip2
             ;;
-        '')die "$_0 pack <PACKAGE-NAME> <TYPE>, <TYPE> must not be empty." ;;
-        *) die "$_0 pack <PACKAGE-NAME> <TYPE>, unsupported TYPE: $2, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
+        '')die "$_0 pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, <TYPE> must not be empty." ;;
+        *) die "$_0 pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, unsupported TYPE: $2, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
     esac
 
     unset PACKED_DIR_NAME
@@ -5079,7 +5203,7 @@ __logs_the_given_installed_package() {
         PACKED_DIR_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_PACKAGE_VERSION"
     fi
 
-    PACKED_FILE_NAME="$PACKED_DIR_NAME.$2"
+    PACKED_FILE_NAME="$PACKED_DIR_NAME.$3"
 
     step "create working directory"
     printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
@@ -5089,10 +5213,10 @@ __logs_the_given_installed_package() {
     run cd $WORKING_DIR
 
     step "make link point to installed package root dir"
-    run ln -s "$MY_INSTALL_DIR/$INSTALLED_PACKAGE_NAME" "$PACKED_DIR_NAME"
+    run ln -s "$MY_INSTALL_DIR/android/$INSTALLED_PACKAGE_SDK_API/$INSTALLED_PACKAGE_NAME" "$PACKED_DIR_NAME"
 
     step "packing"
-    case $2 in
+    case $3 in
         7z)  run 7za a -t7z -r "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
         zip) run zip -9 -r     "$PACKED_FILE_NAME" "$PACKED_DIR_NAME"   ;;
         tar.gz)  run tar zvcf  "$PACKED_FILE_NAME" "$PACKED_DIR_NAME/*" ;;
@@ -5101,7 +5225,7 @@ __logs_the_given_installed_package() {
     esac
 
     step "check integrity of packed file"
-    case $2 in
+    case $3 in
         7z)    run 7za t -t7z "$PACKED_FILE_NAME" ;;
         zip)   run unzip -t   "$PACKED_FILE_NAME" ;;
         tar.*) run tar   -tf  "$PACKED_FILE_NAME" ;;
@@ -5110,13 +5234,15 @@ __logs_the_given_installed_package() {
     step "show size of packed file"
     run "du -sh $PACKED_FILE_NAME | cut -f1"
 
-    if [ ! -d "$MY_BINARY_DIR" ] ; then
+    PACKED_FILE_CACHE_DIR="$MY_BINARY_DIR/android/$INSTALLED_PACKAGE_SDK_API"
+
+    [ -d "$PACKED_FILE_CACHE_DIR" ] || {
         step "create cached binary dir"
-        run install -d "$MY_BINARY_DIR"
-    fi
+        run install -d "$PACKED_FILE_CACHE_DIR"
+    }
 
     step "copy packed file to cache dir"
-    run cp "$PACKED_FILE_NAME" "$MY_BINARY_DIR/"
+    run cp "$PACKED_FILE_NAME" "$PACKED_FILE_CACHE_DIR/"
 
     if [ "$KEEP_WORKING_DIR" = yes ] ; then
         echo
@@ -5129,20 +5255,20 @@ __logs_the_given_installed_package() {
 
 # https://developer.android.com/studio/projects/android-library#aar-contents
 #
-# __create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME>
-# __create_prefab_aar_for_the_given_installed_package       v8
+# __create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>
+# __create_prefab_aar_for_the_given_installed_package       v8                21
   __create_prefab_aar_for_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "__create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <PACKAGE-NAME> is not given."
         return 1
     }
 
-    is_package_installed "$1" || {
-        error "package [$1] is not installed."
+    [ -z "$2" ] && {
+        error "__create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> is not given."
         return 1
     }
 
-    __load_installed_metadata_of_the_given_package "$1"
+    __load_installed_metadata_of_the_given_package "$1" "$2"
 
     unset PACKAGE_HAVE_INCLUDE
     unset PACKAGE_HAVE_LIBRARY
@@ -5151,7 +5277,7 @@ __logs_the_given_installed_package() {
     unset PACKAGE_INSTALLED_ABIS
     unset PACKAGE_INSTALLED_LIBS
 
-    PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/$1"
+    PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/android/$2/$1"
 
     PACKAGE_INSTALLED_ABIS="$(cat "$PACKAGE_INSTALLED_DIR/installed-abis")"
 
@@ -5361,40 +5487,45 @@ EOF
 
 # https://central.sonatype.org/publish/release/
 # https://central.sonatype.org/publish/requirements/
-# __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package <PACKAGE-NAME> <CONFIG-FILE-PATH> [-d] [-x]
+# __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH> [-d] [-x]
   __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "$_0 deploy <PACKAGE-NAME> <CONFIG-FILE-PATH>, <PACKAGE-NAME> is not given."
-        return 1
-    }
-
-    is_package_installed "$1" || {
-        error "package [$1] is not installed."
+        error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <PACKAGE-NAME> is not given."
         return 1
     }
 
     [ -z "$2" ] && {
-        error "$_0 deploy <PACKAGE-NAME> <CONFIG-FILE-PATH>, <CONFIG-FILE-PATH> is not given."
+        error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <MIN-SDK-API-LEVEL> is not given."
         return 1
     }
 
-    [ -e "$2" ] || die "file is not exist: $2"
+    is_package_installed "$1" "$2" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
+    [ -z "$3" ] && {
+        error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <CONFIG-FILE-PATH> is not given."
+        return 1
+    }
+
+    [ -e "$3" ] || die "file is not exist: $3"
 
     unset OSSRH_REPO_URL
     unset OSSRH_USERNAME
     unset OSSRH_PASSWORD
     unset GPG_PASSPHRASE
 
-    . "$2"
+    . "$3"
 
-    [ -z "$OSSRH_REPO_URL" ] && die "OSSRH_REPO_URL must be set in $2"
-    [ -z "$OSSRH_USERNAME" ] && die "OSSRH_USERNAME must be set in $2"
-    [ -z "$OSSRH_PASSWORD" ] && die "OSSRH_PASSWORD must be set in $2"
-    [ -z "$GPG_PASSPHRASE" ] && die "GPG_PASSPHRASE must be set in $2"
+    [ -z "$OSSRH_REPO_URL" ] && die "OSSRH_REPO_URL must be set in $3"
+    [ -z "$OSSRH_USERNAME" ] && die "OSSRH_USERNAME must be set in $3"
+    [ -z "$OSSRH_PASSWORD" ] && die "OSSRH_PASSWORD must be set in $3"
+    [ -z "$GPG_PASSPHRASE" ] && die "GPG_PASSPHRASE must be set in $3"
 
     unset DEBUG
 
-    for option in $(shiftn 2 $@)
+    for option in $(shiftn 3 $@)
     do
         case $option in
             -d|--debug)
@@ -5468,10 +5599,10 @@ EOF
         unset DEVELOPER_ORGANIZATION_NAME
         unset DEVELOPER_ORGANIZATION_WEBPAGE
 
-        DEVELOPER_NAME="$( printf '%s\n' "$DEVELOPER" | cut -d ';' -f1 | tr '+' ' ')"
-        DEVELOPER_EMAIL="$(printf '%s\n' "$DEVELOPER" | cut -d ';' -f2)"
-        DEVELOPER_ORGANIZATION_NAME="$(printf '%s\n' "$DEVELOPER" | cut -d ';' -f3 | tr '+' ' ')"
-        DEVELOPER_ORGANIZATION_WEBPAGE="$(printf '%s\n' "$DEVELOPER" | cut -d ';' -f4)"
+        DEVELOPER_NAME="$( printf '%s\n' "$DEVELOPER" | cut -d '|' -f1 | tr '+' ' ')"
+        DEVELOPER_EMAIL="$(printf '%s\n' "$DEVELOPER" | cut -d '|' -f2)"
+        DEVELOPER_ORGANIZATION_NAME="$(printf '%s\n' "$DEVELOPER" | cut -d '|' -f3 | tr '+' ' ')"
+        DEVELOPER_ORGANIZATION_WEBPAGE="$(printf '%s\n' "$DEVELOPER" | cut -d '|' -f4)"
 
         if [ -z "$DEVELOPER_NAME" ] ; then
             DEVELOPER_NAME="$INSTALLED_PACKAGE_NAME developers"
@@ -5511,9 +5642,9 @@ EOF
         unset LICENSE_URL_
 
         case $item in
-            *\;*)
-                LICENSE_NAME=$(printf '%s\n' "$item" | cut -d ';' -f1)
-                LICENSE_URL_=$(printf '%s\n' "$item" | cut -d ';' -f3)
+            *\|*)
+                LICENSE_NAME=$(printf '%s\n' "$item" | cut -d '|' -f1)
+                LICENSE_URL_=$(printf '%s\n' "$item" | cut -d '|' -f3)
                 if [ -z "$LICENSE_NAME" ] ; then
                     LICENSE_NAME="$INSTALLED_PACKAGE_NAME License"
                 fi
@@ -5794,7 +5925,7 @@ __install_the_given_packages() {
 
     for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
     do
-        if is_package_installed "$INSTALLING_PACKAGE" ; then
+        if is_package_installed "$INSTALLING_PACKAGE" "$MIN_SDK_API_LEVEL" ; then
             if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
                 printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$INSTALLING_PACKAGE"
             fi
@@ -5816,6 +5947,7 @@ __install_the_given_package() {
     unset PACKAGE_WORKING_DIR
     unset PACKAGE_SRC_DIR
     unset PACKAGE_BSCRIPT_DIR
+    unset PACKAGE_INSTALL_DIR
 
     unset NATIVE_BUILD_DIR
     unset NATIVE_INSTALL_DIR
@@ -5826,8 +5958,10 @@ __install_the_given_package() {
     unset TARGET_INDEX
     unset TARGET_ITEM
 
+    PACKAGE_INSTALL_DIR="$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$1"
+
     __install_the_given_package_on_exit() {
-        is_package_installed "$INSTALLING_PACKAGE" && return 0
+        is_package_installed "$INSTALLING_PACKAGE" "$MIN_SDK_API_LEVEL" && return 0
 
         if [ -z "$PACKAGE_WORKING_DIR" ] ; then
             die "package [$INSTALLING_PACKAGE] install failed!"
@@ -5851,14 +5985,9 @@ __install_the_given_package() {
     __view_formula_of_the_given_package "$1" --paging=never
 
     step "load formula"
-    __load_formula_of_the_given_package "$1"
+    __load_formula_of_the_given_package "$1" "$MIN_SDK_API_LEVEL"
 
-    if [ "$PACKAGE_DEP_NDK" = yes ] ; then
-        step "find Android NDK"
-        setup_build_toolchains_env
-    fi
-
-    calculate_TARGET_OS_VERS "$PACKAGE_NAME" "$PACKAGE_SDK_API" "$USER_EXPECTED_TARGET_OS_VERS"
+    TARGET_OS_VERS="$MIN_SDK_API_LEVEL"
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
         PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD ccache"
@@ -5927,7 +6056,7 @@ __install_the_given_package() {
         bppend_to_PATH "$PERL_HOME/bin"
     fi
 
-    PACKAGE_WORKING_DIR="$MY_HOME_DIR/installing.d/$1"
+    PACKAGE_WORKING_DIR="$MY_HOME_DIR/installing.d/android/$MIN_SDK_API_LEVEL/$1"
     PACKAGE_SRC_DIR="$PACKAGE_WORKING_DIR/src"
 
     step "create working directory"
@@ -6056,9 +6185,9 @@ __install_the_given_package() {
             I=$(expr "$I" + 1)
 
             case $item in
-                *\;*)
-                    LICENSE_PATH="$(printf '%s\n' "$item" | cut -d ';' -f2)"
-                    LICENSE_URL_="$(printf '%s\n' "$item" | cut -d ';' -f3)"
+                *\|*)
+                    LICENSE_PATH="$(printf '%s\n' "$item" | cut -d '|' -f2)"
+                    LICENSE_URL_="$(printf '%s\n' "$item" | cut -d '|' -f3)"
                     ;;
                 *)  LICENSE_URL_="https://raw.githubusercontent.com/spdx/license-list-data/master/text/$item.txt"
             esac
@@ -6208,20 +6337,20 @@ EOF
         for file in $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT $PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG
         do
             if [    -f "$file" ] ; then
-                run cp "$file" "$MY_INSTALL_DIR/$1"
+                run cp "$file" "$PACKAGE_INSTALL_DIR"
             fi
         done
     fi
 
     step "install licenses"
-    run cp -r "$PACKAGE_WORKING_DIR/LICENSE[1-9]" "$MY_INSTALL_DIR/$1"
+    run cp -r "$PACKAGE_WORKING_DIR/LICENSE[1-9]" "$PACKAGE_INSTALL_DIR"
 
-    if [ -f "$MY_INSTALL_DIR/$1/LICENSE1" ] && [ ! -f "$MY_INSTALL_DIR/$1/LICENSE2" ] ; then
-        mv  "$MY_INSTALL_DIR/$1/LICENSE1" "$MY_INSTALL_DIR/$1/LICENSE"
+    if [ -f "$PACKAGE_INSTALL_DIR/LICENSE1" ] && [ ! -f "$PACKAGE_INSTALL_DIR/LICENSE2" ] ; then
+        mv  "$PACKAGE_INSTALL_DIR/LICENSE1" "$PACKAGE_INSTALL_DIR/LICENSE"
     fi
 
     step "record installed abis"
-    run cp "$PACKAGE_WORKING_DIR/installed-abis" "$MY_INSTALL_DIR/$1/installed-abis"
+    run cp "$PACKAGE_WORKING_DIR/installed-abis" "$PACKAGE_INSTALL_DIR/installed-abis"
 
     step "record installed metadata"
     __record_installed_metadata_of_the_given_package "$1"
@@ -6243,7 +6372,7 @@ EOF
     fi
 
     step "list installed files in a tree-like format"
-    __tree_the_given_installed_package "$1" $TREE_ARGS
+    __tree_the_given_installed_package "$1" "$MIN_SDK_API_LEVEL" $TREE_ARGS
 
     echo
     success "$1 installed successfully."
@@ -6285,7 +6414,7 @@ __install_the_given_package_for_the_given_target() {
 
         for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
         do
-            DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR="$MY_INSTALL_DIR/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI/lib"
+            DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR="$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI/lib"
             if [ -d "$DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR" ] ; then
                 cd  "$DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR"
                 for item in $(find . -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -exec basename {} \;)
@@ -6983,7 +7112,6 @@ PACKAGE_DEP_CMD
 PACKAGE_DEP_PYM
 PACKAGE_DEP_PLM
 PACKAGE_DEP_PKG
-PACKAGE_DEP_NDK
 PACKAGE_CDEFINE
 PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
@@ -7009,7 +7137,7 @@ EOF
 # __show_infomation_of_the_given_package curl webpage
   __show_infomation_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__show_infomation_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__show_infomation_of_the_given_package <PACKAGE-NAME> [ARGUMENTS], <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -7018,6 +7146,7 @@ EOF
     esac
 
     unset SHOW_INFOMATION_ARGS
+    unset MIN_SDK_API_LEVEL
 
     for arg in $@
     do
@@ -7025,6 +7154,10 @@ EOF
             "$1")
                 ;;
             -x|--xtrace)
+                ;;
+            --min-sdk-api-level=*)
+                MIN_SDK_API_LEVEL=$(getvalue "$arg")
+                is_integer "$MIN_SDK_API_LEVEL" || die "--min-sdk-api-level=<VALUE>, <VALUE> must be a integer."
                 ;;
             *)  if [ -z "$SHOW_INFOMATION_ARGS" ] ; then
                     SHOW_INFOMATION_ARGS="$arg"
@@ -7048,63 +7181,56 @@ EOF
             __path_of_formula_of_the_given_package "$1"
             ;;
         installed-dir)
-            if is_package_installed "$1" ; then
-                printf '%s\n' "$MY_INSTALL_DIR/$1"
+            if is_package_installed "$1" "$MIN_SDK_API_LEVEL" ; then
+                printf '%s\n' "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$1"
             else
                 error "package [$1] is not installed."
                 return 1
             fi
             ;;
         installed-abis)
-            if is_package_installed "$1" ; then
-                cat "$MY_INSTALL_DIR/$1/installed-abis"
+            if is_package_installed "$1" "$MIN_SDK_API_LEVEL" ; then
+                cat "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$1/installed-abis"
             else
                 error "package [$1] is not installed."
                 return 1
             fi
             ;;
-        installed-metadata)
-            if is_package_installed "$1" ; then
-                cat "$MY_INSTALL_DIR/$1/installed-metadata"
+        installed-metadata-raw)
+            if is_package_installed "$1" "$MIN_SDK_API_LEVEL" ; then
+                cat "$MY_INSTALL_DIR/$1/android/$MIN_SDK_API_LEVEL/installed-metadata"
+            else
+                error "package [$1] is not installed."
+                return 1
+            fi
+            ;;
+        installed-metadata-json)
+            if is_package_installed "$1" "$MIN_SDK_API_LEVEL" ; then
+                cat "$MY_INSTALL_DIR/$1/android/$MIN_SDK_API_LEVEL/installed-metadata"
             else
                 error "package [$1] is not installed."
                 return 1
             fi
             ;;
         installed-files)
-            if is_package_installed "$1" ; then
-                cat "$MY_INSTALL_DIR/$1/installed-files"
+            if is_package_installed "$1" "$MIN_SDK_API_LEVEL" ; then
+                cat "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$1/installed-files"
             else
                 error "package [$1] is not installed."
                 return 1
             fi
             ;;
         installed-datetime-unix)
-            if is_package_installed "$1" ; then
-                __load_installed_metadata_of_the_given_package "$1" &&
-                printf '%s\n' "$INSTALLED_TIMESTAMP_UNIX"
-            else
-                error "package [$1] is not installed."
-                return 1
-            fi
+            __load_installed_metadata_of_the_given_package "$1" "$MIN_SDK_API_LEVEL"
+            printf '%s\n' "$INSTALLED_TIMESTAMP_UNIX"
             ;;
         installed-datetime-formatted)
-            if is_package_installed "$1" ; then
-                __load_installed_metadata_of_the_given_package "$1" &&
-                format_unix_timestamp "$INSTALLED_TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S'
-            else
-                error "package [$1] is not installed."
-                return 1
-            fi
+            __load_installed_metadata_of_the_given_package "$1" "$MIN_SDK_API_LEVEL"
+            format_unix_timestamp "$INSTALLED_TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S'
             ;;
         installed-pkg-version)
-            if is_package_installed "$1" ; then
-                __load_installed_metadata_of_the_given_package "$1" &&
-                printf '%s\n' "$INSTALLED_PACKAGE_VERSION"
-            else
-                error "package [$1] is not installed."
-                return 1
-            fi
+            __load_installed_metadata_of_the_given_package "$1" "$MIN_SDK_API_LEVEL"
+            printf '%s\n' "$INSTALLED_PACKAGE_VERSION"
             ;;
         '') __show_infomation_as_mixed_of_the_given_package $@
             ;;
@@ -7160,9 +7286,9 @@ depends : $DEPENDENCY_PACKAGE_NAME_LIST"
 
     unset OUTPUT_CONTENT
 
-    is_package_installed "$1" || return 0
+    is_package_installed "$1" "$MIN_SDK_API_LEVEL" || return 0
 
-    __load_installed_metadata_of_the_given_package "$1" || return 1
+    __load_installed_metadata_of_the_given_package "$1" "$MIN_SDK_API_LEVEL" || return 1
 
     OUTPUT_CONTENT="
 installed:
@@ -7208,7 +7334,7 @@ installed:
 }
 
 mark_is_package_installed_or_not() {
-    if is_package_installed "$1" ; then
+    if is_package_installed "$1" "$MIN_SDK_API_LEVEL" ; then
         printf '%b\n' "${COLOR_GREEN}$1${COLOR_OFF}"
     else
         printf '%b\n' "${COLOR_RED}$1${COLOR_OFF}"
@@ -7217,7 +7343,7 @@ mark_is_package_installed_or_not() {
 
 __record_installed_files_of_the_given_package() {
     if [ -z "$2" ] ; then
-        INSTALLED_FILES_FILEPATH="$MY_INSTALL_DIR/$1/installed-files"
+        INSTALLED_FILES_FILEPATH="$PACKAGE_INSTALL_DIR/installed-files"
         printf '%s\n' "-- Installing: $INSTALLED_FILES_FILEPATH"
 
         touch "$INSTALLED_FILES_FILEPATH"
@@ -7226,11 +7352,11 @@ __record_installed_files_of_the_given_package() {
         # TODO
         exec 7> "$INSTALLED_FILES_FILEPATH"
 
-        __record_installed_files_of_the_given_package "$1" "$MY_INSTALL_DIR/$1"
+        __record_installed_files_of_the_given_package "$1" "$PACKAGE_INSTALL_DIR"
 
         exec 7>&-
 
-        sed_in_place "s|$MY_INSTALL_DIR/$1/||" "$INSTALLED_FILES_FILEPATH"
+        sed_in_place "s|$PACKAGE_INSTALL_DIR/||" "$INSTALLED_FILES_FILEPATH"
     else
         for file in $(ls $2)
         do
@@ -7251,7 +7377,7 @@ __record_installed_files_of_the_given_package() {
         return 1
     }
 
-    INSTALLED_METADATA_FILEPATH="$MY_INSTALL_DIR/$1/installed-metadata"
+    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/installed-metadata"
 
     printf '%b\n' "-- Installing: $INSTALLED_METADATA_FILEPATH"
 
@@ -7296,14 +7422,19 @@ BUILD_USE_TOOLCHAIN_VERS='$TOOLCHAIN_VERS'
 EOF
 }
 
-# __load_installed_metadata_of_the_given_package <PACKAGE-NAME>
+# __load_installed_metadata_of_the_given_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>
   __load_installed_metadata_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__load_installed_metadata_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
+        error "__load_installed_metadata_of_the_given_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <PACKAGE-NAME> is not given."
         return 1
     }
 
-    is_package_installed "$1" || {
+    [ -z "$2" ] && {
+        error "__load_installed_metadata_of_the_given_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> is not given."
+        return 1
+    }
+
+    is_package_installed "$1" "$2" || {
         error "package [$1] is not installed."
         return 1
     }
@@ -7343,7 +7474,9 @@ EOF
     unset BUILD_USE_TOOLCHAIN_NAME
     unset BUILD_USE_TOOLCHAIN_VERS
 
-    INSTALLED_METADATA_FILEPATH="$MY_INSTALL_DIR/$1/installed-metadata"
+    PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/android/$2/$1"
+
+    INSTALLED_METADATA_FILEPATH="$PACKAGE_INSTALLED_DIR/installed-metadata"
 
     . "$INSTALLED_METADATA_FILEPATH" || return 1
 
@@ -7472,7 +7605,7 @@ __config_variables_for_the_given_target() {
 
     for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
     do
-        DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR="$MY_INSTALL_DIR/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI"
+        DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR="$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI"
         DEPENDENCY_PACKAGE_TARGET_INSTALLED_INCLUDE_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/include"
         DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/lib"
         DEPENDENCY_PACKAGE_TARGET_INSTALLED_PKGCONF_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/lib/pkgconfig"
@@ -7519,7 +7652,7 @@ __config_variables_for_the_given_target() {
 
     TARGET_WORKING_DIR="$PACKAGE_WORKING_DIR/$TARGET_OS_ABI"
     TARGET_BUILD_DIR="$TARGET_WORKING_DIR/build"
-    TARGET_INSTALL_DIR="$MY_INSTALL_DIR/$1/$TARGET_OS_ABI"
+    TARGET_INSTALL_DIR="$PACKAGE_INSTALL_DIR/$TARGET_OS_ABI"
 
     CPPFLAGS="-I$TARGET_WORKING_DIR/include -I$PACKAGE_WORKING_DIR $CPPFLAGS"
      LDFLAGS="-L$TARGET_WORKING_DIR/lib     -L$PACKAGE_WORKING_DIR  $LDFLAGS"
@@ -8557,7 +8690,7 @@ list_all_installed_libs() {
 
     for item in *
     do
-        if is_package_installed "$item" ; then
+        if is_package_installed "$item" "$MIN_SDK_API_LEVEL" ; then
             if [ -d  "$MY_INSTALL_DIR/$item/libs" ] ; then
                 find "$MY_INSTALL_DIR/$item/libs" -name "lib*\.a"
             fi
@@ -8573,7 +8706,7 @@ __ldd() {
         return 1
     }
 
-    is_package_installed "$1" || {
+    is_package_installed "$1" "$MIN_SDK_API_LEVEL" || {
         error "package [$1] is not installed."
         return 1
     }
@@ -8597,7 +8730,7 @@ __ldd() {
             return 1
         }
 
-        is_package_installed "$1" || {
+        is_package_installed "$1" "$MIN_SDK_API_LEVEL" || {
             error "package [$1] is not installed."
             return 1
         }
@@ -8630,7 +8763,7 @@ __ldd() {
         return 1
     }
 
-    is_package_installed "$1" || {
+    is_package_installed "$1" "$MIN_SDK_API_LEVEL" || {
         error "package [$1] is not installed."
         return 1
     }
@@ -8757,31 +8890,6 @@ list_flags_used_by_tools_in_the_toolchain() {
     }
 
     printf '%s\n' "$TOOL_FILEPATH"
-}
-
-# calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER-EXPECTED-TARGET_OS_VERS>
-  calculate_TARGET_OS_VERS() {
-    if [ -z "$1" ] ; then
-        error "calculate_TARGET_OS_VERS <PACKAGE-NAME> <MIN-SDK-API-LEVEL-CONFIGED-IN-FORMULA> <USER-EXPECTED-TARGET_OS_VERS>, <PACKAGE-NAME> is not given."
-        return 1
-    fi
-
-    if [ -z "$2" ] ; then
-        calculate_TARGET_OS_VERS "$1" "$(__list_supported_target_sdk_api_levels | head -n 1)" $3
-    else
-        unset TARGET_OS_VERS
-
-        if [ -z "$3" ] ; then
-            TARGET_OS_VERS="$2"
-        else
-            if [ "$2" -gt "$3" ] ; then
-                error "package [$1] supportted min-sdk-api-level is $2, but you want is $3"
-                return 1
-            else
-                TARGET_OS_VERS="$3"
-            fi
-        fi
-    fi
 }
 
 ndk_version() {
@@ -9271,7 +9379,7 @@ inspect_install_arguments() {
     unset TARGET_ARCH
 
     # https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element#api-level-table
-    unset USER_EXPECTED_TARGET_OS_VERS
+    unset MIN_SDK_API_LEVEL
 
     unset USER_SPECIFIED_PACKAGE_LIST
 
@@ -9312,8 +9420,8 @@ inspect_install_arguments() {
     do
         case "$1" in
             --min-sdk-api-level=*)
-                USER_EXPECTED_TARGET_OS_VERS=$(getvalue "$1")
-                is_integer "$USER_EXPECTED_TARGET_OS_VERS" || die "--min-sdk-api-level=<VALUE>, <VALUE> must be a integer."
+                MIN_SDK_API_LEVEL=$(getvalue "$1")
+                is_integer "$MIN_SDK_API_LEVEL" || die "--min-sdk-api-level=<VALUE>, <VALUE> must be a integer."
                 ;;
             --china)
                 ;;
@@ -9409,6 +9517,12 @@ inspect_install_arguments() {
 
     if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_DEBUG" ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
+    fi
+
+    setup_build_toolchains_env
+
+    if [ -z "$MIN_SDK_API_LEVEL" ] ; then
+        MIN_SDK_API_LEVEL=$(__list_supported_target_sdk_api_levels | head -n 1)
     fi
 
     unset TARGET_LIST
@@ -9791,9 +9905,9 @@ main() {
         ls-target-archs)   shift; __list_supported_target_archs ;;
         ls-target-abis)    shift; __list_supported_target_abis ;;
 
-        ls-available) shift; __list_available_packages ;;
-        ls-installed) shift; __list_installed_packages ;;
-        ls-outdated)  shift; __list__outdated_packages ;;
+        ls-available) shift; __list_available_packages $@ ;;
+        ls-installed) shift; __list_installed_packages $@ ;;
+        ls-outdated)  shift; __list__outdated_packages $@ ;;
 
         is-available) shift; is_package_available $@ ;;
         is-installed) shift; is_package_installed $@ ;;
@@ -9921,6 +10035,7 @@ main() {
                 maven)
                     __compare_versions_with_maven_central
                     ;;
+                '') die "$_0 compare-versions <brew|maven>, brew or maven subcommand is not given." ;;
                 *)  die "unrecognized argument: $1"
             esac
             ;;

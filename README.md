@@ -182,21 +182,52 @@ endif()
         ndk-pkg info curl webpage
         ndk-pkg info curl git.url
         ndk-pkg info curl src.url
-        ndk-pkg info curl installed-dir
-        ndk-pkg info curl installed-metadata
-        ndk-pkg info curl installed-datetime-unix
-        ndk-pkg info curl installed-datetime-formatted
-        ndk-pkg info curl installed-pkg-version
-        ndk-pkg info curl installed-files
-        ndk-pkg info curl installed-abis
+
+        ndk-pkg info curl installed-dir                    --min-sdk-api-level=21
+        ndk-pkg info curl installed-metadata-filepath      --min-sdk-api-level=21
+        ndk-pkg info curl installed-metadata-content-raw   --min-sdk-api-level=21
+        ndk-pkg info curl installed-metadata-content-json  --min-sdk-api-level=21
+        ndk-pkg info curl installed-metadata-content-yaml  --min-sdk-api-level=21
+        ndk-pkg info curl installed-datetime-unix          --min-sdk-api-level=21
+        ndk-pkg info curl installed-datetime-formatted     --min-sdk-api-level=21
+        ndk-pkg info curl installed-pkg-version            --min-sdk-api-level=21
+        ndk-pkg info curl installed-files                  --min-sdk-api-level=21
+        ndk-pkg info curl installed-abis                   --min-sdk-api-level=21
+
         ndk-pkg info curl --json
         ndk-pkg info curl --json | jq .
+
+        ndk-pkg info curl --yaml
+        ndk-pkg info curl --yaml | yq .
+
+        ndk-pkg info curl --shell
+
         ndk-pkg info @all
+
+        ndk-pkg info @all --shell
+
         ndk-pkg info @all --json
         ndk-pkg info @all --json | jq .
+
+        ndk-pkg info @all --yaml
+        ndk-pkg info @all --yaml | yq .
         
 
     For more keys, please see [README.md](https://github.com/leleliu008/ndk-pkg-formula-repository/blob/master/README.md#the-function-must-be-invoked-on-top-of-the-formula)
+
+*   **show packages that are depended by the given package**
+        
+        ndk-pkg depends curl
+        ndk-pkg depends curl --format=list
+        ndk-pkg depends curl --format=json
+        ndk-pkg depends curl --format=dot
+        ndk-pkg depends curl --format=txt
+        ndk-pkg depends curl --format=png -o curl-dependencies.png
+        
+*   **download formula resources of the given package to the local cache**
+        
+        ndk-pkg fetch curl
+        ndk-pkg fetch @all
 
 *   **install packages**
         
@@ -288,10 +319,12 @@ endif()
 *   **list the installed packages**
         
         ndk-pkg ls-installed
+        ndk-pkg ls-installed --min-sdk-api-level=21
         
 *   **list the outdated packages**
         
         ndk-pkg ls-outdated
+        ndk-pkg ls-outdated --min-sdk-api-level=21
         
 *   **is the given package available ?**
         
@@ -305,39 +338,40 @@ endif()
         
 *   **is the given package installed ?**
         
-        ndk-pkg is-installed curl
+        ndk-pkg is-installed curl 21
         
 *   **is the given package outdated ?**
         
-        ndk-pkg is-outdated curl
+        ndk-pkg is-outdated  curl 21
         
 *   **list files of the given installed package in a tree-like format**
         
-        ndk-pkg tree curl
-        ndk-pkg tree curl --dirsfirst
-        ndk-pkg tree curl -L 3
-        ndk-pkg tree curl -L 3 --dirsfirst
+        ndk-pkg tree curl 21
+        ndk-pkg tree curl 21 --dirsfirst
+        ndk-pkg tree curl 21 -L 3
+        ndk-pkg tree curl 21 -L 3 --dirsfirst
         
-*   **download formula resources of the given package to the local cache**
-        
-        ndk-pkg fetch curl
-        ndk-pkg fetch @all
-
 *   **show logs of the given installed package**
         
-        ndk-pkg logs curl armeabi-v7a
-        ndk-pkg logs curl arm64-v8a
-        ndk-pkg logs curl x86
-        ndk-pkg logs curl x86_64
+        ndk-pkg logs curl 21 armeabi-v7a
+        ndk-pkg logs curl 21 arm64-v8a
+        ndk-pkg logs curl 21 x86
+        ndk-pkg logs curl 21 x86_64
         
 *   **pack the given installed package**
         
-        ndk-pkg pack curl tar.gz
-        ndk-pkg pack curl tar.xz
-        ndk-pkg pack curl tar.bz2
-        ndk-pkg pack curl 7z
-        ndk-pkg pack curl zip
-        ndk-pkg pack curl aar
+        ndk-pkg pack curl 21 tar.gz
+        ndk-pkg pack curl 21 tar.xz
+        ndk-pkg pack curl 21 tar.bz2
+        ndk-pkg pack curl 21 7z
+        ndk-pkg pack curl 21 zip
+        ndk-pkg pack curl 21 aar
+        
+*   **pack the given installed package as prefab aar and then deploy the prefab aar to Sonatype Nexus OSSRH**
+        
+        ndk-pkg deploy curl 21 ~/deploy-config
+        ndk-pkg deploy curl 21 ~/deploy-config -d
+        ndk-pkg deploy curl 21 ~/deploy-config -x
         
 *   **show or open the homepage of the given package or this project**
         
@@ -345,15 +379,6 @@ endif()
         ndk-pkg homepage --open
         ndk-pkg homepage --open curl
         ndk-pkg homepage curl --open
-        
-*   **show packages that are depended by the given package**
-        
-        ndk-pkg depends curl
-        ndk-pkg depends curl --format=list
-        ndk-pkg depends curl --format=json
-        ndk-pkg depends curl --format=dot
-        ndk-pkg depends curl --format=txt
-        ndk-pkg depends curl --format=png -o curl-dependencies.png
         
 *   **cleanup the unused cached files**
         
