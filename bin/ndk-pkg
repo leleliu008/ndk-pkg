@@ -7254,15 +7254,23 @@ src.path: $PACKAGE_SRC_PATH
 depends : $PACKAGE_DEP_PKG
 EOF
 
-    unset INSTALLED_PACKAGES
-
-    INSTALLED_PACKAGES=$(__list_installed_packages)
-
-    [ -z "$INSTALLED_PACKAGES" ] && return 0
-
     unset INSTALLED_API_LEVELS
 
-    for MIN_SDK_API_LEVEL in $(printf '%s\n' "$INSTALLED_PACKAGES" | cut -d/ -f2)
+    if [ -d "$MY_INSTALL_DIR/android" ] ; then
+         cd "$MY_INSTALL_DIR/android" >/dev/null
+    else
+        return 0
+    fi
+
+    for item in $(ls)
+    do
+        case $item in
+            [1-9][0-9])
+                is_package_installed "$1" "$item" && INSTALLED_API_LEVELS="$INSTALLED_API_LEVELS $item"
+        esac
+    done
+
+    for MIN_SDK_API_LEVEL in $INSTALLED_API_LEVELS
     do
         __load_installed_metadata_of_the_given_package "$1" "$MIN_SDK_API_LEVEL" || return 1
 
