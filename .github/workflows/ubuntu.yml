@@ -66,7 +66,7 @@ jobs:
       - run: bin/ndk-pkg install libzip
 
 
-      - run: bin/ndk-pkg tree 21 libzip
+      - run: bin/ndk-pkg tree libzip 21
 
       - run: bin/ndk-pkg pack libzip 21 tar.gz
       - run: bin/ndk-pkg pack libzip 21 tar.xz
@@ -144,7 +144,7 @@ jobs:
 
       - run: ndk-pkg install libzip
 
-      - run: ndk-pkg tree 21 libzip
+      - run: ndk-pkg tree libzip 21
 
       - run: ndk-pkg pack libzip 21 tar.gz
       - run: ndk-pkg pack libzip 21 tar.xz
