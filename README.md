@@ -249,6 +249,9 @@ endif()
 
         ndk-pkg uninstall curl
         ndk-pkg uninstall curl bzip2
+
+        ndk-pkg uninstall curl       --min-sdk-api-level=21
+        ndk-pkg uninstall curl bzip2 --min-sdk-api-level=21
         
 *   **upgrade the outdated packages**
 

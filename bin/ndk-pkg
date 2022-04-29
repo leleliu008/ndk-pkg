@@ -7244,101 +7244,62 @@ EOF
   __show_infomation_as_mixed_of_the_given_package() {
     __load_formula_of_the_given_package "$1"
 
-    unset DEPENDENCY_PACKAGE_NAME_LIST
-
-    for DEP_PKG_NAME in $PACKAGE_DEP_PKG
-    do
-        if [ -z "$DEPENDENCY_PACKAGE_NAME_LIST" ] ; then
-            DEPENDENCY_PACKAGE_NAME_LIST="$(mark_is_package_installed_or_not $DEP_PKG_NAME)"
-        else
-            DEPENDENCY_PACKAGE_NAME_LIST="$DEPENDENCY_PACKAGE_NAME_LIST | $(mark_is_package_installed_or_not $DEP_PKG_NAME)"
-        fi
-    done
-
-    case $PACKAGE_SRC_TYPE in
-        dir) ;;
-        git)
-            if [ ! -d "$PACKAGE_SRC_PATH" ] ; then
-                PACKAGE_SRC_PATH="${COLOR_RED}Not cached${COLOR_OFF}"
-            fi
-            ;;
-        *)
-            if [ ! -f "$PACKAGE_SRC_PATH" ] ; then
-                PACKAGE_SRC_PATH="${COLOR_RED}Not cached${COLOR_OFF}"
-            fi
-    esac
-
-    unset OUTPUT_CONTENT
-
-    OUTPUT_CONTENT="name    : $(mark_is_package_installed_or_not $1)
+    cat <<EOF
+name    : $PACKAGE_NAME
 version : $PACKAGE_VERSION
 summary : $PACKAGE_SUMMARY
 webpage : $PACKAGE_WEBPAGE
 src.url : $PACKAGE_SRC_URL
-src.path: $PACKAGE_SRC_PATH"
+src.path: $PACKAGE_SRC_PATH
+depends : $PACKAGE_DEP_PKG
+EOF
 
-    if [ -n "$PACKAGE_DEP_PKG" ] ; then
-    OUTPUT_CONTENT="$OUTPUT_CONTENT
-depends : $DEPENDENCY_PACKAGE_NAME_LIST"
-    fi
+    unset INSTALLED_PACKAGES
 
-    printf '%b\n' "$OUTPUT_CONTENT"
+    INSTALLED_PACKAGES=$(__list_installed_packages)
 
-    unset OUTPUT_CONTENT
+    [ -z "$INSTALLED_PACKAGES" ] && return 0
 
-    is_package_installed "$1" "$MIN_SDK_API_LEVEL" || return 0
+    unset INSTALLED_API_LEVELS
 
-    __load_installed_metadata_of_the_given_package "$1" "$MIN_SDK_API_LEVEL" || return 1
-
-    OUTPUT_CONTENT="
-installed:
-    root: $(du -sh "$MY_INSTALL_DIR/$1" | awk '{print $2, $1}')
-    abis:"
-
-    unset I
-    unset ABI
-    unset INSTALLED_ABIS
-    unset INSTALLED_ABIS_LENGTH
-
-    INSTALLED_ABIS=$(cat "$MY_INSTALL_DIR/$1/installed-abis")
-    INSTALLED_ABIS_LENGTH=$(list_length $INSTALLED_ABIS)
-
-    MAX=0
-    for ABI in $INSTALLED_ABIS
+    for MIN_SDK_API_LEVEL in $(printf '%s\n' "$INSTALLED_PACKAGES" | cut -d/ -f2)
     do
-        ABI_PATH="$MY_INSTALL_DIR/$1/$ABI"
-        ABI_PATH_LENGTH="${#ABI_PATH}"
-        if [ "$ABI_PATH_LENGTH" -gt "$MAX" ] ; then
-            MAX=$ABI_PATH_LENGTH
-        fi
+        __load_installed_metadata_of_the_given_package "$1" "$MIN_SDK_API_LEVEL" || return 1
+
+        printf "installed:\n    android-$MIN_SDK_API_LEVEL:\n"
+
+        unset INSTALLED_ABIS
+        unset INSTALLED_ABIS_LENGTH
+
+        INSTALLED_ABIS=$(cat "$PACKAGE_INSTALLED_DIR/installed-abis")
+        INSTALLED_ABIS_LENGTH=$(list_length $INSTALLED_ABIS)
+
+        MAX=0
+        for ABI in $INSTALLED_ABIS
+        do
+            ABI_PATH="$PACKAGE_INSTALLED_DIR/$ABI"
+            ABI_PATH_LENGTH="${#ABI_PATH}"
+            if [ "$ABI_PATH_LENGTH" -gt "$MAX" ] ; then
+                MAX=$ABI_PATH_LENGTH
+            fi
+        done
+
+        for ABI in '' $INSTALLED_ABIS
+        do
+            ABI_PATH="$PACKAGE_INSTALLED_DIR/$ABI"
+
+            unset ABI_SIZE
+            ABI_SIZE="$(du -sh "$ABI_PATH" | cut -f1)"
+
+            printf "        - %-${MAX}s %s\n" "$ABI_PATH" "$ABI_SIZE"
+        done
+
+        cat <<EOF
+        installed at : $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S') CST
+        pkg-version  : $INSTALLED_PACKAGE_VERSION
+        build using  : $BUILD_USE_TOOLCHAIN_NAME $BUILD_USE_TOOLCHAIN_VERS
+EOF
     done
-
-    for ABI in $INSTALLED_ABIS
-    do
-        ABI_PATH="$MY_INSTALL_DIR/$1/$ABI"
-
-        unset ABI_SIZE
-        ABI_SIZE="$(du -sh "$ABI_PATH" | cut -f1)"
-
-        OUTPUT_CONTENT="$OUTPUT_CONTENT
-        - $(printf "%-${MAX}s %s\n" "$ABI_PATH" "$ABI_SIZE")"
-    done
-
-    OUTPUT_CONTENT="$OUTPUT_CONTENT
-    datetime : $(format_unix_timestamp $INSTALLED_TIMESTAMP_UNIX '+%Y-%m-%d %H:%M:%S') CST
-    pkg-version : $INSTALLED_PACKAGE_VERSION
-    toolchain : $BUILD_USE_TOOLCHAIN_NAME $BUILD_USE_TOOLCHAIN_VERS
-    min-api-level : $INSTALLED_PACKAGE_SDK_API"
-
-    printf '%b\n' "$OUTPUT_CONTENT"
-}
-
-mark_is_package_installed_or_not() {
-    if is_package_installed "$1" "$MIN_SDK_API_LEVEL" ; then
-        printf '%b\n' "${COLOR_GREEN}$1${COLOR_OFF}"
-    else
-        printf '%b\n' "${COLOR_RED}$1${COLOR_OFF}"
-    fi
 }
 
 __record_installed_files_of_the_given_package() {

@@ -79,14 +79,14 @@ jobs:
       - run: bin/ndk-pkg install libzip
 
 
-      - run: bin/ndk-pkg tree libzip
+      - run: bin/ndk-pkg tree libzip --min-sdk-api-level=21
 
-      - run: bin/ndk-pkg pack libzip tar.gz
-      - run: bin/ndk-pkg pack libzip tar.xz
-      - run: bin/ndk-pkg pack libzip tar.bz2
-      - run: bin/ndk-pkg pack libzip 7z
-      - run: bin/ndk-pkg pack libzip zip
-      - run: bin/ndk-pkg pack libzip aar
+      - run: bin/ndk-pkg pack libzip 21 tar.gz
+      - run: bin/ndk-pkg pack libzip 21 tar.xz
+      - run: bin/ndk-pkg pack libzip 21 tar.bz2
+      - run: bin/ndk-pkg pack libzip 21 7z
+      - run: bin/ndk-pkg pack libzip 21 zip
+      - run: bin/ndk-pkg pack libzip 21 aar
 
       - run: bin/ndk-pkg formula-repo list
       - run: bin/ndk-pkg formula view curl
@@ -101,8 +101,8 @@ jobs:
       - run: bin/ndk-pkg ls-outdated
 
       - run: bin/ndk-pkg is-available libzip
-      - run: bin/ndk-pkg is-installed libzip
-      - run: bin/ndk-pkg is-outdated libzip || echo "not outdated"
+      - run: bin/ndk-pkg is-installed libzip --min-sdk-api-level=21
+      - run: bin/ndk-pkg is-outdated  libzip --min-sdk-api-level=21 || echo "not outdated"
 
       - run: bin/ndk-pkg uninstall libzip
 

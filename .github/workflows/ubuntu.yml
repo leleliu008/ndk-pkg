@@ -66,14 +66,14 @@ jobs:
       - run: bin/ndk-pkg install libzip
 
 
-      - run: bin/ndk-pkg tree libzip
+      - run: bin/ndk-pkg tree libzip --min-sdk-api-level=21
 
-      - run: bin/ndk-pkg pack libzip tar.gz
-      - run: bin/ndk-pkg pack libzip tar.xz
-      - run: bin/ndk-pkg pack libzip tar.bz2
-      - run: bin/ndk-pkg pack libzip 7z
-      - run: bin/ndk-pkg pack libzip zip
-      - run: bin/ndk-pkg pack libzip aar
+      - run: bin/ndk-pkg pack libzip 21 tar.gz
+      - run: bin/ndk-pkg pack libzip 21 tar.xz
+      - run: bin/ndk-pkg pack libzip 21 tar.bz2
+      - run: bin/ndk-pkg pack libzip 21 7z
+      - run: bin/ndk-pkg pack libzip 21 zip
+      - run: bin/ndk-pkg pack libzip 21 aar
 
       - run: bin/ndk-pkg ls-target-abis
       - run: bin/ndk-pkg ls-target-archs
@@ -85,8 +85,8 @@ jobs:
       - run: bin/ndk-pkg ls-outdated
 
       - run: bin/ndk-pkg is-available libzip
-      - run: bin/ndk-pkg is-installed libzip
-      - run: bin/ndk-pkg is-outdated  libzip || echo "not outdated"
+      - run: bin/ndk-pkg is-installed libzip --min-sdk-api-level=21
+      - run: bin/ndk-pkg is-outdated  libzip --min-sdk-api-level=21 || echo "not outdated"
 
       - run: bin/ndk-pkg uninstall libzip
 
@@ -144,14 +144,14 @@ jobs:
 
       - run: ndk-pkg install libzip
 
-      - run: ndk-pkg tree libzip
+      - run: ndk-pkg tree libzip --min-sdk-api-level=21
 
-      - run: ndk-pkg pack libzip tar.gz
-      - run: ndk-pkg pack libzip tar.xz
-      - run: ndk-pkg pack libzip tar.bz2
-      - run: ndk-pkg pack libzip 7z
-      - run: ndk-pkg pack libzip zip
-      - run: ndk-pkg pack libzip aar
+      - run: ndk-pkg pack libzip 21 tar.gz
+      - run: ndk-pkg pack libzip 21 tar.xz
+      - run: ndk-pkg pack libzip 21 tar.bz2
+      - run: ndk-pkg pack libzip 21 7z
+      - run: ndk-pkg pack libzip 21 zip
+      - run: ndk-pkg pack libzip 21 aar
 
       - run: ndk-pkg formula-repo list
       - run: ndk-pkg formula view curl
@@ -166,8 +166,8 @@ jobs:
       - run: ndk-pkg ls-outdated
 
       - run: ndk-pkg is-available libzip
-      - run: ndk-pkg is-installed libzip
-      - run: ndk-pkg is-outdated  libzip || echo "not outdated"
+      - run: ndk-pkg is-installed libzip --min-sdk-api-level=21
+      - run: ndk-pkg is-outdated  libzip --min-sdk-api-level=21 || echo "not outdated"
 
       - run: ndk-pkg uninstall libzip
 
