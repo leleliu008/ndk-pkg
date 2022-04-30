@@ -5320,7 +5320,7 @@ __logs_the_given_installed_package() {
     printf_dependency required exe unzip
 
     step "create working directory"
-    WORKING_DIR="$MY_HOME_DIR/prefab.d/android-$INSTALLED_PACKAGE_SDK_API/$INSTALLED_PACKAGE_NAME"
+    WORKING_DIR="$MY_HOME_DIR/prefab.d/android/$INSTALLED_PACKAGE_SDK_API/$INSTALLED_PACKAGE_NAME"
 
     if [ -d "$WORKING_DIR" ] ; then
         run rm -rf "$WORKING_DIR"
