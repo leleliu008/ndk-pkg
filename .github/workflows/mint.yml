@@ -91,8 +91,8 @@ jobs:
       - run: bin/ndk-pkg ls-outdated
 
       - run: bin/ndk-pkg is-available libzip
-      - run: bin/ndk-pkg is-installed libzip --min-sdk-api-level=21
-      - run: bin/ndk-pkg is-outdated  libzip --min-sdk-api-level=21 || echo "not outdated"
+      - run: bin/ndk-pkg is-installed libzip 21
+      - run: bin/ndk-pkg is-outdated  libzip 21 || echo "not outdated"
 
       - run: bin/ndk-pkg uninstall libzip
 
