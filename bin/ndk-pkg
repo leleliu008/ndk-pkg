@@ -6263,7 +6263,9 @@ __install_the_given_package() {
                     fi
                 done
             done
+
             echo
+
             printf "\n%19s = " PATH
             FIRST=yes
             for item in $(printf '%s\n' "$PATH" | tr ' ' '|' | tr ':' ' ')
@@ -6483,15 +6485,15 @@ __install_the_given_package_for_the_given_target() {
     step2 "install logs for ${COLOR_GREEN}$@${COLOR_OFF}"
     __install_logs_for_the_given_target $@
 
-    step2 "justfy ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __justfy_elf_files_for_the_given_target $@
+    step2 "adjust ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
+    __adjust_elf_files_for_the_given_target $@
 
     if [ -d "$TARGET_INSTALL_DIR/lib" ] ; then
-        step2 "justfy .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __justfy_la_files_for_the_given_target $@
+        step2 "adjust .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __adjust_la_files_for_the_given_target $@
 
-        step2 "justfy .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __justfy_pc_files_for_the_given_target $@
+        step2 "adjust .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __adjust_pc_files_for_the_given_target $@
 
         step2 "create no versioning so files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __create_no_versioning_so_files_for_the_given_target $@
@@ -6668,7 +6670,7 @@ EOF
     fi
 }
 
-__justfy_elf_files_for_the_given_target() {
+__adjust_elf_files_for_the_given_target() {
     for x in bin sbin lib
     do
         if [ -d "$TARGET_INSTALL_DIR/$x" ] ; then
@@ -6733,7 +6735,7 @@ __justfy_elf_files_for_the_given_target() {
     done
 }
 
-__justfy_la_files_for_the_given_target() {
+__adjust_la_files_for_the_given_target() {
     [ -d "$TARGET_INSTALL_DIR/lib" ] || {
         note "no .la files installed, skipped"
         return 0
@@ -6748,15 +6750,15 @@ __justfy_la_files_for_the_given_target() {
 
     for lafile in $LA_FILES
     do
-        sed_in_place 's|-lpthread||g'                    "$lafile"
-        sed_in_place 's|-Wl,--strip-debug||g'            "$lafile"
-        sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$lafile"
-        sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$lafile"
-        sed_in_place "s|--sysroot $SYSROOT||g"           "$lafile"
+        sed_in_place 's|-lpthread||g'              "$lafile"
+        sed_in_place 's|-Wl,--strip-debug||g'      "$lafile"
+        sed_in_place "s|-L$MY_HOME_DIR[^' ]*||g"   "$lafile"
+        sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$lafile"
+        sed_in_place "s|--sysroot $SYSROOT||g"     "$lafile"
     done
 }
 
-__justfy_pc_files_for_the_given_target() {
+__adjust_pc_files_for_the_given_target() {
     [ -d "$TARGET_INSTALL_DIR/lib/pkgconfig" ] || {
         note "no .pc files installed, skipped"
         return 0
@@ -6772,11 +6774,11 @@ __justfy_pc_files_for_the_given_target() {
     for pcfile in $PC_FILES
     do
         sed_in_place "s|$TARGET_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
-        sed_in_place 's|-lpthread||g'                    "$pcfile"
-        sed_in_place 's|-Wl,--strip-debug||g'            "$pcfile"
-        sed_in_place "s|-L$PACKAGE_WORKING_DIR[^' ]*||g" "$pcfile"
-        sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"        "$pcfile"
-        sed_in_place "s|--sysroot $SYSROOT||"            "$pcfile"
+        sed_in_place 's|-lpthread||g'              "$pcfile"
+        sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
+        sed_in_place "s|-L$MY_HOME_DIR[^' ]*||g"   "$pcfile"
+        sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
+        sed_in_place "s|--sysroot $SYSROOT||"      "$pcfile"
 
         if grep 'Libs.private:' "$pcfile" > /dev/null ; then
             LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
@@ -7862,6 +7864,23 @@ __printf_variables_for_the_given_target() {
         printf "\n%19s = " "$FLAG"
         FIRST=yes
         for item in $(eval echo \$$FLAG | tr ':' ' ')
+        do
+            if [ "$FIRST" = yes ] ; then
+                FIRST=no
+                printf '%s\n' "$item"
+            else
+                printf '%s\n' "                      $item"
+            fi
+        done
+    done
+
+    echo
+
+    for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
+    do
+        printf "\n%19s = " "${FLAG}_FOR_BUILD"
+        FIRST=yes
+        for item in $(eval echo \$${FLAG}_FOR_BUILD | tr ':' ' ')
         do
             if [ "$FIRST" = yes ] ; then
                 FIRST=no
@@ -9731,19 +9750,19 @@ ${COLOR_GREEN}ndk-pkg ls-target-abis${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg ls-available${COLOR_OFF}
     list the available packages.
 
-${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg ls-installed [--min-sdk-api-level=<MIN-SDK-API-LEVEL>]${COLOR_OFF}
     list the installed packages.
 
-${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg ls-outdated  [--min-sdk-api-level=<MIN-SDK-API-LEVEL>]${COLOR_OFF}
     list the outdated  packages.
 
 ${COLOR_GREEN}ndk-pkg is-available <PACKAGE-NAME> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
     is PACKAGE available?
 
-${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-NAME> <MIN-SDK-API-LEVEL>${COLOR_OFF}
     is PACKAGE installed?
 
-${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-NAME> <MIN-SDK-API-LEVEL>${COLOR_OFF}
     is PACKAGE outdated?
 
 ${COLOR_GREEN}ndk-pkg search <KEYWORD>${COLOR_OFF}
@@ -9776,13 +9795,13 @@ ${COLOR_GREEN}ndk-pkg formula-repo add <NAME> <URL>${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg formula-repo del <NAME>${COLOR_OFF}
     delete a exist formula-repo.
 
-${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> <MIN-SDK-API-LEVEL> [--dirsfirst | -L N]${COLOR_OFF}
     list files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
-${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> <CONFIG-FILE-PATH> [-d] [-x]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH> [-d] [-x]${COLOR_OFF}
     pack the given installed package as prefab aar and then deploy prefab aar to sonatype nexus OSSRH.
 
     <CONFIG-FILE-PATH> contains following content:
@@ -9792,7 +9811,7 @@ ${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> <CONFIG-FILE-PATH> [-d] [-x]${COLOR_
     OSSRH_PASSWORD=
     GPG_PASSPHRASE=
 
-${COLOR_GREEN}ndk-pkg logs <PACKAGE-NAME> <armeabi-v7a|arm64-v8a|x86|x86_64>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg logs <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <armeabi-v7a|arm64-v8a|x86|x86_64>${COLOR_OFF}
     show logs of the given installed package.
 
 ${COLOR_GREEN}ndk-pkg info <PACKAGE-NAME> [KEY|--json|--shell]${COLOR_OFF}
@@ -9841,7 +9860,7 @@ ${COLOR_GREEN}ndk-pkg upgrade   [PACKAGE-NAME]... [INSTALL-OPTIONS]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg upgrade @self  [-x | --china]${COLOR_OFF}
     upgrade this software.
 
-${COLOR_GREEN}ndk-pkg uninstall <PACKAGE-NAME>...${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg uninstall <PACKAGE-NAME>... [--min-sdk-api-level=<MIN-SDK-API-LEVEL>]${COLOR_OFF}
     uninstall the given packages.
     "
 
