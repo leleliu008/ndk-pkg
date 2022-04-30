@@ -5879,16 +5879,22 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
 __config_native_toolchain_environment_variables() {
     for TOOLNAME in $(list_tools_in_the_toolchain)
     do
-        unset TOOLPATH
-
-        case $TOOLNAME in
-            cc)  TOOLPATH="$(command -v cc  || command -v gcc || command -v clang   || true)" ;;
-            cxx) TOOLPATH="$(command -v c++ || command -v g++ || command -v clang++ || true)" ;;
-            *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
-        esac
-
         unset TOOLNAME_UPPERCASE
         TOOLNAME_UPPERCASE=$(printf '%s\n' "$TOOLNAME" | tr a-z A-Z)
+
+        unset TOOLPATH
+        TOOLPATH="$(eval echo \$${TOOLNAME_UPPERCASE}_FOR_BUILD)"
+
+        if [ -z "$TOOLPATH" ] ; then
+            case $TOOLNAME in
+                cc)  TOOLPATH="$(command -v cc  || command -v gcc || command -v clang   || true)" ;;
+                cxx) TOOLPATH="$(command -v c++ || command -v g++ || command -v clang++ || true)" ;;
+                *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
+            esac
+        else
+            [ -e "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}_FOR_BUILD=$TOOLPATH is not exist."
+            [ -x "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}_FOR_BUILD=$TOOLPATH is not executable."
+        fi
 
         eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
         eval export "${TOOLNAME_UPPERCASE}_FOR_BUILD='$TOOLPATH'"
@@ -9193,7 +9199,7 @@ setup_build_toolchains_env() {
     SYSROOT="$TOOLCHAIN_ROOT/sysroot"
 
     bppend_to_PATH "$ANDROID_NDK_HOME"
-    bppend_to_PATH "$TOOLCHAIN_BIND"
+    #bppend_to_PATH "$TOOLCHAIN_BIND"
 }
 
 is_a_valid_android_sdk_home_dir() {
@@ -9525,12 +9531,31 @@ init() {
         printf 'offical=%s\n' "$MY_OFFICAL_FORMULA_REPO_URL"  > "$MY_HOME_DIR/repos"
     }
 
-    [ -f "$MY_INIT_RC" ] || {
+    if [ -f "$MY_INIT_RC" ] ; then
+        .   "$MY_INIT_RC" || die "load $MY_INIT_RC failed."
+    else
         cat >> "$MY_INIT_RC" <<EOF
-# In general, you do not need to modify this file.
-# If this file modified, be carefull
+# influential environment variables:
+#      CC_FOR_BUILD=/usr/bin/cc
+#     CXX_FOR_BUILD=/usr/bin/c++
+#     CPP_FOR_BUILD=/usr/bin/cpp
+#      AS_FOR_BUILD=/usr/bin/as
+#      LD_FOR_BUILD=/usr/bin/ld
+#      AR_FOR_BUILD=/usr/bin/ar
+#      NM_FOR_BUILD=/usr/bin/nm
+#    SIZE_FOR_BUILD=/usr/bin/size
+#   STRIP_FOR_BUILD=/usr/bin/strip
+#  RANLIB_FOR_BUILD=/usr/bin/ranlib
+# STRINGS_FOR_BUILD=/usr/bin/strings
+# OBJDUMP_FOR_BUILD=/usr/bin/objdump
+# OBJCOPY_FOR_BUILD=/usr/bin/objcopy
+# READELF_FOR_BUILD=/usr/bin/readelf
+
+# if you want to use your own version of Android NDK
+# ANDROID_NDK_HOME=/usr/local/opt/android-ndk
+# ANDROID_NDK_ROOT=/usr/local/opt/android-ndk
 EOF
-    }
+    fi
 
     unset NATIVE_OS_KIND
     unset NATIVE_OS_TYPE
