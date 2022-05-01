@@ -3622,6 +3622,8 @@ __parse_require_dependency_item() {
     unset PACKAGE_FORMULA_LOADED
 
     unset PACKAGE_NAME
+    unset PACKAGE_NAME_UPPERCASE_UNDERSCORE
+
     unset PACKAGE_SUMMARY
     unset PACKAGE_WEBPAGE
 
@@ -3706,11 +3708,12 @@ __parse_require_dependency_item() {
     unset -f build
     unset -f build_configed
 
-    PACKAGE_NAME="$1"
-
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
     . "$PACKAGE_FORMULA_FILEPATH" || return 1
+
+    PACKAGE_NAME="$1"
+    PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '+-.' '_')
 
     if [ -n "$PACKAGE_SDK_API" ] && [ -n "$2" ] ; then
         if [ "$PACKAGE_SDK_API" -gt "$2" ] ; then
@@ -5287,8 +5290,8 @@ __logs_the_given_installed_package() {
             PACKAGE_HAVE_INCLUDE=yes
         fi
 
-        if [ -d "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib" ] ; then
-            for item in $(cd "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib" && ls)
+        if [ -d "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib-no-versioning" ] ; then
+            for item in $(cd "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib-no-versioning" && ls)
             do
                 [ -d "$item" ] && continue
 
@@ -5456,7 +5459,7 @@ EOF
                     run cp -r "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/include" "$ABI_DIR"
                 fi
 
-                run cp "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib/$LIBRARY_FILENAME" "$ABI_DIR"
+                run cp "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib-no-versioning/$LIBRARY_FILENAME" "$ABI_DIR"
 
                 printf '%s\n' "{\"api\": $INSTALLED_PACKAGE_SDK_API,\"abi\": \"$INSTALLED_ABI\",\"ndk\": 21,\"stl\": \"c++_shared\",\"static\":$IS_STATIC_LIBRARY}" > "$ABI_DIR/abi.json"
             done
@@ -6506,8 +6509,29 @@ __install_the_given_package_for_the_given_target() {
         step2 "adjust .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __adjust_pc_files_for_the_given_target $@
 
-        step2 "create no versioning so files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __create_no_versioning_so_files_for_the_given_target $@
+        step2 "install no versioning libraries for ${COLOR_GREEN}$@${COLOR_OFF}"
+
+        TARGET_NOVERSIOING_LIBRARY_DIR="$TARGET_INSTALL_DIR/lib-no-versioning"
+
+        run install -d "$TARGET_NOVERSIOING_LIBRARY_DIR/cmake/$PACKAGE_NAME"
+
+        find "$TARGET_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.a'   -exec cp -v {} "$TARGET_NOVERSIOING_LIBRARY_DIR" \;
+        find "$TARGET_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.so*' -exec cp -v {} "$TARGET_NOVERSIOING_LIBRARY_DIR" \;
+
+        for SO_FILE_PATH_HAVE_VERSION in $(find "$TARGET_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.so.*')
+        do
+            unset SO_FILE_NAME_NO_VERSION
+            SO_FILE_NAME_NO_VERSION="$(basename "$SO_FILE_PATH_HAVE_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
+
+            if [ ! -f "$TARGET_NOVERSIOING_LIBRARY_DIR/$SO_FILE_NAME_NO_VERSION" ] ; then
+                run cp "$SO_FILE_PATH_HAVE_VERSION" "$TARGET_NOVERSIOING_LIBRARY_DIR/$SO_FILE_NAME_NO_VERSION"
+            fi
+        done
+
+        cd "$TARGET_NOVERSIOING_LIBRARY_DIR"
+
+        step2 "adjust no versioning .so files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __adjust_no_versioning_so_files_for_the_given_target $@
 
         step2 "create cmake config files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __create_cmake_config_files_for_the_given_target $@
@@ -6516,32 +6540,8 @@ __install_the_given_package_for_the_given_target() {
     run "echo '$TARGET_OS_ABI' >> $PACKAGE_WORKING_DIR/installed-abis"
 }
 
-__create_no_versioning_so_files_for_the_given_target() {
-    [ -d "$TARGET_INSTALL_DIR/lib" ] || {
-        note "no so files installed, skipped"
-        return 0
-    }
-
-    run cd "$TARGET_INSTALL_DIR/lib"
-
-    for SO_FILE_NAME_HAVE_VERSION in $(find . -maxdepth 1 -mindepth 1 -name 'lib*.so.*' -exec basename {} \;)
-    do
-        unset SO_FILE_NAME_NO_VERSION
-        SO_FILE_NAME_NO_VERSION="$(printf '%s\n' "$SO_FILE_NAME_HAVE_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
-
-        if [ !     -f "$SO_FILE_NAME_NO_VERSION" ] ; then
-            run cp -f "$SO_FILE_NAME_HAVE_VERSION" "$SO_FILE_NAME_NO_VERSION"
-        fi
-    done
-
-    SO_FILE_NAMES_NO_VERSION="$(find . -maxdepth 1 -mindepth 1 -name 'lib*.so' -exec basename {} \;)"
-
-    [ -z "$SO_FILE_NAMES_NO_VERSION" ] && {
-        note "no so files installed, skipped"
-        return 0
-    }
-
-    for SO_FILE_NAME_NO_VERSION in $SO_FILE_NAMES_NO_VERSION
+__adjust_no_versioning_so_files_for_the_given_target() {
+    for SO_FILE_NAME_NO_VERSION in $(find . -maxdepth 1 -mindepth 1 -name 'lib*.so' -exec basename {} \;)
     do
         SO_FILE_PRESETED_DT_SONAME="$($READELF -d "$SO_FILE_NAME_NO_VERSION" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
 
@@ -6569,116 +6569,69 @@ __create_no_versioning_so_files_for_the_given_target() {
 }
 
 __create_cmake_config_files_for_the_given_target() {
-    [ -d "$TARGET_INSTALL_DIR/lib/cmake" ] && {
-        note "cmake config files already installed, skipped"
-        return 0
-    }
+    TARGET_CMAKE_CONFIG_FILEPATH="$TARGET_NOVERSIOING_LIBRARY_DIR/cmake/$PACKAGE_NAME/${PACKAGE_NAME}Config.cmake"
 
-    unset TARGET_LIBRARY_NAMES
-    unset TARGET_LIBRARY_COUNT
-
-    TARGET_LIBRARY_NAMES=$(find . -maxdepth 1 -mindepth 1 \( -type f -o -type l \) -a \( -name 'lib*.a' -o -name 'lib*.so' \) -exec basename {} \; | sed 's|\(lib.*\)\..*|\1|' | uniq)
-
-    TARGET_LIBRARY_COUNT=$(printf '%s\n' "$TARGET_LIBRARY_NAMES" | wc -l)
-
-    if [ -n "$TARGET_LIBRARY_NAMES" ] ; then
-        unset PACKAGE_NAME_UPPERCASE
-        PACKAGE_NAME_UPPERCASE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z)
-
-        run install -d "$TARGET_INSTALL_DIR/lib/cmake/$PACKAGE_NAME"
-
-        TARGET_CMAKE_CONFIG_FILEPATH="$TARGET_INSTALL_DIR/lib/cmake/$PACKAGE_NAME/$PACKAGE_NAME-config.cmake"
-
-        cat > "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
+    cat > "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 # generated by ndk-pkg $MY_VERSION
 
-get_filename_component(${PACKAGE_NAME_UPPERCASE}_INSTALL_DIR "\${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
+get_filename_component(${PACKAGE_NAME}_INSTALL_DIR "\${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
 
-set(${PACKAGE_NAME_UPPERCASE}_INCLUDE_DIR "\${${PACKAGE_NAME_UPPERCASE}_INSTALL_DIR}/include")
-set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR "\${${PACKAGE_NAME_UPPERCASE}_INSTALL_DIR}/lib")
-
-set(${PACKAGE_NAME_UPPERCASE}_LIBRARY_COUNT $TARGET_LIBRARY_COUNT)
+set(${PACKAGE_NAME}_INCLUDE_DIR "\${${PACKAGE_NAME}_INSTALL_DIR}/include")
+set(${PACKAGE_NAME}_LIBRARY_DIR "\${${PACKAGE_NAME}_INSTALL_DIR}/lib-no-versioning")
 
 EOF
-        if [ -n "$PACKAGE_GIT_SHA" ] ; then
-            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_GIT_SHA       \"$PACKAGE_GIT_SHA\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
+
+    unset CMAKE_IMPORTED_TARGETS
+
+    for libfilename in $(find . -maxdepth 1 -mindepth 1 -a \( -name 'lib*.a' -o -name 'lib*.so' \) -exec basename {} \;)
+    do
+        case $libfilename in
+            lib*.a)  LIBRARY_TYPE=STATIC ;;
+            lib*.so) LIBRARY_TYPE=SHARED ;;
+            *)       die "unrecognized library filename: $libfilename"
+        esac
+
+        CMAKE_IMPORTED_TARGET="$PACKAGE_NAME::$libfilename"
+
+        if [ -z "$CMAKE_IMPORTED_TARGETS" ] ; then
+            CMAKE_IMPORTED_TARGETS="$CMAKE_IMPORTED_TARGET"
+        else
+            CMAKE_IMPORTED_TARGETS="$CMAKE_IMPORTED_TARGETS;$CMAKE_IMPORTED_TARGET"
         fi
 
-        if [ -n "$PACKAGE_VERSION" ] ; then
-            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION       \"$PACKAGE_VERSION\")"       >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-        fi
+        cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
-        if [ -n "$PACKAGE_VERSION_MAJOR" ] ; then
-            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MAJOR \"$PACKAGE_VERSION_MAJOR\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-        fi
-
-        if [ -n "$PACKAGE_VERSION_MINOR" ] ; then
-            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_MINOR \"$PACKAGE_VERSION_MINOR\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-        fi
-
-        if [ -n "$PACKAGE_VERSION_PATCH" ] ; then
-            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_PATCH \"$PACKAGE_VERSION_PATCH\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-        fi
-
-        if [ -n "$PACKAGE_VERSION_TWEAK" ] ; then
-            printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_VERSION_TWEAK \"$PACKAGE_VERSION_TWEAK\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-        fi
-
-        for libname in $TARGET_LIBRARY_NAMES
-        do
-            unset LIBNAME_UPPERCASE
-            LIBNAME_UPPERCASE="$(printf '%s\n' "$libname" | tr a-z A-Z)"
-            if [ -e "$TARGET_INSTALL_DIR/lib/$libname.a" ] ; then
-                cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
-
-set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.a")
-add_library($PACKAGE_NAME::$libname::static STATIC IMPORTED)
-set_target_properties($PACKAGE_NAME::$libname::static PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
-EOF
-            fi
-
-            if [ -e "$TARGET_INSTALL_DIR/lib/$libname.so" ] ; then
-                cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
-
-set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED "\${${PACKAGE_NAME_UPPERCASE}_LIBRARY_DIR}/$libname.so")
-add_library($PACKAGE_NAME::$libname::shared SHARED IMPORTED)
-set_target_properties($PACKAGE_NAME::$libname::shared PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
-EOF
-            fi
-
-            cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
-
-if (CMAKE_LINK_LIBRARY_PREFER_STATIC)
-if(TARGET $PACKAGE_NAME::$libname::static)
-set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
-add_library($PACKAGE_NAME::$libname STATIC IMPORTED)
-set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
-else()
-set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
-add_library($PACKAGE_NAME::$libname SHARED IMPORTED)
-set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
+if (NOT TARGET  $CMAKE_IMPORTED_TARGET)
+    add_library($CMAKE_IMPORTED_TARGET STATIC IMPORTED)
+    set_target_properties($CMAKE_IMPORTED_TARGET PROPERTIES
+        IMPORTED_LOCATION             "\${${PACKAGE_NAME}_LIBRARY_DIR}/$libfilename"
+        INTERFACE_INCLUDE_DIRECTORIES "\${${PACKAGE_NAME}_INCLUDE_DIR}"
+    )
 endif()
-else()
-if(TARGET $PACKAGE_NAME::$libname::shared)
-set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
-add_library($PACKAGE_NAME::$libname SHARED IMPORTED)
-set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_SHARED}")
-else()
-set(${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE} "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
-add_library($PACKAGE_NAME::$libname STATIC IMPORTED)
-set_target_properties($PACKAGE_NAME::$libname PROPERTIES IMPORTED_LOCATION "\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}_STATIC}")
-endif()
-endif()
-
 EOF
-        done
+    done
 
-        if [ "$TARGET_LIBRARY_COUNT" -eq 1 ] ; then
-            printf '%s\n\n' "set(${PACKAGE_NAME_UPPERCASE}_LIBRARY \"\${${PACKAGE_NAME_UPPERCASE}_${LIBNAME_UPPERCASE}}\")" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-        fi
+    cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 
-        printf '%s\n' "set(${PACKAGE_NAME_UPPERCASE}_FOUND TRUE)" >> "$TARGET_CMAKE_CONFIG_FILEPATH"
-    fi
+set(${PACKAGE_NAME}_IMPORTED_TARGETS "$CMAKE_IMPORTED_TARGETS")
+EOF
+
+    cat > "$TARGET_NOVERSIOING_LIBRARY_DIR/cmake/$PACKAGE_NAME/${PACKAGE_NAME}ConfigVersion.cmake" << EOF
+# generated by ndk-pkg $MY_VERSION
+#
+# https://cmake.org/cmake/help/latest/command/find_package.html#config-mode-version-selection
+
+set(PACKAGE_VERSION $PACKAGE_VERSION)
+
+if ("\${PACKAGE_VERSION}" VERSION_LESS "\${PACKAGE_FIND_VERSION}")
+    set(PACKAGE_VERSION_COMPATIBLE FALSE)
+else()
+    set(PACKAGE_VERSION_COMPATIBLE TRUE)
+    if ("\${PACKAGE_VERSION}" VERSION_EQUAL "\${PACKAGE_FIND_VERSION}")
+        set(PACKAGE_VERSION_EXACT TRUE)
+    endif()
+endif()
+EOF
 }
 
 __adjust_elf_files_for_the_given_target() {
@@ -7077,9 +7030,6 @@ EOF
 # __show_infomation_as_shell_of_the_given_package <PACKAGE-NAME>
   __show_infomation_as_shell_of_the_given_package() {
     __load_formula_of_the_given_package "$1"
-
-    unset PACKAGE_NAME_UPPERCASE_UNDERSCORE
-    PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$1" | tr a-z A-Z | tr '+-.' '_')
 
     while read KEY
     do

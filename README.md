@@ -115,10 +115,23 @@ endif()
 ```cmake
 find_package(curl)
 if (curl_FOUND)
-    target_include_directories(xx PRIVATE ${CURL_INCLUDE_DIR})
-    target_link_libraries     (xx PRIVATE ${CURL_LIBRARY})
+    target_link_libraries(xx PRIVATE curl::libcurl.so)
 endif()
 ```
+**Note** : every package provides several imported targets, every imported target has form: `${PACKAGE_NAME}::${LIBRARY_FILE_NAME}`, if you want to know what imported targets are provided, you can look at `~/.ndk-pkg/install.d/android/${ANDROID_PLATFORM_LEVEL}/${PACKAGE_NAME}/${ANDROID_ABI}/lib-no-versioning/cmake/${PACKAGE_NAME}/${PACKAGE_NAME}Config.cmake`
+
+
+## Integrate with Android Gradle Plugin
+I have published some `android-21` prefab aars to `MavenCentral`
+    - https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
+    - https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
+
+References:
+    - https://github.com/google/prefab
+    - https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies
+
+Examples:
+    - https://github.com/leleliu008/android-calendar-for-the-aged
 
 
 ## ndk-pkg command usage
