@@ -123,15 +123,18 @@ endif()
 
 ## Integrate with Android Gradle Plugin
 I have published some `android-21` prefab aars to `MavenCentral`
-    - https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
-    - https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
+
+- https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
+- https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
 
 References:
-    - https://github.com/google/prefab
-    - https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies
+
+- https://github.com/google/prefab
+- https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies
 
 Examples:
-    - https://github.com/leleliu008/android-calendar-for-the-aged
+
+- https://github.com/leleliu008/android-calendar-for-the-aged
 
 
 ## ndk-pkg command usage
