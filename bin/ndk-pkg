@@ -5344,6 +5344,10 @@ EOF
         run cp "$PACKAGE_INSTALLED_DIR/LICENSE[1-9]" META-INF/
     fi
 
+    if [ -f "$PACKAGE_INSTALLED_DIR/AUTHORS" ] ; then
+        run cp "$PACKAGE_INSTALLED_DIR/AUTHORS" META-INF/
+    fi
+
     unset JAVA_PACKAGE_NAME
 
     # java package name characters [a-z0-9_.]
@@ -5987,6 +5991,8 @@ __install_the_given_package() {
 
     __setup_PATH_env
 
+    bppend_to_PATH "$TOOLCHAIN_BIND"
+
     step "view formula"
     __view_formula_of_the_given_package "$1" --paging=never
 
@@ -6350,11 +6356,16 @@ EOF
         done
     fi
 
-    step "install licenses"
+    step "install LICENSEs"
     run cp -r "$PACKAGE_WORKING_DIR/LICENSE[1-9]" "$PACKAGE_INSTALL_DIR"
 
     if [ -f "$PACKAGE_INSTALL_DIR/LICENSE1" ] && [ ! -f "$PACKAGE_INSTALL_DIR/LICENSE2" ] ; then
         mv  "$PACKAGE_INSTALL_DIR/LICENSE1" "$PACKAGE_INSTALL_DIR/LICENSE"
+    fi
+
+    if [ -f "$PACKAGE_SRC_DIR/AUTHORS" ] ; then
+        step "install AUTHORS"
+        run cp -r "$PACKAGE_SRC_DIR/AUTHORS" "$PACKAGE_INSTALL_DIR"
     fi
 
     step "record installed abis"
@@ -9509,7 +9520,7 @@ inspect_install_arguments() {
         exec 2>&1
     fi
 
-    if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_DEBUG" ] ; then
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
         export PKG_CONFIG_DEBUG_SPEW=set
     fi
 
