@@ -2066,6 +2066,13 @@ __pmw_get_available_package_name_by_command_name_dnf() {
             echo 'pkg-config'
         fi
         ;;
+    python3|python)
+        if [ "$NATIVE_OS_TYPE" = fedora ] ; then
+            echo 'python3'
+        else
+            echo 'python39'
+        fi
+        ;;
     rst2man|rst2html)
                   echo "python3-docutils" ;;
     sphinx-build) echo "python3-sphinx" ;;
@@ -2183,6 +2190,8 @@ __pmw_get_available_package_name_by_command_name_apt() {
                 echo 'libgdk-pixbuf2.0-bin' ;;
     gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
                 echo 'gputils' ;;
+    cwebp|dwebp|gif2webp|img2webp|vwebp|webpinfo|webpmux)
+                echo 'webp' ;;
         ninja)
             if [ "$NATIVE_OS_SUBS" = termux ] ; then
                 echo ninja
@@ -2236,6 +2245,8 @@ __pmw_get_available_package_name_by_command_name_brew() {
                 echo 'gdk-pixbuf' ;;
     gpasm|gpdasm|gplib|gplink|gpstrip|gpvc|gpvo)
                 echo 'gputils' ;;
+    cwebp|dwebp|gif2webp|img2webp|vwebp|webpinfo|webpmux)
+                echo 'libwebp' ;;
         *)      echo "$1"
     esac
 }
@@ -2330,7 +2341,11 @@ __pmw_install_the_given_package() {
         esac
     } || return 1
 
-    __pmw_is_the_given_package_available $@ || return 1
+    # choco and pkg_add can not get a package's version
+    case $1 in
+        choco|pkg_add) ;;
+        *) __pmw_is_the_given_package_available $@ || return 1
+    esac
 
     note "${COLOR_GREEN}$(shiftn 2 $@)${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}$1${COLOR_OFF}"
 
@@ -2415,7 +2430,14 @@ EOF
 __pmw_is_the_given_package_available() {
     if [ $# -eq 3 ] ; then
         case $1 in
-            pkg) pkg show "$3" > /dev/null 2>&1 ;;
+            pkg)
+                if [ "$NATIVE_OS_KIND" = freebsd ] ; then
+                    pkg search -S name "^$3$" > /dev/null 2>&1
+                else
+                    pkg show "$3" > /dev/null 2>&1
+                fi
+                ;;
+            pkgin)  pkgin search "^$3-[0-9]" >/dev/null 2>&1 ;;
             apt) apt show "$3" > /dev/null 2>&1 ;;
             apk) apk info "$3" > /dev/null 2>&1 ;;
             yum) yum info "$3" > /dev/null 2>&1 ;;
@@ -2443,7 +2465,14 @@ __pmw_is_the_given_package_available() {
 # __pmw_get_available_package_version_by_package_name apt automake
 __pmw_get_available_package_version_by_package_name() {
     case $1 in
-        pkg)   pkg show "$2" 2> /dev/null | sed -n '/Version: /p' | head -n 1 | cut -d ' ' -f2 | cut -d- -f1  | cut -d~ -f1 | sed 's/[0-9]://' ;;
+        pkg)
+            if [ "$NATIVE_OS_KIND" = freebsd ] ; then
+                pkg search -S pkg-name "^$2-[0-9]" | cut -d ' ' -f1 | cut -d- -f2 | tr _ .
+            else
+                pkg show "$2" 2> /dev/null | sed -n '/Version: /p' | head -n 1 | cut -d ' ' -f2 | cut -d- -f1  | cut -d~ -f1 | sed 's/[0-9]://'
+            fi
+            ;;
+        pkgin)  pkgin search "^$2-[0-9]" 2>/dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
         apt)   apt show "$2" 2> /dev/null | sed -n '/Version: /p' | head -n 1 | cut -d ' ' -f2 | cut -d- -f1  | cut -d~ -f1 | sed 's/[0-9]://' ;;
         apk)   apk info "$2" 2> /dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
         yum)   yum info "$2" 2> /dev/null | sed -n '/Version     :/p'  | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
@@ -5461,7 +5490,9 @@ EOF
 
                 run cp "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib-no-versioning/$LIBRARY_FILENAME" "$ABI_DIR"
 
-                printf '%s\n' "{\"api\": $INSTALLED_PACKAGE_SDK_API,\"abi\": \"$INSTALLED_ABI\",\"ndk\": 21,\"stl\": \"c++_shared\",\"static\":$IS_STATIC_LIBRARY}" > "$ABI_DIR/abi.json"
+                STL=none
+
+                printf '%s\n' "{\"api\": $INSTALLED_PACKAGE_SDK_API,\"ndk\": $BUILD_USE_TOOLCHAIN_VERS_MAJOR,\"abi\": \"$INSTALLED_ABI\",\"stl\": \"$STL\",\"static\":$IS_STATIC_LIBRARY}" > "$ABI_DIR/abi.json"
             done
         done
     else
@@ -5958,11 +5989,11 @@ __install_the_given_package() {
     cd ~
 
     unset PACKAGE_WORKING_DIR
-    unset PACKAGE_SRC_DIR
+    unset PACKAGE_SRC_TOP_DIR
     unset PACKAGE_BSCRIPT_DIR
     unset PACKAGE_INSTALL_DIR
 
-    unset NATIVE_BUILD_DIR
+    unset NATIVE_BUILDIN_DIR
     unset NATIVE_INSTALL_DIR
 
     unset CONFIG_XX_UPDATED
@@ -6072,7 +6103,7 @@ __install_the_given_package() {
     fi
 
     PACKAGE_WORKING_DIR="$MY_HOME_DIR/installing.d/android/$MIN_SDK_API_LEVEL/$1"
-    PACKAGE_SRC_DIR="$PACKAGE_WORKING_DIR/src"
+    PACKAGE_SRC_TOP_DIR="$PACKAGE_WORKING_DIR/src"
 
     step "create working directory"
     if [ -d "$PACKAGE_WORKING_DIR" ] ; then
@@ -6123,17 +6154,17 @@ __install_the_given_package() {
         dir://*)
             if [ "$PACKAGE_SRC_PATH" = '/dev/null' ] ; then
                 step "create the directory where source files will be stored in"
-                run install -d "$PACKAGE_SRC_DIR"
+                run install -d "$PACKAGE_SRC_TOP_DIR"
             elif [ -d "$PACKAGE_SRC_PATH" ] ; then
                 if [ -d "$PACKAGE_SRC_PATH/.git" ] && command -v git > /dev/null ; then
                     PACKAGE_GIT_SHA=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
                 fi
 
                 step "create the directory where source files will be copied to"
-                run install -d "$PACKAGE_SRC_DIR"
+                run install -d "$PACKAGE_SRC_TOP_DIR"
 
                 step "copy source files to the directory i just created"
-                run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_DIR"
+                run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_TOP_DIR"
             else
                 die "src.url point to dir is not exist."
             fi
@@ -6144,43 +6175,43 @@ __install_the_given_package() {
             fi
 
             step "create the directory where source files will be copied to"
-            run install -d "$PACKAGE_SRC_DIR"
+            run install -d "$PACKAGE_SRC_TOP_DIR"
 
             step "copy source files to the directory i just created"
-            run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_DIR"
+            run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_TOP_DIR"
             ;;
         *.c|*.cc|*.cxx|*.cpp)
             step "create the directory where source files will be copied to"
-            run install -d "$PACKAGE_SRC_DIR"
+            run install -d "$PACKAGE_SRC_TOP_DIR"
 
             step "copy source files to the directory i just created"
-            run cp    "$PACKAGE_SRC_PATH"   "$PACKAGE_SRC_DIR"
+            run cp    "$PACKAGE_SRC_PATH"   "$PACKAGE_SRC_TOP_DIR"
             ;;
         *.zip)
             step "create the directory where source file will be uncompressed to"
-            run install -d "$PACKAGE_SRC_DIR"
+            run install -d "$PACKAGE_SRC_TOP_DIR"
 
             step "uncompressed source file to the directory i just created"
-            run unzip "$PACKAGE_SRC_PATH" -d "$PACKAGE_SRC_DIR"
+            run unzip "$PACKAGE_SRC_PATH" -d "$PACKAGE_SRC_TOP_DIR"
             ;;
         *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
             step "create the directory where source file will be uncompressed to"
-            run install -d "$PACKAGE_SRC_DIR"
+            run install -d "$PACKAGE_SRC_TOP_DIR"
 
             step "uncompressed source file to the directory i just created"
-            run tar xf "$PACKAGE_SRC_PATH" -C "$PACKAGE_SRC_DIR" --strip-components 1
+            run tar xf "$PACKAGE_SRC_PATH" -C "$PACKAGE_SRC_TOP_DIR" --strip-components 1
             ;;
         *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
     if [ -z "$PACKAGE_BSCRIPT" ] ; then
-        PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_DIR"
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_TOP_DIR"
     else
-        PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_DIR/$PACKAGE_BSCRIPT"
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_TOP_DIR/$PACKAGE_BSCRIPT"
     fi
 
     step "list files of source top directory"
-    run ls -l "$PACKAGE_SRC_DIR"
+    run ls -l "$PACKAGE_SRC_TOP_DIR"
 
     if [ -n "$PACKAGE_BSCRIPT" ] ; then
         step "list files of build script directory"
@@ -6212,7 +6243,7 @@ __install_the_given_package() {
             if [ -z "$LICENSE_PATH" ] ; then
                 fetch "$LICENSE_URL_"  --output-dir="$PACKAGE_WORKING_DIR" --output-name="LICENSE$I"
             else
-                cp "$PACKAGE_SRC_DIR/$LICENSE_PATH" "$PACKAGE_WORKING_DIR/LICENSE$I"
+                cp "$PACKAGE_SRC_TOP_DIR/$LICENSE_PATH" "$PACKAGE_WORKING_DIR/LICENSE$I"
             fi
         done
 
@@ -6237,11 +6268,11 @@ __install_the_given_package() {
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
             note "build for native already have been done, skipped."
         else
-            NATIVE_BUILD_DIR="$PACKAGE_WORKING_DIR/native"
+            NATIVE_BUILDIN_DIR="$PACKAGE_WORKING_DIR/native"
 
             [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] || {
-                run install -d "$NATIVE_BUILD_DIR"
-                run cd         "$NATIVE_BUILD_DIR"
+                run install -d "$NATIVE_BUILDIN_DIR"
+                run cd         "$NATIVE_BUILDIN_DIR"
             }
 
             for TOOL in PKG_CONFIG MESON CMAKE GMAKE NINJA
@@ -6292,10 +6323,10 @@ __install_the_given_package() {
         BUILD_NJOBS = $BUILD_NJOBS
 
 PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
-PACKAGE_SRC_DIR     = $PACKAGE_SRC_DIR
+PACKAGE_SRC_TOP_DIR = $PACKAGE_SRC_TOP_DIR
 PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
 
- NATIVE_BUILD_DIR   = $NATIVE_BUILD_DIR
+ NATIVE_BUILDIN_DIR = $NATIVE_BUILDIN_DIR
  NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
 
                 PWD = $PWD
@@ -6366,9 +6397,9 @@ EOF
         mv  "$PACKAGE_INSTALL_DIR/LICENSE1" "$PACKAGE_INSTALL_DIR/LICENSE"
     fi
 
-    if [ -f "$PACKAGE_SRC_DIR/AUTHORS" ] ; then
+    if [ -f "$PACKAGE_SRC_TOP_DIR/AUTHORS" ] ; then
         step "install AUTHORS"
-        run cp -r "$PACKAGE_SRC_DIR/AUTHORS" "$PACKAGE_INSTALL_DIR"
+        run cp -r "$PACKAGE_SRC_TOP_DIR/AUTHORS" "$PACKAGE_INSTALL_DIR"
     fi
 
     step "record installed abis"
@@ -6458,7 +6489,7 @@ __install_the_given_package_for_the_given_target() {
             run cd "$PACKAGE_BSCRIPT_DIR"
         fi
     else
-        run cd "$TARGET_BUILD_DIR"
+        run cd "$TARGET_BUILDIN_DIR"
     fi
 
     [ "$DRYRUN" = yes ] && {
@@ -6756,7 +6787,7 @@ __adjust_pc_files_for_the_given_target() {
 __install_logs_for_the_given_target() {
     TARGET_LOG_DIR="$TARGET_INSTALL_DIR/share/log"
 
-    for item in "$TARGET_BUILD_DIR" "$PACKAGE_BSCRIPT_DIR"
+    for item in "$TARGET_BUILDIN_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         for item2 in 'config.log' 'compile_commands.json' 'install.log.txt'
         do
@@ -7357,6 +7388,7 @@ INSTALLED_PACKAGE_SDK_API='$TARGET_OS_VERS'
 
 BUILD_USE_TOOLCHAIN_NAME='$TOOLCHAIN_NAME'
 BUILD_USE_TOOLCHAIN_VERS='$TOOLCHAIN_VERS'
+BUILD_USE_TOOLCHAIN_VERS_MAJOR='$TOOLCHAIN_VERS_MAJOR'
 EOF
 }
 
@@ -7411,6 +7443,7 @@ EOF
 
     unset BUILD_USE_TOOLCHAIN_NAME
     unset BUILD_USE_TOOLCHAIN_VERS
+    unset BUILD_USE_TOOLCHAIN_VERS_MAJOR
 
     PACKAGE_INSTALLED_DIR="$MY_INSTALL_DIR/android/$2/$1"
 
@@ -7460,6 +7493,11 @@ EOF
 
     if ! is_integer "$INSTALLED_PACKAGE_SDK_API" ; then
         error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_SDK_API must be a integer."
+        return 1
+    fi
+
+    if ! is_integer "$BUILD_USE_TOOLCHAIN_VERS_MAJOR" ; then
+        error "$INSTALLED_METADATA_FILEPATH is broken. value of BUILD_USE_TOOLCHAIN_VERS_MAJOR must be a integer."
         return 1
     fi
 }
@@ -7588,9 +7626,9 @@ __config_variables_for_the_given_target() {
     unset DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR
     unset DEPENDENCY_PACKAGE_TARGET_INSTALLED_PKGCONF_DIR
 
-    TARGET_WORKING_DIR="$PACKAGE_WORKING_DIR/$TARGET_OS_ABI"
-    TARGET_BUILD_DIR="$TARGET_WORKING_DIR/build"
     TARGET_INSTALL_DIR="$PACKAGE_INSTALL_DIR/$TARGET_OS_ABI"
+    TARGET_WORKING_DIR="$PACKAGE_WORKING_DIR/$TARGET_OS_ABI"
+    TARGET_BUILDIN_DIR="$TARGET_WORKING_DIR/build"
 
     CPPFLAGS="-I$TARGET_WORKING_DIR/include -I$PACKAGE_WORKING_DIR $CPPFLAGS"
      LDFLAGS="-L$TARGET_WORKING_DIR/lib     -L$PACKAGE_WORKING_DIR  $LDFLAGS"
@@ -7910,11 +7948,11 @@ EOF
 
     printf '%s\n' "
 PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
-PACKAGE_SRC_DIR     = $PACKAGE_SRC_DIR
+PACKAGE_SRC_TOP_DIR = $PACKAGE_SRC_TOP_DIR
 PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
 
  TARGET_WORKING_DIR = $TARGET_WORKING_DIR
- TARGET_BUILD_DIR   = $TARGET_BUILD_DIR
+ TARGET_BUILDIN_DIR = $TARGET_BUILDIN_DIR
  TARGET_INSTALL_DIR = $TARGET_INSTALL_DIR
    "
 
@@ -7991,21 +8029,21 @@ gow() {
     fi
 
     if [ -z "$GO_BUILD_ARGV_O" ] ; then
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $TARGET_BUILD_DIR/"
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $TARGET_BUILDIN_DIR/"
     else
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $TARGET_BUILD_DIR/$GO_BUILD_ARGV_O"
+        GO_BUILD_ARGS="$GO_BUILD_ARGS -o $TARGET_BUILDIN_DIR/$GO_BUILD_ARGV_O"
     fi
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS $GO_BUILD_ARGS_EXTRA"
 
     run go build $GO_BUILD_ARGS
 
-    for item in $(ls "$TARGET_BUILD_DIR")
+    for item in $(ls "$TARGET_BUILDIN_DIR")
     do
         case $item in
-            *.a)  run install_libs "$TARGET_BUILD_DIR/$item" ;;
-            *.so) run install_libs "$TARGET_BUILD_DIR/$item" ;;
-            *)    run install_bins "$TARGET_BUILD_DIR/$item" ;;
+            *.a)  run install_libs "$TARGET_BUILDIN_DIR/$item" ;;
+            *.so) run install_libs "$TARGET_BUILDIN_DIR/$item" ;;
+            *)    run install_bins "$TARGET_BUILDIN_DIR/$item" ;;
         esac
     done
 }
@@ -8166,8 +8204,8 @@ configure() {
             $@ ; then
             echo
         else
-            if [ -f "$TARGET_BUILD_DIR/config.log" ] ; then
-                run cat "$TARGET_BUILD_DIR/config.log"
+            if [ -f "$TARGET_BUILDIN_DIR/config.log" ] ; then
+                run cat "$TARGET_BUILDIN_DIR/config.log"
             elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
                 run cat "$PACKAGE_BSCRIPT_DIR/config.log"
             fi
@@ -8224,8 +8262,8 @@ configure() {
         else
             # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
             if [ "$GITHUB_ACTIONS" = true ] ; then
-                if [ -f "$TARGET_BUILD_DIR/config.log" ] ; then
-                    run cat "$TARGET_BUILD_DIR/config.log"
+                if [ -f "$TARGET_BUILDIN_DIR/config.log" ] ; then
+                    run cat "$TARGET_BUILDIN_DIR/config.log"
                 elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
                     run cat "$PACKAGE_BSCRIPT_DIR/config.log"
                 fi
@@ -8273,9 +8311,9 @@ makew() {
     if [ "$MAKE_OPTION_SETTED_C" != yes ] ; then
         if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" != yes ] ; then
             if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-                MAKE_OPTIONS="$MAKE_OPTIONS -C $NATIVE_BUILD_DIR"
+                MAKE_OPTIONS="$MAKE_OPTIONS -C $NATIVE_BUILDIN_DIR"
             else
-                MAKE_OPTIONS="$MAKE_OPTIONS -C $TARGET_BUILD_DIR"
+                MAKE_OPTIONS="$MAKE_OPTIONS -C $TARGET_BUILDIN_DIR"
             fi
         fi
     fi
@@ -8318,14 +8356,14 @@ cmakew() {
 
         # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
         if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $NATIVE_BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $NATIVE_BUILDIN_DIR"
         else
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_BSCRIPT_DIR -B$NATIVE_BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_BSCRIPT_DIR -B$NATIVE_BUILDIN_DIR"
         fi
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
-        run $CMAKE --build   "$NATIVE_BUILD_DIR" -- -j$BUILD_NJOBS &&
-        run $CMAKE --install "$NATIVE_BUILD_DIR"
+        run $CMAKE --build   "$NATIVE_BUILDIN_DIR" -- -j$BUILD_NJOBS &&
+        run $CMAKE --install "$NATIVE_BUILDIN_DIR"
     else
         # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
         # CMAKE_HOST_SYSTEM_NAME on Cygwin and MSYS2 is not Windows
@@ -8372,14 +8410,14 @@ cmakew() {
 
         # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
         if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $TARGET_BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $TARGET_BUILDIN_DIR"
         else
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_BSCRIPT_DIR -B$TARGET_BUILD_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_BSCRIPT_DIR -B$TARGET_BUILDIN_DIR"
         fi
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
-        run $CMAKE --build   "$TARGET_BUILD_DIR" -- -j$BUILD_NJOBS &&
-        run $CMAKE --install "$TARGET_BUILD_DIR"
+        run $CMAKE --build   "$TARGET_BUILDIN_DIR" -- -j$BUILD_NJOBS &&
+        run $CMAKE --install "$TARGET_BUILDIN_DIR"
     fi
 }
 
@@ -8420,11 +8458,11 @@ xmakew() {
     fi
 
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-        run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_BSCRIPT_DIR --buildir=$NATIVE_BUILD_DIR &&
+        run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_BSCRIPT_DIR --buildir=$NATIVE_BUILDIN_DIR &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
         run $XMAKE install -o "$NATIVE_INSTALL_DIR"
     else
-        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_OS_ABI --ndk_sdkver=$TARGET_OS_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$TARGET_BUILD_DIR"
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_OS_ABI --ndk_sdkver=$TARGET_OS_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$TARGET_BUILDIN_DIR"
 
         run $XMAKE config $XMAKE_CONFIG_OPTIONS &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
@@ -8454,7 +8492,7 @@ mesonw() {
             ;;
     esac
 
-    MESON_CROSS_FILE="$TARGET_BUILD_DIR/cross-file"
+    MESON_CROSS_FILE="$TARGET_BUILDIN_DIR/cross-file"
 
     cat > "$MESON_CROSS_FILE" <<EOF
 [host_machine]
@@ -8506,14 +8544,14 @@ EOF
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$MESON_CROSS_FILE" \
         $MESON_ARGUMENT_DEFAULT_LIBRARY \
-        $@ "$TARGET_BUILD_DIR" "$PACKAGE_BSCRIPT_DIR" &&
+        $@ "$TARGET_BUILDIN_DIR" "$PACKAGE_BSCRIPT_DIR" &&
     {
         if command -v build_configed > /dev/null ; then
             build_configed
         fi
     } &&
-    run ninja -C "$TARGET_BUILD_DIR" &&
-    run ninja -C "$TARGET_BUILD_DIR" install
+    run ninja -C "$TARGET_BUILDIN_DIR" &&
+    run ninja -C "$TARGET_BUILDIN_DIR" install
 }
 
 to_meson_array() {
@@ -9175,6 +9213,8 @@ setup_build_toolchains_env() {
     TOOLCHAIN_VERS="$ANDROID_NDK_VERS"
     TOOLCHAIN_ROOT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG"
     TOOLCHAIN_BIND="$TOOLCHAIN_ROOT/bin"
+
+    TOOLCHAIN_VERS_MAJOR="$ANDROID_NDK_VERS_MAJOR"
 
     SYSROOT="$TOOLCHAIN_ROOT/sysroot"
 
