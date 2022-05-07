@@ -121,6 +121,11 @@ dependencies {
 }
 ```
 
+**Note: you can look for packages that have been published to `MavenCentral` via visiting follwoing websites:**
+
+- https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
+- https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
+
 **step4. invoke [find_package(PACKAGE-NAME)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
 ```cmake
 find_package(curl REQUIRED CONFIG)
@@ -138,13 +143,6 @@ target_link_libraries(xx curl::libcurl.so)
 **Examples:**
 
 - https://github.com/leleliu008/android-calendar-for-the-aged
-
-**looking for packages that have been published to `MavenCentral`:**
-
-- https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
-- https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
-
-**more packages will be published soon.**
 
 
 ## Integrate with CMake directly
