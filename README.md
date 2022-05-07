@@ -97,9 +97,61 @@ ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
 ```
 
 
+## Integrate with Android Gradle Plugin
+**step1. enables prefab feature in build.gradle**
+```gradle
+android {
+    buildFeatures {
+        prefab true
+    }
+}
+```
 
-## Integrate with CMake
-**step1** : fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to the directory where your Android project's CMakeLists.txt is located in
+**step2. enables mavenCentral repository in build.gradle**
+```gradle
+repositories {
+    mavenCentral()
+}
+```
+
+**step3. add dependencies in build.gradle**
+```gradle
+dependencies {
+    implementation 'com.fpliu.ndk.pkg.prefab.android.21:libpng:1.6.37'
+}
+```
+
+**step4. invoke [find_package(PACKAGE-NAME)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
+```cmake
+find_package(curl REQUIRED CONFIG)
+target_link_libraries(xx curl::libcurl.so)
+```
+**Note:**
+
+- Every package provides several cmake imported targets which have form: `${PACKAGE_NAME}::${LIBRARY_FILENAME}`
+
+**References:**
+
+- https://github.com/google/prefab
+- https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies
+
+**Examples:**
+
+- https://github.com/leleliu008/android-calendar-for-the-aged
+
+**looking for packages that have been published to `MavenCentral`:**
+
+- https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
+- https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
+
+**more packages will be published soon.**
+
+
+## Integrate with CMake directly
+**Note:**
+- `Integrate with Android Gradle Plugin` is the recommended way of use this software. If you do not use Android Gradle Plugin's prefab feature for some reasons, you can integrate with CMake directly.
+
+**step1. fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to the directory where your Android project's CMakeLists.txt is located in**
 ```bash
 #method1
 ndk-pkg integrate cmake --output-dir=/path/of/your/android/project
@@ -111,37 +163,22 @@ curl -L -o /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercon
 Invoke-WebRequest -OutFile /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
 ```
 
-**step2** : add following code to your Android project's CMakeLists.txt
+**step2. add following code to your Android project's CMakeLists.txt**
 ```cmake
 if (ANDROID)
     include(ndk-pkg.cmake)
 endif()
 ```
 
-**step3** : invoke [find_package(PKG)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt
+**step3. invoke [find_package(PACKAGE-NAME)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
 ```cmake
-find_package(curl)
-if (curl_FOUND)
-    target_link_libraries(xx PRIVATE curl::libcurl.so)
-endif()
+find_package(curl REQUIRED CONFIG)
+target_link_libraries(xx curl::libcurl.so)
 ```
-**Note** : every package provides several imported targets, every imported target has form: `${PACKAGE_NAME}::${LIBRARY_FILE_NAME}`, if you want to know what imported targets are provided, you can look at `~/.ndk-pkg/install.d/android/${ANDROID_PLATFORM_LEVEL}/${PACKAGE_NAME}/${ANDROID_ABI}/lib-no-versioning/cmake/${PACKAGE_NAME}/${PACKAGE_NAME}Config.cmake`
 
-
-## Integrate with Android Gradle Plugin
-I have published some `android-21` prefab aars to `MavenCentral`
-
-- https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
-- https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
-
-References:
-
-- https://github.com/google/prefab
-- https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies
-
-Examples:
-
-- https://github.com/leleliu008/android-calendar-for-the-aged
+**Note:**
+- Every package provides several cmake imported targets which have form: `${PACKAGE_NAME}::${LIBRARY_FILE_NAME}`
+- If you want to know what cmake imported targets are provided by `${PACKAGE_NAME}`, you can look at `~/.ndk-pkg/install.d/android/${ANDROID_PLATFORM_LEVEL}/${PACKAGE_NAME}/${ANDROID_ABI}/lib-no-versioning/cmake/${PACKAGE_NAME}/${PACKAGE_NAME}Config.cmake`
 
 
 ## ndk-pkg command usage
