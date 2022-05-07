@@ -38,28 +38,28 @@ mv ndk-pkg /data/data/com.termux/files/usr/bin/
 ```
 
 ## Install ndk-pkg via Docker
-step1. create the ndk-pkg docker container:
+**step1. create the ndk-pkg docker container**
 ```bash
 mkdir -p ~/.ndk-pkg
 
 docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg fpliu/ndk-pkg
 ```
 
-step2. start the ndk-pkg docker container:
+**step2. start the ndk-pkg docker container**
 ```bash
 docker start ndk-pkg
 ```
 
-step3. run `ndk-pkg` command in the ndk-pkg docker container:
+**step3. run `ndk-pkg` command in the ndk-pkg docker container**
 ```bash
 docker exec -it ndk-pkg ndk-pkg update
 docker exec -it ndk-pkg ndk-pkg install curl
 ```
 
 **Note:**
-- **I strongly recommended you to run `ndk-pkg` command in docker container to keep your host environment clean.**
-- **you can use `podman` instead of `docker`**
-- **chinese user may want to use `fpliu/ndk-pkg:china` instead of `fpliu/ndk-pkg`**
+- I strongly recommended you to run `ndk-pkg` command in docker container to keep your host environment clean.
+- you can use `podman` instead of `docker`
+- chinese user may want to use `fpliu/ndk-pkg:china` instead of `fpliu/ndk-pkg`
 
 
 ## Install ndk-pkg on WSL
