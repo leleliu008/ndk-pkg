@@ -57,7 +57,7 @@ docker exec -it ndk-pkg ndk-pkg install curl
 ```
 
 **Note:**
-- I strongly recommended you to run `ndk-pkg` command in docker container to keep your host environment clean.
+- I strongly recommend you to run `ndk-pkg` command in docker container to keep your host environment clean.
 - you can use `podman` instead of `docker`
 - chinese user may want to use `fpliu/ndk-pkg:china` instead of `fpliu/ndk-pkg`
 
@@ -147,7 +147,7 @@ target_link_libraries(xx curl::libcurl.so)
 
 ## Integrate with CMake directly
 **Note:**
-- `Integrate with Android Gradle Plugin` is the recommended way of use this software. If you do not use Android Gradle Plugin's prefab feature for some reasons, you can integrate with CMake directly.
+- `Integrate with Android Gradle Plugin` is the recommended way of using this software. If you do not use Android Gradle Plugin's prefab feature for some reasons, you can integrate this software with CMake directly.
 
 **step1. fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to the directory where your Android project's CMakeLists.txt is located in**
 ```bash
