@@ -4501,10 +4501,10 @@ __gen_github_workflows() {
 }
 
 __list_available_packages() {
-    for repo in $(__list_formula_repositories | cut -d= -f1)
+    for FORMULA_REPO_NAME in $(__list_formula_repositories | cut -d= -f1)
     do
-        cd "$MY_FORMULA_REPO_DIR/$repo/formula"
-        ls -1 *.sh | sed 's/\.sh$//g'
+        cd "$MY_FORMULA_REPO_DIR/$FORMULA_REPO_NAME/formula" || return 1
+        ls -1 *.sh | sed 's/\.sh$//g' || return 1
     done
 }
 
@@ -4616,15 +4616,15 @@ __list_available_packages() {
     fi
 }
 
-# __tree_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>
+# __tree_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> [TREE-OPTIONS]
   __tree_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "__tree_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <PACKAGE-NAME> is not given."
+        error "__tree_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> [TREE-OPTIONS], <PACKAGE-NAME> is not given."
         return 1
     }
 
     [ -z "$2" ] && {
-        error "__tree_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> is not given."
+        error "__tree_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> [TREE-OPTIONS], <MIN-SDK-API-LEVEL> is not given."
         return 1
     }
 
@@ -4791,7 +4791,7 @@ __search_packages() {
         return 1
     }
 
-    handle_dependency required exe grep
+    handle_dependency required exe grep 1>&2
 
     for repo in $(__list_formula_repositories | cut -d= -f1)
     do
@@ -5111,7 +5111,7 @@ $LINE"
 }
 
 # __logs_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <ABI>
-__logs_the_given_installed_package() {
+  __logs_the_given_installed_package() {
     [ -z "$1" ] && {
         error "$_0 logs <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <ABI>, <PACKAGE-NAME> is not given."
         return 1

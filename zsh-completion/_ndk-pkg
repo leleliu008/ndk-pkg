@@ -147,12 +147,13 @@ function _ndk_pkg() {
                                 ;;
                             *)  _arguments \
                                     '1:package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
-                                    '2:key:(formula summary webpage version license git.url src.url src.sum dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-files installed-abis --json --yaml --shell)'
+                                    '2:key:(formula summary webpage version license git.url git.sha src.url src.sha dep.cmd dep.pkg patches cdefine ccflags xxflags ldflags sourced binsrcd bsystem installed-dir installed-metadata installed-datetime-unix installed-datetime-formatted installed-pkg-version installed-files installed-abis --json --yaml --shell)'
                         esac
                     fi
                     ;;
                 fetch)
-                    _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' ;;
+                    _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))'
+                    ;;
                 depends)
                     _arguments \
                         '1:package-name:_ndk_pkg_available_packages' \
