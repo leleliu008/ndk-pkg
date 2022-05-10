@@ -3300,7 +3300,7 @@ handle_dependency() {
 __handle_required_dependencies() {
     step "handle required dependencies"
 
-    for dependency in $REQUIRED_DEPENDENCY_LIST
+    for dependency in $REQUIRED_DEPENDENCIES
     do
         handle_dependency $(__decode_dependency "$dependency")
     done
@@ -3360,11 +3360,11 @@ printf_dependency() {
 
 __printf_required_dependencies() {
     step "printf required dependencies"
-    if [ -z "$REQUIRED_DEPENDENCY_LIST" ] ; then
+    if [ -z "$REQUIRED_DEPENDENCIES" ] ; then
         note "no required dependencies."
     else
         __printf_dependency TYPE NAME OP EXPECT ACTUAL LOCATION
-        for dependency in $REQUIRED_DEPENDENCY_LIST
+        for dependency in $REQUIRED_DEPENDENCIES
         do
             printf_dependency $(__decode_dependency "$dependency")
         done
@@ -3373,11 +3373,11 @@ __printf_required_dependencies() {
 
 __printf_optional_dependencies() {
     step "printf optional dependencies"
-    if [ -z "$OPTIONAL_DEPENDENCY_LIST" ] ; then
+    if [ -z "$OPTIONAL_DEPENDENCIES" ] ; then
         note "no optional dependencies."
     else
         __printf_dependency TYPE NAME OP EXPECT ACTUAL LOCATION
-        for dependency in $OPTIONAL_DEPENDENCY_LIST
+        for dependency in $OPTIONAL_DEPENDENCIES
         do
             printf_dependency $(__decode_dependency "$dependency")
         done
@@ -3552,17 +3552,17 @@ __decode_dependency() {
 regist_dependency() {
     case $1 in
         required)
-            if [ -z "$REQUIRED_DEPENDENCY_LIST" ] ; then
-                REQUIRED_DEPENDENCY_LIST="$(__encode_dependency "$*")"
+            if [ -z "$REQUIRED_DEPENDENCIES" ] ; then
+                REQUIRED_DEPENDENCIES="$(__encode_dependency "$*")"
             else
-                REQUIRED_DEPENDENCY_LIST="$REQUIRED_DEPENDENCY_LIST $(__encode_dependency "$*")"
+                REQUIRED_DEPENDENCIES="$REQUIRED_DEPENDENCIES $(__encode_dependency "$*")"
             fi
             ;;
         optional)
-            if [ -z "$OPTIONAL_DEPENDENCY_LIST" ] ; then
-                OPTIONAL_DEPENDENCY_LIST=$(__encode_dependency "$*")
+            if [ -z "$OPTIONAL_DEPENDENCIES" ] ; then
+                OPTIONAL_DEPENDENCIES=$(__encode_dependency "$*")
             else
-                OPTIONAL_DEPENDENCY_LIST="$OPTIONAL_DEPENDENCY_LIST $(__encode_dependency "$*")"
+                OPTIONAL_DEPENDENCIES="$OPTIONAL_DEPENDENCIES $(__encode_dependency "$*")"
             fi
     esac
 }
@@ -4454,7 +4454,7 @@ __gen_github_workflows() {
             if [ "$x" = "$y" ] ; then
                 continue
             else
-                for z in $(__get_packages_directly_depended_by_the_given_package "$y")
+                for z in $(__get_packages_that_are_directly_depended_by_the_given_package "$y")
                 do
                     if [ "$x" = "$z" ] ; then
                         BREAK=yes
@@ -4640,7 +4640,7 @@ __list_available_packages() {
 
 # __uninstall_the_given_packages <PACKAGE-NAME>... [--min-sdk-api-level=<MIN-SDK-API-LEVEL>]
   __uninstall_the_given_packages() {
-    unset USER_SPECIFIED_PACKAGE_LIST
+    unset USER_SPECIFIED_PACKAGES
     unset MIN_SDK_API_LEVEL
 
     while [ -n "$1" ]
@@ -4654,12 +4654,12 @@ __list_available_packages() {
                 ;;
             -*) die "__uninstall_the_given_packages <PACKAGE-NAME>... [--min-sdk-api-level=<MIN-SDK-API-LEVEL>], unrecognized option: $1"
                 ;;
-            *)  USER_SPECIFIED_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST $1"
+            *)  USER_SPECIFIED_PACKAGES="$USER_SPECIFIED_PACKAGES $1"
         esac
         shift
     done
 
-    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && {
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && {
         error "__uninstall_the_given_packages <PACKAGE-NAME>... [--min-sdk-api-level=<MIN-SDK-API-LEVEL>], <PACKAGE-NAME> is not given."
         return 1
     }
@@ -4671,7 +4671,7 @@ __list_available_packages() {
         do
             case $item in
                 [1-9][0-9])
-                    for packageName in $USER_SPECIFIED_PACKAGE_LIST
+                    for packageName in $USER_SPECIFIED_PACKAGES
                     do
                         if is_package_installed "$packageName" "$item" ; then
                             run rm -rf "$MY_INSTALL_DIR/android/$item/$packageName"
@@ -4680,7 +4680,7 @@ __list_available_packages() {
             esac
         done
     else
-        for packageName in $USER_SPECIFIED_PACKAGE_LIST
+        for packageName in $USER_SPECIFIED_PACKAGES
         do
             if is_package_installed "$packageName" "$MIN_SDK_API_LEVEL" ; then
                 run rm -rf "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$packageName"
@@ -4693,12 +4693,12 @@ __list_available_packages() {
   __reinstall_the_given_packages() {
     inspect_install_arguments $@
 
-    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && {
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && {
         error "$_0 reinstall <PACKAGE-NAME>... [OPTIONS], <PACKAGE-NAME> is not given."
         return 1
     }
 
-    for packageName in $USER_SPECIFIED_PACKAGE_LIST
+    for packageName in $USER_SPECIFIED_PACKAGES
     do
         is_package_available "$packageName" || {
             error "package [$packageName] is not available."
@@ -4711,9 +4711,7 @@ __list_available_packages() {
         }
     done
 
-    __config_native_toolchain_environment_variables
-
-    for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
+    for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGES
     do
         if [ !      -d "$MY_BACKUP_DIR" ] ; then
             install -d "$MY_BACKUP_DIR"
@@ -4730,15 +4728,15 @@ __list_available_packages() {
 __upgrade_packages() {
     inspect_install_arguments $@
 
-    if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
+    if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
         if [ -z "$MIN_SDK_API_LEVEL" ] ; then
-            USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages)
+            USER_SPECIFIED_PACKAGES=$(__list__outdated_packages)
         else
-            USER_SPECIFIED_PACKAGE_LIST=$(__list__outdated_packages --min-sdk-api-level=$MIN_SDK_API_LEVEL)
+            USER_SPECIFIED_PACKAGES=$(__list__outdated_packages --min-sdk-api-level=$MIN_SDK_API_LEVEL)
         fi
     fi
 
-    for packageName in $USER_SPECIFIED_PACKAGE_LIST
+    for packageName in $USER_SPECIFIED_PACKAGES
     do
         is_package_available "$packageName" || {
             error "package [$packageName] is not available."
@@ -4751,9 +4749,7 @@ __upgrade_packages() {
         }
     done
 
-    __config_native_toolchain_environment_variables
-
-    for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
+    for INSTALLING_PACKAGE in $USER_SPECIFIED_PACKAGES
     do
         if [ !      -d "$MY_BACKUP_DIR" ] ; then
             install -d "$MY_BACKUP_DIR"
@@ -5001,22 +4997,22 @@ __show_packages_depended_by_the_given_package() {
 
     case $OUTPUT_FORMAT in
         list)
-            unset DEPENDENCY_PACKAGE_LIST
-            DEPENDENCY_PACKAGE_LIST=$(__get_packages_recursively_depended_by_the_given_package "$PACKAGE_NAME")
+            unset RECURSIVE_DEPENDENT_PACKAGES
+            RECURSIVE_DEPENDENT_PACKAGES=$(__get_packages_that_are_recursively_depended_by_the_given_package "$PACKAGE_NAME")
 
-            if [ -z "$DEPENDENCY_PACKAGE_LIST" ] ; then
+            if [ -z "$RECURSIVE_DEPENDENT_PACKAGES" ] ; then
                 return 0
             fi
 
             unset OUTPUT_CONTENT
 
             if [ "$OUTPUT_BRIEF" = yes ] ; then
-                OUTPUT_CONTENT="$DEPENDENCY_PACKAGE_LIST"
+                OUTPUT_CONTENT="$RECURSIVE_DEPENDENT_PACKAGES"
             else
-                for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
+                for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
                 do
                     unset DEPENDENCY_PACKAGE_DIRECT_DEPS
-                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME")
+                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_that_are_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME")
                     DEPENDENCY_PACKAGE_DIRECT_DEPS=$(printf '%s\n' "$DEPENDENCY_PACKAGE_DIRECT_DEPS" | tr ' ' ',')
 
                     unset LINE
@@ -5048,21 +5044,21 @@ $LINE"
             fi
             ;;
         json)
-            unset DEPENDENCY_PACKAGE_LIST
-            DEPENDENCY_PACKAGE_LIST=$(__get_packages_recursively_depended_by_the_given_package "$PACKAGE_NAME")
+            unset RECURSIVE_DEPENDENT_PACKAGES
+            RECURSIVE_DEPENDENT_PACKAGES=$(__get_packages_that_are_recursively_depended_by_the_given_package "$PACKAGE_NAME")
 
             JSON_ARRAY='['
 
             if [ "$OUTPUT_BRIEF" = yes ] ; then
-                for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
+                for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
                 do
                     JSON_ARRAY="$JSON_ARRAY\"$DEPENDENCY_PACKAGE_NAME\","
                 done
             else
-                for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
+                for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
                 do
                     unset DEPENDENCY_PACKAGE_DIRECT_DEPS
-                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME" | tr ' ' ',')
+                    DEPENDENCY_PACKAGE_DIRECT_DEPS=$(__get_packages_that_are_directly_depended_by_the_given_package "$DEPENDENCY_PACKAGE_NAME" | tr ' ' ',')
 
                     JSON_ARRAY="$JSON_ARRAY{\"name\":\"$DEPENDENCY_PACKAGE_NAME\",\"dependencies\":\"$DEPENDENCY_PACKAGE_DIRECT_DEPS\"},"
                 done
@@ -5357,7 +5353,7 @@ $LINE"
     if [ -d "$WORKING_DIR" ] ; then
         run rm -rf "$WORKING_DIR"
     fi
-    run install -d  "$WORKING_DIR"
+    run install -d "$WORKING_DIR"
 
     step "change to working directory"
     run cd $WORKING_DIR
@@ -5759,8 +5755,8 @@ EOF
 }
 
 # this fuction should be run in subshell
-# __get_packages_directly_depended_by_the_given_package <PACKAGE-NAME>
-__get_packages_directly_depended_by_the_given_package() {
+# __get_packages_that_are_directly_depended_by_the_given_package <PACKAGE-NAME>
+  __get_packages_that_are_directly_depended_by_the_given_package() {
     unset PACKAGE_FORMULA_FILEPATH
     PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package $1)" || return 1
 
@@ -5769,45 +5765,59 @@ __get_packages_directly_depended_by_the_given_package() {
 
 # this fuction should be run in subshell
 #
-# __get_packages_recursively_depended_by_the_given_package
-# __get_packages_recursively_depended_by_the_given_package <PACKAGE-NAME> [yes]
+# __get_packages_that_are_recursively_depended_by_the_given_packages <PACKAGE-NAME>...
+  __get_packages_that_are_recursively_depended_by_the_given_packages() {
+      [ -z "$1" ] && {
+          error "__get_packages_that_are_recursively_depended_by_the_given_packages <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
+          return 1
+      }
+
+      __get_packages_that_are_recursively_depended_by_the_given_package ";$(printf '%s\n' "$*" | tr ' ' ';')"
+}
+
+# this fuction should be run in subshell
 #
-# if PACKAGE-NAME is not specified, $USER_SPECIFIED_PACKAGE_LIST will be used
-# yes means invoked by myself
-__get_packages_recursively_depended_by_the_given_package() {
-    if [ "$2" != yes ] ; then
+# __get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME>
+# __get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME> internal
+  __get_packages_that_are_recursively_depended_by_the_given_package() {
+    [ -z "$1" ] && {
+        error "__get_packages_that_are_recursively_depended_by_the_given_package <PACKAGE-NAME> [internal], <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    unset DIRECT_DEPENDENT_PACKAGES
+
+    case $1 in
+        *\;*) DIRECT_DEPENDENT_PACKAGES=$(printf '%s\n' "$1" | tr ';' ' ') ;;
+        *)    DIRECT_DEPENDENT_PACKAGES=$(__get_packages_that_are_directly_depended_by_the_given_package "$1")
+    esac
+
+    [ "$2" != internal ] && {
         DEPTH=1
         RESULT=
-    fi
+    }
 
     DEPTH=$(expr "$DEPTH" + 1)
 
-    unset DIRECT_DEPENDENCY_PACKAGE_LIST
-    if [ -z "$1" ] ; then
-        DIRECT_DEPENDENCY_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST"
-    else
-        DIRECT_DEPENDENCY_PACKAGE_LIST=$(__get_packages_directly_depended_by_the_given_package "$1")
-    fi
-
-    for DIRECT_DEPENDENCY_PACKAGE_NAME in $DIRECT_DEPENDENCY_PACKAGE_LIST
+    for DIRECT_DEPENDENT_PACKAGE_NAME in $DIRECT_DEPENDENT_PACKAGES
     do
-        is_package_available "$DIRECT_DEPENDENCY_PACKAGE_NAME" || {
-            error "package [$DIRECT_DEPENDENCY_PACKAGE_NAME] is not available."
+        is_package_available "$DIRECT_DEPENDENT_PACKAGE_NAME" || {
+            error "package [$DIRECT_DEPENDENT_PACKAGE_NAME] is not available."
             return 1
         }
 
-        if [ "$(printf '%s\n' "$RESULT" | sed -n "/^$DIRECT_DEPENDENCY_PACKAGE_NAME$/p")" = "$DIRECT_DEPENDENCY_PACKAGE_NAME" ] ; then
-            RESULT=$(printf '%s\n' "$RESULT" | sed "/^$DIRECT_DEPENDENCY_PACKAGE_NAME$/d")
+        if [ "$(printf '%s\n' "$RESULT" | sed -n "/^$DIRECT_DEPENDENT_PACKAGE_NAME$/p")" = "$DIRECT_DEPENDENT_PACKAGE_NAME" ] ; then
+            RESULT=$(printf '%s\n' "$RESULT" | sed "/^$DIRECT_DEPENDENT_PACKAGE_NAME$/d")
         fi
 
         if [ -z "$RESULT" ] ; then
-            RESULT="$DIRECT_DEPENDENCY_PACKAGE_NAME"
+            RESULT="$DIRECT_DEPENDENT_PACKAGE_NAME"
         else
-            RESULT="$DIRECT_DEPENDENCY_PACKAGE_NAME
+            RESULT="$DIRECT_DEPENDENT_PACKAGE_NAME
 $RESULT"
         fi
 
-        __get_packages_recursively_depended_by_the_given_package "$DIRECT_DEPENDENCY_PACKAGE_NAME" yes
+        __get_packages_that_are_recursively_depended_by_the_given_package "$DIRECT_DEPENDENT_PACKAGE_NAME" internal
     done
 
     DEPTH=$(expr "$DEPTH" - 1)
@@ -5820,21 +5830,21 @@ $RESULT"
 __get_dot_file_contents() {
     for PKG in $@
     do
-        unset DIRECT_DEPENDENCY_PACKAGE_LIST
-        DIRECT_DEPENDENCY_PACKAGE_LIST="$(__get_packages_directly_depended_by_the_given_package "$PKG")"
-        if [ -n "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
-            printf '"%s" -> { "%s" }\n' "$PKG" "$(printf '%s\n' "$DIRECT_DEPENDENCY_PACKAGE_LIST" | sed 's/ /" "/g')"
-            __get_dot_file_contents $DIRECT_DEPENDENCY_PACKAGE_LIST
+        unset DIRECT_DEPENDENT_PACKAGES
+        DIRECT_DEPENDENT_PACKAGES="$(__get_packages_that_are_directly_depended_by_the_given_package "$PKG")"
+        if [ -n "$DIRECT_DEPENDENT_PACKAGES" ] ; then
+            printf '"%s" -> { "%s" }\n' "$PKG" "$(printf '%s\n' "$DIRECT_DEPENDENT_PACKAGES" | sed 's/ /" "/g')"
+            __get_dot_file_contents $DIRECT_DEPENDENT_PACKAGES
         fi
     done
 }
 
 # __gen_dependency_graph_recursively_depended_by_the_given_package <PKG> <dot|txt|png> <OUTPUT-FILEPATH>
 __gen_dependency_graph_recursively_depended_by_the_given_package() {
-    unset DIRECT_DEPENDENCY_PACKAGE_LIST
-    DIRECT_DEPENDENCY_PACKAGE_LIST="$(__get_packages_directly_depended_by_the_given_package "$1")"
+    unset DIRECT_DEPENDENT_PACKAGES
+    DIRECT_DEPENDENT_PACKAGES="$(__get_packages_that_are_directly_depended_by_the_given_package "$1")"
 
-    if [ -z "$DIRECT_DEPENDENCY_PACKAGE_LIST" ] ; then
+    if [ -z "$DIRECT_DEPENDENT_PACKAGES" ] ; then
         return 0
     fi
 
@@ -5914,60 +5924,23 @@ __gen_dependency_graph_recursively_depended_by_the_given_package() {
     esac
 }
 
-__config_native_toolchain_environment_variables() {
-    for TOOLNAME in $(list_tools_in_the_toolchain)
-    do
-        unset TOOLNAME_UPPERCASE
-        TOOLNAME_UPPERCASE=$(printf '%s\n' "$TOOLNAME" | tr a-z A-Z)
-
-        unset TOOLPATH
-        TOOLPATH="$(eval echo \$${TOOLNAME_UPPERCASE}_FOR_BUILD)"
-
-        if [ -z "$TOOLPATH" ] ; then
-            case $TOOLNAME in
-                cc)  TOOLPATH="$(command -v cc  || command -v gcc || command -v clang   || true)" ;;
-                cxx) TOOLPATH="$(command -v c++ || command -v g++ || command -v clang++ || true)" ;;
-                *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
-            esac
-        else
-            [ -e "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}_FOR_BUILD=$TOOLPATH is not exist."
-            [ -x "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}_FOR_BUILD=$TOOLPATH is not executable."
-        fi
-
-        eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
-        eval export "${TOOLNAME_UPPERCASE}_FOR_BUILD='$TOOLPATH'"
-    done
-
-    unset TOOLNAME_UPPERCASE
-    unset TOOLNAME
-    unset TOOLPATH
-
-    for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
-    do
-        eval export "${FLAG}_FOR_BUILD=\"\$$FLAG\""
-    done
-    unset FLAG
-}
-
 __install_the_given_packages() {
     inspect_install_arguments $@
 
-    [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] && {
+    [ -z "$USER_SPECIFIED_PACKAGES" ] && {
         error "$_0 install <PACKAGE-NAME>..., <PACKAGE-NAME> is not given."
         return 1
     }
 
-    __config_native_toolchain_environment_variables
+    unset PACKAGES_TO_BE_INSTALLED
+    PACKAGES_TO_BE_INSTALLED="$(__get_packages_that_are_recursively_depended_by_the_given_packages $USER_SPECIFIED_PACKAGES)"
 
-    unset DEPENDENCY_PACKAGE_LIST
-    DEPENDENCY_PACKAGE_LIST="$(__get_packages_recursively_depended_by_the_given_package)"
-
-    if [ $(list_length $DEPENDENCY_PACKAGE_LIST) -gt 1 ] ; then
-        DEPENDENCY_PACKAGE_LIST="$(printf '%s\n' "$DEPENDENCY_PACKAGE_LIST" | tr '\n' ' ')"
-        printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $DEPENDENCY_PACKAGE_LIST $COLOR_OFF\n"
+    if [ $(list_length $PACKAGES_TO_BE_INSTALLED) -gt 1 ] ; then
+        PACKAGES_TO_BE_INSTALLED="$(printf '%s\n' "$PACKAGES_TO_BE_INSTALLED" | tr '\n' ' ')"
+        printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF to install$COLOR_GREEN $PACKAGES_TO_BE_INSTALLED $COLOR_OFF\n"
     fi
 
-    for INSTALLING_PACKAGE in $DEPENDENCY_PACKAGE_LIST
+    for INSTALLING_PACKAGE in $PACKAGES_TO_BE_INSTALLED
     do
         if is_package_installed "$INSTALLING_PACKAGE" "$MIN_SDK_API_LEVEL" ; then
             if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
@@ -6112,11 +6085,11 @@ __install_the_given_package() {
     run install -d "$PACKAGE_WORKING_DIR"
 
     step "calculate packages that are depended by $1"
-    unset DEPENDENCY_PACKAGE_LIST
+    unset RECURSIVE_DEPENDENT_PACKAGES
     if [ -z "$PACKAGE_DEP_PKG" ] ; then
         note "there's no packages that are depended by $1."
     else
-        DEPENDENCY_PACKAGE_LIST="$(__get_packages_recursively_depended_by_the_given_package "$1")"
+        RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_package "$1")"
 
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_WORKING_DIR/dependencies.txt"
@@ -6458,14 +6431,14 @@ __install_the_given_package_for_the_given_target() {
         note "ccache is disabled, skipped."
     fi
 
-    [ -n "$DEPENDENCY_PACKAGE_LIST" ] && {
+    [ -n "$RECURSIVE_DEPENDENT_PACKAGES" ] && {
         step2 "create symbolic links for dependency libs"
         case $LINK_TYPE in
             static-only|static-prefered) LINK_LIBRARY_TYPE=a  ;;
             shared-only|shared-prefered) LINK_LIBRARY_TYPE=so ;;
         esac
 
-        for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
+        for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
         do
             DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR="$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI/lib"
             if [ -d "$DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR" ] ; then
@@ -7579,7 +7552,7 @@ __config_variables_for_the_given_target() {
     unset CMAKE_INCLUDE_PATH
     unset CMAKE_LIBRARY_PATH
 
-    for DEPENDENCY_PACKAGE_NAME in $DEPENDENCY_PACKAGE_LIST
+    for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
     do
         DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR="$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI"
         DEPENDENCY_PACKAGE_TARGET_INSTALLED_INCLUDE_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/include"
@@ -7760,7 +7733,7 @@ __config_variables_for_the_given_target() {
         " > "$TARGET_CMAKE_TOOLCHAIN_FILE"
 
 
-        for item in $DEPENDENCY_PACKAGE_LIST
+        for item in $RECURSIVE_DEPENDENT_PACKAGES
         do
             case $item in
                 openssl)
@@ -9376,7 +9349,7 @@ inspect_install_arguments() {
     # https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element#api-level-table
     unset MIN_SDK_API_LEVEL
 
-    unset USER_SPECIFIED_PACKAGE_LIST
+    unset USER_SPECIFIED_PACKAGES
 
     unset DRYRUN
 
@@ -9491,13 +9464,13 @@ inspect_install_arguments() {
                 is_integer "$BUILD_NJOBS" || die "--jobs=<VALUE>, <VALUE> must be a integer."
                 ;;
             @all)
-                USER_SPECIFIED_PACKAGE_LIST="$(__list_available_packages)"
+                USER_SPECIFIED_PACKAGES="$(__list_available_packages)"
                 ;;
             [a-z]*)
-                if [ -z "$USER_SPECIFIED_PACKAGE_LIST" ] ; then
-                    USER_SPECIFIED_PACKAGE_LIST="$1"
+                if [ -z "$USER_SPECIFIED_PACKAGES" ] ; then
+                    USER_SPECIFIED_PACKAGES="$1"
                 else
-                    USER_SPECIFIED_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST $1"
+                    USER_SPECIFIED_PACKAGES="$USER_SPECIFIED_PACKAGES $1"
                 fi
                 ;;
             *)  die "unrecognized argument: $1"
@@ -9522,6 +9495,39 @@ inspect_install_arguments() {
 
     unset TARGET_LIST
     TARGET_LIST="$(__list_supported_target_abis)"
+
+    for TOOLNAME in $(list_tools_in_the_toolchain)
+    do
+        unset TOOLNAME_UPPERCASE
+        TOOLNAME_UPPERCASE=$(printf '%s\n' "$TOOLNAME" | tr a-z A-Z)
+
+        unset TOOLPATH
+        TOOLPATH="$(eval echo \$${TOOLNAME_UPPERCASE}_FOR_BUILD)"
+
+        if [ -z "$TOOLPATH" ] ; then
+            case $TOOLNAME in
+                cc)  TOOLPATH="$(command -v cc  || command -v gcc || command -v clang   || true)" ;;
+                cxx) TOOLPATH="$(command -v c++ || command -v g++ || command -v clang++ || true)" ;;
+                *)   TOOLPATH="$(command -v "$TOOLNAME" || true)"
+            esac
+        else
+            [ -e "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}_FOR_BUILD=$TOOLPATH is not exist."
+            [ -x "$TOOLPATH" ] || die "${TOOLNAME_UPPERCASE}_FOR_BUILD=$TOOLPATH is not executable."
+        fi
+
+        eval export "${TOOLNAME_UPPERCASE}='$TOOLPATH'"
+        eval export "${TOOLNAME_UPPERCASE}_FOR_BUILD='$TOOLPATH'"
+    done
+
+    unset TOOLNAME_UPPERCASE
+    unset TOOLNAME
+    unset TOOLPATH
+
+    for FLAG in $(list_flags_used_by_tools_in_the_toolchain)
+    do
+        eval export "${FLAG}_FOR_BUILD=\"\$$FLAG\""
+    done
+    unset FLAG
 }
 
 init() {
@@ -9554,7 +9560,7 @@ init() {
     if [ -f "$MY_INIT_RC" ] ; then
         .   "$MY_INIT_RC" || die "load $MY_INIT_RC failed."
     else
-        cat >> "$MY_INIT_RC" <<EOF
+        cat > "$MY_INIT_RC" <<EOF
 # influential environment variables:
 #      CC_FOR_BUILD=/usr/bin/cc
 #     CXX_FOR_BUILD=/usr/bin/c++
