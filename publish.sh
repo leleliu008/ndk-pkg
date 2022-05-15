@@ -157,7 +157,7 @@ main() {
 
     set -e
 
-    die_if_command_not_found tar gzip git gh
+    die_if_command_not_found tar gzip git gh tar xz
 
     unset RELEASE_VERSION_MAJOR_PLUS_PLUS
     unset RELEASE_VERSION_MINOR_PLUS_PLUS

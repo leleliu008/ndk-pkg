@@ -2497,9 +2497,11 @@ __uppm_list_the_available_packages_in_the_world() {
     cat <<EOF
 linux |x86_64|glibc|python3 |3.9.5 |5d9b13e38878292f18a41188bd530d059c7c2b1e64eed29cb5c6d38b0a94ad0a|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
 
-linux |x86_64|glibc|git     |2.30.2|61e545ef05e41565292c2e909e5b39e4eb8e60a4e729db06a1ddea3b44f89241|https://github.com/leleliu008/git-prebuild/releases/download/2.30.2/git-2.30.2-x86_64-linux-glibc.tar.xz
+linux |x86_64|  -  |autoconf|2.69  |3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
 
-linux |x86_64|glibc|autoconf|2.69  |3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
+linux |x86_64|  -  |git     |2.36.1|d8543cc6a0f29cdcdb9c7418961e349cff8b1b3244fe4db16f6e06315b90c517|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.15/git-2.36.1-linux-x86_64.tar.xz
+
+linux |x86_64|  -  |file    |5.41  |004a4110f9f687eefa643db4f59f1500879dd5bd69d0494c3cabd475ed6fd449|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.15/file-5.41-linux-x86_64.tar.xz
 
 linux |x86_64|glibc|cmake   |3.21.4|eddba9da5b60e0b5ec5cbb1a65e504d776e247573204df14f6d004da9bc611f9|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-linux-x86_64.tar.gz
 darwin|  -   |  -  |cmake   |3.21.4|f818a10fe625b215e31d0c29c19a6563fb5f51ed7cc7727e5011626c11ea321a|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-macos-universal.tar.gz
@@ -2507,9 +2509,9 @@ darwin|  -   |  -  |cmake   |3.21.4|f818a10fe625b215e31d0c29c19a6563fb5f51ed7cc7
 linux |x86_64|  -  |ninja   |1.10.2|763464859c7ef2ea3a0a10f4df40d2025d3bb9438fcb1228404640410c0ec22d|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
 darwin|x86_64|  -  |ninja   |1.10.2|6fa359f491fac7e5185273c6421a000eea6a2f0febf0ac03ac900bd4d80ed2a5|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
 
-linux |x86_64|  -  |golang  |1.18|e85278e98f57cdb150fe8409e6e5df5343ecb13cebf03a5d5ff12bd55a80264f|https://dl.google.com/go/go1.18.linux-amd64.tar.gz
-darwin|x86_64|  -  |golang  |1.18|70bb4a066997535e346c8bfa3e0dfe250d61100b17ccc5676274642447834969|https://dl.google.com/go/go1.18.darwin-amd64.tar.gz
-darwin|arm64 |  -  |golang  |1.18|9cab6123af9ffade905525d79fc9ee76651e716c85f1f215872b5f2976782480|https://dl.google.com/go/go1.18.darwin-arm64.tar.gz
+linux |x86_64|  -  |golang  |1.18  |e85278e98f57cdb150fe8409e6e5df5343ecb13cebf03a5d5ff12bd55a80264f|https://dl.google.com/go/go1.18.linux-amd64.tar.gz
+darwin|x86_64|  -  |golang  |1.18  |70bb4a066997535e346c8bfa3e0dfe250d61100b17ccc5676274642447834969|https://dl.google.com/go/go1.18.darwin-amd64.tar.gz
+darwin|arm64 |  -  |golang  |1.18  |9cab6123af9ffade905525d79fc9ee76651e716c85f1f215872b5f2976782480|https://dl.google.com/go/go1.18.darwin-arm64.tar.gz
 
 linux |arm64 |glibc|jdk     |17.0.1|a5e954a4e89b50277f20345034aea0ccf06f53705d4ec586b268b14ff42468f7|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-aarch64_bin.tar.gz
 linux |x86_64|glibc|jdk     |17.0.1|6f25bcb94d3e22fb52a4632c74e03b403834e81b68701ab7ecd900fb9cd89f43|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-x64_bin.tar.gz
@@ -2518,8 +2520,6 @@ darwin|x86_64|  -  |jdk     |17.0.1|b8905d88a14e60f873064a8b25737e2ec2e3688611ad
 
 linux |x86_64|  -  |android-sdk|7583922|124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf|https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
 darwin|  -   |  -  |android-sdk|7583922|6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf|https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip
-
-linux |x86_64|glibc|file|5.41|cd99dbd24fc55e79d5bab627e591219891acce97f787cafc8eb2d5c41b1d4db7|https://github.com/leleliu008/test/releases/download/20220409-2015/file-5.41-x86_64-linux-glibc.tar.xz
 EOF
 }
 
