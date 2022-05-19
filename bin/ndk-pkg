@@ -229,11 +229,7 @@ tolower() {
 }
 
 own() {
-    if command -v awk > /dev/null ; then
-        ls -ld "$1" | awk '{print $3":"$4}'
-    else
-        ls -ld "$1" | cut -d ' ' -f4,6 | tr ' ' ':'
-    fi
+    ls -ld "$1" | cut -d ' ' -f3,4 | tr ' ' ':'
 }
 
 is_integer () {
@@ -250,12 +246,12 @@ is_elf_file() {
         return 1
     }
 
-    if command -v hexdump > /dev/null ; then
-        [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$1")" = '7F454C46' ]
-    else
-        error "hexdump command is needed, please install it."
-        return 1
-    fi
+    [ -e "$1" ] || {
+        error "is_elf_file <FILE-PATH>, <FILE-PATH> is not exist."
+        return 2
+    }
+
+    [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$1")" = '7F454C46' ]
 }
 
 # format_unix_timestamp <TIMESTAMP-UNIX> <TO-FORMAT> [-u]
@@ -3859,13 +3855,13 @@ __parse_require_dependency_item() {
             autogen)     PACKAGE_BUILD_SYSTEM_AUTOGENSH=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
             autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
             configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            cmake-make)  PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
+            cmake-gmake) PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
             cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
             cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
             xmake)       PACKAGE_BUILD_SYSTEM_XMAKE=yes     ;;
             meson)       PACKAGE_BUILD_SYSTEM_MESON=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
             ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes     ;;
-            make)        PACKAGE_BUILD_SYSTEM_GMAKE=yes     ;;
+            gmake)       PACKAGE_BUILD_SYSTEM_GMAKE=yes     ;;
             rake)        PACKAGE_BUILD_SYSTEM_RAKE=yes      ;;
             cargo)       PACKAGE_BUILD_SYSTEM_CARGO=yes     ;;
             go)          PACKAGE_BUILD_SYSTEM_GO=yes        ;;
@@ -3879,13 +3875,13 @@ __parse_require_dependency_item() {
             autotools)   PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD perl m4 autoconf automake make" ;;
             configure)   PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD make" ;;
             ndk-build)   PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD make" ;;
-            cmake-make)  PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake>=3.19.0 make"  ;;
+            cmake-gmake) PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake>=3.19.0 make"  ;;
             cmake-ninja) PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake>=3.19.0 ninja" ;;
             cmake)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD cmake>=3.19.0 ninja" ;;
             xmake)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD xmake" ;;
             meson)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD meson ninja" ;;
             ninja)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD ninja" ;;
-            make)        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD make"  ;;
+            gmake)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD make"  ;;
             rake)        PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD ruby gem rake" ;;
             cargo)       PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD rustup rustc cargo" ;;
             go)          PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD go>=1.18" ;;
@@ -4053,7 +4049,7 @@ build() {
     #cargow
     #mesonw
     #cmakew
-    #makew
+    #gmakew
 }
 EOF
     __edit_formula_of_the_given_package "$1"
@@ -6018,7 +6014,7 @@ __install_the_given_package() {
         fi
     fi
 
-    PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD find file>=5.41 tree hexdump patchelf"
+    PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD find tree hexdump patchelf"
 
     # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
     # https://github.com/actions/virtual-environments/issues/5360#issuecomment-1091306746
@@ -6491,7 +6487,7 @@ __install_the_given_package_for_the_given_target() {
             cmake*)    cmakew ;;
             meson)     mesonw ;;
             ninja)     ninja clean && ninja && ninja install ;;
-            make)      makew clean && makew && makew install ;;
+            gmake)     gmakew clean && gmakew && gmakew install ;;
             cargo)     cargow install ;;
             go)        gow ;;
         esac
@@ -6650,49 +6646,28 @@ __adjust_elf_files_for_the_given_target() {
                     continue
                 fi
 
-                if [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$FILEPATH")" = '7F454C46' ] ; then
-                    unset WHAT
-                    unset LINK
+                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                unset ELF_HEADER_HEX
+                ELF_HEADER_HEX="$(hexdump -n 20 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+
+                if [ "$(printf '%s\n' "$ELF_HEADER_HEX" | cut -c1-8)" = '7F454C46' ] ; then
+                    unset ELF_HEADER_HEX_e_machine
+                    ELF_HEADER_HEX_e_machine="$(printf '%s\n' "$ELF_HEADER_HEX" | cut -c37-38)"
+
+                    {
+                        case $TARGET_OS_ABI in
+                            armeabi-v7a) [ "$ELF_HEADER_HEX_e_machine" = '28' ] ;;
+                            arm64-v8a)   [ "$ELF_HEADER_HEX_e_machine" = 'B7' ] ;;
+                            x86)         [ "$ELF_HEADER_HEX_e_machine" = '03' ] ;;
+                            x86_64)      [ "$ELF_HEADER_HEX_e_machine" = '3E' ] ;;
+                        esac
+                    } || die "invalid elf file: $FILEPATH. arch mismatch."
 
                     if [ "$x" = bin ] || [ "$x" = sbin ] ; then
-                        WHAT='pie executable'
-                        LINK='dynamically linked'
-                    elif [ "$x" = lib ] ; then
-                        case $y in
-                            *.o) WHAT='relocatable' ;;
-                            *)   WHAT='shared object' ; LINK='dynamically linked'
-                        esac
+                        if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
+                            die "invalid elf file: $FILEPATH. It is not Position Independent Executable."
+                        fi
                     fi
-
-                    unset ARCH
-
-                    case $TARGET_OS_ABI in
-                        armeabi-v7a) ARCH='ARM, EABI5'   ;;
-                        arm64-v8a)   ARCH='ARM aarch64,' ;;
-                        x86)         ARCH='Intel 80386,' ;;
-                        x86_64)      ARCH='x86-64,'
-                    esac
-
-                    CONTAINS="ELF $TARGET_OS_BIT-bit LSB $WHAT, $ARCH version 1 (SYSV),"
-
-                    FILE_COMMAND_PATH=$(command -v file)
-
-                    if [ "$FILE_COMMAND_PATH" = "$HOME/.uppm/install.d/file/bin/file" ] ; then
-                        # https://github.com/file/file/blob/master/src/magic.c#L259
-                        export MAGIC="$HOME/.uppm/install.d/file/share/misc/magic.mgc"
-                    fi
-
-                    if [ "$FILE_COMMAND_PATH" = "$HOME/.ndk-pkg/native/file/bin/file" ] ; then
-                        # https://github.com/file/file/blob/master/src/magic.c#L259
-                        export MAGIC="$HOME/.ndk-pkg/native/file/share/misc/magic.mgc"
-                    fi
-                    unset FILEATTR
-                    FILEATTR="$($FILE_COMMAND_PATH -L -b "$FILEPATH")"
-
-                    case "$FILEATTR" in
-                         "$CONTAINS"*) ;;
-                         *) die "invalid elf file: $FILEPATH\n    Expected: $CONTAINS\n    Actually: $FILEATTR"
-                    esac
 
                     if [ "$BUILD_TYPE" = release ] ; then
                         run "$STRIP" $STRIP_ARGS "$FILEPATH" || true
@@ -8254,55 +8229,55 @@ configure() {
         unset Makefile
     fi
 
-    makew clean &&
-    makew       &&
-    makew install
+    gmakew clean &&
+    gmakew       &&
+    gmakew install
 }
 
-# make wrapper
-makew() {
-    unset MAKE_OPTIONS
-    unset MAKE_OPTION_SETTED_C
-    unset MAKE_OPTION_SETTED_w
-    unset MAKE_OPTION_SETTED_j
+# gmake wrapper
+gmakew() {
+    unset GMAKE_OPTIONS
+    unset GMAKE_OPTION_SETTED_C
+    unset GMAKE_OPTION_SETTED_w
+    unset GMAKE_OPTION_SETTED_j
 
     for option in $@
     do
         case $option in
-            -C)           MAKE_OPTION_SETTED_C=yes ;;
-            -w)           MAKE_OPTION_SETTED_w=yes ;;
-            -j)           MAKE_OPTION_SETTED_j=yes ;;
-            -j[1-9])      MAKE_OPTION_SETTED_j=yes ;;
-            -j[1-9][0-9]) MAKE_OPTION_SETTED_j=yes ;;
+            -C)           GMAKE_OPTION_SETTED_C=yes ;;
+            -w)           GMAKE_OPTION_SETTED_w=yes ;;
+            -j)           GMAKE_OPTION_SETTED_j=yes ;;
+            -j[1-9])      GMAKE_OPTION_SETTED_j=yes ;;
+            -j[1-9][0-9]) GMAKE_OPTION_SETTED_j=yes ;;
         esac
     done
 
-    if [ "$MAKE_OPTION_SETTED_w" != yes ] ; then
-        MAKE_OPTIONS="$MAKE_OPTIONS -w"
+    if [ "$GMAKE_OPTION_SETTED_w" != yes ] ; then
+        GMAKE_OPTIONS="$GMAKE_OPTIONS -w"
     fi
 
-    if [ "$MAKE_OPTION_SETTED_C" != yes ] ; then
+    if [ "$GMAKE_OPTION_SETTED_C" != yes ] ; then
         if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" != yes ] ; then
             if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-                MAKE_OPTIONS="$MAKE_OPTIONS -C $NATIVE_BUILDIN_DIR"
+                GMAKE_OPTIONS="$GMAKE_OPTIONS -C $NATIVE_BUILDIN_DIR"
             else
-                MAKE_OPTIONS="$MAKE_OPTIONS -C $TARGET_BUILDIN_DIR"
+                GMAKE_OPTIONS="$GMAKE_OPTIONS -C $TARGET_BUILDIN_DIR"
             fi
         fi
     fi
 
-    if [ "$MAKE_OPTION_SETTED_j" != yes ] ; then
-        MAKE_OPTIONS="$MAKE_OPTIONS -j$BUILD_NJOBS"
+    if [ "$GMAKE_OPTION_SETTED_j" != yes ] ; then
+        GMAKE_OPTIONS="$GMAKE_OPTIONS -j$BUILD_NJOBS"
     fi
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
-        MAKE_OPTIONS="$MAKE_OPTIONS --debug V=1"
+        GMAKE_OPTIONS="$GMAKE_OPTIONS --debug V=1"
     fi
 
     if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
-        run bear -- $GMAKE $MAKE_OPTIONS $*
+        run bear -- $GMAKE $GMAKE_OPTIONS $*
     else
-        run         $GMAKE $MAKE_OPTIONS $*
+        run         $GMAKE $GMAKE_OPTIONS $*
     fi
 }
 
