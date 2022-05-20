@@ -25,6 +25,8 @@ jobs:
       - run: bin/ndk-pkg --homepage
 
       - run: bin/ndk-pkg ndkmanager ls-available
+      - run: bin/ndk-pkg ndkmanager ls-available --only-rversion
+      - run: bin/ndk-pkg ndkmanager install r23b
 
       - run: bin/ndk-pkg env
 
@@ -111,6 +113,10 @@ jobs:
       - run: ndk-pkg --version
       - run: ndk-pkg --homedir
       - run: ndk-pkg --homepage
+
+      - run: ndk-pkg ndkmanager ls-available
+      - run: ndk-pkg ndkmanager ls-available --only-rversion
+      - run: ndk-pkg ndkmanager install r23b
 
       - run: ndk-pkg env
 

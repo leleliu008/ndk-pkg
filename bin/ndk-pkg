@@ -8921,7 +8921,7 @@ EOF
 ndkmanager_list_all_available_for_darwin() {
     # https://developer.android.google.cn/ndk/downloads
     cat <<EOF
-163ff3bb72306ffa814de35c49819bccae9df10855a4e3fbba52ad4111fcccae|https://dl.google.com/android/repository/android-ndk-r23b-darwin.zip
+e067b7402fdae85bfbe8af1822afd573b8e73dce443a8292fdaeb2e8dc3aeb86|https://dl.google.com/android/repository/android-ndk-r23b-darwin.zip
 437278103a3db12632c05b1be5c41bbb8522791a67e415cc54411a65366f499d|https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip
 EOF
 }
