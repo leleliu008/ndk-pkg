@@ -1776,7 +1776,6 @@ __pmw_get_available_package_name_by_command_name_emerge() {
     hexdump)  echo 'util-linux' ;;
     makeinfo) echo 'texinfo'  ;;
     xz)       echo 'xz-utils' ;;
-    tree)     echo 'app-text/tree' ;;
     rst2man|rst2html)
                   echo "docutils" ;;
     sphinx-build) echo "sphinx" ;;
@@ -2499,6 +2498,9 @@ linux |x86_64|  -  |git     |2.36.1|d8543cc6a0f29cdcdb9c7418961e349cff8b1b3244fe
 
 linux |x86_64|  -  |file    |5.41  |004a4110f9f687eefa643db4f59f1500879dd5bd69d0494c3cabd475ed6fd449|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.15/file-5.41-linux-x86_64.tar.xz
 
+linux |x86_64|  -  |tree    |2.0.2 |ada484b7bdafdd2f12ed68e204121d83ae5ae8d57c3fc607404219d767bb4bb3|https://raw.githubusercontent.com/leleliu008/ppkg-core-linux-x86_64/master/tree-2.0.2-linux-x86_64.tar.xz
+macos |x86_64|  -  |tree    |2.0.2 |aca635c7394b9c11eb81211670b1961a2be1bd4c86f23eb3e5962bb1ad12ba18|https://raw.githubusercontent.com/leleliu008/ppkg-core-macos-x86_64/master/tree-2.0.2-macos-x86_64.tar.xz
+
 linux |x86_64|glibc|cmake   |3.21.4|eddba9da5b60e0b5ec5cbb1a65e504d776e247573204df14f6d004da9bc611f9|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-linux-x86_64.tar.gz
 darwin|  -   |  -  |cmake   |3.21.4|f818a10fe625b215e31d0c29c19a6563fb5f51ed7cc7727e5011626c11ea321a|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-macos-universal.tar.gz
 
@@ -2520,7 +2522,7 @@ EOF
 }
 
 # __uppm_is_the_given_package_available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
-__uppm_is_the_given_package_available() {
+  __uppm_is_the_given_package_available() {
     [ -z "$1" ] && {
         error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <PACKAGE-NAME> must not be empty."
         return 1
@@ -2593,7 +2595,7 @@ __uppm_is_the_given_package_installed() {
 
 # __uppm_list_the_available_packages
 # __uppm_list_the_available_packages <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
-__uppm_list_the_available_packages() {
+  __uppm_list_the_available_packages() {
     if [ $# -ge 1 ] ; then
         if [ -z "$1" ] ; then
             error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <PACKAGE-NAME> must not be empty."
@@ -2682,7 +2684,7 @@ __uppm_list_the_installed_packages() {
 
 # __uppm_show_infomation
 # __uppm_show_infomation <PACKAGE-NAME>
-__uppm_show_infomation_of_the_given_package() {
+  __uppm_show_infomation_of_the_given_package() {
     __uppm_list_the_available_packages $@
 }
 
@@ -2705,7 +2707,7 @@ __uppm_get_filetype_from_url() {
 # __uppm_fetch
 # __uppm_fetch <PACKAGE-NAME>
 # __uppm_fetch <PACKAGE-NAME> eq|ne|le|gr|lt|gt <VERSION>
-__uppm_fetch() {
+  __uppm_fetch() {
     for UPPM_PKG_LINE in $(__uppm_list_the_available_packages $@)
     do
         unset UPPM_PKG_OS_KIND
@@ -2743,7 +2745,7 @@ __uppm_fetch() {
 }
 
 # __uppm_install_the_given_package <PACKAGE-NAME> [eq|ne|le|ge|lt|gt <VERSION>]
-__uppm_install_the_given_package() {
+  __uppm_install_the_given_package() {
     [ -z "$1" ] && {
         error "uppm install <PACKAGE-NAME> [eq|ne|le|ge|lt|gt <VERSION>], <PACKAGE-NAME> must not be empty."
         return 1
@@ -3036,7 +3038,7 @@ __uppm_get_package_name_by_command_name() {
 }
 
 # __install_command_via_uppm <CMD> [eq|ne|le|ge|lt|gt <VERSION>]
-__install_command_via_uppm() {
+  __install_command_via_uppm() {
     [ -z "$1" ] && {
         error "__install_command_via_uppm <CMD>, <CMD> must not be empty."
         return 1
@@ -3056,7 +3058,7 @@ __install_command_via_uppm() {
 }
 
 # __install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>]
-__install_command_via_pmw() {
+  __install_command_via_pmw() {
     [ -z "$1" ] && {
         error "__install_command_via_pmw <CMD> [eq|ne|le|ge|lt|gt <VERSION>] , <CMD> must not be empty."
         return 1
@@ -3214,7 +3216,7 @@ __install_command_via_pip() {
 # __install_command <CMD> [OP VERSION]
 # __install_command python3 ge 3.5
 # __install_command make
-__install_command() {
+  __install_command() {
     if command_exists_in_filesystem_and_version_matched $@ ; then
         return 0
     fi
@@ -3250,7 +3252,7 @@ __install_command() {
 # handle_dependency optional exe python      ge 3.5
 # handle_dependency optional pym libxml2     ge 2.19
 # handle_dependency optional plm XML::Parser ge 2.45
-handle_dependency() {
+  handle_dependency() {
     [ "$1" = 'required' ] || return 0
 
     shift
@@ -3314,7 +3316,7 @@ __handle_required_dependencies() {
 # __printf_dependency optional exe python      ge 3.5
 # __printf_dependency optional plm libxml2     ge 2.19
 # __printf_dependency optional plm XML::Parser ge 2.45
-__printf_dependency() {
+  __printf_dependency() {
     printf "%-10s %-15s %-2s %-10s %-10s %s\n" "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
@@ -3326,7 +3328,7 @@ __printf_dependency() {
 # printf_dependency optional exe python      ge 3.5
 # printf_dependency optional pym libxml2     ge 2.19
 # printf_dependency optional plm XML::Parser ge 2.45
-printf_dependency() {
+  printf_dependency() {
     case $2 in
         exe)
             case $3 in
@@ -3389,7 +3391,7 @@ __printf_optional_dependencies() {
 # python_module get version   libxml2
 # python_module get location  libxml2
 # python_module install       libxml2
-python_module() {
+  python_module() {
     case $1 in
         is)
             [ $# -eq 3 ] || {
@@ -3451,7 +3453,7 @@ python_module() {
 # perl_module install       XML::Parser
 # perl_module get-version   XML::Parser
 # perl_module get-location  XML::Parser
-perl_module() {
+  perl_module() {
     case $1 in
         get-version)
             shift
@@ -3545,7 +3547,7 @@ __decode_dependency() {
 # regist_dependency optional exe pkg-config ge 0.18
 # regist_dependency optional exe python     ge 3.5
 # regist_dependency optional py  libxml2    ge 2.19
-regist_dependency() {
+  regist_dependency() {
     case $1 in
         required)
             if [ -z "$REQUIRED_DEPENDENCIES" ] ; then
@@ -3600,7 +3602,7 @@ regist_dependency() {
 # pkg_set binbstd 'no'
 
 # pkg_set sdk.api '23'
-pkg_set() {
+  pkg_set() {
     [ -z "$1" ] && {
         error "pkg_set <KEY> <VALUE>..., <KEY> must not be empty."
         return 1
@@ -3621,8 +3623,8 @@ pkg_set() {
     eval "PACKAGE_$__PACKAGE_SET_KEY__='$@'"
 }
 
-#__parse_require_dependency_item <exe|pym|plm> <cmake>=3.19>
-__parse_require_dependency_item() {
+# __parse_require_dependency_item <exe|pym|plm> <cmake>=3.19>
+  __parse_require_dependency_item() {
     case $2 in
         *\<=*) printf '%s\n' "required $1 $2" | sed 's/<=/ le /g' ;;
         *\>=*) printf '%s\n' "required $1 $2" | sed 's/>=/ ge /g' ;;
