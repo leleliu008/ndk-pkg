@@ -2488,67 +2488,128 @@ __pmw_get_available_package_version_by_package_name() {
 ##############################################################################
 # {{{ uppm => universal prebuild package manager
 
-__uppm_list_the_available_packages_in_the_world() {
+__uppm_list_the_available_packages_for_linux_x86_64() {
     cat <<EOF
-linux |x86_64|glibc|python3 |3.9.5 |5d9b13e38878292f18a41188bd530d059c7c2b1e64eed29cb5c6d38b0a94ad0a|https://github.com/leleliu008/python-prebuild/releases/download/3.9.5/python-3.9.5-x86_64-linux-glibc.tar.xz
-
-linux |x86_64|  -  |autoconf|2.69  |3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
-
-linux |x86_64|  -  |git     |2.36.1|d8543cc6a0f29cdcdb9c7418961e349cff8b1b3244fe4db16f6e06315b90c517|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.22/git-2.36.1-linux-x86_64.tar.xz
-
-linux |x86_64|  -  |file    |5.41  |004a4110f9f687eefa643db4f59f1500879dd5bd69d0494c3cabd475ed6fd449|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.22/file-5.41-linux-x86_64.tar.xz
-
-linux |x86_64|  -  |tree    |2.0.2 |ada484b7bdafdd2f12ed68e204121d83ae5ae8d57c3fc607404219d767bb4bb3|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.22/tree-2.0.2-linux-x86_64.tar.xz
-macos |x86_64|  -  |tree    |2.0.2 |aca635c7394b9c11eb81211670b1961a2be1bd4c86f23eb3e5962bb1ad12ba18|https://raw.githubusercontent.com/leleliu008/ppkg-core-macos-x86_64/master/tree-2.0.2-macos-x86_64.tar.xz
-
-linux |x86_64|  -  |patchelf|0.14.5|e21089041deb2a3773ba239148e5a6ffa025cbaee0b1a46ff2adb57fc651b3c7|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.22/patchelf-0.14.5-linux-x86_64.tar.xz
-
-linux |x86_64|glibc|cmake   |3.21.4|eddba9da5b60e0b5ec5cbb1a65e504d776e247573204df14f6d004da9bc611f9|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-linux-x86_64.tar.gz
-darwin|  -   |  -  |cmake   |3.21.4|f818a10fe625b215e31d0c29c19a6563fb5f51ed7cc7727e5011626c11ea321a|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-macos-universal.tar.gz
-
-linux |x86_64|  -  |ninja   |1.10.2|763464859c7ef2ea3a0a10f4df40d2025d3bb9438fcb1228404640410c0ec22d|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
-darwin|x86_64|  -  |ninja   |1.10.2|6fa359f491fac7e5185273c6421a000eea6a2f0febf0ac03ac900bd4d80ed2a5|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
-
-linux |x86_64|  -  |golang  |1.18  |e85278e98f57cdb150fe8409e6e5df5343ecb13cebf03a5d5ff12bd55a80264f|https://dl.google.com/go/go1.18.linux-amd64.tar.gz
-darwin|x86_64|  -  |golang  |1.18  |70bb4a066997535e346c8bfa3e0dfe250d61100b17ccc5676274642447834969|https://dl.google.com/go/go1.18.darwin-amd64.tar.gz
-darwin|arm64 |  -  |golang  |1.18  |9cab6123af9ffade905525d79fc9ee76651e716c85f1f215872b5f2976782480|https://dl.google.com/go/go1.18.darwin-arm64.tar.gz
-
-linux |arm64 |glibc|jdk     |17.0.1|a5e954a4e89b50277f20345034aea0ccf06f53705d4ec586b268b14ff42468f7|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-aarch64_bin.tar.gz
-linux |x86_64|glibc|jdk     |17.0.1|6f25bcb94d3e22fb52a4632c74e03b403834e81b68701ab7ecd900fb9cd89f43|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-x64_bin.tar.gz
-darwin|arm64 |  -  |jdk     |17.0.1|8e5f240705bdf37ed831abc8c52cc05afe71721a6bc26dd977b6efd01b5ebef7|https://download.oracle.com/java/17/archive/jdk-17.0.1_macos-aarch64_bin.tar.gz
-darwin|x86_64|  -  |jdk     |17.0.1|b8905d88a14e60f873064a8b25737e2ec2e3688611adbf21f3a5dd5c8742797d|https://download.oracle.com/java/17/archive/jdk-17.0.1_macos-x64_bin.tar.gz
-
-linux |x86_64|  -  |android-sdk|7583922|124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf|https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
-darwin|  -   |  -  |android-sdk|7583922|6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf|https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip
+autoconf   |2.69   |3b29f52cabe26ba0217825b1cf25b8d4163b6e6afcce1cce70027e0bc33a0860|https://github.com/leleliu008/autoconf-prebuild/releases/download/2.69/autoconf-2.69-glibc-linux-x86_64.tar.gz
+git        |2.36.1 |d8543cc6a0f29cdcdb9c7418961e349cff8b1b3244fe4db16f6e06315b90c517|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.22/git-2.36.1-linux-x86_64.tar.xz
+file       |5.41   |004a4110f9f687eefa643db4f59f1500879dd5bd69d0494c3cabd475ed6fd449|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.22/file-5.41-linux-x86_64.tar.xz
+tree       |2.0.2  |ada484b7bdafdd2f12ed68e204121d83ae5ae8d57c3fc607404219d767bb4bb3|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.22/tree-2.0.2-linux-x86_64.tar.xz
+patchelf   |0.14.5 |e21089041deb2a3773ba239148e5a6ffa025cbaee0b1a46ff2adb57fc651b3c7|https://github.com/leleliu008/ppkg-core-linux-x86_64/releases/download/2022.05.22/patchelf-0.14.5-linux-x86_64.tar.xz
+cmake      |3.21.4 |eddba9da5b60e0b5ec5cbb1a65e504d776e247573204df14f6d004da9bc611f9|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-linux-x86_64.tar.gz
+ninja      |1.10.2 |763464859c7ef2ea3a0a10f4df40d2025d3bb9438fcb1228404640410c0ec22d|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-linux.zip
+golang     |1.18   |e85278e98f57cdb150fe8409e6e5df5343ecb13cebf03a5d5ff12bd55a80264f|https://dl.google.com/go/go1.18.linux-amd64.tar.gz
+jdk        |17.0.1 |6f25bcb94d3e22fb52a4632c74e03b403834e81b68701ab7ecd900fb9cd89f43|https://download.oracle.com/java/17/archive/jdk-17.0.1_linux-x64_bin.tar.gz
+android-sdk|7583922|124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf|https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
 EOF
 }
 
-# __uppm_is_the_given_package_available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
-  __uppm_is_the_given_package_available() {
+__uppm_list_the_available_packages_for_macos_x86_64() {
+    cat <<EOF
+tree       |2.0.2  |aca635c7394b9c11eb81211670b1961a2be1bd4c86f23eb3e5962bb1ad12ba18|https://raw.githubusercontent.com/leleliu008/ppkg-core-macos-x86_64/master/tree-2.0.2-macos-x86_64.tar.xz
+cmake      |3.21.4 |f818a10fe625b215e31d0c29c19a6563fb5f51ed7cc7727e5011626c11ea321a|https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-macos-universal.tar.gz
+ninja      |1.10.2 |6fa359f491fac7e5185273c6421a000eea6a2f0febf0ac03ac900bd4d80ed2a5|https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-mac.zip
+golang     |1.18   |70bb4a066997535e346c8bfa3e0dfe250d61100b17ccc5676274642447834969|https://dl.google.com/go/go1.18.darwin-amd64.tar.gz
+jdk        |17.0.1 |b8905d88a14e60f873064a8b25737e2ec2e3688611adbf21f3a5dd5c8742797d|https://download.oracle.com/java/17/archive/jdk-17.0.1_macos-x64_bin.tar.gz
+android-sdk|7583922|6929a1957f3e71008adfade0cebd08ebea9b9f506aa77f1849c7bdc3418df7cf|https://dl.google.com/android/repository/commandlinetools-mac-7583922_latest.zip
+EOF
+}
+
+__uppm_list_the_available_packages_for_macos_arm64() {
+    cat <<EOF
+golang     |1.18   |9cab6123af9ffade905525d79fc9ee76651e716c85f1f215872b5f2976782480|https://dl.google.com/go/go1.18.darwin-arm64.tar.gz
+jdk        |17.0.1 |8e5f240705bdf37ed831abc8c52cc05afe71721a6bc26dd977b6efd01b5ebef7|https://download.oracle.com/java/17/archive/jdk-17.0.1_macos-aarch64_bin.tar.gz
+EOF
+}
+
+__uppm_list_the_available_packages() {
+    case $NATIVE_OS_KIND-$NATIVE_OS_ARCH in
+        linux-x86_64)  __uppm_list_the_available_packages_for_linux_x86_64 ;;
+        darwin-x86_64) __uppm_list_the_available_packages_for_macos_x86_64 ;;
+        darwin-arm64)  __uppm_list_the_available_packages_for_macos_arm64  ;;
+    esac
+}
+
+# __uppm_parse_the_given_package_spec <PACKAGE-SPEC>
+# __uppm_parse_the_given_package_spec 'cmake<=3.20.1'
+# __uppm_parse_the_given_package_spec 'cmake>=3.20.1'
+# __uppm_parse_the_given_package_spec 'cmake=3.20.1'
+# __uppm_parse_the_given_package_spec 'cmake<3.20.1'
+# __uppm_parse_the_given_package_spec 'cmake>3.20.1'
+  __uppm_parse_the_given_package_spec() {
     [ -z "$1" ] && {
-        error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <PACKAGE-NAME> must not be empty."
+        error "__uppm_parse_the_given_package_spec <PACKAGE-SPEC>, <PACKAGE-SPEC> must not be empty."
         return 1
     }
 
-    if [ $# -ge 3 ] ; then
-        case $2 in
-            eq|ne|lt|ge|lt|gt) ;;
-            *)  error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
-                return 1
-        esac
+    unset UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_le
+    unset UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_ge
+    unset UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_lt
+    unset UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_gt
+    unset UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_eq
 
-        if [ -z "$3" ] ; then
-            error "uppm is-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>],  <VERSION> must not be empty."
+    UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_le="$(printf '%s\n' "$1" | grep -c '<='     || true)"
+    UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_ge="$(printf '%s\n' "$1" | grep -c '>='     || true)"
+    UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_lt="$(printf '%s\n' "$1" | grep -c '<[^=]'  || true)"
+    UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_gt="$(printf '%s\n' "$1" | grep -c '>[^=]'  || true)"
+    UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_eq="$(printf '%s\n' "$1" | grep -c '[^><]=' || true)"
+
+    UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_total="$(expr "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_le" + "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_ge" + "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_lt" + "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_gt" + "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_eq")"
+
+    if [ "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_total" -gt 1 ] ; then
+        error "__uppm_parse_the_given_package_spec <PACKAGE-SPEC>, PACKAGE-SPEC[$1] is invalid."
+        return 1
+    fi
+
+    unset UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME
+    unset UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS
+    unset UPPM_THE_GIVEN_PACKAGE_SPEC_OP
+
+    if [ "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_le" -eq 1 ] ; then
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME="$(printf '%s\n' "$1" | sed 's/<=/ /g' | cut -d ' ' -f1)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS="$(printf '%s\n' "$1" | sed 's/<=/ /g' | cut -d ' ' -f2)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_OP='le'
+    fi
+
+    if [ "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_ge" -eq 1 ] ; then
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME="$(printf '%s\n' "$1" | sed 's/>=/ /g' | cut -d ' ' -f1)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS="$(printf '%s\n' "$1" | sed 's/>=/ /g' | cut -d ' ' -f2)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_OP='ge'
+    fi
+
+    if [ "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_lt" -eq 1 ] ; then
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME="$(printf '%s\n' "$1" | sed 's/</ /g' | cut -d ' ' -f1)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS="$(printf '%s\n' "$1" | sed 's/</ /g' | cut -d ' ' -f2)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_OP='lt'
+    fi
+
+    if [ "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_gt" -eq 1 ] ; then
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME="$(printf '%s\n' "$1" | sed 's/>/ /g' | cut -d ' ' -f1)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS="$(printf '%s\n' "$1" | sed 's/>/ /g' | cut -d ' ' -f2)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_OP='gt'
+    fi
+
+    if [ "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_eq" -eq 1 ] ; then
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME="$(printf '%s\n' "$1" | sed 's/=/ /g' | cut -d ' ' -f1)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS="$(printf '%s\n' "$1" | sed 's/=/ /g' | cut -d ' ' -f2)"
+        UPPM_THE_GIVEN_PACKAGE_SPEC_OP='eq'
+    fi
+
+    if [ "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP_COUNT_total" -eq 0 ] ; then
+        UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME="$1"
+    else
+        if [ -z "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME" ] || [ -z "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS" ] ; then
+            error "__uppm_parse_the_given_package_spec <PACKAGE-SPEC>, PACKAGE-SPEC[$1] is invalid."
             return 1
         fi
     fi
+}
 
-    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
+# __uppm_is_the_given_package_available <PACKAGE-SPEC>
+  __uppm_is_the_given_package_available() {
+    __uppm_parse_the_given_package_spec "$1" || return 1
+
+    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages | sed 's/ //g')
     do
-        unset UPPM_PKG_OS_KIND
-        unset UPPM_PKG_OS_ARCH
-        unset UPPM_PKG_OS_LIBC
-
         unset UPPM_PKG_NAME
         unset UPPM_PKG_VERS
 
@@ -2556,138 +2617,60 @@ EOF
             continue
         fi
 
-        UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
+        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
+        UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
 
-        if [ "$UPPM_PKG_OS_KIND" != '-' ] && [ "$UPPM_PKG_OS_KIND" != "$NATIVE_OS_KIND" ] ; then
+        if [ "$UPPM_PKG_NAME" = "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME" ] ; then
+            if [ -z "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP" ] && [ -z "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS" ] ; then
+                return 0
+            else
+                if version_match "$UPPM_PKG_VERS" "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP" "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS" ; then
+                    return 0
+                else
+                    return 1
+                fi
+            fi
+        else
             continue
         fi
-
-        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
-
-        if [ "$UPPM_PKG_OS_ARCH" != '-' ] && [ "$UPPM_PKG_OS_ARCH" != "$NATIVE_OS_ARCH" ] ; then
-            continue
-        fi
-
-        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
-
-        if [ "$UPPM_PKG_OS_LIBC" != '-' ] && [ "$UPPM_PKG_OS_LIBC" != "$NATIVE_OS_LIBC" ] ; then
-            continue
-        fi
-
-        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
-
-        if [ "$UPPM_PKG_NAME" != "$1" ] ; then
-            continue
-        fi
-
-        if [ $# -ge 3 ] ; then
-            UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
-            version_match "$UPPM_PKG_VERS" "$2" "$3" || continue
-        fi
-
-        return 0
     done
 
     return 1
 }
 
-__uppm_is_the_given_package_installed() {
+# __uppm_is_the_given_package_installed <PACKAGE-NAME>
+  __uppm_is_the_given_package_installed() {
     [ -f "$HOME/.uppm/install.d/$1/installed-metadata" ]
 }
 
-# __uppm_list_the_available_packages
-# __uppm_list_the_available_packages <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>]
-  __uppm_list_the_available_packages() {
-    if [ $# -ge 1 ] ; then
-        if [ -z "$1" ] ; then
-            error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <PACKAGE-NAME> must not be empty."
-            return 1
-        fi
+# __uppm_show_infomation_of_the_given_package <PACKAGE-NAME>
+  __uppm_show_infomation_of_the_given_package() {
+    if [ -z "$1" ] ; then
+        error "uppm info <PACKAGE-NAME>, <PACKAGE-NAME> must not be empty."
+        return 1
     fi
 
-    if [ $# -ge 3 ] ; then
-        case $2 in
-            eq|ne|lt|ge|lt|gt) ;;
-            *)  error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
-                return 1
-        esac
-
-        if [ -z "$3" ] ; then
-            error "uppm ls-available <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <VERSION> must not be empty."
-            return 1
-        fi
+    if [ "$1" = '@all' ] ; then
+        __uppm_list_the_available_packages
+        return $?
     fi
 
-    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
+    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages | sed 's/ //g')
     do
-        unset UPPM_PKG_OS_KIND
-        unset UPPM_PKG_OS_ARCH
-        unset UPPM_PKG_OS_LIBC
-
-        unset UPPM_PKG_NAME
-        unset UPPM_PKG_VERS
-        unset UPPM_PKG_SHA_
-        unset UPPM_PKG_URL_
-
-        if [ -z "$UPPM_PKG_LINE" ] ; then
-            continue
-        fi
-
-        UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
-
-        if [ "$UPPM_PKG_OS_KIND" != '-' ] && [ "$UPPM_PKG_OS_KIND" != "$NATIVE_OS_KIND" ] ; then
-            continue
-        fi
-
-        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
-
-        if [ "$UPPM_PKG_OS_ARCH" != '-' ] && [ "$UPPM_PKG_OS_ARCH" != "$NATIVE_OS_ARCH" ] ; then
-            continue
-        fi
-
-        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
-
-        if [ "$UPPM_PKG_OS_LIBC" != '-' ] && [ "$UPPM_PKG_OS_LIBC" != "$NATIVE_OS_LIBC" ] ; then
-            continue
-        fi
-
-        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
-        UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
-        UPPM_PKG_SHA_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
-        UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f7)
-
-        if [ $# -eq 0 ] ; then
+        if [ "$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)" = "$1" ] ; then
             printf '%s\n' "$UPPM_PKG_LINE"
-            continue
-        fi
-
-        if [ $# -eq 1 ] ; then
-            if [ "$UPPM_PKG_NAME" = "$1" ] ; then
-                printf '%s\n' "$UPPM_PKG_LINE"
-            fi
-            continue
-        fi
-
-        if [ $# -eq 3 ] ; then
-            if [ "$UPPM_PKG_VERS" -$2 "$3" ] ; then
-                printf '%s\n' "$UPPM_PKG_LINE"
-                if [ "$2" = 'eq' ] ; then
-                    break
-                fi
-            fi
+            return 0
+        else
             continue
         fi
     done
+
+    error "uppm package [$1] is not available."
+    return 1
 }
 
 __uppm_list_the_installed_packages() {
     :
-}
-
-# __uppm_show_infomation
-# __uppm_show_infomation <PACKAGE-NAME>
-  __uppm_show_infomation_of_the_given_package() {
-    __uppm_list_the_available_packages $@
 }
 
 __uppm_get_filetype_from_url() {
@@ -2706,149 +2689,97 @@ __uppm_get_filetype_from_url() {
     esac
 }
 
-# __uppm_fetch
-# __uppm_fetch <PACKAGE-NAME>
-# __uppm_fetch <PACKAGE-NAME> eq|ne|le|gr|lt|gt <VERSION>
-  __uppm_fetch() {
-    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages $@)
-    do
-        unset UPPM_PKG_OS_KIND
-        unset UPPM_PKG_OS_ARCH
-        unset UPPM_PKG_OS_LIBC
+# __uppm_fetch_the_given_package <PACKAGE-NAME>
+  __uppm_fetch_the_given_package() {
+    if [ -z "$1" ] ; then
+        error "uppm fetch <PACKAGE-NAME>, <PACKAGE-NAME> must not be empty."
+        return 1
+    fi
 
+    if [ "$1" = '@all' ] ; then
+        UPPM_AVAILABLE_PACKAGES="$(__uppm_list_the_available_packages | sed 's/ //g')"
+    else
+        UPPM_AVAILABLE_PACKAGES="$(__uppm_show_infomation_of_the_given_package "$1")"
+    fi
+
+    if [ -z "$UPPM_AVAILABLE_PACKAGES" ] ; then
+        error "no uppm packages to be fetched."
+        return 1
+    fi
+
+    for UPPM_PKG_LINE in $UPPM_AVAILABLE_PACKAGES
+    do
         unset UPPM_PKG_NAME
         unset UPPM_PKG_VERS
         unset UPPM_PKG_SHA_
         unset UPPM_PKG_URL_
 
-        UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
-        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
-        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
-
-        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
-        UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
-        UPPM_PKG_SHA_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
-        UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f7)
+        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
+        UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
+        UPPM_PKG_SHA_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
+        UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
 
         UPPM_PKG_FILETYPE=$(__uppm_get_filetype_from_url "$UPPM_PKG_URL_")
-
-        UPPM_PKG_FILENAME="$UPPM_PKG_NAME-$UPPM_PKG_VERS"
-
-        [ "$UPPM_PKG_OS_KIND" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_KIND"
-        [ "$UPPM_PKG_OS_ARCH" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_ARCH"
-        [ "$UPPM_PKG_OS_LIBC" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_LIBC"
-
-        [ -n "$UPPM_PKG_FILETYPE" ]     && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME.$UPPM_PKG_FILETYPE"
-
+        UPPM_PKG_FILENAME="$UPPM_PKG_NAME-$UPPM_PKG_VERS.$UPPM_PKG_FILETYPE"
         UPPM_PKG_FILEPATH="$HOME/.uppm/downloads/$UPPM_PKG_FILENAME"
 
         fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SHA_" --output-path="$UPPM_PKG_FILEPATH"
     done
 }
 
-# __uppm_install_the_given_package <PACKAGE-NAME> [eq|ne|le|ge|lt|gt <VERSION>]
+# __uppm_install_the_given_package <PACKAGE-SPEC> --prefix=DIR
   __uppm_install_the_given_package() {
-    [ -z "$1" ] && {
-        error "uppm install <PACKAGE-NAME> [eq|ne|le|ge|lt|gt <VERSION>], <PACKAGE-NAME> must not be empty."
-        return 1
-    }
-
-    if [ $# -ge 3 ] ; then
-        case $2 in
-            eq|ne|lt|ge|lt|gt) ;;
-            *)  error "uppm install <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], unrecognized argument: $2"
-                return 1
-        esac
-
-        if [ -z "$3" ] ; then
-            error "uppm install <PACKAGE-NAME> [eq|ne|le|gr|lt|gt <VERSION>], <VERSION> must not be empty."
-            return 1
-        fi
-    fi
+    __uppm_parse_the_given_package_spec "$1" || return 1
 
     unset UPPM_PKG_LINE
 
-    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages_in_the_world | sed 's/ //g')
+    for UPPM_PKG_LINE in $(__uppm_list_the_available_packages | sed 's/ //g')
     do
-        unset UPPM_PKG_OS_KIND
-        unset UPPM_PKG_OS_ARCH
-        unset UPPM_PKG_OS_LIBC
-
         unset UPPM_PKG_NAME
         unset UPPM_PKG_VERS
 
-        [ -z "$UPPM_PKG_LINE" ] && continue
-
-        UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
-
-        if [ "$UPPM_PKG_OS_KIND" != '-' ] && [ "$UPPM_PKG_OS_KIND" != "$NATIVE_OS_KIND" ] ; then
+        [ -z "$UPPM_PKG_LINE" ] && {
+            unset UPPM_PKG_LINE
             continue
-        fi
+        }
 
-        UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
+        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
+        UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
 
-        if [ "$UPPM_PKG_OS_ARCH" != '-' ] && [ "$UPPM_PKG_OS_ARCH" != "$NATIVE_OS_ARCH" ] ; then
-            continue
-        fi
-
-        UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
-
-        if [ "$UPPM_PKG_OS_LIBC" != '-' ] && [ "$UPPM_PKG_OS_LIBC" != "$NATIVE_OS_LIBC" ] ; then
-            continue
-        fi
-
-        UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
-
-        if [ "$UPPM_PKG_NAME" != "$1" ] ; then
-            continue
-        fi
-
-        UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
-
-        if [ $# -ge 3 ] ; then
-            if version_match "$UPPM_PKG_VERS" "$2" "$3" ; then
+        if [ "$UPPM_PKG_NAME" = "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAHE_NAME" ] ; then
+            if [ -z "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP" ] && [ -z "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS" ] ; then
                 break
             else
-                continue
+                if version_match "$UPPM_PKG_VERS" "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP" "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS" ; then
+                    break
+                else
+                    unset UPPM_PKG_LINE
+                    break
+                fi
             fi
+        else
+            unset UPPM_PKG_LINE
+            continue
         fi
-
-        break
     done
 
     if [ -z "$UPPM_PKG_LINE" ] ; then
-        warn "no available prebuild package: $@"
+        error "no available uppm package: $1"
         return 1
     fi
-
-    unset UPPM_PKG_OS_KIND
-    unset UPPM_PKG_OS_ARCH
-    unset UPPM_PKG_OS_LIBC
 
     unset UPPM_PKG_NAME
     unset UPPM_PKG_VERS
     unset UPPM_PKG_SHA_
     unset UPPM_PKG_URL_
 
-    UPPM_PKG_OS_KIND=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
-    UPPM_PKG_OS_ARCH=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
-    UPPM_PKG_OS_LIBC=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
-
-    UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
-    UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f5)
-    UPPM_PKG_SHA_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f6)
-    UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f7)
+    UPPM_PKG_NAME=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f1)
+    UPPM_PKG_VERS=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f2)
+    UPPM_PKG_SHA_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f3)
+    UPPM_PKG_URL_=$(printf '%s\n' "$UPPM_PKG_LINE" | cut -d '|' -f4)
 
     UPPM_PKG_FILETYPE=$(__uppm_get_filetype_from_url "$UPPM_PKG_URL_")
-
-    UPPM_PKG_FILENAME="$UPPM_PKG_NAME-$UPPM_PKG_VERS"
-
-    [ "$UPPM_PKG_OS_KIND" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_KIND"
-    [ "$UPPM_PKG_OS_ARCH" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_ARCH"
-    [ "$UPPM_PKG_OS_LIBC" != '-' ]  && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME-$UPPM_PKG_OS_LIBC"
-
-    [ -n "$UPPM_PKG_FILETYPE" ]     && UPPM_PKG_FILENAME="$UPPM_PKG_FILENAME.$UPPM_PKG_FILETYPE"
-
+    UPPM_PKG_FILENAME="$UPPM_PKG_NAME-$UPPM_PKG_VERS.$UPPM_PKG_FILETYPE"
     UPPM_PKG_FILEPATH="$HOME/.uppm/downloads/$UPPM_PKG_FILENAME"
 
     fetch "$UPPM_PKG_URL_" --sha256="$UPPM_PKG_SHA_" --output-path="$UPPM_PKG_FILEPATH"
@@ -2883,63 +2814,83 @@ __uppm_get_filetype_from_url() {
             ;;
     esac
 
-    if [ -z "$UPPM_PKG_INSTALLD_PREFIX" ] ; then
-        UPPM_PKG_INSTALLD_PREFIX="$HOME/.uppm/install.d"
+    unset UPPM_PKG_INSTALL_DIR
+
+    for arg in $@
+    do
+        case $arg in
+            --prefix=*)
+                UPPM_PKG_INSTALL_DIR="$(getvalue $arg)"
+                case "$UPPM_PKG_INSTALL_DIR" in
+                    '') die "--prefix=<DIR>, <DIR> must not be empty." ;;
+                    /*) ;;
+                    \~|\~/) UPPM_PKG_INSTALL_DIR="${HOME}" ;;
+                    \~/*)   UPPM_PKG_INSTALL_DIR="${HOME}$(printf "$UPPM_PKG_INSTALL_DIR" | cut -c2-)" ;;
+                    .|./)   UPPM_PKG_INSTALL_DIR="${PWD}" ;;
+                    *)      UPPM_PKG_INSTALL_DIR="${PWD}/$UPPM_PKG_INSTALL_DIR" ;;
+                esac
+        esac
+        shift
+    done
+
+    if [ -z "$UPPM_PKG_INSTALL_DIR" ] ; then
+        UPPM_PKG_INSTALL_DIR="$HOME/.uppm/install.d/$UPPM_PKG_NAME"
     fi
 
-    UPPM_PKG_INSTALLD="$UPPM_PKG_INSTALLD_PREFIX/$UPPM_PKG_NAME"
-
-    UPPM_PKG_INSTALLED_METADATA_FILEPATH="$UPPM_PKG_INSTALLD/installed-metadata"
+    UPPM_PKG_INSTALLED_METADATA_FILEPATH="$UPPM_PKG_INSTALL_DIR/installed-metadata"
 
     if [ -f "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" ] ; then
-        if [ $# -ge 3 ] ; then
-            if version_match "$(. "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" && printf '%s\n' "$INSTALLED_PACKAGE_VERSION")" "$2" "$3" ; then
-                success "$UPPM_PKG_FILEPATH already have been unpacked to $UPPM_PKG_INSTALLD."
+        if [ -z "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP" ] && [ -z "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS" ] ; then
+            success "$UPPM_PKG_FILEPATH already have been installed to $UPPM_PKG_INSTALL_DIR."
+        else
+            if version_match "$(. "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" && printf '%s\n' "$INSTALLED_UPPM_PKG_VERS")" "$UPPM_THE_GIVEN_PACKAGE_SPEC_OP" "$UPPM_THE_GIVEN_PACKAGE_SPEC_PACKAGE_VERS" ; then
+                success "$UPPM_PKG_FILEPATH already have been installed to $UPPM_PKG_INSTALL_DIR."
             else
-                run rm -rf "$UPPM_PKG_INSTALLD"
+                warn "$UPPM_PKG_FILEPATH already have been installed to $UPPM_PKG_INSTALL_DIR. but it not match, I will reinstall it."
+                run rm -rf "$UPPM_PKG_INSTALL_DIR"
             fi
-        elif [ $# -ge 1 ] ; then
-            success "$UPPM_PKG_FILEPATH already have been unpacked to $UPPM_PKG_INSTALLD."
         fi
     fi
 
     if [ ! -f "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" ] ; then
-        if [ ! -d "$UPPM_PKG_INSTALLD" ] ; then
-            install -o $(whoami) -d "$UPPM_PKG_INSTALLD" 2>/dev/null || sudo install -o $(whoami) -d "$UPPM_PKG_INSTALLD"
+        if [ ! -d "$UPPM_PKG_INSTALL_DIR" ] ; then
+            CURRENT_GROUP_NAME="$(id -n -g)"
+            CURRENT_USER__NAME="$(id -n -u)"
+            install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$UPPM_PKG_INSTALL_DIR" 2>/dev/null || sudo install -g "$CURRENT_GROUP_NAME" -o "$CURRENT_USER__NAME" -d "$UPPM_PKG_INSTALL_DIR"
         fi
         case $UPPM_PKG_FILETYPE in
             zip)
-                run unzip  "$UPPM_PKG_FILEPATH" -d "$UPPM_PKG_INSTALLD"
+                run unzip  "$UPPM_PKG_FILEPATH" -d "$UPPM_PKG_INSTALL_DIR"
                 ;;
             tar.xz|tar.gz|tar.lz|tar.bz2|tgz|txz|tlz)
-                run tar xf "$UPPM_PKG_FILEPATH" -C "$UPPM_PKG_INSTALLD" --strip-components 1
+                run tar xf "$UPPM_PKG_FILEPATH" -C "$UPPM_PKG_INSTALL_DIR" --strip-components 1
                 ;;
         esac
 
         cat > "$UPPM_PKG_INSTALLED_METADATA_FILEPATH" <<EOF
-INSTALLED_TIMESTAMP_UNIX='$(date +%s)'
-INSTALLED_PACKAGE_NAME='$UPPM_PKG_NAME'
-INSTALLED_PACKAGE_VERSION='$UPPM_PKG_VERS'
-INSTALLED_PKG_URL_='$UPPM_PKG_URL_'
-INSTALLED_PKG_SHA_='$UPPM_PKG_SHA_'
+INSTALLED_UPPM_PKG_TIME='$(date +%s)'
+INSTALLED_UPPM_PKG_NAME='$UPPM_PKG_NAME'
+INSTALLED_UPPM_PKG_VERS='$UPPM_PKG_VERS'
+INSTALLED_UPPM_PKG_URL_='$UPPM_PKG_URL_'
+INSTALLED_UPPM_PKG_SHA_='$UPPM_PKG_SHA_'
 EOF
     fi
 
-    if [ -d "$UPPM_PKG_INSTALLD/bin" ] ; then
-        bppend_to_PATH "$UPPM_PKG_INSTALLD/bin"
+    if [ -d "$UPPM_PKG_INSTALL_DIR/bin" ] ; then
+        bppend_to_PATH "$UPPM_PKG_INSTALL_DIR/bin"
     fi
 
-    bppend_to_PATH "$UPPM_PKG_INSTALLD"
+    bppend_to_PATH "$UPPM_PKG_INSTALL_DIR"
 
     case $UPPM_PKG_NAME in
         autoconf)
-            for xx in $(grep '/root/.zpkg/install.d/autoconf' -rl "$UPPM_PKG_INSTALLD")
+            for xx in $(grep '/root/.zpkg/install.d/autoconf' -rl "$UPPM_PKG_INSTALL_DIR")
             do
-                sed_in_place "s|/root/.zpkg/install.d/autoconf|$UPPM_PKG_INSTALLD|" "$xx"
+                sed_in_place "s|/root/.zpkg/install.d/autoconf|$UPPM_PKG_INSTALL_DIR|" "$xx"
             done
             ;;
         jdk)
-            cat > "$UPPM_PKG_INSTALLD/env" <<EOF
+            cat > "$UPPM_PKG_INSTALL_DIR/env" <<EOF
 bppend_to_PATH() {
     case ":\${PATH}:" in
         *:"\$@":*) ;;
@@ -2947,11 +2898,11 @@ bppend_to_PATH() {
     esac
 }
 
-JAVA_HOME="$UPPM_PKG_INSTALLD"
+JAVA_HOME="$UPPM_PKG_INSTALL_DIR"
 
-bppend_to_PATH "$UPPM_PKG_INSTALLD/bin"
+bppend_to_PATH "$UPPM_PKG_INSTALL_DIR/bin"
 EOF
-            . "$UPPM_PKG_INSTALLD/env"
+            . "$UPPM_PKG_INSTALL_DIR/env"
 
     esac
 }
@@ -2971,16 +2922,26 @@ uppm --version
 uppm ls-available
 uppm ls-installed
 
-uppm is-available <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
-uppm is-installed <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]
+uppm is-available <PACKAGE-NAME><OP><PACKAGE-VERSION>]
+uppm is-available 'cmake'
+uppm is-available 'cmake<=3.20.1'
+uppm is-available 'cmake>=3.20.1'
+uppm is-available 'cmake=3.20.1'
+uppm is-available 'cmake<3.20.1'
+uppm is-available 'cmake>3.20.1'
 
-uppm search       <keyword>
+uppm info    <PACKAGE-NAME|@all>
 
-uppm info         [PACKAGE-NAME]
+uppm fetch   <PACKAGE-NAME|@all>
 
-uppm fetch        <PACKAGE-NAME> [OUTPUT-DIR]
-
-uppm install      <PACKAGE-NAME> [eq|ne|lt|ge|lt|gt <VERSION>]"
+uppm install <PACKAGE-NAME><OP><PACKAGE-VERSION>] --prefix=DIR
+uppm install 'cmake'
+uppm install 'cmake<=3.20.1'
+uppm install 'cmake>=3.20.1'
+uppm install 'cmake=3.20.1'
+uppm install 'cmake<3.20.1'
+uppm install 'cmake>3.20.1'
+"
 }
 
 uppm() {
@@ -2991,7 +2952,15 @@ uppm() {
             __uppm_help
             ;;
         -V|--version)
-            printf "0.0.1"
+            printf '%s\n' "0.0.1"
+            ;;
+        info)
+            shift
+            __uppm_show_infomation_of_the_given_package $@
+            ;;
+        fetch)
+            shift
+            __uppm_fetch_the_given_package $@
             ;;
         ls-available)
             shift
@@ -3015,7 +2984,7 @@ uppm() {
             ;;
         *)  error "uppm unrecognized ACTION: $1"
             __uppm_help
-            exit 1
+            return 1
     esac
 }
 
@@ -3626,9 +3595,9 @@ __decode_dependency() {
     case $2 in
         *\<=*) printf '%s\n' "required $1 $2" | sed 's/<=/ le /g' ;;
         *\>=*) printf '%s\n' "required $1 $2" | sed 's/>=/ ge /g' ;;
-        *=*)   printf '%s\n' "required $1 $2" | sed 's/<=/ eq /g' ;;
-        *\<*)  printf '%s\n' "required $1 $2" | sed 's/<=/ lt /g' ;;
-        *\>*)  printf '%s\n' "required $1 $2" | sed 's/<=/ gt /g' ;;
+        *=*)   printf '%s\n' "required $1 $2" | sed 's/=/  eq /g' ;;
+        *\<*)  printf '%s\n' "required $1 $2" | sed 's/</  lt /g' ;;
+        *\>*)  printf '%s\n' "required $1 $2" | sed 's/>/  gt /g' ;;
         *)     printf '%s\n' "required $1 $2"
     esac
 }
@@ -4413,7 +4382,7 @@ __gen_github_workflows() {
                     '') die "--output-dir=<DIR>, <DIR> must not be empty." ;;
                     /*) ;;
                     \~|\~/) OUTPUT_DIR="${HOME}" ;;
-                    \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | cut -c3-)" ;;
+                    \~/*)   OUTPUT_DIR="${HOME}$(printf "$OUTPUT_DIR" | cut -c2-)" ;;
                     .|./)   OUTPUT_DIR="${PWD}" ;;
                     *)      OUTPUT_DIR="${PWD}/$OUTPUT_DIR" ;;
                 esac
@@ -9003,7 +8972,7 @@ ndkmanager_install_the_given_rversion() {
     ANDROID_NDK_FILENAME="$FETCH_OUTPUT_NAME"
 
     if [ -f "$ANDROID_NDK_INSTALL_DIR/.installed" ] ; then
-        success "$ANDROID_NDK_FILEPATH already have been unpacked to $ANDROID_NDK_INSTALL_DIR."
+        success "$ANDROID_NDK_FILEPATH already have been installed to $ANDROID_NDK_INSTALL_DIR."
     else
         if [ -d "$ANDROID_NDK_INSTALL_DIR" ] ; then
             run rm -rf "$ANDROID_NDK_INSTALL_DIR" || return 1
@@ -10028,6 +9997,10 @@ main() {
             __gen_github_workflows $@
             ;;
         test)
+            ;;
+        uppm)
+            shift
+            uppm $@
             ;;
         compare-versions)
             shift
