@@ -3016,9 +3016,19 @@ __uppm_get_package_name_by_command_name() {
     fi
 
     UPPM_PKG_NAME=$(__uppm_get_package_name_by_command_name "$1")
-    if  uppm is-available "$UPPM_PKG_NAME" $2 $3 ; then
+
+    case $2 in
+        '') UPPM_PKG_SPEC="$UPPM_PKG_NAME"     ;;
+        le) UPPM_PKG_SPEC="$UPPM_PKG_NAME<=$3" ;;
+        ge) UPPM_PKG_SPEC="$UPPM_PKG_NAME>=$3" ;;
+        lt) UPPM_PKG_SPEC="$UPPM_PKG_NAME<$3"  ;;
+        gt) UPPM_PKG_SPEC="$UPPM_PKG_NAME>$3"  ;;
+        eq) UPPM_PKG_SPEC="$UPPM_PKG_NAME=$3"  ;;
+    esac
+
+    if  uppm is-available "$UPPM_PKG_SPEC" ; then
         note "${COLOR_GREEN}$@${COLOR_OFF} ${COLOR_YELLOW}command is required, but it is not found on this machine, I will install it via${COLOR_OFF} ${COLOR_GREEN}uppm${COLOR_OFF}"
-        uppm install      "$UPPM_PKG_NAME"
+        uppm install      "$UPPM_PKG_SPEC"
     else
         return 1
     fi
