@@ -7691,6 +7691,7 @@ __config_variables_for_the_given_target() {
         printf '%s\n' "
         set(ANDROID_ABI "${TARGET_OS_ABI}")
         set(ANDROID_PLATFORM "android-${TARGET_OS_VERS}")
+        set(ANDROID_USE_LEGACY_TOOLCHAIN_FILE OFF)
         include(${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake)
         " > "$TARGET_CMAKE_TOOLCHAIN_FILE"
 
@@ -8337,7 +8338,8 @@ cmakew() {
         -DANDROID_TOOLCHAIN=clang
         -DANDROID_ABI=$TARGET_OS_ABI
         -DANDROID_ARM_NEON=TRUE
-        -DANDROID_PLATFORM=$TARGET_OS_VERS"
+        -DANDROID_PLATFORM=$TARGET_OS_VERS
+        -DANDROID_USE_LEGACY_TOOLCHAIN_FILE=OFF"
 
         if [ "$CCACHE_ENABLED" = yes ] ; then
             CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DNDK_CCACHE=$CCACHE"
