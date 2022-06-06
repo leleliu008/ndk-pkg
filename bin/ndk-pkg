@@ -7552,6 +7552,14 @@ __config_variables_for_the_given_target() {
                 fi
             fi
         done
+
+        if [ "$DEPENDENCY_PACKAGE_NAME" = libglob ] ; then
+            # int glob(const char* __pattern, int __flags, int (*__error_callback)(const char* __failure_path, int __failure_errno), glob_t* __result_ptr) __INTRODUCED_IN(28);
+            # void globfree(glob_t* __result_ptr) __INTRODUCED_IN(28);
+            if [ "$TARGET_OS_VERS" -lt 28 ] ; then
+                LDFLAGS="$LDFLAGS $libglob_LIBRARY_DIR/libglob.a"
+            fi
+        fi
     done
 
     unset DEPENDENCY_PACKAGE_NAME
@@ -8537,8 +8545,10 @@ create_common_linker_script() {
     [ -z  "$1" ] && die "create_common_linker_script <DIR>, <DIR> must not be empty."
 
     # https://developer.android.com/ndk/guides/stable_apis#c_library
-    run "echo 'INPUT(-lc)' > $1/libpthread.a"
-    run "echo 'INPUT(-lc)' > $1/librt.a"
+    # Note that on Android, unlike Linux, there are no separate libpthread or librt libraries.
+    # That functionality is included directly in libc, which does not need to be explicitly linked against.
+    run "echo '!<arch>' > $1/libpthread.a"
+    run "echo '!<arch>' > $1/librt.a"
 
     if [ "$ANDROID_NDK_VERS_MAJOR" -ge 23 ] ; then
         run "echo 'INPUT(-lunwind)' > $1/libgcc.a"
