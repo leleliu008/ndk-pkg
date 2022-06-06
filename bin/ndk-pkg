@@ -6795,6 +6795,25 @@ install_mans() {
     done
 }
 
+# install_completion <fish|bash|zsh> <COMMAND> <FILE-PATH>
+  install_completion() {
+    case $1 in
+        bash)
+            install -v -d          "$TARGET_INSTALL_DIR/share/bash/completions" &&
+            install -v -m 644 "$3" "$TARGET_INSTALL_DIR/share/bash/completions/$2"
+            ;;
+        fish)
+            install -v -d          "$TARGET_INSTALL_DIR/share/fish/vendor_completions.d" &&
+            install -v -m 644 "$3" "$TARGET_INSTALL_DIR/share/fish/vendor_completions.d/$2.fish"
+            ;;
+        zsh)
+            install -v -d          "$TARGET_INSTALL_DIR/share/zsh/site-functions" &&
+            install -v -m 644 "$3" "$TARGET_INSTALL_DIR/share/zsh/site-functions/_$2"
+            ;;
+        *)  die "install_completion unsupported shell: $1"
+    esac
+}
+
 install_pc_file() {
     install -v -d "$TARGET_INSTALL_DIR/lib/pkgconfig" &&
     cat >         "$TARGET_INSTALL_DIR/lib/pkgconfig/$1.pc"
