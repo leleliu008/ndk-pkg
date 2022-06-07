@@ -27,8 +27,6 @@ jobs:
 
       - run: bin/ndk-pkg --help
       - run: bin/ndk-pkg --version
-      - run: bin/ndk-pkg --homedir
-      - run: bin/ndk-pkg --homepage
 
       - run: bin/ndk-pkg ndkmanager ls-available
 

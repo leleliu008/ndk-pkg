@@ -6339,10 +6339,14 @@ EOF
     fi
 
     step "install LICENSEs"
-    run cp -r "$PACKAGE_WORKING_DIR/LICENSE[1-9]" "$PACKAGE_INSTALL_DIR"
-
-    if [ -f "$PACKAGE_INSTALL_DIR/LICENSE1" ] && [ ! -f "$PACKAGE_INSTALL_DIR/LICENSE2" ] ; then
-        mv  "$PACKAGE_INSTALL_DIR/LICENSE1" "$PACKAGE_INSTALL_DIR/LICENSE"
+    if [        -f "$PACKAGE_WORKING_DIR/LICENSE1" ] ; then
+        if [    -f "$PACKAGE_WORKING_DIR/LICENSE2" ] ; then
+            run mv "$PACKAGE_WORKING_DIR/LICENSE[1-9]" "$PACKAGE_INSTALL_DIR"
+        else
+            run mv "$PACKAGE_WORKING_DIR/LICENSE1"     "$PACKAGE_INSTALL_DIR/LICENSE"
+        fi
+    else
+        warn "no LICENSEs, skipped."
     fi
 
     if [ -f "$PACKAGE_SRC_TOP_DIR/AUTHORS" ] ; then
@@ -9714,12 +9718,6 @@ ${COLOR_GREEN}ndk-pkg --version${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
     show version of this command.
 
-${COLOR_GREEN}ndk-pkg --homedir${COLOR_OFF}
-    show home directory of this software.
-
-${COLOR_GREEN}ndk-pkg --homepage${COLOR_OFF}
-    show home webpage of this software.
-
 ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
     show current machine os and android-ndk toolchain info.
 
@@ -9896,12 +9894,6 @@ main() {
             ;;
         --version|-V)
             printf '%s\n' "$MY_VERSION"
-            ;;
-        --homedir)
-            printf '%s\n' "$MY_HOME_DIR"
-            ;;
-        --homepage)
-            printf '%s\n' "$MY_HOME_PAGE"
             ;;
         env)
             printf '%b\n' "${COLOR_GREEN}$_0 $MY_VERSION is a package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}"

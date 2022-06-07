@@ -190,13 +190,6 @@ target_link_libraries(xx curl::libcurl.so)
         ndk-pkg -V
         ndk-pkg --version
         
-*   **show home directory of this software**
-
-        ndk-pkg --homedir
-
-*   **show home webpage of this software**
-
-        ndk-pkg --homepage
 
 *   **show current machine os and [Android NDK](https://developer.android.google.cn/ndk) toolchain info**
 
@@ -434,13 +427,16 @@ target_link_libraries(xx curl::libcurl.so)
         ndk-pkg deploy curl 21 ~/deploy-config -d
         ndk-pkg deploy curl 21 ~/deploy-config -x
         
-*   **show or open the homepage of the given package or this project**
+*   **show or open the homepage of this project**
         
         ndk-pkg homepage
         ndk-pkg homepage --open
-        ndk-pkg homepage --open curl
-        ndk-pkg homepage curl --open
+
+*   **show or open the homepage of the given package**
         
+        ndk-pkg homepage curl
+        ndk-pkg homepage curl --open
+
 *   **cleanup the unused cached files**
         
         ndk-pkg cleanup
