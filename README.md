@@ -179,6 +179,20 @@ target_link_libraries(xx curl::libcurl.so)
 - If you want to know what cmake imported targets are provided by `${PACKAGE_NAME}`, you can look at `~/.ndk-pkg/install.d/android/${ANDROID_PLATFORM_LEVEL}/${PACKAGE_NAME}/${ANDROID_ABI}/lib-no-versioning/cmake/${PACKAGE_NAME}/${PACKAGE_NAME}Config.cmake`
 
 
+## relevant dirs and files
+all relevant dirs and files are under `~/.ndk-pkg`
+
+
+## how to determine where is android-ndk located
+if environment variable `ANDROID_NDK_HOME` is set, it will be used as Android NDK home.
+
+if environment variable `ANDROID_NDK_ROOT` is set, it will be used as Android NDK home.
+
+if environment variable `ANDROID_HOME` is set and `ANDROID_HOME/ndk-bundle` directory is exist. `ANDROID_HOME/ndk-bundle` will be used as Android NDK home.
+
+if no Android NDK home found. `ndk-pkg` will automatically install it.
+
+
 ## ndk-pkg command usage
 *   **show help of this command**
         
