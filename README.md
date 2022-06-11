@@ -178,20 +178,44 @@ target_link_libraries(xx curl::libcurl.so)
 - Every package provides several cmake imported targets which have form: `${PACKAGE_NAME}::${LIBRARY_FILE_NAME}`
 - If you want to know what cmake imported targets are provided by `${PACKAGE_NAME}`, you can look at `~/.ndk-pkg/install.d/android/${ANDROID_PLATFORM_LEVEL}/${PACKAGE_NAME}/${ANDROID_ABI}/lib-no-versioning/cmake/${PACKAGE_NAME}/${PACKAGE_NAME}Config.cmake`
 
+<br>
 
 ## relevant dirs and files
 all relevant dirs and files are under `~/.ndk-pkg`
 
+<br>
 
-## how to determine where is android-ndk located
-if environment variable `ANDROID_NDK_HOME` is set, it will be used as Android NDK home.
+## use your own Android NDK
+if environment variable `ANDROID_NDK_HOME` is set and `is_a_valid_android_ndk_root_dir "$ANDROID_NDK_HOME"` is true, then it will be used.
 
-if environment variable `ANDROID_NDK_ROOT` is set, it will be used as Android NDK home.
+if environment variable `ANDROID_NDK_ROOT` is set and `is_a_valid_android_ndk_root_dir "$ANDROID_NDK_ROOT"` is true, then it will be used.
 
-if environment variable `ANDROID_HOME` is set and `ANDROID_HOME/ndk-bundle` directory is exist. `ANDROID_HOME/ndk-bundle` will be used as Android NDK home.
+if environment variable `ANDROID_HOME` is set and `is_a_valid_android_ndk_root_dir "$ANDROID_HOME/ndk-bundle"` is true, then it will be used.
 
-if no Android NDK home found. `ndk-pkg` will automatically install it.
+```bash
+is_a_valid_android_ndk_root_dir() {
+    NATIVE_OS_KIND=$(uname -s | tr A-Z a-z)
+    NATIVE_OS_ARCH=$(uname -m)
 
+    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+        ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
+    else
+        ANDROID_NDK_TOOLCHAIN_HOST_TAG="$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+    fi
+
+    [ -n "$1" ] &&
+    [ -d "$1" ] &&
+    [ -f "$1/source.properties" ] &&
+    [ -f "$1/build/cmake/android.toolchain.cmake" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/bin" ] &&
+    [ -d "$1/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/sysroot" ]
+}
+```
+
+**Note**: if no `Android NDK` found, it will be automatically installed when running `ndk-pkg install <PACKAHE-NAME>...`.
+
+<br>
 
 ## ndk-pkg command usage
 *   **show help of this command**

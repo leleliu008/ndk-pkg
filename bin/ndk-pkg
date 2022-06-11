@@ -4692,6 +4692,10 @@ __list_available_packages() {
             install -d "$MY_BACKUP_DIR"
         fi
 
+        if [        -d "$MY_BACKUP_DIR/$INSTALLING_PACKAGE" ] ; then
+            rm -rf     "$MY_BACKUP_DIR/$INSTALLING_PACKAGE"
+        fi
+
         mv "$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$INSTALLING_PACKAGE" "$MY_BACKUP_DIR/$INSTALLING_PACKAGE"
 
         (__install_the_given_package "$INSTALLING_PACKAGE")
@@ -7575,13 +7579,59 @@ __config_variables_for_the_given_target() {
                 fi
             fi
         done
+    done
 
+    for DEPENDENCY_PACKAGE_NAME in $PACKAGE_DEP_PKG
+    do
         if [ "$DEPENDENCY_PACKAGE_NAME" = libglob ] ; then
-            # int glob(const char* __pattern, int __flags, int (*__error_callback)(const char* __failure_path, int __failure_errno), glob_t* __result_ptr) __INTRODUCED_IN(28);
-            # void globfree(glob_t* __result_ptr) __INTRODUCED_IN(28);
+            # https://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
+            # https://android.googlesource.com/platform/bionic/+/master/libc/include/glob.h
             if [ "$TARGET_OS_VERS" -lt 28 ] ; then
-                LDFLAGS="$LDFLAGS $libglob_LIBRARY_DIR/libglob.a"
+                LDFLAGS="$LDFLAGS -l:libglob.a"
             fi
+        fi
+
+        if [ "$DEPENDENCY_PACKAGE_NAME" = liblanginfo ] ; then
+            # https://pubs.opengroup.org/onlinepubs/9699919799/functions/nl_langinfo.html
+            # https://android.googlesource.com/platform/bionic/+/master/libc/include/langinfo.h
+            if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+                LDFLAGS="$LDFLAGS -l:liblanginfo.a"
+            fi
+        fi
+
+        if [ "$DEPENDENCY_PACKAGE_NAME" = libmblen ] ; then
+            # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#163
+            # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/mblen.cpp
+            # int mblen(const char* __s, size_t __n) __INTRODUCED_IN_NO_GUARD_FOR_NDK(26);
+            if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+                CPPFLAGS="$CPPFLAGS -include $libmblen_INCLUDE_DIR/mblen.h"
+                LDFLAGS="$LDFLAGS -l:libmblen.a"
+            fi
+        fi
+
+        if [ "$DEPENDENCY_PACKAGE_NAME" = libgetdomainname ] ; then
+            # https://android.googlesource.com/platform/bionic/+/master/libc/include/unistd.h#313
+            # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getdomainname.cpp
+            # int getdomainname(char* __buf, size_t __buf_size) __INTRODUCED_IN(26);
+            if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+                CPPFLAGS="$CPPFLAGS -include $libgetdomainname_INCLUDE_DIR/getdomainname.h"
+                LDFLAGS="$LDFLAGS -l:libgetdomainname.a"
+            fi
+        fi
+
+        if [ "$DEPENDENCY_PACKAGE_NAME" = libstrchrnul ] ; then
+            # https://android.googlesource.com/platform/bionic/+/master/libc/include/string.h#68
+            # char* strchrnul(char* __s, int __ch) __RENAME(strchrnul) __attribute_pure__ __INTRODUCED_IN(24);
+            if [ "$TARGET_OS_VERS" -lt 24 ] ; then
+                CPPFLAGS="$CPPFLAGS -include $libstrchrnul_INCLUDE_DIR/strchrnul.h"
+                LDFLAGS="$LDFLAGS -l:libstrchrnul.a"
+            fi
+        fi
+
+        if [ "$DEPENDENCY_PACKAGE_NAME" = libgetdtablesize ] ; then
+            CPPFLAGS="$CPPFLAGS -include $libgetdtablesize_INCLUDE_DIR/getdtablesize.h"
+            # https://android.googlesource.com/platform/bionic/+/72dc1c22dc6a92dea925398c9e3880364ab29c1c/libc/bionic/getdtablesize.c
+            LDFLAGS="$LDFLAGS -l:libgetdtablesize.a"
         fi
     done
 
@@ -8179,14 +8229,11 @@ configure() {
             return 1
         fi
     else
-        # char* nl_langinfo(nl_item __item) __INTRODUCED_IN(26)
-        if [ "$TARGET_OS_VERS" -lt 26 ] ; then
-            export ac_cv_header_langinfo_h=no
-        else
-            export ac_cv_header_langinfo_h=yes
-        fi
+        export ac_cv_func_faccessat=yes
+        export ac_cv_func_sigsetmask=no
 
         export ac_cv_func_malloc_0_nonnull=yes
+        export ac_cv_func_calloc_0_nonnull=yes
         export ac_cv_func_realloc_0_nonnull=yes
 
         CONFIGURE_ARGS="
@@ -8581,11 +8628,14 @@ create_common_linker_script() {
 create_common_include_h() {
     [ -z  "$1" ] && die "create_common_include_h <FILEPATH>, <FILEPATH> must not be empty."
     cat > "$1" <<EOF
-// https://linux.die.net/man/3/index
-#define rindex(str,ch) strrchr(str,ch)
+#ifndef NDK_PKG_COMMON_H
+#define NDK_PKG_COMMON_H
 
-// https://linux.die.net/man/3/bcmp
-#define bcmp(b1,b2,len) memcmp(b1,b2,len)
+// https://pubs.opengroup.org/onlinepubs/000095399/functions/rindex.html
+#define rindex(a,b) strrchr((a),(b))
+
+// https://pubs.opengroup.org/onlinepubs/000095399/functions/bcmp.html
+#define bcmp(b1,b2,len) memcmp((b1), (b2), (size_t)(len))
 
 // https://linux.die.net/man/2/wait3
 #define wait3(status,options,rusage) waitpid(-1,status,options)
@@ -8599,49 +8649,8 @@ create_common_include_h() {
     #define fseeko    fseek
 #endif
 
-EOF
-}
-
-include_stub_getdtablesize() {
-    # https://linux.die.net/man/2/getdtablesize
-    # https://hg.mozilla.org/mozreview/gecko/rev/038c2fe02074d03a6c34d44f68cb5f078a2472cc#index_header
-    if [ "$TARGET_INDEX" -eq 1 ] ; then
-        cat > "$PACKAGE_WORKING_DIR/getdtablesize.c" <<EOF
-#ifndef STUB_GETDTABLESIZE_H
-#define STUB_GETDTABLESIZE_H
-
-/* sysinfo is defined but not implemented.
- * we may be able to implement it ourselves. */
-#define _SYS_SYSINFO_H_
-
-#include <sys/cdefs.h>
-#include <sys/resource.h>
-#include <linux/kernel.h>
-#include <unistd.h>
-
-/* Use this stub version of getdtablesize
- * instead of the one in the header */
-__attribute__((unused))
-static int stub_getdtablesize(void) {
-    struct rlimit r;
-    if (getrlimit(RLIMIT_NOFILE, &r) < 0) {
-        return sysconf(_SC_OPEN_MAX);
-    }
-    return r.rlim_cur;
-}
-
-#define getdtablesize() stub_getdtablesize()
-
-#if __ANDROID_API__ < 21
-#define RTLD_NOLOAD 0
-#endif
-
-#define sysinfo(foo) -1
-
 #endif
 EOF
-    fi
-    export CPPFLAGS="$CPPFLAGS -include $PACKAGE_WORKING_DIR/getdtablesize.c"
 }
 
 list_all_installed_libs() {
@@ -8923,7 +8932,7 @@ EOF
     fi
 }
 
-is_a_valid_android_ndk_home_dir() {
+is_a_valid_android_ndk_root_dir() {
     [ -d "$1" ] &&
     [ -f "$1/source.properties" ] &&
     [ -f "$1/build/cmake/android.toolchain.cmake" ] &&
@@ -8988,7 +8997,7 @@ ndkmanager_install_the_given_rversion() {
 
     ANDROID_NDK_INSTALL_DIR="$MY_HOME_DIR/android-ndk-$1"
 
-    if [ -f "$ANDROID_NDK_INSTALL_DIR/.installed" ] && is_a_valid_android_ndk_home_dir "$ANDROID_NDK_INSTALL_DIR" ; then
+    if [ -f "$ANDROID_NDK_INSTALL_DIR/.installed" ] && is_a_valid_android_ndk_root_dir "$ANDROID_NDK_INSTALL_DIR" ; then
         success "Android NDK $1 already have been installed to $ANDROID_NDK_INSTALL_DIR."
         ANDROID_NDK_HOME="$ANDROID_NDK_INSTALL_DIR"
         ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
@@ -9037,7 +9046,7 @@ ndkmanager_install_the_given_rversion() {
         esac
     fi
 
-    if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_INSTALL_DIR" ; then
+    if is_a_valid_android_ndk_root_dir "$ANDROID_NDK_INSTALL_DIR" ; then
         ANDROID_NDK_HOME="$ANDROID_NDK_INSTALL_DIR"
         ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
     else
@@ -9099,7 +9108,7 @@ setup_build_toolchains_env() {
                 [A-Z]:*) ANDROID_NDK_HOME="$(cygpath "$ANDROID_NDK_HOME")"
             esac
         fi
-        if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_HOME" ; then
+        if is_a_valid_android_ndk_root_dir "$ANDROID_NDK_HOME" ; then
             debug "you have set the ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_HOME${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_NDK_HOME"
             export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
@@ -9110,7 +9119,7 @@ setup_build_toolchains_env() {
     fi
 
     if [ -z "$ANDROID_NDK_HOME" ] && [ -n  "$ANDROID_NDK_ROOT" ] ; then
-        if is_a_valid_android_ndk_home_dir "$ANDROID_NDK_ROOT" ; then
+        if is_a_valid_android_ndk_root_dir "$ANDROID_NDK_ROOT" ; then
             debug "you have set the ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_NDK_ROOT${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
             export ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT"
@@ -9122,7 +9131,7 @@ setup_build_toolchains_env() {
 
     # https://developer.android.com/studio/command-line/variables
     if [ -z "$ANDROID_NDK_HOME" ] && [ -n  "$ANDROID_HOME" ] ; then
-        if is_a_valid_android_ndk_home_dir "$ANDROID_HOME/ndk-bundle" ; then
+        if is_a_valid_android_ndk_root_dir "$ANDROID_HOME/ndk-bundle" ; then
             debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_HOME/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
             export ANDROID_NDK_HOME="$ANDROID_HOME/ndk-bundle"
             export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk-bundle"
@@ -9131,20 +9140,10 @@ setup_build_toolchains_env() {
         fi
     fi
 
-    if [ -z "$ANDROID_NDK_HOME" ] && [ -n  "$ANDROID_SDK_ROOT" ] ; then
-        if is_a_valid_android_ndk_home_dir "$ANDROID_SDK_ROOT/ndk-bundle" ; then
-            debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF}, which is used as the android ndk home."
-            export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk-bundle"
-            export ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk-bundle"
-        else
-            debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, ${COLOR_GREEN}$ANDROID_SDK_ROOT/ndk-bundle${COLOR_OFF} direcotory is not exist."
-        fi
-    fi
-
     if [ -z "$ANDROID_NDK_HOME" ] ; then
         for item in $(find "$MY_HOME_DIR" -maxdepth 1 -mindepth 1 -type d -name "android-ndk-r2[1-4][a-e]" | sort -r)
         do
-            if is_a_valid_android_ndk_home_dir "$item" ; then
+            if is_a_valid_android_ndk_root_dir "$item" ; then
                 export ANDROID_NDK_HOME="$item"
                 export ANDROID_NDK_ROOT="$item"
                 break
@@ -9205,25 +9204,13 @@ install_android_sdk_if_needed() {
         if is_a_valid_android_sdk_home_dir "$ANDROID_HOME" ; then
             debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, which is used as the android sdk home."
             export ANDROID_HOME
-            export ANDROID_SDK_ROOT="$ANDROID_HOME"
         else
             debug "you have set the ${COLOR_RED}ANDROID_HOME${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_HOME${COLOR_OFF}, but it is not a valid android sdk home."
             unset ANDROID_HOME
         fi
     fi
 
-    if [ -z "$ANDROID_HOME" ] && [ -n "$ANDROID_SDK_ROOT" ] ; then
-        if is_a_valid_android_ndk_home_dir "$ANDROID_SDK_ROOT" ; then
-            debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, which is used as the android ndk home."
-            export ANDROID_SDK_ROOT
-            export ANDROID_HOME="$ANDROID_SDK_ROOT"
-        else
-            debug "you have set the ${COLOR_RED}ANDROID_SDK_ROOT${COLOR_OFF} environment variable and point to ${COLOR_GREEN}$ANDROID_SDK_ROOT${COLOR_OFF}, but it is not a valid android sdk home."
-            unset ANDROID_SDK_ROOT
-        fi
-    fi
-
-    if [ -z "$ANDROID_SDK_ROOT" ] ; then
+    if [ -z "$ANDROID_HOME" ] ; then
         if [ -f "$MY_HOME_DIR/android-sdk/env" ] ; then
             if is_a_valid_android_sdk_home_dir "$MY_HOME_DIR/android-sdk" ; then
                 . "$MY_HOME_DIR/android-sdk/env"
@@ -9233,7 +9220,7 @@ install_android_sdk_if_needed() {
         fi
     fi
 
-    if [ -z "$ANDROID_SDK_ROOT" ] ; then
+    if [ -z "$ANDROID_HOME" ] ; then
         note "Android SDK Not Found on your build machine, I will install it for you."
 
         # https://developer.android.com/studio#cmdline-tools
@@ -9270,17 +9257,15 @@ install_android_sdk_if_needed() {
 
         cat > "$MY_HOME_DIR/android-sdk/env" <<EOF
 export ANDROID_HOME="$MY_HOME_DIR/android-sdk"
-export ANDROID_SDK_ROOT="\$ANDROID_HOME"
 
-export PATH="\$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:\$PATH"
-export PATH="\$ANDROID_SDK_ROOT/platform-tools:\$PATH"
-export PATH="\$ANDROID_SDK_ROOT/build-tools/30.0.3:\$PATH"
+export PATH="\$ANDROID_HOME/cmdline-tools/latest/bin:\$PATH"
+export PATH="\$ANDROID_HOME/platform-tools:\$PATH"
+export PATH="\$ANDROID_HOME/build-tools/30.0.3:\$PATH"
 EOF
         . "$MY_HOME_DIR/android-sdk/env"
     fi
 
     cat <<EOF
-ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT
 ANDROID_HOME     = $ANDROID_HOME
 PATH             = $PATH
 EOF
@@ -9612,11 +9597,11 @@ EOF
 
     # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
     # https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#environment-variables-3
-    if [ "$GITHUB_ACTIONS" = true ] ; then
-        if [ -n "$ANDROID_NDK_LATEST_HOME" ] ; then
-            export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
-        fi
-    fi
+    # if [ "$GITHUB_ACTIONS" = true ] ; then
+    #     if [ -n "$ANDROID_NDK_LATEST_HOME" ] ; then
+    #         export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+    #     fi
+    # fi
 
     __setup_PATH_env
 
