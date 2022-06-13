@@ -4642,7 +4642,7 @@ __list_available_packages() {
     [ -d "$MY_INSTALL_DIR/android" ] || return 0
 
     if [ -z "$MIN_SDK_API_LEVEL" ] ; then
-        for item in $(ls)
+        for item in $(ls "$MY_INSTALL_DIR/android")
         do
             case $item in
                 [1-9][0-9])
@@ -6658,6 +6658,8 @@ __adjust_elf_files_for_the_given_target() {
                             esac
                         } || die "invalid elf file: $FILEPATH. elf header mismatch."
 
+                        # https://source.android.com/security/enhancements/enhancements50
+                        # Android 5.0 and later only support position-independent executables (-fPIE)
                         if [ "$x" = bin ] || [ "$x" = sbin ] ; then
                             if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
                                 die "invalid elf file: $FILEPATH. It is not Position Independent Executable."
@@ -8824,12 +8826,6 @@ list_flags_used_by_tools_in_the_toolchain() {
 #
 # path_of_tool_in_the_toolchain <TOOL-NAME>
   path_of_tool_in_the_toolchain() {
-    if [ "$NATIVE_OS_KIND" = windows ] ; then
-        EXE=.exe
-    else
-        EXE=
-    fi
-
     unset TOOL_FILENAME
 
     case $1 in
@@ -8837,14 +8833,14 @@ list_flags_used_by_tools_in_the_toolchain() {
         cxx) TOOL_FILENAME="$TARGET_TRIPLE$TARGET_OS_VERS-clang++" ;;
         ld)  TOOL_FILENAME="$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/arm/')-$1"
             # https://github.com/android/ndk/wiki/Changelog-r22
-             if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME$EXE" ] ; then
+             if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME" ] ; then
                  TOOL_FILENAME=ld.lld
              fi
              ;;
         *)   TOOL_FILENAME="$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/arm/')-$1"
 
              # https://github.com/android/ndk/wiki/Changelog-r23
-             if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME$EXE" ] ; then
+             if [ ! -e "$TOOLCHAIN_BIND/$TOOL_FILENAME" ] ; then
                  TOOL_FILENAME=llvm-$1
              fi
     esac
@@ -9471,8 +9467,21 @@ inspect_install_arguments() {
 
     setup_build_toolchains_env
 
+    SUPPORTED_SDK_API_LEVEL_ALL=$(__list_supported_target_sdk_api_levels)
+    SUPPORTED_SDK_API_LEVEL_MIN=$(printf '%s\n' "$SUPPORTED_SDK_API_LEVEL_ALL" | sort | head -n 1)
+    SUPPORTED_SDK_API_LEVEL_MAX=$(printf '%s\n' "$SUPPORTED_SDK_API_LEVEL_ALL" | sort | tail -n 1)
+
     if [ -z "$MIN_SDK_API_LEVEL" ] ; then
-        MIN_SDK_API_LEVEL=$(__list_supported_target_sdk_api_levels | head -n 1)
+        MIN_SDK_API_LEVEL="$SUPPORTED_SDK_API_LEVEL_MIN"
+    fi
+
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_DEBUG" ] ; then
+        cat <<EOF
+SUPPORTED_SDK_API_LEVEL_ALL=$SUPPORTED_SDK_API_LEVEL_ALL
+SUPPORTED_SDK_API_LEVEL_MIN=$SUPPORTED_SDK_API_LEVEL_MIN
+SUPPORTED_SDK_API_LEVEL_MAX=$SUPPORTED_SDK_API_LEVEL_MAX
+MIN_SDK_API_LEVEL=$MIN_SDK_API_LEVEL
+EOF
     fi
 
     unset TARGET_LIST
