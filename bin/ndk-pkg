@@ -6633,30 +6633,34 @@ __adjust_elf_files_for_the_given_target() {
                     continue
                 fi
 
-                unset FILEMAGIC
-                FILEMAGIC="$(hexdump -n 20 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+                unset FILE_HEADER_EXPACT
+                unset FILE_HEADER_ACTUAL
+
+                FILE_HEADER_ACTUAL="$(hexdump -n 20 -v -e '1/1 "%02X" ""' "$FILEPATH")"
 
                 # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                case $FILEMAGIC in
+                case $FILE_HEADER_ACTUAL in
                     7F454C46*)
-                        {
-                            case $y in
-                                *.o)
-                                    case $TARGET_OS_ABI in
-                                        armeabi-v7a) [ "$FILEMAGIC" = '7F454C4601010100000000000000000001002800' ] ;;
-                                        arm64-v8a)   [ "$FILEMAGIC" = '7F454C460201010000000000000000000100B700' ] ;;
-                                        x86)         [ "$FILEMAGIC" = '7F454C4601010100000000000000000001000300' ] ;;
-                                        x86_64)      [ "$FILEMAGIC" = '7F454C4602010100000000000000000001003E00' ] ;;
-                                    esac
-                                    ;;
-                                *)  case $TARGET_OS_ABI in
-                                        armeabi-v7a) [ "$FILEMAGIC" = '7F454C4601010100000000000000000003002800' ] ;;
-                                        arm64-v8a)   [ "$FILEMAGIC" = '7F454C460201010000000000000000000300B700' ] ;;
-                                        x86)         [ "$FILEMAGIC" = '7F454C4601010100000000000000000003000300' ] ;;
-                                        x86_64)      [ "$FILEMAGIC" = '7F454C4602010100000000000000000003003E00' ] ;;
-                                    esac
-                            esac
-                        } || die "invalid elf file: $FILEPATH. elf header mismatch."
+                        case $y in
+                            *.o)
+                                case $TARGET_OS_ABI in
+                                    armeabi-v7a) FILE_HEADER_EXPACT='7F454C4601010100000000000000000001002800' ;;
+                                    arm64-v8a)   FILE_HEADER_EXPACT='7F454C460201010000000000000000000100B700' ;;
+                                    x86)         FILE_HEADER_EXPACT='7F454C4601010100000000000000000001000300' ;;
+                                    x86_64)      FILE_HEADER_EXPACT='7F454C4602010100000000000000000001003E00' ;;
+                                esac
+                                ;;
+                            *)  case $TARGET_OS_ABI in
+                                    armeabi-v7a) FILE_HEADER_EXPACT='7F454C4601010100000000000000000003002800' ;;
+                                    arm64-v8a)   FILE_HEADER_EXPACT='7F454C460201010000000000000000000300B700' ;;
+                                    x86)         FILE_HEADER_EXPACT='7F454C4601010100000000000000000003000300' ;;
+                                    x86_64)      FILE_HEADER_EXPACT='7F454C4602010100000000000000000003003E00' ;;
+                                esac
+                        esac
+
+                        if [ "$FILE_HEADER_EXPACT" != "$FILE_HEADER_ACTUAL" ] ; then
+                            die "ELF file header mismatch: $FILEPATH\n    expect : $FILE_HEADER_EXPACT\n    actual : $FILE_HEADER_ACTUAL"
+                        fi
 
                         # https://source.android.com/security/enhancements/enhancements50
                         # Android 5.0 and later only support position-independent executables (-fPIE)
