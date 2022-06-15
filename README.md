@@ -4,11 +4,11 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 ## supported host operating systems
 |HostOS|HostArch|SubSystem|recommended|summary|
 |------|--------|---------|-----------|-------|
-[Android](https://www.android.com/)|aarch64|[Termux](https://termux.com/)|❌|not fully tested|
-[macOS](https://www.apple.com.cn/mac/)|x86_64 arm64||✔︎|tested with [Github Actions](https://github.com/features/actions)|
-[Ubuntu](https://ubuntu.com/)|x86_64||✔︎|tested with [Github Actions](https://github.com/features/actions)|
-[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|x86_64|[glibc](http://www.gnu.org/software/libc/)|✔︎|tested with [Github Actions](https://github.com/features/actions)|
-[Windows](https://www.microsoft.com/en-us/windows/)|x86_64|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|tested with [Github Actions](https://github.com/features/actions)|
+[Android](https://www.android.com/)|`aarch64`|[Termux](https://termux.com/)|❌|not fully tested|
+[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`||✔︎|tested with [Github Actions](https://github.com/features/actions)|
+[Ubuntu](https://ubuntu.com/)|`x86_64`||✔︎|tested with [Github Actions](https://github.com/features/actions)|
+[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`|[glibc](http://www.gnu.org/software/libc/)|✔︎|tested with [Github Actions](https://github.com/features/actions)|
+[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|tested with [Github Actions](https://github.com/features/actions)|
 
 ## unsupported host operating systems
 |HostOS|SubSystem|reason|
