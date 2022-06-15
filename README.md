@@ -180,7 +180,7 @@ target_link_libraries(xx curl::libcurl.so)
 
 
 ## ~/.ndk-pkg
-all relevant dirs and files are under `~/.ndk-pkg`
+all relevant dirs and files are located in `~/.ndk-pkg` directory.
 
 
 ## environment variables
@@ -211,9 +211,8 @@ is_a_valid_android_ndk_root_dir() {
 }
 ```
 
-**Note**: if no `Android NDK` found, it will be automatically installed when running `ndk-pkg install <PACKAHE-NAME>...`.
+**Note**: `Android NDK` will be automatically installed if it is not found when running `ndk-pkg install <PACKAHE-NAME>...`
 
-<br>
 
 ## ndk-pkg command usage
 *   **show help of this command**
