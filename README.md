@@ -1,7 +1,7 @@
 # ndk-pkg
 a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build C/C++/Rust/Go project.
 
-## ndk-pkg supports system
+## supported host operating systems for ndk-pkg
 |HostOS|SubSystem|supported|recommended|summary|
 |------|---------|---------|-----------|-------|
 [Android](https://www.android.com/)|[Termux](https://termux.com/)|✔︎|❌|not fully tested|
@@ -15,27 +15,6 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 [Windows](https://www.microsoft.com/en-us/windows/)|[Cygwin](http://cygwin.org/)|❌|❌||
 [Windows](https://www.microsoft.com/en-us/windows/)|[MSYS2](https://www.msys2.org/)|❌|❌||
 [Windows](https://www.microsoft.com/en-us/windows/)|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|✔︎|tested with [Github Actions](https://github.com/features/actions)|
-
-## Install ndk-pkg via HomeBrew
-
-```bash
-brew tap leleliu008/fpliu
-brew install ndk-pkg
-```
-
-## Install ndk-pkg via cURL on UNIX
-```bash
-curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
-chmod a+x ndk-pkg
-mv ndk-pkg /usr/local/bin/
-```
-
-## Install ndk-pkg via cURL on Termux
-```bash
-curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
-chmod a+x ndk-pkg
-mv ndk-pkg /data/data/com.termux/files/usr/bin/
-```
 
 ## Install ndk-pkg via Docker
 **step1. create the ndk-pkg docker container**
@@ -61,6 +40,27 @@ docker exec -it ndk-pkg ndk-pkg install curl
 - you can use `podman` instead of `docker`
 - chinese user may want to use `fpliu/ndk-pkg:china` instead of `fpliu/ndk-pkg`
 
+
+## Install ndk-pkg via HomeBrew
+
+```bash
+brew tap leleliu008/fpliu
+brew install ndk-pkg
+```
+
+## Install ndk-pkg via cURL on UNIX
+```bash
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
+chmod a+x ndk-pkg
+mv ndk-pkg /usr/local/bin/
+```
+
+## Install ndk-pkg via cURL on Termux
+```bash
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
+chmod a+x ndk-pkg
+mv ndk-pkg /data/data/com.termux/files/usr/bin/
+```
 
 ## Install ndk-pkg on WSL
 
