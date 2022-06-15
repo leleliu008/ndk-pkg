@@ -17,8 +17,8 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 [FreeBSD](https://www.freebsd.org/)||no available  [Android NDK](https://developer.android.google.cn/ndk)|
 [OpenBSD](https://www.openbsd.org/)||no available [Android NDK](https://developer.android.google.cn/ndk)|
 [NetBSD](https://www.netbsd.org/)||no available [Android NDK](https://developer.android.google.cn/ndk)|
-[Windows](https://www.microsoft.com/en-us/windows/)|[Cygwin](http://cygwin.org/)||
-[Windows](https://www.microsoft.com/en-us/windows/)|[MSYS2](https://www.msys2.org/)||
+[Windows](https://www.microsoft.com/en-us/windows/)|[Cygwin](http://cygwin.org/)|CMake: Builds hosted on 'CYGWIN' not supported. [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)|
+[Windows](https://www.microsoft.com/en-us/windows/)|[MSYS2](https://www.msys2.org/)|CMake: Builds hosted on 'MSYS' not supported. [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)|
 
 ## Install ndk-pkg via Docker
 **step1. create the ndk-pkg docker container**
