@@ -1,20 +1,24 @@
 # ndk-pkg
 a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build C/C++/Rust/Go project.
 
-## supported host operating systems for ndk-pkg
-|HostOS|SubSystem|supported|recommended|summary|
-|------|---------|---------|-----------|-------|
-[Android](https://www.android.com/)|[Termux](https://termux.com/)|✔︎|❌|not fully tested|
-[macOS](https://www.apple.com.cn/mac/)||✔︎|✔︎|tested with [Github Actions](https://github.com/features/actions)|
-[Ubuntu](https://ubuntu.com/)||✔︎|✔︎|tested with [Github Actions](https://github.com/features/actions)|
-[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[glibc](http://www.gnu.org/software/libc/)|✔︎|✔︎|tested with [Github Actions](https://github.com/features/actions)|
-[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[musl-libc](http://musl.libc.org/)|❌|❌|no available [Android NDK](https://developer.android.google.cn/ndk)|
-[FreeBSD](https://www.freebsd.org/)||❌|❌|no available  [Android NDK](https://developer.android.google.cn/ndk)|
-[OpenBSD](https://www.openbsd.org/)||❌|❌|no available [Android NDK](https://developer.android.google.cn/ndk)|
-[NetBSD](https://www.netbsd.org/)||❌|❌|no available [Android NDK](https://developer.android.google.cn/ndk)|
-[Windows](https://www.microsoft.com/en-us/windows/)|[Cygwin](http://cygwin.org/)|❌|❌||
-[Windows](https://www.microsoft.com/en-us/windows/)|[MSYS2](https://www.msys2.org/)|❌|❌||
-[Windows](https://www.microsoft.com/en-us/windows/)|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|✔︎|tested with [Github Actions](https://github.com/features/actions)|
+## supported host operating systems
+|HostOS|HostArch|SubSystem|recommended|summary|
+|------|--------|---------|-----------|-------|
+[Android](https://www.android.com/)|aarch64|[Termux](https://termux.com/)|❌|not fully tested|
+[macOS](https://www.apple.com.cn/mac/)|x86_64 arm64||✔︎|tested with [Github Actions](https://github.com/features/actions)|
+[Ubuntu](https://ubuntu.com/)|x86_64||✔︎|tested with [Github Actions](https://github.com/features/actions)|
+[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|x86_64|[glibc](http://www.gnu.org/software/libc/)|✔︎|tested with [Github Actions](https://github.com/features/actions)|
+[Windows](https://www.microsoft.com/en-us/windows/)|x86_64|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|tested with [Github Actions](https://github.com/features/actions)|
+
+## unsupported host operating systems
+|HostOS|SubSystem|reason|
+|------|---------|------|
+[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[musl-libc](http://musl.libc.org/)|no available [Android NDK](https://developer.android.google.cn/ndk)|
+[FreeBSD](https://www.freebsd.org/)||no available  [Android NDK](https://developer.android.google.cn/ndk)|
+[OpenBSD](https://www.openbsd.org/)||no available [Android NDK](https://developer.android.google.cn/ndk)|
+[NetBSD](https://www.netbsd.org/)||no available [Android NDK](https://developer.android.google.cn/ndk)|
+[Windows](https://www.microsoft.com/en-us/windows/)|[Cygwin](http://cygwin.org/)||
+[Windows](https://www.microsoft.com/en-us/windows/)|[MSYS2](https://www.msys2.org/)||
 
 ## Install ndk-pkg via Docker
 **step1. create the ndk-pkg docker container**
