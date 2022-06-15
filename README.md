@@ -36,7 +36,7 @@ docker exec -it ndk-pkg ndk-pkg install curl
 ```
 
 **Note:**
-- I strongly recommend you to run `ndk-pkg` command in docker container to keep your host environment clean.
+- This is the recommended way to install `ndk-pkg`, beacause many softwares will be automatically installed when running `ndk-pkg` command, running `ndk-pkg` command in a docker container will keep your host environment clean.
 - you can use `podman` instead of `docker`
 - chinese user may want to use `fpliu/ndk-pkg:china` instead of `fpliu/ndk-pkg`
 
@@ -178,14 +178,12 @@ target_link_libraries(xx curl::libcurl.so)
 - Every package provides several cmake imported targets which have form: `${PACKAGE_NAME}::${LIBRARY_FILE_NAME}`
 - If you want to know what cmake imported targets are provided by `${PACKAGE_NAME}`, you can look at `~/.ndk-pkg/install.d/android/${ANDROID_PLATFORM_LEVEL}/${PACKAGE_NAME}/${ANDROID_ABI}/lib-no-versioning/cmake/${PACKAGE_NAME}/${PACKAGE_NAME}Config.cmake`
 
-<br>
 
-## relevant dirs and files
+## ~/.ndk-pkg
 all relevant dirs and files are under `~/.ndk-pkg`
 
-<br>
 
-## use your own Android NDK
+## environment variables
 if environment variable `ANDROID_NDK_HOME` is set and `is_a_valid_android_ndk_root_dir "$ANDROID_NDK_HOME"` is true, then it will be used.
 
 if environment variable `ANDROID_NDK_ROOT` is set and `is_a_valid_android_ndk_root_dir "$ANDROID_NDK_ROOT"` is true, then it will be used.
