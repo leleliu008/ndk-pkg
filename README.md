@@ -35,6 +35,7 @@ docker start ndk-pkg
 
 **step3. run `ndk-pkg` command in the ndk-pkg docker container**
 ```bash
+docker exec -it ndk-pkg ndk-pkg upgrade @self
 docker exec -it ndk-pkg ndk-pkg update
 docker exec -it ndk-pkg ndk-pkg install curl
 ```
