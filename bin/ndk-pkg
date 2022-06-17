@@ -8409,6 +8409,11 @@ cmakew() {
             x86_64)  CMAKE_SYSTEM_PROCESSOR=x86_64  ;;
         esac
 
+        case $INSTALL_LIB in
+            static) BUILD_SHARED_LIBS=OFF ;;
+            *)      BUILD_SHARED_LIBS=ON
+        esac
+
         CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS
         -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
         -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR
@@ -8418,7 +8423,7 @@ cmakew() {
         -DCMAKE_INSTALL_PREFIX='$TARGET_INSTALL_DIR'
         -DCMAKE_C_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
         -DCMAKE_CXX_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
-        -DBUILD_SHARED_LIBS=ON 
+        -DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS
         -DANDROID_TOOLCHAIN=clang
         -DANDROID_ABI=$TARGET_OS_ABI
         -DANDROID_ARM_NEON=TRUE
@@ -8944,6 +8949,7 @@ is_a_valid_android_ndk_root_dir() {
 ndkmanager_list_all_available_for_windows() {
     # https://developer.android.google.cn/ndk/downloads
     cat <<EOF
+48a0a7b38fb1c69cae6d17b70e03aab8d6138e65a30f8d3faebeb0dc09bf6940|https://dl.google.com/android/repository/android-ndk-r23c-windows.zip
 36270f8b2cfdd940f410bd8ffe6ce86ffaa8e87ff1c4fd4a8be5130268357778|https://dl.google.com/android/repository/android-ndk-r23b-windows.zip
 f71307c5c572e2c163d602b3704b8bc024bec0c43ba2800de36bd10f3a21492b|https://dl.google.com/android/repository/android-ndk-r21e-windows-x86_64.zip
 EOF
@@ -8952,6 +8958,7 @@ EOF
 ndkmanager_list_all_available_for_darwin() {
     # https://developer.android.google.cn/ndk/downloads
     cat <<EOF
+baf793127741eda36f2eabe69cdec23a70c814deb3c75df8744af35aed21e59d|https://dl.google.com/android/repository/android-ndk-r23c-darwin.zip
 e067b7402fdae85bfbe8af1822afd573b8e73dce443a8292fdaeb2e8dc3aeb86|https://dl.google.com/android/repository/android-ndk-r23b-darwin.zip
 437278103a3db12632c05b1be5c41bbb8522791a67e415cc54411a65366f499d|https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip
 EOF
@@ -8960,6 +8967,7 @@ EOF
 ndkmanager_list_all_available_for_linux_x86_64() {
     # https://developer.android.google.cn/ndk/downloads
     cat <<EOF
+6ce94604b77d28113ecd588d425363624a5228d9662450c48d2e4053f8039242|https://dl.google.com/android/repository/android-ndk-r23c-linux.zip
 c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382|https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
 ad7ce5467e18d40050dc51b8e7affc3e635c85bd8c59be62de32352328ed467e|https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip
 EOF
@@ -9155,7 +9163,7 @@ setup_build_toolchains_env() {
 
     if [ -z "$ANDROID_NDK_HOME" ] ; then
         note "Android NDK Not Found on your build machine, I will install it for you."
-        if ndkmanager install r23b ; then
+        if ndkmanager install r23c ; then
             export ANDROID_NDK_HOME
             export ANDROID_NDK_ROOT
         else
