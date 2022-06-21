@@ -4313,7 +4313,7 @@ __fetch_resources_of_the_given_package() {
             done
             ;;
         *)
-             __load_formula_of_the_given_package $@
+             __load_formula_of_the_given_package $1
             __fetch_sources_of_the_given_package $@
             __fetch_patches_of_the_given_package $@
     esac
