@@ -3616,10 +3616,10 @@ __decode_dependency() {
 ##############################################################################
 # {{{ operations of formula
 
-# __load_formula_of_the_given_package <PACKAGE-NAME> [MIN-SDK-API-LEVEL]
+# __load_formula_of_the_given_package <PACKAGE-NAME>
   __load_formula_of_the_given_package() {
     [ -z "$1" ] && {
-        error "__load_formula_of_the_given_package <PACKAGE-NAME> [MIN-SDK-API-LEVEL], <PACKAGE-NAME> is not given."
+        error "__load_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is not given."
         return 1
     }
 
@@ -3707,6 +3707,12 @@ __decode_dependency() {
 
     unset PACKAGE_SDK_API
 
+    unset PACKAGE_INSTALL
+    unset PACKAGE_INSTALL_EXE
+    unset PACKAGE_INSTALL_PIE
+    unset PACKAGE_INSTALL_DEV
+    unset PACKAGE_INSTALL_LIB
+
     unset -f build0
     unset -f prepare
     unset -f build
@@ -3718,13 +3724,6 @@ __decode_dependency() {
 
     PACKAGE_NAME="$1"
     PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '+-.' '_')
-
-    if [ -n "$PACKAGE_SDK_API" ] && [ -n "$2" ] ; then
-        if [ "$PACKAGE_SDK_API" -gt "$2" ] ; then
-            error "package [$1] supportted min sdk-api-level is $PACKAGE_SDK_API, but you want is $2"
-            return 1
-        fi
-    fi
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
@@ -3895,6 +3894,16 @@ __decode_dependency() {
     if [ "$NATIVE_OS_TYPE" = 'void' ] ; then
         PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD bash"
     fi
+
+    for item in $PACKAGE_INSTALL
+    do
+        case $item in
+            exe) PACKAGE_INSTALL_EXE=yes ;;
+            pie) PACKAGE_INSTALL_PIE=yes ;;
+            dev) PACKAGE_INSTALL_DEV=yes ;;
+            lib) PACKAGE_INSTALL_LIB=yes ;;
+        esac
+    done
 
     PACKAGE_FORMULA_LOADED=yes
 }
@@ -4298,13 +4307,13 @@ __fetch_resources_of_the_given_package() {
             for PKG in $(__list_available_packages)
             do
                 step "$PKG"
-                 __load_formula_of_the_given_package "$PKG" $@
+                 __load_formula_of_the_given_package "$PKG"
                 __fetch_sources_of_the_given_package "$PKG" $@
                 __fetch_patches_of_the_given_package "$PKG" $@
             done
             ;;
         *)
-             __load_formula_of_the_given_package $@
+             __load_formula_of_the_given_package
             __fetch_sources_of_the_given_package $@
             __fetch_patches_of_the_given_package $@
     esac
@@ -4364,8 +4373,8 @@ __fetch_resources_of_the_given_package() {
 
 # is_package__outdated <PACKAGE-NAME> <MIN-SDK-API-LEVEL>
   is_package__outdated() {
-    __load_formula_of_the_given_package "$1" "$2" &&
     __load_installed_metadata_of_the_given_package "$1" "$2" &&
+    __load_formula_of_the_given_package "$1" &&
     version_match "$PACKAGE_VERSION" gt "$INSTALLED_PACKAGE_VERSION"
 }
 
@@ -4744,6 +4753,7 @@ __upgrade_packages() {
 
 __cleanup() {
     [ -d "$MY_SOURCE_DIR" ] || return 0
+
     for repo in $(__list_formula_repositories | cut -d= -f1)
     do
         cd "$MY_FORMULA_REPO_DIR/$repo/formula"
@@ -4751,12 +4761,12 @@ __cleanup() {
         do
             if [ -f "$item" ] ; then
                 case $item in
-                    *.sh)
-                        __load_formula_of_the_given_package $(printf '%s\n' "$item" | sed 's/\.sh//g')
+                    *.sh) __load_formula_of_the_given_package ${item%.sh}
                 esac
             fi
         done
     done
+
     success "Done."
 }
 
@@ -5954,10 +5964,14 @@ __install_the_given_package() {
     unset TARGET_INDEX
     unset TARGET_ITEM
 
-    PACKAGE_INSTALL_DIR="$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$1"
+    unset TARGET_OS_VERS
 
     __install_the_given_package_on_exit() {
-        is_package_installed "$INSTALLING_PACKAGE" "$MIN_SDK_API_LEVEL" && return 0
+        if [ -z "$TARGET_OS_VERS" ] ; then
+            :
+        else
+            is_package_installed "$INSTALLING_PACKAGE" "$TARGET_OS_VERS" && return 0
+        fi
 
         if [ -z "$PACKAGE_WORKING_DIR" ] ; then
             die "package [$INSTALLING_PACKAGE] install failed!"
@@ -5983,9 +5997,27 @@ __install_the_given_package() {
     __view_formula_of_the_given_package "$1" --paging=never
 
     step "load formula"
-    __load_formula_of_the_given_package "$1" "$MIN_SDK_API_LEVEL"
+    __load_formula_of_the_given_package "$1"
 
-    TARGET_OS_VERS="$MIN_SDK_API_LEVEL"
+    unset PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE
+
+    if [ "$LINK_TYPE" = 'static-only' ] && [ "$PACKAGE_INSTALL_EXE" = yes ] && [ "$PACKAGE_INSTALL_LIB" != yes ] ; then
+        PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE=yes
+    fi
+
+    if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
+        TARGET_OS_VERS="$SUPPORTED_SDK_API_LEVEL_MAX"
+    else
+        TARGET_OS_VERS="$MIN_SDK_API_LEVEL"
+    fi
+
+    if [ -n "$PACKAGE_SDK_API" ] && [ "$PACKAGE_SDK_API" -gt "$TARGET_OS_VERS" ] ; then
+        error "package [$1] install failed!.\n    package supported min sdk-api-level is $PACKAGE_SDK_API\n    but you requested min sdk-api-level is $TARGET_OS_VERS"
+        return 1
+    fi
+
+    PACKAGE_INSTALL_DIR="$MY_INSTALL_DIR/android/$TARGET_OS_VERS/$1"
+
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
         PACKAGE_DEP_CMD="$PACKAGE_DEP_CMD ccache"
@@ -6054,7 +6086,7 @@ __install_the_given_package() {
         bppend_to_PATH "$PERL_HOME/bin"
     fi
 
-    PACKAGE_WORKING_DIR="$MY_HOME_DIR/installing.d/android/$MIN_SDK_API_LEVEL/$1"
+    PACKAGE_WORKING_DIR="$MY_HOME_DIR/installing.d/android/$TARGET_OS_VERS/$1"
     PACKAGE_SRC_TOP_DIR="$PACKAGE_WORKING_DIR/src"
 
     step "create working directory"
@@ -6082,9 +6114,6 @@ __install_the_given_package() {
             cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT"
         fi
     fi
-
-    step "create common linker script"
-    create_common_linker_script "$PACKAGE_WORKING_DIR"
 
     step "create common include.h"
     unset COMMON_INCLUDE_H_FILEPATH
@@ -6381,7 +6410,7 @@ EOF
     fi
 
     step "list installed files in a tree-like format"
-    __tree_the_given_installed_package "$1" "$MIN_SDK_API_LEVEL" $TREE_ARGS
+    __tree_the_given_installed_package "$1" "$TARGET_OS_VERS" $TREE_ARGS
 
     echo
     success "$1 installed successfully."
@@ -6402,13 +6431,35 @@ __install_the_given_package_for_the_given_target() {
     run install -d "$TARGET_WORKING_DIR/lib"
     run install -d "$TARGET_WORKING_DIR/bin"
 
+    step2 "create linker script"
+    # https://developer.android.com/ndk/guides/stable_apis#c_library
+    # Note that on Android, unlike Linux, there are no separate libpthread or librt libraries.
+    # That functionality is included directly in libc, which does not need to be explicitly linked against.
+    run "echo '!<arch>' > '$TARGET_WORKING_DIR/lib/libpthread.a'"
+    run "echo '!<arch>' > '$TARGET_WORKING_DIR/lib/librt.a'"
+
+    if [ "$ANDROID_NDK_VERS_MAJOR" -ge 23 ] ; then
+        # https://github.com/rust-windowing/android-ndk-rs/issues/149
+        if [ "$TARGET_OS_ARCH" = "x86_64" ] ; then
+            LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
+        fi
+        run "echo 'INPUT($LIBCLANG_RT_BUILTINS_FILEPATH -l:libunwind.a)' > '$TARGET_WORKING_DIR/lib/libgcc.a'"
+    fi
+
+    if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
+        run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libc.a)'  > '$TARGET_WORKING_DIR/lib/libc.a'"
+        run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libm.a)'  > '$TARGET_WORKING_DIR/lib/libm.a'"
+        run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libz.a)'  > '$TARGET_WORKING_DIR/lib/libz.a'"
+        run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libdl.a)' > '$TARGET_WORKING_DIR/lib/libdl.a'"
+    fi
+
     step2 "create symbolic link for CC and CXX to use ccache"
     if [ "$CCACHE_ENABLED" = yes ] ; then
         if [ -z "$CCACHE" ] ; then
             die "ccache is not installed."
         fi
-        run ln -s "$CCACHE" "$TARGET_WORKING_DIR/bin/$(basename "$CC")"
-        run ln -s "$CCACHE" "$TARGET_WORKING_DIR/bin/$(basename "$CXX")"
+        run ln -sf "$CCACHE" "$TARGET_WORKING_DIR/bin/$(basename "$CC")"
+        run ln -sf "$CCACHE" "$TARGET_WORKING_DIR/bin/$(basename "$CXX")"
         run export PATH="'$TARGET_WORKING_DIR/bin:$PATH'"
     else
         note "ccache is disabled, skipped."
@@ -6423,7 +6474,7 @@ __install_the_given_package_for_the_given_target() {
 
         for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
         do
-            DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR="$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI/lib"
+            DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR="$MY_INSTALL_DIR/android/$TARGET_OS_VERS/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI/lib"
             if [ -d "$DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR" ] ; then
                 cd  "$DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR"
                 for item in $(find . -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -exec basename {} \;)
@@ -6431,7 +6482,7 @@ __install_the_given_package_for_the_given_target() {
                     if [ -e "$TARGET_WORKING_DIR/lib/$item" ] ; then
                         continue
                     else
-                        ln -s $DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR/$item $TARGET_WORKING_DIR/lib/$item
+                        ln -sf $DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR/$item $TARGET_WORKING_DIR/lib/$item
                     fi
                 done
             fi
@@ -6641,37 +6692,37 @@ __adjust_elf_files_for_the_given_target() {
                 # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
                 case $FILE_HEADER_ACTUAL in
                     7F454C46*)
+                        unset ELF_TYPE
+
                         case $y in
-                            *.o)
-                                case $TARGET_OS_ABI in
-                                    armeabi-v7a) FILE_HEADER_EXPACT='7F454C4601010100000000000000000001002800' ;;
-                                    arm64-v8a)   FILE_HEADER_EXPACT='7F454C460201010000000000000000000100B700' ;;
-                                    x86)         FILE_HEADER_EXPACT='7F454C4601010100000000000000000001000300' ;;
-                                    x86_64)      FILE_HEADER_EXPACT='7F454C4602010100000000000000000001003E00' ;;
-                                esac
-                                ;;
-                            *)  case $TARGET_OS_ABI in
-                                    armeabi-v7a) FILE_HEADER_EXPACT='7F454C4601010100000000000000000003002800' ;;
-                                    arm64-v8a)   FILE_HEADER_EXPACT='7F454C460201010000000000000000000300B700' ;;
-                                    x86)         FILE_HEADER_EXPACT='7F454C4601010100000000000000000003000300' ;;
-                                    x86_64)      FILE_HEADER_EXPACT='7F454C4602010100000000000000000003003E00' ;;
-                                esac
+                            *.o)    ELF_TYPE=01 ;;
+                            *.so*)  ELF_TYPE=03 ;;
+                            *)      ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
+                        esac
+
+                        case $TARGET_OS_ABI in
+                            armeabi-v7a) FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}002800" ;;
+                            arm64-v8a)   FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}00B700" ;;
+                            x86)         FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}000300" ;;
+                            x86_64)      FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}003E00" ;;
                         esac
 
                         if [ "$FILE_HEADER_EXPACT" != "$FILE_HEADER_ACTUAL" ] ; then
                             die "ELF file header mismatch: $FILEPATH\n    expect : $FILE_HEADER_EXPACT\n    actual : $FILE_HEADER_ACTUAL"
                         fi
 
-                        # https://source.android.com/security/enhancements/enhancements50
-                        # Android 5.0 and later only support position-independent executables (-fPIE)
                         if [ "$x" = bin ] || [ "$x" = sbin ] ; then
-                            if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
-                                die "invalid elf file: $FILEPATH. It is not Position Independent Executable."
+                            if [ "$ELF_TYPE" = 03 ] ; then
+                                # https://source.android.com/security/enhancements/enhancements50
+                                # Android 5.0 and later only support position-independent executables (-fPIE)
+                                if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
+                                    die "invalid elf file: $FILEPATH. It is not Position Independent Executable."
+                                fi
                             fi
                         fi
 
                         if [ "$BUILD_TYPE" = release ] ; then
-                            run "$STRIP" $STRIP_ARGS "$FILEPATH" || true
+                            run "$STRIP" $STRIP_ARG "$FILEPATH" || true
                         fi
                 esac
             done
@@ -7507,9 +7558,17 @@ __config_variables_for_the_given_target() {
     SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2/$TARGET_OS_VERS"
 
     # https://gcc.gnu.org/onlinedocs/gcc/Invoking-GCC.html#Invoking-GCC
-     CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -fPIC -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
+     CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -fPIC -Wl,--as-needed"
     CPPFLAGS="--sysroot $SYSROOT -Qunused-arguments -I$SYSTEM_INCLUDE_DIR/$TARGET_TRIPLE2"
-     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
+     LDFLAGS="--sysroot $SYSROOT -L$SYSTEM_LIBRARY_DIR -Wl,--as-needed"
+
+    if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
+        CCFLAGS="$CCFLAGS -static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker"
+        LDFLAGS="$LDFLAGS -static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker"
+    else
+        CCFLAGS="$CCFLAGS -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
+        LDFLAGS="$LDFLAGS -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
+    fi
 
     if [ "$BUILD_TYPE" = release ] ; then
         CCFLAGS="$CCFLAGS -Wl,--strip-debug -Os -DNDEBUG"
@@ -7549,7 +7608,7 @@ __config_variables_for_the_given_target() {
 
     for DEPENDENCY_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGES
     do
-        DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR="$MY_INSTALL_DIR/android/$MIN_SDK_API_LEVEL/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI"
+        DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR="$MY_INSTALL_DIR/android/$TARGET_OS_VERS/$DEPENDENCY_PACKAGE_NAME/$TARGET_OS_ABI"
         DEPENDENCY_PACKAGE_TARGET_INSTALLED_INCLUDE_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/include"
         DEPENDENCY_PACKAGE_TARGET_INSTALLED_LIBRARY_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/lib"
         DEPENDENCY_PACKAGE_TARGET_INSTALLED_PKGCONF_DIR="$DEPENDENCY_PACKAGE_TARGET_INSTALLED_INSTALL_DIR/lib/pkgconfig"
@@ -7589,6 +7648,17 @@ __config_variables_for_the_given_target() {
 
     for DEPENDENCY_PACKAGE_NAME in $PACKAGE_DEP_PKG
     do
+        # https://android.googlesource.com/platform/bionic/+/master/docs/status.md
+        if [ "$DEPENDENCY_PACKAGE_NAME" = libgetloadavg ] ; then
+            if [ "$TARGET_OS_VERS" -lt 29 ] ; then
+                # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#157
+                # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getloadavg.cpp
+                # int getloadavg(double __averages[], int __n) __INTRODUCED_IN(29);
+                CPPFLAGS="$CPPFLAGS -include $libgetloadavg_INCLUDE_DIR/getloadavg.h"
+                LDFLAGS="$LDFLAGS -l:libgetloadavg.a"
+            fi
+        fi
+
         if [ "$DEPENDENCY_PACKAGE_NAME" = libglob ] ; then
             # https://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/glob.h
@@ -7737,6 +7807,74 @@ __config_variables_for_the_given_target() {
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
 
         export RUSTFLAGS="-Clink-arg=-L$TARGET_WORKING_DIR/lib -Clink-arg=-L$PACKAGE_WORKING_DIR"
+
+        if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
+            export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
+        fi
+
+        for DEPENDENCY_PACKAGE_NAME in $PACKAGE_DEP_PKG
+        do
+            if [ "$DEPENDENCY_PACKAGE_NAME" = libgetloadavg ] ; then
+                if [ "$TARGET_OS_VERS" -lt 29 ] ; then
+                    # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#157
+                    # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getloadavg.cpp
+                    # int getloadavg(double __averages[], int __n) __INTRODUCED_IN(29);
+                    # CPPFLAGS="$CPPFLAGS -include $libgetloadavg_INCLUDE_DIR/getloadavg.h"
+                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libgetloadavg_LIBRARY_DIR/libgetloadavg.a"
+                fi
+            fi
+
+            if [ "$DEPENDENCY_PACKAGE_NAME" = libglob ] ; then
+                # https://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
+                # https://android.googlesource.com/platform/bionic/+/master/libc/include/glob.h
+                if [ "$TARGET_OS_VERS" -lt 28 ] ; then
+                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libglob_LIBRARY_DIR/libglob.a"
+                fi
+            fi
+
+            if [ "$DEPENDENCY_PACKAGE_NAME" = liblanginfo ] ; then
+                # https://pubs.opengroup.org/onlinepubs/9699919799/functions/nl_langinfo.html
+                # https://android.googlesource.com/platform/bionic/+/master/libc/include/langinfo.h
+                if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$liblanginfo_LIBRARY_DIR/liblanginfo.a"
+                fi
+            fi
+
+            if [ "$DEPENDENCY_PACKAGE_NAME" = libmblen ] ; then
+                # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#163
+                # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/mblen.cpp
+                # int mblen(const char* __s, size_t __n) __INTRODUCED_IN_NO_GUARD_FOR_NDK(26);
+                if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+                    CPPFLAGS="$CPPFLAGS -include $libmblen_INCLUDE_DIR/mblen.h"
+                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libmblen_LIBRARY_DIR/libmblen.a"
+                fi
+            fi
+
+            if [ "$DEPENDENCY_PACKAGE_NAME" = libgetdomainname ] ; then
+                # https://android.googlesource.com/platform/bionic/+/master/libc/include/unistd.h#313
+                # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getdomainname.cpp
+                # int getdomainname(char* __buf, size_t __buf_size) __INTRODUCED_IN(26);
+                if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+                    # CPPFLAGS="$CPPFLAGS -include $libgetdomainname_INCLUDE_DIR/getdomainname.h"
+                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libgetdomainname_LIBRARY_DIR/libgetdomainname.a"
+                fi
+            fi
+
+            if [ "$DEPENDENCY_PACKAGE_NAME" = libstrchrnul ] ; then
+                # https://android.googlesource.com/platform/bionic/+/master/libc/include/string.h#68
+                # char* strchrnul(char* __s, int __ch) __RENAME(strchrnul) __attribute_pure__ __INTRODUCED_IN(24);
+                if [ "$TARGET_OS_VERS" -lt 24 ] ; then
+                    # CPPFLAGS="$CPPFLAGS -include $libstrchrnul_INCLUDE_DIR/strchrnul.h"
+                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libstrchrnul_LIBRARY_DIR/libstrchrnul.a"
+                fi
+            fi
+
+            if [ "$DEPENDENCY_PACKAGE_NAME" = libgetdtablesize ] ; then
+                # CPPFLAGS="$CPPFLAGS -include $libgetdtablesize_INCLUDE_DIR/getdtablesize.h"
+                # https://android.googlesource.com/platform/bionic/+/72dc1c22dc6a92dea925398c9e3880364ab29c1c/libc/bionic/getdtablesize.c
+                export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libgetdtablesize_LIBRARY_DIR/libgetdtablesize.a"
+            fi
+        done
 
         # https://libraries.io/cargo/cc
         # https://crates.io/crates/cc
@@ -8621,20 +8759,6 @@ ndk_build() {
 }
 
 ########################################################################
-
-create_common_linker_script() {
-    [ -z  "$1" ] && die "create_common_linker_script <DIR>, <DIR> must not be empty."
-
-    # https://developer.android.com/ndk/guides/stable_apis#c_library
-    # Note that on Android, unlike Linux, there are no separate libpthread or librt libraries.
-    # That functionality is included directly in libc, which does not need to be explicitly linked against.
-    run "echo '!<arch>' > $1/libpthread.a"
-    run "echo '!<arch>' > $1/librt.a"
-
-    if [ "$ANDROID_NDK_VERS_MAJOR" -ge 23 ] ; then
-        run "echo 'INPUT(-lunwind)' > $1/libgcc.a"
-    fi
-}
 
 create_common_include_h() {
     [ -z  "$1" ] && die "create_common_include_h <FILEPATH>, <FILEPATH> must not be empty."
