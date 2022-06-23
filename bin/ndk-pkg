@@ -3675,7 +3675,7 @@ __decode_dependency() {
     unset PACKAGE_BUILD_SYSTEM_CONFIGURE
     unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
 
-    # dir relative to $PACKAGE_WORKING_DIR, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
+    # dir relative to $PACKAGE_INSTALLING_TOP_DIR, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
     unset PACKAGE_BSCRIPT
 
     # if build in build script dir, otherwise build in build dir
@@ -5168,7 +5168,7 @@ $LINE"
     fi
 }
 
-# __pack_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE> [--keep-work-dir]
+# __pack_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE> [--keep-packing-dir]
 # __pack_the_given_installed_package    autoconf             21         tar.xz
   __pack_the_given_installed_package() {
     __load_installed_metadata_of_the_given_package "$1" "$2"
@@ -5176,8 +5176,8 @@ $LINE"
     for option in $(shiftn 3 $@)
     do
         case $option in
-            --keep-work-dir)
-                KEEP_WORKING_DIR=yes
+            --keep-packing-dir)
+                KEEP_PACKING_DIR=yes
                 ;;
             -x|--xtrace)
                 ;;
@@ -5208,7 +5208,7 @@ $LINE"
             handle_dependency required exe bzip2
             ;;
         '')die "$_0 pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, <TYPE> must not be empty." ;;
-        *) die "$_0 pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, unsupported TYPE: $2, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
+        *) die "$_0 pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, unsupported TYPE: $3, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
     esac
 
     unset PACKED_DIR_NAME
@@ -5222,12 +5222,12 @@ $LINE"
 
     PACKED_FILE_NAME="$PACKED_DIR_NAME.$3"
 
-    step "create working directory"
+    step "create the packing directory"
     printf '%b\n' "$COLOR_PURPLE==>$COLOR_OFF ${COLOR_GREEN}mktemp -d$COLOR_OFF"
-    WORKING_DIR=$(mktemp -d)
+    PACKING_DIR=$(mktemp -d)
 
-    step "change to working directory"
-    run cd $WORKING_DIR
+    step "cd  to the packing directory"
+    run cd $PACKING_DIR
 
     step "make link point to installed package root dir"
     run ln -s "$MY_INSTALL_DIR/android/$INSTALLED_PACKAGE_SDK_API/$INSTALLED_PACKAGE_NAME" "$PACKED_DIR_NAME"
@@ -5261,12 +5261,12 @@ $LINE"
     step "copy packed file to cache dir"
     run cp "$PACKED_FILE_NAME" "$PACKED_FILE_CACHE_DIR/"
 
-    if [ "$KEEP_WORKING_DIR" = yes ] ; then
+    if [ "$KEEP_PACKING_DIR" = yes ] ; then
         echo
-        note "the work dir [$WORKING_DIR] is not deleted as --keep-work-dir option is given."
+        note "the packing dir [$PACKING_DIR] is not deleted as --keep-packing-dir option is given."
     else
-        step "delete working directory"
-        run rm -rf $WORKING_DIR
+        step "delete the packing directory"
+        run rm -rf $PACKING_DIR
     fi
 }
 
@@ -5320,7 +5320,7 @@ $LINE"
         fi
 
         if [ "$PACKAGE_HAVE_INCLUDE" != yes ] && [ "$PACKAGE_HAVE_LIBRARY" != yes ] ; then
-            die "$1 do not contains library files."
+            die "no libraries in package $1."
         fi
     done
 
@@ -5336,16 +5336,16 @@ $LINE"
     printf_dependency required exe tree
     printf_dependency required exe unzip
 
-    step "create working directory"
-    WORKING_DIR="$MY_HOME_DIR/prefab.d/android/$INSTALLED_PACKAGE_SDK_API/$INSTALLED_PACKAGE_NAME"
+    step "create the packing directory"
+    PACKING_DIR="$MY_HOME_DIR/prefab.d/android/$INSTALLED_PACKAGE_SDK_API/$INSTALLED_PACKAGE_NAME"
 
-    if [ -d "$WORKING_DIR" ] ; then
-        run rm -rf "$WORKING_DIR"
+    if [ -d "$PACKING_DIR" ] ; then
+        run rm -rf "$PACKING_DIR"
     fi
-    run install -d "$WORKING_DIR"
+    run install -d "$PACKING_DIR"
 
-    step "change to working directory"
-    run cd $WORKING_DIR
+    step "cd  to the packing directory"
+    run cd $PACKING_DIR
 
     step "create META-INF entry"
     run install -d META-INF
@@ -5950,9 +5950,10 @@ __install_the_given_package() {
     # beacuse previous package's work direcotory is deleted.
     cd ~
 
-    unset PACKAGE_WORKING_DIR
-    unset PACKAGE_SRC_TOP_DIR
-    unset PACKAGE_BSCRIPT_DIR
+    unset PACKAGE_INSTALLING_TOP_DIR
+    unset PACKAGE_INSTALLING_SRC_DIR
+    unset PACKAGE_INSTALLING_BST_DIR
+
     unset PACKAGE_INSTALL_DIR
 
     unset NATIVE_BUILDIN_DIR
@@ -5973,16 +5974,16 @@ __install_the_given_package() {
             is_package_installed "$INSTALLING_PACKAGE" "$TARGET_OS_VERS" && return 0
         fi
 
-        if [ -z "$PACKAGE_WORKING_DIR" ] ; then
+        if [ -z "$PACKAGE_INSTALLING_TOP_DIR" ] ; then
             die "package [$INSTALLING_PACKAGE] install failed!"
         else
             if [ "$DRYRUN" = yes ] ; then
                 return 0
             fi
             if [ -z "$TARGET_ITEM" ] ; then
-                die "package [$INSTALLING_PACKAGE] install failed! you can go to directory[$PACKAGE_WORKING_DIR] to look at the details."
+                die "package [$INSTALLING_PACKAGE] install failed! you can go to directory[$PACKAGE_INSTALLING_TOP_DIR] to look at the details."
             else
-                die "target [$INSTALLING_PACKAGE/$TARGET_ITEM] install failed! you can go to directory[$PACKAGE_WORKING_DIR] to look at the details."
+                die "target [$INSTALLING_PACKAGE/$TARGET_ITEM] install failed! you can go to directory[$PACKAGE_INSTALLING_TOP_DIR] to look at the details."
             fi
         fi
     }
@@ -6086,14 +6087,14 @@ __install_the_given_package() {
         bppend_to_PATH "$PERL_HOME/bin"
     fi
 
-    PACKAGE_WORKING_DIR="$MY_HOME_DIR/installing.d/android/$TARGET_OS_VERS/$1"
-    PACKAGE_SRC_TOP_DIR="$PACKAGE_WORKING_DIR/src"
+    PACKAGE_INSTALLING_TOP_DIR="$MY_HOME_DIR/installing.d/android/$TARGET_OS_VERS/$1"
+    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_INSTALLING_TOP_DIR/src"
 
-    step "create working directory"
-    if [ -d "$PACKAGE_WORKING_DIR" ] ; then
-        run rm -rf "$PACKAGE_WORKING_DIR"
+    step "create the installing directory"
+    if [ -d "$PACKAGE_INSTALLING_TOP_DIR" ] ; then
+        run rm -rf "$PACKAGE_INSTALLING_TOP_DIR"
     fi
-    run install -d "$PACKAGE_WORKING_DIR"
+    run install -d "$PACKAGE_INSTALLING_TOP_DIR"
 
     step "calculate packages that are depended by $1"
     unset RECURSIVE_DEPENDENT_PACKAGES
@@ -6102,9 +6103,9 @@ __install_the_given_package() {
     else
         RECURSIVE_DEPENDENT_PACKAGES="$(__get_packages_that_are_recursively_depended_by_the_given_package "$1")"
 
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_WORKING_DIR/dependencies.txt"
-        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_WORKING_DIR/dependencies.png"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.dot"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT="$PACKAGE_INSTALLING_TOP_DIR/dependencies.txt"
+        PACKAGE_DEPENDENCY_GRAPH_FILEPATH_PNG="$PACKAGE_INSTALLING_TOP_DIR/dependencies.png"
 
         __gen_dependency_graph_recursively_depended_by_the_given_package "$1" dot "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
         __gen_dependency_graph_recursively_depended_by_the_given_package "$1" txt "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_TXT" || true
@@ -6117,7 +6118,7 @@ __install_the_given_package() {
 
     step "create common include.h"
     unset COMMON_INCLUDE_H_FILEPATH
-    COMMON_INCLUDE_H_FILEPATH="$PACKAGE_WORKING_DIR/include.h"
+    COMMON_INCLUDE_H_FILEPATH="$PACKAGE_INSTALLING_TOP_DIR/include.h"
     create_common_include_h "$COMMON_INCLUDE_H_FILEPATH"
     if command -v bat > /dev/null ; then
         run bat --style=plain --paging=never "$COMMON_INCLUDE_H_FILEPATH"
@@ -6135,17 +6136,17 @@ __install_the_given_package() {
         dir://*)
             if [ "$PACKAGE_SRC_PATH" = '/dev/null' ] ; then
                 step "create the directory where source files will be stored in"
-                run install -d "$PACKAGE_SRC_TOP_DIR"
+                run install -d "$PACKAGE_INSTALLING_SRC_DIR"
             elif [ -d "$PACKAGE_SRC_PATH" ] ; then
                 if [ -d "$PACKAGE_SRC_PATH/.git" ] && command -v git > /dev/null ; then
                     PACKAGE_GIT_SHA=$(cd "$PACKAGE_SRC_PATH" && git rev-parse HEAD || true)
                 fi
 
                 step "create the directory where source files will be copied to"
-                run install -d "$PACKAGE_SRC_TOP_DIR"
+                run install -d "$PACKAGE_INSTALLING_SRC_DIR"
 
                 step "copy source files to the directory i just created"
-                run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_TOP_DIR"
+                run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_INSTALLING_SRC_DIR"
             else
                 die "src.url point to dir is not exist."
             fi
@@ -6156,47 +6157,47 @@ __install_the_given_package() {
             fi
 
             step "create the directory where source files will be copied to"
-            run install -d "$PACKAGE_SRC_TOP_DIR"
+            run install -d "$PACKAGE_INSTALLING_SRC_DIR"
 
             step "copy source files to the directory i just created"
-            run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_SRC_TOP_DIR"
+            run cp -r "$PACKAGE_SRC_PATH/." "$PACKAGE_INSTALLING_SRC_DIR"
             ;;
         *.c|*.cc|*.cxx|*.cpp)
             step "create the directory where source files will be copied to"
-            run install -d "$PACKAGE_SRC_TOP_DIR"
+            run install -d "$PACKAGE_INSTALLING_SRC_DIR"
 
             step "copy source files to the directory i just created"
-            run cp    "$PACKAGE_SRC_PATH"   "$PACKAGE_SRC_TOP_DIR"
+            run cp    "$PACKAGE_SRC_PATH"   "$PACKAGE_INSTALLING_SRC_DIR"
             ;;
         *.zip)
             step "create the directory where source file will be uncompressed to"
-            run install -d "$PACKAGE_SRC_TOP_DIR"
+            run install -d "$PACKAGE_INSTALLING_SRC_DIR"
 
             step "uncompressed source file to the directory i just created"
-            run unzip "$PACKAGE_SRC_PATH" -d "$PACKAGE_SRC_TOP_DIR"
+            run unzip "$PACKAGE_SRC_PATH" -d "$PACKAGE_INSTALLING_SRC_DIR"
             ;;
         *.tar.xz|*.tar.gz|*.tar.lz|*.tar.bz2|*.tgz|*.txz)
             step "create the directory where source file will be uncompressed to"
-            run install -d "$PACKAGE_SRC_TOP_DIR"
+            run install -d "$PACKAGE_INSTALLING_SRC_DIR"
 
             step "uncompressed source file to the directory i just created"
-            run tar xf "$PACKAGE_SRC_PATH" -C "$PACKAGE_SRC_TOP_DIR" --strip-components 1
+            run tar xf "$PACKAGE_SRC_PATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1
             ;;
         *)  die "unrecognized extension : $PACKAGE_SRC_URL. the supported extensions are .zip .tar.xz .tar.gz .tar.lz .tar.bz2 .tgz .txz"
     esac
 
     if [ -z "$PACKAGE_BSCRIPT" ] ; then
-        PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_TOP_DIR"
+        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR"
     else
-        PACKAGE_BSCRIPT_DIR="$PACKAGE_SRC_TOP_DIR/$PACKAGE_BSCRIPT"
+        PACKAGE_INSTALLING_BST_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
     fi
 
     step "list files of source top directory"
-    run ls -l "$PACKAGE_SRC_TOP_DIR"
+    run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
 
     if [ -n "$PACKAGE_BSCRIPT" ] ; then
         step "list files of build script directory"
-        run ls -l "$PACKAGE_BSCRIPT_DIR"
+        run ls -l "$PACKAGE_INSTALLING_BST_DIR"
     fi
 
     if [ -n "$PACKAGE_LICENSE" ] ; then
@@ -6222,9 +6223,9 @@ __install_the_given_package() {
             # https://github.com/spdx/license-list-data
 
             if [ -z "$LICENSE_PATH" ] ; then
-                fetch "$LICENSE_URL_"  --output-dir="$PACKAGE_WORKING_DIR" --output-name="LICENSE$I"
+                fetch "$LICENSE_URL_"  --output-dir="$PACKAGE_INSTALLING_TOP_DIR" --output-name="LICENSE$I"
             else
-                cp "$PACKAGE_SRC_TOP_DIR/$LICENSE_PATH" "$PACKAGE_WORKING_DIR/LICENSE$I"
+                cp "$PACKAGE_INSTALLING_SRC_DIR/$LICENSE_PATH" "$PACKAGE_INSTALLING_TOP_DIR/LICENSE$I"
             fi
         done
 
@@ -6233,7 +6234,7 @@ __install_the_given_package() {
     fi
 
     step "change to build script directory"
-    run cd "$PACKAGE_BSCRIPT_DIR"
+    run cd "$PACKAGE_INSTALLING_BST_DIR"
 
     step "build for native"
     if command -v build0 > /dev/null ; then
@@ -6249,7 +6250,7 @@ __install_the_given_package() {
         if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
             note "build for native already have been done, skipped."
         else
-            NATIVE_BUILDIN_DIR="$PACKAGE_WORKING_DIR/native"
+            NATIVE_BUILDIN_DIR="$PACKAGE_INSTALLING_TOP_DIR/native"
 
             [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] || {
                 run install -d "$NATIVE_BUILDIN_DIR"
@@ -6303,9 +6304,9 @@ __install_the_given_package() {
 
         BUILD_NJOBS = $BUILD_NJOBS
 
-PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
-PACKAGE_SRC_TOP_DIR = $PACKAGE_SRC_TOP_DIR
-PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
+PACKAGE_INSTALLING_TOP_DIR = $PACKAGE_INSTALLING_TOP_DIR
+PACKAGE_INSTALLING_SRC_DIR = $PACKAGE_INSTALLING_SRC_DIR
+PACKAGE_INSTALLING_BST_DIR = $PACKAGE_INSTALLING_BST_DIR
 
  NATIVE_BUILDIN_DIR = $NATIVE_BUILDIN_DIR
  NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
@@ -6329,13 +6330,13 @@ EOF
     fi
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
-        ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
+        ccache -s > "$PACKAGE_INSTALLING_TOP_DIR/ccache-s.txt"
     fi
 
     step "do some preparation works"
     if command -v prepare > /dev/null ; then
-        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR"
+        if [ "$PWD" != "$PACKAGE_INSTALLING_BST_DIR" ] ; then
+            run cd "$PACKAGE_INSTALLING_BST_DIR"
         fi
         prepare "$1"
     else
@@ -6372,23 +6373,23 @@ EOF
     fi
 
     step "install LICENSEs"
-    if [        -f "$PACKAGE_WORKING_DIR/LICENSE1" ] ; then
-        if [    -f "$PACKAGE_WORKING_DIR/LICENSE2" ] ; then
-            run mv "$PACKAGE_WORKING_DIR/LICENSE[1-9]" "$PACKAGE_INSTALL_DIR"
+    if [        -f "$PACKAGE_INSTALLING_TOP_DIR/LICENSE1" ] ; then
+        if [    -f "$PACKAGE_INSTALLING_TOP_DIR/LICENSE2" ] ; then
+            run mv "$PACKAGE_INSTALLING_TOP_DIR/LICENSE[1-9]" "$PACKAGE_INSTALL_DIR"
         else
-            run mv "$PACKAGE_WORKING_DIR/LICENSE1"     "$PACKAGE_INSTALL_DIR/LICENSE"
+            run mv "$PACKAGE_INSTALLING_TOP_DIR/LICENSE1"     "$PACKAGE_INSTALL_DIR/LICENSE"
         fi
     else
         warn "no LICENSEs, skipped."
     fi
 
-    if [ -f "$PACKAGE_SRC_TOP_DIR/AUTHORS" ] ; then
+    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/AUTHORS" ] ; then
         step "install AUTHORS"
-        run cp -r "$PACKAGE_SRC_TOP_DIR/AUTHORS" "$PACKAGE_INSTALL_DIR"
+        run cp -r "$PACKAGE_INSTALLING_SRC_DIR/AUTHORS" "$PACKAGE_INSTALL_DIR"
     fi
 
     step "record installed abis"
-    run cp "$PACKAGE_WORKING_DIR/installed-abis" "$PACKAGE_INSTALL_DIR/installed-abis"
+    run cp "$PACKAGE_INSTALLING_TOP_DIR/installed-abis" "$PACKAGE_INSTALL_DIR/installed-abis"
 
     step "record installed metadata"
     __record_installed_metadata_of_the_given_package "$1"
@@ -6399,14 +6400,14 @@ EOF
     if [ "$CCACHE_ENABLED" = yes ] ; then
         step "show ccache statistics summary"
         note "Before Build:"
-        run  cat "$PACKAGE_WORKING_DIR/ccache-s.txt"
+        run  cat "$PACKAGE_INSTALLING_TOP_DIR/ccache-s.txt"
         note "After  Build:"
         run  ccache -s
     fi
 
-    if [ "$KEEP_WORKING_DIR" != yes ] ; then
-        step "clean working directory."
-        run rm -rf "$PACKAGE_WORKING_DIR"
+    if [ "$KEEP_INSTALLING_DIR" != yes ] ; then
+        step "delete the installing directory."
+        run rm -rf "$PACKAGE_INSTALLING_TOP_DIR"
     fi
 
     step "list installed files in a tree-like format"
@@ -6492,8 +6493,8 @@ __install_the_given_package_for_the_given_target() {
     }
 
     if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
-        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR"
+        if [ "$PWD" != "$PACKAGE_INSTALLING_BST_DIR" ] ; then
+            run cd "$PACKAGE_INSTALLING_BST_DIR"
         fi
     else
         run cd "$TARGET_BUILDIN_DIR"
@@ -6575,7 +6576,7 @@ __install_the_given_package_for_the_given_target() {
         __create_cmake_config_files_for_the_given_target $@
     fi
 
-    run "echo '$TARGET_OS_ABI' >> $PACKAGE_WORKING_DIR/installed-abis"
+    run "echo '$TARGET_OS_ABI' >> $PACKAGE_INSTALLING_TOP_DIR/installed-abis"
 }
 
 __adjust_no_versioning_so_files_for_the_given_target() {
@@ -6718,6 +6719,13 @@ __adjust_elf_files_for_the_given_target() {
                                 if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
                                     die "invalid elf file: $FILEPATH. It is not Position Independent Executable."
                                 fi
+
+                                unset PT_INTERP
+                                PT_INTERP="$(patchelf --print-interpreter "$FILEPATH")"
+
+                                if [ -n "$PT_INTERP" ] && [ "$PT_INTERP" != "$DYNAMIC_LINKER_PATH" ] ; then
+                                    die "ELF file PT_INTERP mismatch: $FILEPATH\n    expect : $DYNAMIC_LINKER_PATH\n    actual : $PT_INTERP"
+                                fi
                             fi
                         fi
 
@@ -6787,7 +6795,7 @@ __adjust_pc_files_for_the_given_target() {
 __install_logs_for_the_given_target() {
     TARGET_LOG_DIR="$TARGET_INSTALL_DIR/share/log"
 
-    for item in "$TARGET_BUILDIN_DIR" "$PACKAGE_BSCRIPT_DIR"
+    for item in "$TARGET_BUILDIN_DIR" "$PACKAGE_INSTALLING_BST_DIR"
     do
         for item2 in 'config.log' 'compile_commands.json' 'install.log.txt'
         do
@@ -7566,8 +7574,9 @@ __config_variables_for_the_given_target() {
         CCFLAGS="$CCFLAGS -static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker"
         LDFLAGS="$LDFLAGS -static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker"
     else
-        CCFLAGS="$CCFLAGS -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
-        LDFLAGS="$LDFLAGS -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
+        # CCFLAGS="$CCFLAGS -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
+        # LDFLAGS="$LDFLAGS -Wl,--dynamic-linker=$DYNAMIC_LINKER_PATH"
+        :
     fi
 
     if [ "$BUILD_TYPE" = release ] ; then
@@ -7719,11 +7728,11 @@ __config_variables_for_the_given_target() {
     unset DEPENDENCY_PACKAGE_TARGET_INSTALLED_PKGCONF_DIR
 
     TARGET_INSTALL_DIR="$PACKAGE_INSTALL_DIR/$TARGET_OS_ABI"
-    TARGET_WORKING_DIR="$PACKAGE_WORKING_DIR/$TARGET_OS_ABI"
+    TARGET_WORKING_DIR="$PACKAGE_INSTALLING_TOP_DIR/$TARGET_OS_ABI"
     TARGET_BUILDIN_DIR="$TARGET_WORKING_DIR/build"
 
-    CPPFLAGS="-I$TARGET_WORKING_DIR/include -I$PACKAGE_WORKING_DIR $CPPFLAGS"
-     LDFLAGS="-L$TARGET_WORKING_DIR/lib     -L$PACKAGE_WORKING_DIR  $LDFLAGS"
+    CPPFLAGS="-I$TARGET_WORKING_DIR/include -I$PACKAGE_INSTALLING_TOP_DIR $CPPFLAGS"
+     LDFLAGS="-L$TARGET_WORKING_DIR/lib     -L$PACKAGE_INSTALLING_TOP_DIR  $LDFLAGS"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         CCFLAGS="$CCFLAGS -v -Wl,-v"
@@ -7806,7 +7815,7 @@ __config_variables_for_the_given_target() {
 
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
 
-        export RUSTFLAGS="-Clink-arg=-L$TARGET_WORKING_DIR/lib -Clink-arg=-L$PACKAGE_WORKING_DIR"
+        export RUSTFLAGS="-Clink-arg=-L$TARGET_WORKING_DIR/lib -Clink-arg=-L$PACKAGE_INSTALLING_TOP_DIR"
 
         if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
             export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
@@ -8108,9 +8117,9 @@ EOF
     fi
 
     printf '%s\n' "
-PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
-PACKAGE_SRC_TOP_DIR = $PACKAGE_SRC_TOP_DIR
-PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
+PACKAGE_INSTALLING_TOP_DIR = $PACKAGE_INSTALLING_TOP_DIR
+PACKAGE_INSTALLING_SRC_DIR = $PACKAGE_INSTALLING_SRC_DIR
+PACKAGE_INSTALLING_BST_DIR = $PACKAGE_INSTALLING_BST_DIR
 
  TARGET_WORKING_DIR = $TARGET_WORKING_DIR
  TARGET_BUILDIN_DIR = $TARGET_BUILDIN_DIR
@@ -8276,7 +8285,7 @@ cargow() {
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_PATH" ] ; then
-                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $PACKAGE_BSCRIPT_DIR"
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --path $PACKAGE_INSTALLING_BST_DIR"
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_ROOT" ] ; then
@@ -8344,7 +8353,7 @@ configure() {
         # https://git.savannah.gnu.org/cgit/config.git/tree/
         for item in config.sub config.guess
         do
-            for file in $(find "$PACKAGE_BSCRIPT_DIR" -name "$item")
+            for file in $(find "$PACKAGE_INSTALLING_BST_DIR" -name "$item")
             do
                 CONFIG_XX="$MY_SOURCE_DIR/config/$item"
                 if [ ! -f "$CONFIG_XX" ] ; then
@@ -8360,15 +8369,15 @@ configure() {
     fi
 
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-        if run "$PACKAGE_BSCRIPT_DIR"/configure \
+        if run "$PACKAGE_INSTALLING_BST_DIR"/configure \
             --prefix="$NATIVE_INSTALL_DIR" \
             $@ ; then
             echo
         else
             if [ -f "$TARGET_BUILDIN_DIR/config.log" ] ; then
                 run cat "$TARGET_BUILDIN_DIR/config.log"
-            elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
-                run cat "$PACKAGE_BSCRIPT_DIR/config.log"
+            elif [ -f "$PACKAGE_INSTALLING_BST_DIR/config.log" ] ; then
+                run cat "$PACKAGE_INSTALLING_BST_DIR/config.log"
             fi
             return 1
         fi
@@ -8415,15 +8424,15 @@ configure() {
             no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
         esac
 
-        if run $PACKAGE_BSCRIPT_DIR/configure $CONFIGURE_ARGS $@ ; then
+        if run $PACKAGE_INSTALLING_BST_DIR/configure $CONFIGURE_ARGS $@ ; then
             echo
         else
             # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
             if [ "$GITHUB_ACTIONS" = true ] ; then
                 if [ -f "$TARGET_BUILDIN_DIR/config.log" ] ; then
                     run cat "$TARGET_BUILDIN_DIR/config.log"
-                elif [ -f "$PACKAGE_BSCRIPT_DIR/config.log" ] ; then
-                    run cat "$PACKAGE_BSCRIPT_DIR/config.log"
+                elif [ -f "$PACKAGE_INSTALLING_BST_DIR/config.log" ] ; then
+                    run cat "$PACKAGE_INSTALLING_BST_DIR/config.log"
                 fi
             fi
             return 1
@@ -8431,7 +8440,7 @@ configure() {
     fi
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
+        for Makefile in $(find "$PACKAGE_INSTALLING_BST_DIR" -name Makefile)
         do
             sed_in_place 's|\t@|\t|g'     "$Makefile"
             sed_in_place 's|@echo|echo|g' "$Makefile"
@@ -8514,9 +8523,9 @@ cmakew() {
 
         # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
         if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $NATIVE_BUILDIN_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_INSTALLING_BST_DIR -B $NATIVE_BUILDIN_DIR"
         else
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_BSCRIPT_DIR -B$NATIVE_BUILDIN_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_INSTALLING_BST_DIR -B$NATIVE_BUILDIN_DIR"
         fi
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
@@ -8574,9 +8583,9 @@ cmakew() {
 
         # https://stackoverflow.com/questions/11143062/getting-cmake-to-build-out-of-source-without-wrapping-scripts
         if command_exists_in_filesystem_and_version_matched cmake ge 3.13.0 ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $TARGET_BUILDIN_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_INSTALLING_BST_DIR -B $TARGET_BUILDIN_DIR"
         else
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_BSCRIPT_DIR -B$TARGET_BUILDIN_DIR"
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -H$PACKAGE_INSTALLING_BST_DIR -B$TARGET_BUILDIN_DIR"
         fi
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
@@ -8622,7 +8631,7 @@ xmakew() {
     fi
 
     if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-        run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_BSCRIPT_DIR --buildir=$NATIVE_BUILDIN_DIR &&
+        run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_INSTALLING_BST_DIR --buildir=$NATIVE_BUILDIN_DIR &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
         run $XMAKE install -o "$NATIVE_INSTALL_DIR"
     else
@@ -8708,7 +8717,7 @@ EOF
         --build.pkg-config-path="$PKG_CONFIG_PATH_FOR_BUILD" \
         --cross-file="$MESON_CROSS_FILE" \
         $MESON_ARGUMENT_DEFAULT_LIBRARY \
-        $@ "$TARGET_BUILDIN_DIR" "$PACKAGE_BSCRIPT_DIR" &&
+        $@ "$TARGET_BUILDIN_DIR" "$PACKAGE_INSTALLING_BST_DIR" &&
     {
         if command -v build_configed > /dev/null ; then
             build_configed
@@ -9492,7 +9501,7 @@ inspect_install_arguments() {
     # https://clang.llvm.org/docs/JSONCompilationDatabase.html
     EXPORT_COMPILE_COMMANDS_JSON=no
 
-    KEEP_WORKING_DIR=no
+    KEEP_INSTALLING_DIR=no
 
     TREE_ARGS='--dirsfirst'
 
@@ -9528,8 +9537,8 @@ inspect_install_arguments() {
             --dry-run)
                 DRYRUN=yes
                 ;;
-            --keep-work-dir)
-                KEEP_WORKING_DIR=yes
+            --keep-installing-dir)
+                KEEP_INSTALLING_DIR=yes
                 ;;
             --tree-args=*)
                 TREE_ARGS=$(getvalue "$1")

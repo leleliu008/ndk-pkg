@@ -166,7 +166,7 @@ function _ndk_pkg() {
                         '1:package-name:_ndk_pkg_installed_packages' \
                         '2:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
                         '3:type:(7z zip aar tar.gz tar.xz tar.bz2)' \
-                        '--keep-work-dir[do not delete work-dir even if packed success]'
+                        '--keep-packing-dir[do not delete packing dir even if packed success]'
                     ;;
                 deploy)
                     _arguments \
@@ -200,7 +200,7 @@ function _ndk_pkg() {
                         '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-work-dir[do not delete work-dir even if installed success]' \
+                        '--keep-installing-dir[do not delete installing dir even if installed success]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                         '(--debug -d)'{--debug,-d}'[debug output]' \
                         '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
@@ -222,7 +222,7 @@ function _ndk_pkg() {
                         '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-work-dir[do not delete work-dir even if installed success]' \
+                        '--keep-installing-dir[do not delete installing dir even if installed success]' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                         '(--debug -d)'{--debug,-d}'[debug output]' \
                         '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
@@ -255,7 +255,7 @@ function _ndk_pkg() {
                                         '--min-sdk-api-level=-[set the min android-sdk api-level]:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
                                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                                         '--dry-run[dry-run]' \
-                                        '--keep-work-dir[do not delete work-dir even if installed success]' \
+                                        '--keep-installing-dir[do not delete installing dir even if installed success]' \
                                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                                         '(--debug -d)'{--debug,-d}'[debug output]' \
                                         '(--verbose -v)'{--verbose,-v}'[verbose mode. many messages will be output to terminal]' \
