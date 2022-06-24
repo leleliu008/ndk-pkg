@@ -2037,7 +2037,7 @@ __pmw_get_available_package_name_by_command_name_dnf() {
     patchelf)
         # EPEL repo is shipped with Fedora
         if [ "$NATIVE_OS_TYPE" = fedora ] ; then
-            echo 'ccache'
+            echo 'patchelf'
         else
             echo 'epel:patchelf'
         fi
@@ -4365,6 +4365,11 @@ __fetch_resources_of_the_given_package() {
         return 1
     }
 
+    is_integer "$2" || {
+        error "is_package_installed <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> must be a integer."
+        return 1
+    }
+
     [ -d "$MY_INSTALL_DIR/android/$2/$1" ]                    || return 10
     [ -f "$MY_INSTALL_DIR/android/$2/$1/installed-metadata" ] || return 11
     [ -f "$MY_INSTALL_DIR/android/$2/$1/installed-files" ]    || return 12
@@ -5171,6 +5176,26 @@ $LINE"
 # __pack_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE> [--keep-packing-dir]
 # __pack_the_given_installed_package    autoconf             21         tar.xz
   __pack_the_given_installed_package() {
+    [ -z "$1" ] && {
+        error "__pack_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "__pack_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, <MIN-SDK-API-LEVEL> is not given."
+        return 1
+    }
+
+    is_integer "$2" || {
+        error "__pack_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, <MIN-SDK-API-LEVEL> must be a integer."
+        return 1
+    }
+
+    [ -z "$3" ] && {
+        error "__pack_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, <TYPE> is not given, supported TYPEs are 7z zip aar tar.gz tar.xz tar.bz2"
+        return 1
+    }
+
     __load_installed_metadata_of_the_given_package "$1" "$2"
 
     for option in $(shiftn 3 $@)
@@ -5208,7 +5233,7 @@ $LINE"
             handle_dependency required exe bzip2
             ;;
         '')die "$_0 pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, <TYPE> must not be empty." ;;
-        *) die "$_0 pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, unsupported TYPE: $3, the supported types are 7z zip aar tar.gz tar.xz tar.bz2."
+        *) die "$_0 pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TYPE>, unsupported TYPE: $3, supported TYPEs are 7z zip aar tar.gz tar.xz tar.bz2"
     esac
 
     unset PACKED_DIR_NAME
@@ -8569,7 +8594,7 @@ cmakew() {
         -DCMAKE_IGNORE_PATH='$CMAKE_IGNORE_PATH'
         -DCMAKE_INSTALL_PREFIX='$TARGET_INSTALL_DIR'
         -DCMAKE_C_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
-        -DCMAKE_CXX_FLAGS='$CFLAGS $CPPFLAGS $LDFLAGS'
+        -DCMAKE_CXX_FLAGS='$CXXFLAGS $CPPFLAGS $LDFLAGS'
         -DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS
         -DANDROID_TOOLCHAIN=clang
         -DANDROID_ABI=$TARGET_OS_ABI
