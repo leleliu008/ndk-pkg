@@ -461,12 +461,18 @@ is_a_valid_android_ndk_root_dir() {
         ndk-pkg pack curl 21 zip
         ndk-pkg pack curl 21 aar
         
-*   **pack the given installed package as prefab aar and then deploy the prefab aar to Sonatype Nexus OSSRH**
+*   **pack the given installed package as prefab aar and then deploy the prefab aar to Maven local repository**
         
-        ndk-pkg deploy curl 21 ~/deploy-config
-        ndk-pkg deploy curl 21 ~/deploy-config -d
-        ndk-pkg deploy curl 21 ~/deploy-config -x
+        ndk-pkg deployToMavenLocalRepo curl 21
+        ndk-pkg deployToMavenLocalRepo curl 21 -d
+        ndk-pkg deployToMavenLocalRepo curl 21 -x
+
+*   **pack the given installed package as prefab aar and then deploy the prefab aar to Sonatype OSSRH**
         
+        ndk-pkg deployToSonatypeOSSRH curl 21 ~/deploy-config
+        ndk-pkg deployToSonatypeOSSRH curl 21 ~/deploy-config -d
+        ndk-pkg deployToSonatypeOSSRH curl 21 ~/deploy-config -x
+
 *   **show or open the homepage of this project**
         
         ndk-pkg homepage

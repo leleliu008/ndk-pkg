@@ -3675,7 +3675,7 @@ __decode_dependency() {
     unset PACKAGE_BUILD_SYSTEM_CONFIGURE
     unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
 
-    # dir relative to $PACKAGE_INSTALLING_TOP_DIR, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
+    # dir relative to $PACKAGE_INSTALLING_TOP_DIR, where the build script (such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc) is located in.
     unset PACKAGE_BSCRIPT
 
     # if build in build script dir, otherwise build in build dir
@@ -5310,6 +5310,11 @@ $LINE"
         return 1
     }
 
+    is_integer "$2" || {
+        error "__create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> must be a integer."
+        return 1
+    }
+
     __load_installed_metadata_of_the_given_package "$1" "$2"
 
     unset PACKAGE_HAVE_INCLUDE
@@ -5533,17 +5538,74 @@ EOF
     run du -sh $PACKED_FILE_NAME
 }
 
-# https://central.sonatype.org/publish/release/
-# https://central.sonatype.org/publish/requirements/
-# __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH> [-d] [-x]
-  __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package() {
+# __deploy_prefab_aar_to_maven_local_repo_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> [-d] [-x]
+  __deploy_prefab_aar_to_maven_local_repo_for_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <PACKAGE-NAME> is not given."
+        error "$_0 deployToMavenLocalRepo <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <PACKAGE-NAME> is not given."
         return 1
     }
 
     [ -z "$2" ] && {
-        error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <MIN-SDK-API-LEVEL> is not given."
+        error "$_0 deployToMavenLocalRepo <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> is not given."
+        return 1
+    }
+
+    is_integer "$2" || {
+        error "$_0 deployToMavenLocalRepo <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> must be a integer."
+        return 1
+    }
+
+    is_package_installed "$1" "$2" || {
+        error "package [$1] is not installed."
+        return 1
+    }
+
+    unset MVN_OPTIONS
+
+    for option in $(shiftn 3 $@)
+    do
+        case $option in
+            -d|--debug)
+                MVN_OPTIONS=-X
+                ;;
+            -x|--xtrace)
+                ;;
+            *)  die "unrecognized option: $option"
+        esac
+    done
+
+    __create_prefab_aar_for_the_given_installed_package $@
+
+    handle_dependency required exe mvn
+
+    # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
+    step "deploying to maven local repository"
+    run mvn \
+        $MVN_OPTIONS \
+        install:install-file \
+        -Dfile=$PACKED_FILE_NAME \
+        -DgroupId=com.fpliu.ndk.pkg.prefab.android.$INSTALLED_PACKAGE_SDK_API \
+        -DartifactId=$INSTALLED_PACKAGE_NAME \
+        -Dversion=$INSTALLED_PACKAGE_VERSION \
+        -Dpackaging=aar
+}
+
+# https://central.sonatype.org/publish/release/
+# https://central.sonatype.org/publish/requirements/
+# __deploy_prefab_aar_to_sonatype_OSSRH___for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH> [-d] [-x]
+  __deploy_prefab_aar_to_sonatype_OSSRH___for_the_given_installed_package() {
+    [ -z "$1" ] && {
+        error "$_0 deployToSonatypeOSSRH <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <PACKAGE-NAME> is not given."
+        return 1
+    }
+
+    [ -z "$2" ] && {
+        error "$_0 deployToSonatypeOSSRH <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <MIN-SDK-API-LEVEL> is not given."
+        return 1
+    }
+
+    is_integer "$2" || {
+        error "$_0 deployToSonatypeOSSRH <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <MIN-SDK-API-LEVEL> must be a integer."
         return 1
     }
 
@@ -5553,7 +5615,7 @@ EOF
     }
 
     [ -z "$3" ] && {
-        error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <CONFIG-FILE-PATH> is not given."
+        error "$_0 deployToSonatypeOSSRH <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH>, <CONFIG-FILE-PATH> is not given."
         return 1
     }
 
@@ -5571,13 +5633,13 @@ EOF
     [ -z "$OSSRH_PASSWORD" ] && die "OSSRH_PASSWORD must be set in $3"
     [ -z "$GPG_PASSPHRASE" ] && die "GPG_PASSPHRASE must be set in $3"
 
-    unset DEBUG
+    unset MVN_OPTIONS
 
     for option in $(shiftn 3 $@)
     do
         case $option in
             -d|--debug)
-                DEBUG=yes
+                MVN_OPTIONS=-X
                 ;;
             -x|--xtrace)
                 ;;
@@ -5592,24 +5654,20 @@ EOF
         return 1
     fi
 
-    select_scm() {
-        if [ -n "$INSTALLED_PACKAGE_GIT_URL" ] ; then
-            INSTALLED_PACKAGE_SCM_TYPE=git
-            INSTALLED_PACKAGE_SCM_URL="$INSTALLED_PACKAGE_GIT_URL"
-            return 0
-        fi
-
-        if [ -n "$INSTALLED_PACKAGE_SVN_URL" ] ; then
-            INSTALLED_PACKAGE_SCM_TYPE=svn
-            INSTALLED_PACKAGE_SCM_URL="$INSTALLED_PACKAGE_SVN_URL"
-            return 0
-        fi
-
+    if [ -z "$INSTALLED_PACKAGE_GIT_URL" ] && [ -z "$INSTALLED_PACKAGE_SVN_URL" ] ; then
         error "$1 can not be deployed due to INSTALLED_PACKAGE_GIT_URL and INSTALLED_PACKAGE_SVN_URL is empty."
         return 1
-    }
+    fi
 
-    select_scm
+    if [ -n "$INSTALLED_PACKAGE_GIT_URL" ] ; then
+        INSTALLED_PACKAGE_SCM_TYPE=git
+        INSTALLED_PACKAGE_SCM_URL="$INSTALLED_PACKAGE_GIT_URL"
+    fi
+
+    if [ -n "$INSTALLED_PACKAGE_SVN_URL" ] ; then
+        INSTALLED_PACKAGE_SCM_TYPE=svn
+        INSTALLED_PACKAGE_SCM_URL="$INSTALLED_PACKAGE_SVN_URL"
+    fi
 
     POM_FILE="${PACKED_FILE_NAME%.aar}.pom"
 
@@ -5742,6 +5800,8 @@ EOF
 </settings>
 EOF
 
+    handle_dependency required exe mvn
+
     # here I can use maven-deploy-plugin and maven-gpg-plugin
     # maven-gpg-plugin is prefered as it is automatically signed with gpg.
     # 
@@ -5749,17 +5809,11 @@ EOF
     # https://maven.apache.org/plugins/maven-deploy-plugin/deploy-file-mojo.html
     # https://maven.apache.org/resolver/configuration.html
 
-    if [ "$DEBUG" = yes ] ; then
-        MVN_GPG_SIGN_AND_DEPLOY_FILE_OPTIONS=-X
-    else
-        MVN_GPG_SIGN_AND_DEPLOY_FILE_OPTIONS=
-    fi
-
     step "deploying"
     run mvn \
         --settings settings.xml \
+        $MVN_OPTIONS \
         gpg:sign-and-deploy-file \
-        $MVN_GPG_SIGN_AND_DEPLOY_FILE_OPTIONS \
         -Dfile=$PACKED_FILE_NAME \
         -DgeneratePom=false \
         -DpomFile=$POM_FILE \
@@ -6579,8 +6633,8 @@ __install_the_given_package_for_the_given_target() {
 
         run install -d "$TARGET_NOVERSIOING_LIBRARY_DIR/cmake/$PACKAGE_NAME"
 
-        find "$TARGET_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.a'   -exec cp -v {} "$TARGET_NOVERSIOING_LIBRARY_DIR" \;
-        find "$TARGET_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.so*' -exec cp -v {} "$TARGET_NOVERSIOING_LIBRARY_DIR" \;
+        find "$TARGET_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.a'  -exec cp -v {} "$TARGET_NOVERSIOING_LIBRARY_DIR" \;
+        find "$TARGET_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.so' -exec cp -v {} "$TARGET_NOVERSIOING_LIBRARY_DIR" \;
 
         for SO_FILE_PATH_HAVE_VERSION in $(find "$TARGET_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.so.*')
         do
@@ -6604,29 +6658,47 @@ __install_the_given_package_for_the_given_target() {
     run "echo '$TARGET_OS_ABI' >> $PACKAGE_INSTALLING_TOP_DIR/installed-abis"
 }
 
+# http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
 __adjust_no_versioning_so_files_for_the_given_target() {
-    for SO_FILE_NAME_NO_VERSION in $(find . -maxdepth 1 -mindepth 1 -name 'lib*.so' -exec basename {} \;)
+    for sofile in $(find . -maxdepth 1 -mindepth 1 -name 'lib*.so' -exec basename {} \;)
     do
-        SO_FILE_PRESETED_DT_SONAME="$($READELF -d "$SO_FILE_NAME_NO_VERSION" | sed -n '/SONAME/p' | cut -d '[' -f2 | sed 's/]//')"
+        DT_SONAME="$(patchelf --print-soname "$sofile")"
 
-        if [ -n "$SO_FILE_PRESETED_DT_SONAME" ] ; then
-            SO_FILE_EXPECTED_DT_SONAME="$(printf '%s\n' "$SO_FILE_PRESETED_DT_SONAME" | sed 's|\(.*\.so\).*|\1|g')"
+        case $DT_SONAME in
+            '') ;;
+            lib*.so)
+                ;;
+            lib*.so.*)
+                run patchelf --set-soname "$sofile" "$sofile"
+                ;;
+            *)  die "unexpected so file: $sofile\n    DT_SONAME: $DT_SONAME"
+        esac
 
-            if [ "$SO_FILE_PRESETED_DT_SONAME" != "$SO_FILE_EXPECTED_DT_SONAME" ] ; then
-                run patchelf --set-soname "$SO_FILE_EXPECTED_DT_SONAME" "$SO_FILE_NAME_NO_VERSION"
-            fi
-        fi
-
-        for SO_FILE_PRESETED_DT_NEEDED in $($READELF -d "$SO_FILE_NAME_NO_VERSION" | sed -n '/NEEDED/p' | cut -d '[' -f2 | sed 's/]//')
+        for DT_NEEDED in $(patchelf --print-needed "$sofile")
         do
-            case $SO_FILE_PRESETED_DT_NEEDED in
-                lib*.so) ;;
-                *)  unset SO_FILE_EXPECTED_DT_NEEDED
-                    SO_FILE_EXPECTED_DT_NEEDED="$(printf '%s\n' "$SO_FILE_PRESETED_DT_NEEDED" | sed 's|\(.*\.so\).*|\1|g')"
-
-                    if [ "$SO_FILE_PRESETED_DT_NEEDED" != "$SO_FILE_EXPECTED_DT_NEEDED" ] ; then
-                        run patchelf --replace-needed "$SO_FILE_PRESETED_DT_NEEDED" "$SO_FILE_EXPECTED_DT_NEEDED" "$SO_FILE_NAME_NO_VERSION"
-                    fi
+            case $DT_NEEDED in
+                lib*.so)
+                    ;;
+                lib*.so.*)
+                    unset NEW_DT_NEEDED
+                    NEW_DT_NEEDED="$(printf '%s\n' "$DT_NEEDED" | sed 's|\(.*\.so\).*|\1|g')"
+                    run patchelf --replace-needed  "$DT_NEEDED" "$NEW_DT_NEEDED" "$sofile"
+                    ;;
+                */*)
+                    unset NEW_DT_NEEDED
+                    NEW_DT_NEEDED="$(basename "$DT_NEEDED")"
+                    case $NEW_DT_NEEDED in
+                        lib*.so)
+                            run patchelf --replace-needed  "$DT_NEEDED" "$NEW_DT_NEEDED" "$sofile"
+                            ;;
+                        lib*.so.*)
+                            NEW_DT_NEEDED="$(printf '%s\n' "$NEW_DT_NEEDED" | sed 's|\(.*\.so\).*|\1|g')"
+                            run patchelf --replace-needed  "$DT_NEEDED" "$NEW_DT_NEEDED" "$sofile"
+                            ;;
+                        *)  die "unexpected so file: $sofile\n    DT_NEEDED: $DT_NEEDED"
+                    esac
+                    ;;
+                *)  die "unexpected so file: $sofile\n    DT_NEEDED: $DT_NEEDED"
             esac
         done
     done
@@ -7543,15 +7615,15 @@ EOF
         return 1
     fi
 
-    if ! is_integer "$INSTALLED_PACKAGE_SDK_API" ; then
+    is_integer "$INSTALLED_PACKAGE_SDK_API" || {
         error "$INSTALLED_METADATA_FILEPATH is broken. value of INSTALLED_PACKAGE_SDK_API must be a integer."
         return 1
-    fi
+    }
 
-    if ! is_integer "$BUILD_USE_TOOLCHAIN_VERS_MAJOR" ; then
+    is_integer "$BUILD_USE_TOOLCHAIN_VERS_MAJOR" || {
         error "$INSTALLED_METADATA_FILEPATH is broken. value of BUILD_USE_TOOLCHAIN_VERS_MAJOR must be a integer."
         return 1
-    fi
+    }
 }
 
 # __config_variables_for_the_given_target <PACKAGE-NAME> <TARGET>
@@ -9963,8 +10035,11 @@ ${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> <MIN-SDK-API-LEVEL> [--dirsfirst | -L 
 ${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
-${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH> [-d] [-x]${COLOR_OFF}
-    pack the given installed package as prefab aar and then deploy prefab aar to sonatype nexus OSSRH.
+${COLOR_GREEN}ndk-pkg deployToMavenLocalRepo <PACKAGE-NAME> <MIN-SDK-API-LEVEL> [-d] [-x]${COLOR_OFF}
+    pack the given installed package as prefab aar and then deploy prefab aar to maven local repository.
+
+${COLOR_GREEN}ndk-pkg deployToSonatypeOSSRH  <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <CONFIG-FILE-PATH> [-d] [-x]${COLOR_OFF}
+    pack the given installed package as prefab aar and then deploy prefab aar to Sonatype OSSRH.
 
     <CONFIG-FILE-PATH> contains following content:
 
@@ -10167,7 +10242,14 @@ main() {
         depends)  shift; __show_packages_depended_by_the_given_package $@ ;;
         fetch)    shift;        __fetch_resources_of_the_given_package $@ ;;
 
-        deploy) shift; __deploy_prefab_aar_to_sonatype_nexus_OSSRH_for_the_given_installed_package $@ ;;
+        deployToMavenLocalRepo)
+            shift
+            __deploy_prefab_aar_to_maven_local_repo_for_the_given_installed_package $@
+            ;;
+        deployToSonatypeOSSRH)
+            shift
+            __deploy_prefab_aar_to_sonatype_OSSRH___for_the_given_installed_package $@
+            ;;
 
         logs) shift; __logs_the_given_installed_package $@ ;;
         pack) shift; __pack_the_given_installed_package $@ ;;
