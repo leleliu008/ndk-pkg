@@ -134,8 +134,23 @@ dependencies {
 **step4. invoke [find_package(PACKAGE-NAME)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
 ```cmake
 find_package(curl REQUIRED CONFIG)
-target_link_libraries(xx curl::libcurl.so)
+target_link_libraries(xx curl::libpng.a)
 ```
+
+**step5. configure cmake in build.gradle**
+
+if you link a shared library that use `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
+```gradle
+android {
+    externalNativeBuild {
+        cmake {
+            arguments '-DANDROID_STL=c++_shared'
+            cppFlags "-std=c++17"
+        }
+    }
+}
+```
+
 **Note:**
 
 - Every package provides several cmake imported targets which have form: `${PACKAGE_NAME}::${LIBRARY_FILENAME}`
