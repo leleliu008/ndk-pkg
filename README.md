@@ -126,11 +126,6 @@ dependencies {
 }
 ```
 
-    you can look for packages that have been published to `MavenCentral` via visiting follwoing websites:
-
-- https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
-- https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
-
 **step4. invoke [find_package(PACKAGE-NAME)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
 ```cmake
 find_package(curl REQUIRED CONFIG)
@@ -139,7 +134,7 @@ target_link_libraries(xx curl::libpng.a)
 
 **step5. configure cmake in build.gradle**
 
-    If you link a shared library that use `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
+If you link a shared library that use `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
 ```gradle
 android {
     externalNativeBuild {
@@ -152,7 +147,14 @@ android {
 ```
 
 **Note:**
-
+- you can look for packages that have been published to `MavenCentral` via visiting follwoing websites:
+    - https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
+    - https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
+- If packages that have been published to `MavenCentral` doesn't meet your needs, you can install package then depoloy it to Maven Local repository via running following commands:
+    ```bash
+    ndk-pkg install libpng
+    ndk-pkg deployToMavenLocalRepo libpng 21
+    ```
 - Every package provides several cmake imported targets which have form: `${PACKAGE_NAME}::${LIBRARY_FILENAME}`
 
 **References:**
