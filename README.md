@@ -509,7 +509,7 @@ is_a_valid_android_ndk_root_dir() {
         ndk-pkg deploy curl 21 mavenRemote    < ~/OSSRH-config
         ndk-pkg deploy curl 21 mavenRemote -d < ~/OSSRH-config
         ndk-pkg deploy curl 21 mavenRemote -x < ~/OSSRH-config
-        ndk-pkg deploy curl 21 mavenRemote -x <<
+        ndk-pkg deploy curl 21 mavenRemote -x <<EOF
         SERVER_ID=OSSRH
         SERVER_URL=https://s01.oss.sonatype.org/service/local/repositories/comfpliu-1025/content
         SERVER_USERNAME=leleliu008
