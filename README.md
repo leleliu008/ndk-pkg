@@ -163,10 +163,10 @@ android {
 - you can look for packages that have been published to `mavenCentral` via visiting follwoing websites:
     - https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
     - https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
-- If packages that have been published to `mavenCentral` doesn't meet your needs, you can install package then depoloy it to `mavenLocal` via running following commands:
+- If packages that have been published to `mavenCentral` doesn't meet your needs, you can install package then deploy it to `mavenLocal` via running following commands:
     ```bash
     ndk-pkg install libpng
-    ndk-pkg deployToMavenLocalRepo libpng 21
+    ndk-pkg deploy  libpng 21 mavenLocal
     ```
     enables `mavenLocal` repository in `build.gradle`
     ```gradle
@@ -500,15 +500,22 @@ is_a_valid_android_ndk_root_dir() {
         
 *   **pack the given installed package as prefab aar and then deploy the prefab aar to Maven local repository**
         
-        ndk-pkg deployToMavenLocalRepo curl 21
-        ndk-pkg deployToMavenLocalRepo curl 21 -d
-        ndk-pkg deployToMavenLocalRepo curl 21 -x
+        ndk-pkg deploy curl 21 mavenLocal
+        ndk-pkg deploy curl 21 mavenLocal -d
+        ndk-pkg deploy curl 21 mavenLocal -x
 
-*   **pack the given installed package as prefab aar and then deploy the prefab aar to Sonatype OSSRH**
+*   **pack the given installed package as prefab aar and then deploy the prefab aar to Maven remote repository**
         
-        ndk-pkg deployToSonatypeOSSRH curl 21 ~/deploy-config
-        ndk-pkg deployToSonatypeOSSRH curl 21 ~/deploy-config -d
-        ndk-pkg deployToSonatypeOSSRH curl 21 ~/deploy-config -x
+        ndk-pkg deploy curl 21 mavenRemote    < ~/OSSRH-config
+        ndk-pkg deploy curl 21 mavenRemote -d < ~/OSSRH-config
+        ndk-pkg deploy curl 21 mavenRemote -x < ~/OSSRH-config
+        ndk-pkg deploy curl 21 mavenRemote -x <<
+        SERVER_ID=OSSRH
+        SERVER_URL=https://s01.oss.sonatype.org/service/local/repositories/comfpliu-1025/content
+        SERVER_USERNAME=leleliu008
+        SERVER_PASSWORD=xx
+        GPG_PASSPHRASE=yy
+        EOF
 
 *   **show or open the homepage of this project**
         

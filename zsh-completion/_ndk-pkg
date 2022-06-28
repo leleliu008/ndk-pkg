@@ -34,8 +34,7 @@ _commands=(
     'env:show current machine os and android-ndk toolchain info.'
     'depends:show the depends of the given package.'
     'pack:pack the given installed package.'
-    'deployToMavenLocalRepo:pack the given installed package as prefab aar and then deploy the prefab aar to maven local repository.'
-    'deployToSonatypeOSSRH:pack the given installed package as prefab aar and then deploy the prefab aar to sonatype OSSRH.'
+    'deploy:pack the given installed package as prefab aar and then deploy the prefab aar to maven repository.'
     'logs:show logs of the given installed package.'
     'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
@@ -169,18 +168,11 @@ function _ndk_pkg() {
                         '3:type:(7z zip aar tar.gz tar.xz tar.bz2)' \
                         '--keep-packing-dir[do not delete packing dir even if packed success]'
                     ;;
-                deployToMavenLocalRepo)
+                deploy)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
                         '2:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
-                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
-                        '(--debug -d)'{--debug,-d}'[debug the process of deployment]'
-                    ;;
-                deployToSonatypeOSSRH)
-                    _arguments \
-                        '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:min-sdk-api-level:($(ndk-pkg ls-target-levels))' \
-                        '3:config-file:_files' \
+                        '3:where:(mavenLocal mavenRemote)' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                         '(--debug -d)'{--debug,-d}'[debug the process of deployment]'
                     ;;
