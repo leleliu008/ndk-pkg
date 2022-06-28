@@ -137,25 +137,45 @@ target_link_libraries(xx curl::libpng.a)
 If you link a shared library that use `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
 ```gradle
 android {
-    externalNativeBuild {
-        cmake {
-            arguments '-DANDROID_STL=c++_shared'
-            cppFlags "-std=c++17"
+    buildTypes {
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_STL=c++_shared'
+                    cppFlags "-std=c++17"
+                }
+            }
+        }
+
+        release {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_STL=c++_shared'
+                    cppFlags "-std=c++17"
+                }
+            }
         }
     }
 }
 ```
 
 **Note:**
-- you can look for packages that have been published to `MavenCentral` via visiting follwoing websites:
+- you can look for packages that have been published to `mavenCentral` via visiting follwoing websites:
     - https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
     - https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
-- If packages that have been published to `MavenCentral` doesn't meet your needs, you can install package then depoloy it to Maven Local repository via running following commands:
+- If packages that have been published to `mavenCentral` doesn't meet your needs, you can install package then depoloy it to `mavenLocal` via running following commands:
     ```bash
     ndk-pkg install libpng
     ndk-pkg deployToMavenLocalRepo libpng 21
     ```
-- Every package provides several cmake imported targets which have form: `${PACKAGE_NAME}::${LIBRARY_FILENAME}`
+    enables `mavenLocal` repository in `build.gradle`
+    ```gradle
+    repositories {
+        mavenLocal()
+    }
+    ```
+
+- Every package provides several cmake imported targets and each target has form: `${PACKAGE_NAME}::${LIBRARY_FILENAME}`
 
 **References:**
 
@@ -197,7 +217,7 @@ target_link_libraries(xx curl::libcurl.so)
 ```
 
 **Note:**
-- Every package provides several cmake imported targets which have form: `${PACKAGE_NAME}::${LIBRARY_FILE_NAME}`
+- Every package provides several cmake imported targets and each target has form: `${PACKAGE_NAME}::${LIBRARY_FILE_NAME}`
 - If you want to know what cmake imported targets are provided by `${PACKAGE_NAME}`, you can look at `~/.ndk-pkg/install.d/android/${ANDROID_PLATFORM_LEVEL}/${PACKAGE_NAME}/${ANDROID_ABI}/lib-no-versioning/cmake/${PACKAGE_NAME}/${PACKAGE_NAME}Config.cmake`
 
 
