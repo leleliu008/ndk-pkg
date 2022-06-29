@@ -132,9 +132,9 @@ find_package(curl REQUIRED CONFIG)
 target_link_libraries(xx curl::libpng.a)
 ```
 
-**step5. configure cmake in build.gradle**
+**step5. configure C++ standard and STL in build.gradle**
 
-If you link a shared library that use `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
+If you link a shared library that depends on `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
 ```gradle
 android {
     defaultConfig {
