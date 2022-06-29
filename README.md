@@ -155,7 +155,7 @@ android {
     - https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab
 - If packages that have been published to `mavenCentral` doesn't meet your needs, you can install package then deploy it to `mavenLocal` via running following commands:
     ```bash
-    ndk-pkg install libpng
+    ndk-pkg install libpng --min-sdk-api-level=21
     ndk-pkg deploy  libpng 21 mavenLocal
     ```
     enables `mavenLocal` repository in `build.gradle`
