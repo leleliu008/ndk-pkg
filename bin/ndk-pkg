@@ -4431,7 +4431,7 @@ __gen_github_workflows() {
 
     AVAILABLE_PACKAGES=$(__list_available_packages)
 
-    for item in test v8 webrtc skia
+    for item in test v8 webrtc skia pdfium
     do
         AVAILABLE_PACKAGES=$(printf '%s\n' "$AVAILABLE_PACKAGES" | sed "s|^$item$||")
     done
