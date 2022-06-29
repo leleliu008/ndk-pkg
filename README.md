@@ -137,22 +137,11 @@ target_link_libraries(xx curl::libpng.a)
 If you link a shared library that use `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
 ```gradle
 android {
-    buildTypes {
-        debug {
-            externalNativeBuild {
-                cmake {
-                    arguments '-DANDROID_STL=c++_shared'
-                    cppFlags "-std=c++17"
-                }
-            }
-        }
-
-        release {
-            externalNativeBuild {
-                cmake {
-                    arguments '-DANDROID_STL=c++_shared'
-                    cppFlags "-std=c++17"
-                }
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+                cppFlags "-std=c++17"
             }
         }
     }
