@@ -23,7 +23,8 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 ## Install ndk-pkg via Docker
 **step1. create the ndk-pkg docker container**
 ```bash
-mkdir -p ~/.ndk-pkg
+mkdir ~/.ndk-pkg
+mkdir ~/.m2
 
 docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg -v ~/.m2:/root/.m2 fpliu/ndk-pkg
 ```
