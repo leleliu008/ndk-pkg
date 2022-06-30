@@ -9407,7 +9407,14 @@ setup_build_toolchains_env() {
 
     if [ -z "$ANDROID_NDK_HOME" ] ; then
         note "Android NDK Not Found on your build machine, I will install it for you."
-        if ndkmanager install r23c ; then
+
+        if [ "$NATIVE_OS_SUBS" = termux ] ; then
+            TO_INSTALL_ANDROID_NDK_REVERSION=r23b
+        else
+            TO_INSTALL_ANDROID_NDK_REVERSION=r23c
+        fi
+
+        if ndkmanager install "$TO_INSTALL_ANDROID_NDK_REVERSION" ; then
             export ANDROID_NDK_HOME
             export ANDROID_NDK_ROOT
         else
