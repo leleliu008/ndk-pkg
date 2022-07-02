@@ -127,10 +127,17 @@ dependencies {
 }
 ```
 
-**step4. invoke [find_package(PACKAGE-NAME)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
+**step4. invoke [find_package(PACKAGE-NAME [REQUIRED] CONFIG)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
 ```cmake
 find_package(curl REQUIRED CONFIG)
 target_link_libraries(xx curl::libpng.a)
+```
+or
+```cmake
+find_package(curl CONFIG)
+if (curl_FOUND)
+    target_link_libraries(xx curl::libpng.a)
+endif()
 ```
 
 **step5. configure C++ standard and STL in build.gradle**
@@ -200,10 +207,17 @@ if (ANDROID)
 endif()
 ```
 
-**step3. invoke [find_package(PACKAGE-NAME)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
+**step3. invoke [find_package(PACKAGE-NAME [REQUIRED] CONFIG)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
 ```cmake
 find_package(curl REQUIRED CONFIG)
 target_link_libraries(xx curl::libcurl.so)
+```
+or
+```cmake
+find_package(curl CONFIG)
+if (curl_FOUND)
+    target_link_libraries(xx curl::libcurl.so)
+endif()
 ```
 
 **Note:**
