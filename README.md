@@ -129,14 +129,14 @@ dependencies {
 
 **step4. invoke [find_package(PACKAGE-NAME [REQUIRED] CONFIG)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
 ```cmake
-find_package(curl REQUIRED CONFIG)
-target_link_libraries(xx curl::libpng.a)
+find_package(libpng REQUIRED CONFIG)
+target_link_libraries(xx libpng::libpng.a)
 ```
 or
 ```cmake
-find_package(curl CONFIG)
-if (curl_FOUND)
-    target_link_libraries(xx curl::libpng.a)
+find_package(libpng CONFIG)
+if (libpng_FOUND)
+    target_link_libraries(xx libpng::libpng.a)
 endif()
 ```
 
