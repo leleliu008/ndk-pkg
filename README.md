@@ -44,7 +44,11 @@ docker exec -it ndk-pkg ndk-pkg install curl
 **Note:**
 - This is the recommended way to install `ndk-pkg`, beacause many softwares will be automatically installed when running `ndk-pkg` command, running `ndk-pkg` command in a docker container will keep your host environment clean.
 - you can use `podman` instead of `docker`
-- chinese user may want to use `fpliu/ndk-pkg:china` instead of `fpliu/ndk-pkg`
+- 中国大陆的用户或许想设置容器中的APT仓库的镜像，设置方法如下：
+```
+sed -i "s@archive.ubuntu.com@mirrors.aliyun.com@g"    /etc/apt/sources.list
+sed -i "s@security.ubuntu.com@repo.huaweicloud.com@g" /etc/apt/sources.list
+```
 
 
 ## Install ndk-pkg via HomeBrew
