@@ -2238,7 +2238,7 @@ __pmw_get_available_package_name_by_command_name_brew() {
     grpc_cpp_plugin)
               echo "grpc" ;;
     glib-mkenums)
-              echo 'glib' ;;
+              echo 'glib-utils' ;;
     glib-compile-resources)
               echo 'glib' ;;
     glibtool|libtoolize|glibtoolize)
