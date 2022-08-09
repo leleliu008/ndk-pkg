@@ -1,4 +1,4 @@
-name: CentOS Linux
+name: Container
 
 on:
   push:
@@ -8,26 +8,13 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     
-    strategy:
-      fail-fast: false
-      matrix:
-        tag: ['7.5.1804', '8.4.2105']
-
-    container: centos:${{ matrix.tag }}
+    container: fpliu/ndk-pkg
 
     steps:
-      - run: yum -y update && yum -y install git
-        if:  ${{ matrix.tag == '7.5.1804' }}
-
-        # https://stackoverflow.com/questions/70926799/centos-through-vm-no-urls-in-mirrorlist
-      - run: |
-          sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
-          sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
-          dnf -y update
-          dnf -y install git
-        if:  ${{ matrix.tag == '8.4.2105' }}
+      - run: apt-get -y update
+      - run: apt-get -y install git
 
       - uses: actions/checkout@v3
 
@@ -42,7 +29,7 @@ jobs:
 
       - run: bin/ndk-pkg update
 
-      - run: cd ~/.ndk-pkg/repos.d/offical && git checkout ${{ github.ref_name }}
+      - run: git -C ~/.ndk-pkg/repos.d/offical checkout ${{ github.ref_name }}
 
       - run: bin/ndk-pkg search lib
       - run: bin/ndk-pkg search libzip
@@ -55,7 +42,9 @@ jobs:
       - run: bin/ndk-pkg info libzip
       - run: bin/ndk-pkg info libzip version
       - run: bin/ndk-pkg info libzip webpage
-      - run: bin/ndk-pkg info libzip
+      - run: bin/ndk-pkg info libzip git.url
+      - run: bin/ndk-pkg info libzip src.url
+      - run: bin/ndk-pkg info libzip fix.url
 
       - run: bin/ndk-pkg depends libzip
 
@@ -96,7 +85,7 @@ jobs:
 
       - run: bin/ndk-pkg is-available libzip
       - run: bin/ndk-pkg is-installed libzip 21
-      - run: bin/ndk-pkg is-outdated  libzip 21 || echo 'not outdated'
+      - run: bin/ndk-pkg is-outdated  libzip 21 || echo "not outdated"
 
       - run: bin/ndk-pkg uninstall libzip
 
