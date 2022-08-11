@@ -247,7 +247,7 @@ own() {
     ls -ld "$1" | cut -d ' ' -f3,4 | tr ' ' ':'
 }
 
-is_integer () {
+is_integer() {
     case "${1#[+-]}" in
         (*[!0123456789]*) return 1 ;;
         ('')              return 1 ;;
@@ -266,7 +266,13 @@ is_elf_file() {
         return 2
     }
 
-    [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$1")" = '7F454C46' ]
+    # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+
+    if command -v hexdump > /dev/null ; then
+        [ "$(hexdump -n 4 -v -e '1/1 "%02X" ""' "$1")" = '7F454C46' ]
+    else
+        [ "$(head -c 4 "$1")" = "$(printf '\177ELF')" ]
+    fi
 }
 
 # format_unix_timestamp <TIMESTAMP-UNIX> <TO-FORMAT> [-u]
@@ -1845,7 +1851,6 @@ __pmw_get_available_package_name_by_command_name_pacman_internal() {
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
-    autopoint)  echo "gettext"  ;;
      xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
@@ -2017,7 +2022,6 @@ __pmw_get_available_package_name_by_command_name_zypper() {
     autoheader) echo "automake" ;;
     autopoint)  echo "gettext"  ;;
      xgettext)  echo "gettext"  ;;
-    autopoint)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
     gdk-pixbuf-query-loaders)
@@ -2089,11 +2093,13 @@ __pmw_get_available_package_name_by_command_name_dnf() {
     glib-mkenums) echo 'glib2-devel' ;;
     glib-compile-resources)
                   echo 'glib2-devel' ;;
+    grpc_cpp_plugin)
+                  echo "grpc-plugins" ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
-    autopoint)  echo "gettext"  ;;
+    autopoint)  echo "gettext-devel";;
      xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
@@ -2132,11 +2138,13 @@ __pmw_get_available_package_name_by_command_name_yum() {
     glib-mkenums) echo 'glib2-devel' ;;
     glib-compile-resources)
                   echo 'glib2-devel' ;;
+    grpc_cpp_plugin)
+                  echo "grpc-plugins" ;;
     glibtool|libtoolize|glibtoolize)
                 echo "libtool"  ;;
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
-    autopoint)  echo "gettext"  ;;
+    autopoint)  echo "gettext-devel";;
      xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc"  ;;
@@ -2182,7 +2190,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
     sphinx-build)
               echo "python3-sphinx" ;;
     grpc_cpp_plugin)
-              echo "libgrpc" ;;
+              echo "protobuf-compiler-grpc" ;;
     glib-mkenums)
               echo 'libglib2.0-dev' ;;
     glib-compile-resources)
@@ -2192,7 +2200,6 @@ __pmw_get_available_package_name_by_command_name_apt() {
     libtool)    echo "libtool-bin" ;;
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
-    autopoint)  echo "gettext"  ;;
      xgettext)  echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc-tools" ;;
