@@ -2203,7 +2203,7 @@ __pmw_get_available_package_name_by_command_name_apt() {
     libtool)    echo "libtool-bin" ;;
     autoreconf) echo "autoconf" ;;
     autoheader) echo "automake" ;;
-     xgettext)  echo "gettext"  ;;
+    xgettext)   echo "gettext"  ;;
     msgfmt)     echo "gettext"  ;;
     intltoolize)echo "intltool" ;;
     gtkdocize)  echo "gtk-doc-tools" ;;
@@ -8719,6 +8719,8 @@ cmakew() {
 # https://github.com/xmake-io/xmake/issues/2003
 # run in a subshell
 xmakew() {
+    export XMAKE_ROOT=y
+
     XMAKE=$(command -v xmake)
 
     [ -z "$XMAKE" ] && die "command not found: xmake"
