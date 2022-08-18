@@ -2213,6 +2213,8 @@ __pmw_get_available_package_name_by_command_name_apt() {
                 echo 'gputils' ;;
     cwebp|dwebp|gif2webp|img2webp|vwebp|webpinfo|webpmux)
                 echo 'webp' ;;
+    scp|sftp|ssh|ssh-add|ssh-agent|ssh-argv0|ssh-copy-id|ssh-keygen|ssh-keyscan)
+                echo 'openssh-client' ;;
         ninja)
             if [ "$NATIVE_OS_SUBS" = termux ] ; then
                 echo ninja
@@ -2268,6 +2270,8 @@ __pmw_get_available_package_name_by_command_name_brew() {
                 echo 'gputils' ;;
     cwebp|dwebp|gif2webp|img2webp|vwebp|webpinfo|webpmux)
                 echo 'libwebp' ;;
+    scp|sftp|ssh|ssh-add|ssh-agent|ssh-argv0|ssh-copy-id|ssh-keygen|ssh-keyscan)
+                echo 'openssh' ;;
         *)      echo "$1"
     esac
 }
@@ -7779,6 +7783,16 @@ __config_variables_for_the_given_target() {
     for DEPENDENCY_PACKAGE_NAME in $PACKAGE_DEP_PKG
     do
         # https://android.googlesource.com/platform/bionic/+/master/docs/status.md
+
+        if [ "$DEPENDENCY_PACKAGE_NAME" = libexecinfo ] ; then
+            if [ "$TARGET_OS_VERS" -lt 33 ] ; then
+                # https://android.googlesource.com/platform/bionic/+/master/libc/include/execinfo.h
+                # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/execinfo.cpp
+                CPPFLAGS="$CPPFLAGS -include $libexecinfo_INCLUDE_DIR/execinfo.h"
+                LDFLAGS="$LDFLAGS -l:libexecinfo.a"
+            fi
+        fi
+
         if [ "$DEPENDENCY_PACKAGE_NAME" = libgetloadavg ] ; then
             if [ "$TARGET_OS_VERS" -lt 29 ] ; then
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#157
