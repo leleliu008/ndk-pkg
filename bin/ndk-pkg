@@ -2502,7 +2502,7 @@ __pmw_get_available_package_version_by_package_name() {
         apk)   apk info "$2" 2> /dev/null | head -n 1 | cut -d ' ' -f1 | cut -d- -f2 ;;
         yum)   yum info "$2" 2> /dev/null | sed -n '/Version     :/p'  | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
         dnf)   dnf info "$2" 2> /dev/null | sed -n '/Version      :/p' | head -n 1 | cut -d : -f2 | sed 's/^[[:space:]]//' ;;
-        brew) brew info "$2" 2> /dev/null | head -n 1 | sed 's|stable ||' | cut -d ' ' -f2 | cut -d ',' -f1 ;;
+        brew) brew info "$2" 2> /dev/null | head -n 1 | sed -e 's|^==> .*: ||' -e 's|stable ||' | cut -d ' ' -f1 ;;
         xbps) xbps-query -R --property=pkgver "$2" | cut -d- -f2 | cut -d_ -f1 ;;
         pacman) pacman -Ss "^$2$" 2> /dev/null | head -n 1 | cut -d ' ' -f2 | cut -d- -f1 ;;
         zyyper) zyyper info "$2" 2> /dev/null | sed -n '/Version        :/p' | sed 's/Version        : \(.*\)/\1/' | cut -d- -f1 ;;
@@ -3806,15 +3806,24 @@ __decode_dependency() {
     case $PACKAGE_SRC_TYPE in
         dir)
             PACKAGE_SRC_PATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c7-)
+
+            if [ -z "$PACKAGE_VERSION" ] ; then
+                PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+            fi
             ;;
         git)
             PACKAGE_SRC_NAME="$PACKAGE_NAME.git"
             PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
+
+            if [ -z "$PACKAGE_VERSION" ] ; then
+                PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+            fi
             ;;
         *)
             if [ -z "$PACKAGE_SRC_SHA" ] ; then
                 die "src.sha is not configed in $PACKAGE_FORMULA_FILEPATH"
             fi
+
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed 's|-stable||' | sed 's|-src||' | sed 's|\.src||' | sed 's|\.orig\.|.|' | awk '{str = tolower($0); gsub(".tar.xz", "", str); gsub(".tar.gz", "", str); gsub(".tar.lz", "", str); gsub(".tar.bz2", "", str); gsub(".tgz", "", str); gsub(".txz", "", str); gsub(".zip", "", str); print(str)}' | awk -F- '{print $NF}')"
                 case $PACKAGE_VERSION in
@@ -3822,6 +3831,7 @@ __decode_dependency() {
                     v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
                 esac
             fi
+
             PACKAGE_SRC_NAME="$PACKAGE_NAME-$PACKAGE_VERSION.$PACKAGE_SRC_TYPE"
             PACKAGE_SRC_PATH="$MY_SOURCE_DIR/$PACKAGE_SRC_NAME"
     esac
@@ -9938,12 +9948,17 @@ __setup_PATH_env() {
         bppend_to_PATH "$PERL_HOME/bin"
     fi
 
-    for bindir in /opt "$HOME/.uppm/install.d" "$MY_HOME_DIR/native"
+    for dir in /opt "$HOME/.uppm/install.d" "$MY_HOME_DIR/native"
     do
-        if [ -d "$bindir" ] ; then
-            for item in $(find "$bindir" -maxdepth 2 -type d -name bin)
+        if [ -d "$dir" ] ; then
+            for item in $(find "$dir" -maxdepth 2 -type d -name bin)
             do
                 bppend_to_PATH "$item"
+            done
+
+            for item in $(find "$dir" -maxdepth 2 -type d -name lib)
+            do
+                export LD_LIBRARY_DIR="$item:$LD_LIBRARY_DIR"
             done
         fi
     done
