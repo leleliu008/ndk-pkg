@@ -25,7 +25,7 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 
 ## Install ndk-pkg via Docker
 
-### step1. create the ndk-pkg docker container
+**step1. create the ndk-pkg docker container**
 
 ```bash
 mkdir -p ~/.ndk-pkg
@@ -34,16 +34,16 @@ mkdir -p ~/.m2
 docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg -v ~/.m2:/root/.m2 fpliu/ndk-pkg
 ```
 
-### step2. start the ndk-pkg docker container
+**step2. start the ndk-pkg docker container**
 
 ```bash
 docker start ndk-pkg
 ```
 
-### step3. run `ndk-pkg` command in the ndk-pkg docker container
+**step3. run `ndk-pkg` command in the ndk-pkg docker container**
 
 ```bash
-docker exec -it ndk-pkg ndk-pkg upgrade @self
+docker exec -it ndk-pkg ndk-pkg upgrade-self
 docker exec -it ndk-pkg ndk-pkg update
 docker exec -it ndk-pkg ndk-pkg install curl
 ```
@@ -59,21 +59,12 @@ docker exec -it ndk-pkg ndk-pkg install curl
     docker exec -it ndk-pkg sed -i 's@security.ubuntu.com@repo.huaweicloud.com@g' /etc/apt/sources.list
     ```
 
-## Install ndk-pkg via HomeBrew
-
-```bash
-brew tap leleliu008/fpliu
-brew install ndk-pkg
-ndk-pkg setup
-```
-
 ## Install ndk-pkg via cURL on UNIX
 
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
-mv ndk-pkg /usr/local/bin/
-ndk-pkg setup
+./ndk-pkg setup
 ```
 
 ## Install ndk-pkg via cURL on Termux
@@ -81,8 +72,7 @@ ndk-pkg setup
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
 chmod a+x ndk-pkg
-mv ndk-pkg /data/data/com.termux/files/usr/bin/
-ndk-pkg setup
+./ndk-pkg setup
 ```
 
 ## Install ndk-pkg on WSL
@@ -339,7 +329,7 @@ all relevant dirs and files are located in `~/.ndk-pkg` directory.
     ndk-pkg update
     ```
 
-- **search all available packages whose name matches the given regular express pattern**
+- **search all available packages whose name matches the given regular expression pattern**
 
     ```bash
     ndk-pkg search curl
