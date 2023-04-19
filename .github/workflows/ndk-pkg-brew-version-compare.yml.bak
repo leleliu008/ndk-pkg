@@ -6,12 +6,12 @@ on:
   pull_request:
     branches: [ master, dev ]
   schedule:
-    - cron: '* 20 * * *'
+    - cron: '0 20 * * *'
 
 jobs:
   schedule:
 
-    runs-on: macos-11
+    runs-on: macos-12
 
     steps:
       - run: brew update

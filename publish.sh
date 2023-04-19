@@ -180,7 +180,7 @@ main() {
     unset RELEASE_VERSION_MINOR
     unset RELEASE_VERSION_PATCH
 
-    RELEASE_VERSION=$(bin/ndk-pkg --version)
+    RELEASE_VERSION=$(./ndk-pkg --version)
     RELEASE_VERSION_MAJOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f1)
     RELEASE_VERSION_MINOR=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f2)
     RELEASE_VERSION_PATCH=$(printf '%s\n' "$RELEASE_VERSION" | cut -d. -f3)
@@ -203,15 +203,24 @@ main() {
 
     RELEASE_VERSION="$RELEASE_VERSION_MAJOR.$RELEASE_VERSION_MINOR.$RELEASE_VERSION_PATCH"
 
-    sed_in_place "s|MY_VERSION=[0-9]\+.[0-9]\+.[0-9]\+|MY_VERSION=$RELEASE_VERSION|" bin/ndk-pkg
+    sed_in_place "s|NDKPKG_VERSION=[0-9]\+.[0-9]\+.[0-9]\+|NDKPKG_VERSION=$RELEASE_VERSION|" ndk-pkg
 
-    unset RELEASE_FILE_NAME
+    run rm -rf "ndk-pkg-$RELEASE_VERSION"
+
+    run install -d "ndk-pkg-$RELEASE_VERSION/bin/"
+    run install -d "ndk-pkg-$RELEASE_VERSION/share/zsh/site-functions/"
+
+    run cp ndk-pkg "ndk-pkg-$RELEASE_VERSION/bin/ndk-pkg"
+    run cp ndk-pkg-zsh-completion "ndk-pkg-$RELEASE_VERSION/share/zsh/site-functions/_ndk-pkg"
+
     RELEASE_FILE_NAME="ndk-pkg-$RELEASE_VERSION.tar.gz"
 
-    run tar zvcf "$RELEASE_FILE_NAME" bin/ndk-pkg zsh-completion/_ndk-pkg
+    run tar zvcf "$RELEASE_FILE_NAME" "ndk-pkg-$RELEASE_VERSION"
+
+    run rm -rf "ndk-pkg-$RELEASE_VERSION"
 
     unset RELEASE_FILE_SHA256SUM
-    RELEASE_FILE_SHA256SUM=$(sha256sum "$RELEASE_FILE_NAME")
+    RELEASE_FILE_SHA256SUM="$(sha256sum "$RELEASE_FILE_NAME")"
 
     success "sha256sum($RELEASE_FILE_NAME)=$RELEASE_FILE_SHA256SUM"
 

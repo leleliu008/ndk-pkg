@@ -1,0 +1,286 @@
+#compdef ndk-pkg
+
+_commands=(
+    '-h:show help of this command.'
+    '--help:show help of this command.'
+    '-V:show version of this.'
+    '--version:show version of this command.'
+    'ls-available:list the available packages.'
+    'ls-installed:list the installed packages.'
+    'ls-outdated:list the installed packages which can be upgraded.'
+    'is-available:is the given package available.'
+    'is-installed:is the given package installed.'
+    'is-outdated:is the given package outdated.'
+    'search:search packages can be installed.'
+    'tree:list files of the given installed package in a tree-like format.'
+    'info:show infomation of the given package or all available packages.'
+    'formula-edit:edit formula of the given package.'
+    'formula-repo-init:create a new empty formula repository.'
+    'formula-repo-add:create a new empty formula repository then sync with server.'
+    'formula-repo-del:delete the given formula repository from your local cache.'
+    'formula-repo-sync:sync the given formula repository.'
+    'formula-repo-conf:change the config of the given formula repository.'
+    'formula-repo-info:show infomation of the given formula repository.'
+    'formula-repo-list:list all available formula repositories.'
+    'formula:show formula of the given package.'
+    'receipt:show receipt of the given package.'
+    'install:install packages.'
+    'reinstall:reinstall packages.'
+    'uninstall:uninstall packages.'
+    'cleanup:cleanup the unused cache.'
+    'update:update the formula repository.'
+    'upgrade:upgrade the outdated packages or this software.'
+    'fetch:download formula resources of the given package to the cache.'
+    'integrate:integrate zsh completions and cmake support.'
+    'sysinfo:show basic information about your current running operation system.'
+    'ndkinfo:show basic information about the given Android NDK.'
+    'env:show current machine os and android-ndk toolchain info.'
+    'depends:show the depends of the given package.'
+    'pack:pack the given installed package.'
+    'deploy:pack the given installed package as prefab aar and then deploy the prefab aar to maven repository.'
+    'logs:show logs of the given installed package.'
+    'ldd:list dynamic dependencies.'
+    'gen-github-workflows:generate github workflows.'
+    'gen-url-transform-sample:generate url-transform sample.'
+    'compare-versions:compare package versions with brew or maven central.'
+)
+
+function _ndk_pkg_commands() {
+    _describe 'command' _commands
+}
+
+function _ndk_pkg_available_packages() {
+    local -a _available_packages
+    _available_packages=($(ndk-pkg ls-available 2>/dev/null))
+    _describe 'available-packages' _available_packages
+}
+
+function _ndk_pkg_installed_packages() {
+    local -a _installed_packages
+    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null | cut -d/ -f3))
+    _describe 'installed-packages' _installed_packages
+}
+
+function _ndk_pkg_outdated_packages() {
+    local -a _outdated_packages
+    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null | cut -d/ -f3))
+    _describe 'outdated-packages' _outdated_packages
+}
+
+function _ndk_pkg() {
+    local context state state_descr line
+    typeset -A opt_args
+
+    _arguments \
+        '1: :_ndk_pkg_commands' \
+        '*:: :->option'
+
+    case $state in
+        option)
+            case $words[1] in
+                formula-edit)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_available_packages' \
+                        '--editor=-[specify editor]'
+                    ;;
+                formula-repo-add)
+                    _arguments \
+                        '1:formula-repo-name:(name)' \
+                        '2:formula-repo-url:(https://)' \
+                        '--branch=-[set the formula repo branch]' \
+                        + '(pin)' \
+                        '--pin[set pinned to 1]' \
+                        '--unpin[set pinned to 0]' \
+                        + '(enable)' \
+                        '--enable[set enabled to 1]' \
+                        '--disable[set enabled to 0]'
+                    ;;
+                formula-repo-init)
+                    _arguments \
+                        '1:formula-repo-name:(name)' \
+                        '2:formula-repo-url:(https://)' \
+                        '--branch=-[set the formula repo branch]' \
+                        + '(pin)' \
+                        '--pin[set pinned to 1]' \
+                        '--unpin[set pinned to 0]' \
+                        + '(enable)' \
+                        '--enable[set enabled to 1]' \
+                        '--disable[set enabled to 0]'
+                    ;;
+                formula-repo-conf)
+                    _arguments \
+                        '1:formula-repo-name:($(ndk-pkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))' \
+                        '--url=-[change the formula repo url]' \
+                        '--branch=-[change the formula repo branch]' \
+                        + '(pin)' \
+                        '--pin[set pinned to yes]' \
+                        '--unpin[set pinned to no]' \
+                        + '(enable)' \
+                        '--enable[set enabled to yes]' \
+                        '--disable[set enabled to no]'
+                    ;;
+                formula-repo-del)
+                    _arguments '1:formula-repo-name:($(ndk-pkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
+                    ;;
+                formula-repo-sync)
+                    _arguments '1:formula-repo-name:($(ndk-pkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
+                    ;;
+                formula-repo-info)
+                    _arguments '1:formula-repo-name:($(ndk-pkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
+                    ;;
+                formula)
+                    _arguments '1:package-name:_ndk_pkg_available_packages' \
+                        + '(op)' \
+                        '--path[show formula file path only]' \
+                        '--yaml[show formula file content in yaml format]' \
+                        '--json[show formula file content in json format]' \
+                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink)'
+                    ;;
+                receipt)
+                    _arguments '1:package-name:_ndk_pkg_installed_packages' \
+                        + '(op)' \
+                        '--path[show receipt file path only]' \
+                        '--yaml[show receipt file content in yaml format]' \
+                        '--json[show receipt file content in json format]' \
+                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink signature timestamp)'
+                    ;;
+                info)
+                    case $words[3] in
+                        installed-*|receipt-*)
+                            _arguments \
+                                '1:package-name:()' \
+                                '2:key:(installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version)'
+                            ;;
+                        *)  _arguments \
+                                '1:package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
+                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version symlinked-files)'
+                    esac
+                    ;;
+                fetch)
+                    _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))'
+                    ;;
+                depends)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_available_packages' \
+                        '-t[set output format]:output-type:(dot box svg png)' \
+                        '-o[set output filepath or directory]:output-path:{_files}'
+                    ;;
+                pack)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
+                        '3:type:(7z zip aar tar.gz tar.xz tar.bz2)' \
+                        '--keep-packing-dir[do not delete packing dir even if packed success]'
+                    ;;
+                deploy)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
+                        '3:where:(mavenLocal mavenRemote)' \
+                        '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
+                        '(--debug -d)'{--debug,-d}'[debug the process of deployment]'
+                    ;;
+                tree)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
+                        '-L[level]:level:(3)' \
+                        '--dirsfirst[show dirs first]'
+                    ;;
+                logs)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
+                        '3:abi:(armeabi-v7a arm64-v8a x86 x86_64)'
+                    ;;
+                install)
+                    _arguments \
+                        ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
+                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--dry-run[dry-run]' \
+                        '--keep-working-dir[do not delete installing dir even if installed success]' \
+                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '--disable-ccache[do not use ccache]' \
+                        + '(verbose_level)' \
+                        '-vv[debug mode. many many messages will be output to terminal]' \
+                        '-v[verbose mode. many messages will be output to terminal]' \
+                        '-q[silent mode. no any messages will be output to terminal]'
+                    ;;
+                reinstall)
+                    _arguments \
+                        ':package-name:_ndk_pkg_installed_packages' \
+                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--dry-run[dry-run]' \
+                        '--keep-working-dir[do not delete installing dir even if installed success]' \
+                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '--disable-ccache[do not use ccache]' \
+                        + '(verbose_level)' \
+                        '-vv[debug mode. many many messages will be output to terminal]' \
+                        '-v[verbose mode. many messages will be output to terminal]' \
+                        '-q[silent mode. no any messages will be output to terminal]'
+                    ;;
+                upgrade)
+                    _arguments \
+                        ':package-name:_ndk_pkg_outdated_packages' \
+                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--dry-run[dry-run]' \
+                        '--keep-working-dir[do not delete installing dir even if installed success]' \
+                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '--disable-ccache[do not use ccache]' \
+                        + '(verbose_level)' \
+                        '-vv[debug mode. many many messages will be output to terminal]' \
+                        '-v[verbose mode. many messages will be output to terminal]' \
+                        '-q[silent mode. no any messages will be output to terminal]'
+                    ;;
+
+                uninstall)
+                    _arguments \
+                        '*:package-name:_ndk_pkg_installed_packages' \
+                        '--api=-[set the min android-sdk api-level]:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
+                        ;;
+                ls-installed)
+                    _arguments '--api=-[set the min android-sdk api-level]:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)'
+                    ;;
+                ls-outdated)
+                    _arguments '--api=-[set the min android-sdk api-level]:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)'
+                    ;;
+                is-available)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_available_packages' \
+                        '2:condition-operator:(eq ne ge gt le lt)'
+                    ;;
+                is-installed)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)'
+                    ;;
+                is-outdated)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_outdated_packages' \
+                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)'
+                    ;;
+                integrate)
+                    _arguments '1:what:(zsh cmake)'
+                    ;;
+                compare-versions)
+                    _arguments ':which:(brew maven)'
+                    ;;
+                gen-github-workflows)
+                    _arguments \
+                        '--group-size=-[set the group size]:group-size:(50 40 30 20)' \
+                        '--output-dir=-[set the output dir]:output-dir:{_files -/}'
+                    ;;
+                *);;
+            esac
+            ;;
+        *);;
+    esac
+}
+
+_ndk_pkg "$@"
