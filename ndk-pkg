@@ -5756,7 +5756,7 @@ EOF
 
     step "list PATH"
 
-    PATH="$PACKAGE_INSTALLING_BIN_DIR:$PATH"
+    PATH="$PACKAGE_INSTALLING_BIN_DIR:$ANDROID_NDK_HOME:$PATH"
 
     printf '%s\n' "$PATH" | tr : '\n'
 
