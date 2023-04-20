@@ -5508,7 +5508,7 @@ EOF
     CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -fPIC"
     XXFLAGS="--sysroot $SYSROOT -Qunused-arguments -fPIC"
     PPFLAGS="--sysroot $SYSROOT -Qunused-arguments -include $NDKPKG_COMMON_H_FILEPATH"
-    LDFLAGS="--sysroot $SYSROOT -Wl,--as-needed"
+    LDFLAGS="--sysroot $SYSROOT -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
 
     CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
     XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
