@@ -6086,7 +6086,8 @@ EOF
 
     #########################################################################################
 
-    if [ -n "$PACKAGE_LICENSE" ] ; then
+    if false ; then
+    #if [ -n "$PACKAGE_LICENSE" ] ; then
         step "copy or fetch licenses"
 
         I=0
