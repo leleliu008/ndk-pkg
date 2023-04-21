@@ -7501,13 +7501,18 @@ EOF
 }
 
 to_meson_array() {
-    RESULT="[''"
-    for item in $@
+    RESULT=
+
+    for item in "$@"
     do
-        RESULT="$RESULT, '$item'"
+        if [ -z "$RESULT" ] ; then
+            RESULT="'$item'"
+        else
+            RESULT="$RESULT, '$item'"
+        fi
     done
-    RESULT="$RESULT]"
-    printf '%s\n' "$RESULT"
+
+    printf '[%s]\n' "$RESULT"
 }
 
 # https://developer.android.com/ndk/guides/ndk-build
