@@ -4424,10 +4424,22 @@ EOF
                 RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS $DEPENDENT_PACKAGE_INSTALL_DIR"
             fi
 
-            if [ "$DEPENDENT_PACKAGE_NAME" = docbook ] ; then
-                # http://xmlsoft.org/xslt/xsltproc.html
-                export XML_CATALOG_FILES="$DEPENDENT_PACKAGE_INSTALL_DIR/catalog.xml"
-                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+            #########################################################################################
+
+            DEPENDENT_PACKAGE_BINARY__DIR="$NDKPKG_HOME/native/$DEPENDENT_PACKAGE_NAME/bin"
+
+            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
+                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            fi
+
+            DEPENDENT_PACKAGE_BINARY__DIR="$NDKPKG_HOME/native/$DEPENDENT_PACKAGE_NAME/sbin"
+
+            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
+                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            fi
+
+            if [ -d          "$NDKPKG_HOME/native/$DEPENDENT_PACKAGE_NAME/share/aclocal" ] ; then
+                ACLOCAL_PATH="$NDKPKG_HOME/native/$DEPENDENT_PACKAGE_NAME/share/aclocal:$ACLOCAL_PATH"
             fi
         done
     }
@@ -4633,6 +4645,14 @@ $DOT_CONTENT
 
             GMAKE="$HOME/.uppm/installed/gmake/bin/gmake"
             CMAKE="$HOME/.uppm/installed/cmake/bin/cmake"
+
+            #########################################################################################
+
+            [ "$PACKAGE_USE_DOCBOOK" = yes ] && {
+                # http://xmlsoft.org/xslt/xsltproc.html
+                export XML_CATALOG_FILES="$DEPENDENT_PACKAGE_INSTALL_DIR/catalog.xml"
+                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+            }
 
             [ "$PACKAGE_USE_PERL" = yes ] && {
                 step "install perl"
