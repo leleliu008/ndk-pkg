@@ -3968,6 +3968,93 @@ __install_the_given_packages() {
     done
 }
 
+# <PACKAGE-NAME> <SRC-URL> <SRC-SHA256> [CONFIGURE-OPTION]...
+__install_native_package_to_core_dir_via_configure() {
+    PKGNAME="$1"
+    SRC_URL="$2"
+    SRC_SHA="$3"
+
+    [ -z "$PKGNAME" ] && abort 1 "__install_native_package_to_core_dir_via_configure <PACKAGE-NAME> <SRC-URL> <SRC-SHA256> [CONFIGURE-OPTION]... , <PACKAGE-NAME> is unspecified."
+    [ -z "$SRC_URL" ] && abort 1 "__install_native_package_to_core_dir_via_configure <PACKAGE-NAME> <SRC-URL> <SRC-SHA256> [CONFIGURE-OPTION]... , <SRC-URL> is unspecified."
+    [ -z "$SRC_SHA" ] && abort 1 "__install_native_package_to_core_dir_via_configure <PACKAGE-NAME> <SRC-URL> <SRC-SHA256> [CONFIGURE-OPTION]... , <SRC-SHA> is unspecified."
+
+    shift 3
+
+    step "install native package $PKGNAME"
+
+    RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.$PKGNAME"
+
+    if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+        note "native package '$PKGNAME' already has been installed, skipped."
+        return 0
+    fi
+
+    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
+
+    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/$PKGNAME"
+
+    run install -d "$SRC_DIR"
+    run cd         "$SRC_DIR"
+
+    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+    case $PKGNAME in
+        openssl)
+            run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=$NDKPKG_CORE_DIR --libdir=$NDKPKG_CORE_DIR/lib --openssldir=$NDKPKG_CORE_DIR/etc/ssl
+            ;;
+        perl)
+            run ./Configure "-Dprefix=$NDKPKG_CORE_DIR" "-Dman1dir=$NDKPKG_CORE_DIR/share/man/man1" "-Dman3dir=$NDKPKG_CORE_DIR/share/man/man3" -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
+            ;;
+        *)  run ./configure "--prefix=$NDKPKG_CORE_DIR" "$@"
+    esac
+
+    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+    run "$GMAKE" install
+
+    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+}
+
+# <PACKAGE-NAME> <SRC-URL> <SRC-SHA256> [CONFIGURE-OPTION]...
+__install_native_package_to_core_dir_via_cmake() {
+    PKGNAME="$1"
+    SRC_URL="$2"
+    SRC_SHA="$3"
+
+    [ -z "$PKGNAME" ] && abort 1 "__install_native_package_to_core_dir_via_cmake <PACKAGE-NAME> <SRC-URL> <SRC-SHA256> [CONFIGURE-OPTION]... , <PACKAGE-NAME> is unspecified."
+    [ -z "$SRC_URL" ] && abort 1 "__install_native_package_to_core_dir_via_cmake <PACKAGE-NAME> <SRC-URL> <SRC-SHA256> [CONFIGURE-OPTION]... , <SRC-URL> is unspecified."
+    [ -z "$SRC_SHA" ] && abort 1 "__install_native_package_to_core_dir_via_cmake <PACKAGE-NAME> <SRC-URL> <SRC-SHA256> [CONFIGURE-OPTION]... , <SRC-SHA> is unspecified."
+
+    shift 3
+
+    step "install native package $PKGNAME"
+
+    RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.$PKGNAME"
+
+    if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+        note "native package '$PKGNAME' already has been installed, skipped."
+        return 0
+    fi
+
+    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
+
+    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/$PKGNAME"
+
+    run install -d "$SRC_DIR"
+    run cd         "$SRC_DIR"
+
+    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+    if [ "$PKGNAME" = 'zlib' ] ; then
+        sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+    fi
+
+    run "$CMAKE" -S . -B build.d -DCMAKE_INSTALL_PREFIX=$NDKPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$@"
+    run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
+    run "$CMAKE" --install build.d
+
+    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+}
+
 __install_the_given_package_onexit() {
     if [ "$DRYRUN" != yes ] ; then
         is_package_installed "$PACKAGE_SPEC" || abort 1 "package installation failure: $PACKAGE_SPEC"
@@ -4591,6 +4678,7 @@ $DOT_CONTENT
         PACKAGE_USE_PERL=no
         PACKAGE_USE_TEXINFO=no
         PACKAGE_USE_HELP2MAN=no
+        PACKAGE_USE_INTLTOOL=no
         PACKAGE_USE_PYTHON3=no
         PACKAGE_USE_LIBTOOL=no
         PACKAGE_USE_AUTOMAKE=no
@@ -4600,19 +4688,20 @@ $DOT_CONTENT
         do
             case $item in
                 perl)     PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ;;
-                texinfo)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ;   PACKAGE_USE_TEXINFO=yes  ;;
-                help2man) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ;   PACKAGE_USE_HELP2MAN=yes ;;
-                python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ;   PACKAGE_USE_PYTHON3=yes  ;;
-                libtool)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ;                          PACKAGE_USE_LIBTOOL=yes  ;;
-                autoconf) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ;   PACKAGE_USE_AUTOCONF=yes ;;
-                automake) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ;   PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
+                texinfo)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_TEXINFO=yes  ;;
+                help2man) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_HELP2MAN=yes ;;
+                intltool) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_INTLTOOL=yes ;;
+                python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_PYTHON3=yes  ;;
+                libtool)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ;                        PACKAGE_USE_LIBTOOL=yes  ;;
+                autoconf) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ;;
+                automake) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
             esac
         done
 
         for item in $PACKAGE_DEP_UPP_ALL
         do
             case $item in
-                python3|perl|texinfo|help2man|libtool|autoconf|automake) continue
+                python3|perl|texinfo|help2man|intltool|libtool|autoconf|automake) continue
             esac
 
             run "$UPPM" install "$item"
@@ -4655,369 +4744,120 @@ $DOT_CONTENT
             }
 
             [ "$PACKAGE_USE_PERL" = yes ] && {
-                step "install perl"
-
                 SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
                 SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
-
-                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.perl"
-
-                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                    note "perl already has been built, skipped."
-                else
-                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/perl"
-
-                    run install -d "$SRC_DIR"
-                    run cd         "$SRC_DIR"
-
-                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                    run ./Configure "-Dprefix=$NDKPKG_CORE_DIR" "-Dman1dir=$NDKPKG_CORE_DIR/share/man/man1" "-Dman3dir=$NDKPKG_CORE_DIR/share/man/man3" -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
-                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                    run "$GMAKE" install
-
-                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                fi
+                __install_native_package_to_core_dir_via_configure perl "$SRC_URL" "$SRC_SHA"
             }
 
             [ "$PACKAGE_USE_TEXINFO" = yes ] && {
-                step "install texinfo"
-
                 SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.tar.xz'
                 SRC_SHA='20744b82531ce7a04d8cee34b07143ad59777612c3695d5855f29fba40fbe3e0'
-
-                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.texinfo"
-
-                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                    note "texinfo already has been built, skipped."
-                else
-                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/texinfo"
-
-                    run install -d "$SRC_DIR"
-                    run cd         "$SRC_DIR"
-
-                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                    run ./configure "--prefix=$NDKPKG_CORE_DIR" --with-included-regex --enable-threads=posix
-                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                    run "$GMAKE" install
-
-                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                fi
+                __install_native_package_to_core_dir_via_configure texinfo "$SRC_URL" "$SRC_SHA" --with-included-regex --enable-threads=posix
             }
 
             [ "$PACKAGE_USE_HELP2MAN" = yes ] && {
-                step "install help2man"
-
                 SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
                 SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
+                __install_native_package_to_core_dir_via_configure help2man "$SRC_URL" "$SRC_SHA"
+            }
 
-                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.help2man"
+            [ "$PACKAGE_USE_INTLTOOL" = yes ] && {
+                SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+                SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+                __install_native_package_to_core_dir_via_cmake expat "$SRC_URL" "$SRC_SHA" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF
+
+                #########################################################################################
+
+                step "install perl module XML::Parser"
+
+                SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz'
+                SRC_SHA='d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d'
+
+                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.perl-XML-Parser"
 
                 if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                    note "help2man already has been built, skipped."
+                    note "perl module XML::Parser already has been built, skipped."
                 else
                     wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
 
-                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/help2man"
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/perl-XML-Parser"
 
                     run install -d "$SRC_DIR"
                     run cd         "$SRC_DIR"
 
                     run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
 
-                    run ./configure "--prefix=$NDKPKG_CORE_DIR"
+                    run perl Makefile.PL EXPATLIBPATH="$NDKPKG_CORE_DIR/lib" EXPATINCPATH="$NDKPKG_CORE_DIR/include"
                     run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
                     run "$GMAKE" install
 
                     printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
                 fi
+
+                #########################################################################################
+
+                SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
+                SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
+                __install_native_package_to_core_dir_via_configure intltool "$SRC_URL" "$SRC_SHA"
             }
 
             [ "$PACKAGE_USE_LIBTOOL" = yes ] && {
-                step "install libtool"
-
                 SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
                 SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
-
-                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.libtool"
-
-                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                    note "libtool already has been built, skipped."
-                else
-                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/libtool"
-
-                    run install -d "$SRC_DIR"
-                    run cd         "$SRC_DIR"
-
-                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                    run ./configure "--prefix=$NDKPKG_CORE_DIR" --enable-ltdl-install
-                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                    run "$GMAKE" install
-
-                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                fi
+                __install_native_package_to_core_dir_via_configure libtool "$SRC_URL" "$SRC_SHA" --enable-ltdl-install
             }
 
             [ "$PACKAGE_USE_AUTOCONF" = yes ] && {
-                step "install autoconf"
-
                 SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
                 SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
-
-                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.autoconf"
-
-                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                    note "autoconf already has been built, skipped."
-                else
-                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/autoconf"
-
-                    run install -d "$SRC_DIR"
-                    run cd         "$SRC_DIR"
-
-                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                    run ./configure "--prefix=$NDKPKG_CORE_DIR"
-                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                    run "$GMAKE" install
-
-                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                fi
+                __install_native_package_to_core_dir_via_configure autoconf "$SRC_URL" "$SRC_SHA"
             }
 
             [ "$PACKAGE_USE_AUTOMAKE" = yes ] && {
-                step "install automake"
-
                 SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
                 SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
-
-                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.automake"
-
-                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                    note "automake already has been built, skipped."
-                else
-                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/automake"
-
-                    run install -d "$SRC_DIR"
-                    run cd         "$SRC_DIR"
-
-                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                    run ./configure "--prefix=$NDKPKG_CORE_DIR"
-                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                    run "$GMAKE" install
-
-                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                fi
+                __install_native_package_to_core_dir_via_configure automake "$SRC_URL" "$SRC_SHA"
             }
 
             [ "$PACKAGE_USE_PYTHON3" = yes ] && {
-                case $NATIVE_OS_KIND in
-                    openbsd)
-                        step "install python3 via pkg_add"
-                        run sudo pkg_add python3
-                        ;;
-                    netbsd)
-                        step "install python3 via pkgin"
-                        run sudo pkgin -y install python3
-                        ;;
-                    freebsd)
-                        step "install python3 via pkg"
-                        run sudo pkg install -y python3
-                        ;;
-                    *)
-                        step "install zlib"
+                ZLIB_FORMULA_FILEPATH="$NDKPKG_FORMULA_REPO_ROOT/offical-core/formula/zlib.yml"
 
-                        ZLIB_FORMULA_FILEPATH="$NDKPKG_FORMULA_REPO_ROOT/offical-core/formula/zlib.yml"
+                SRC_URL="$(yq .src-url "$ZLIB_FORMULA_FILEPATH")"
+                SRC_SHA="$(yq .src-sha "$ZLIB_FORMULA_FILEPATH")"
+                __install_native_package_to_core_dir_via_cmake zlib "$SRC_URL" "$SRC_SHA"
 
-                        SRC_URL="$(yq .src-url "$ZLIB_FORMULA_FILEPATH")"
-                        SRC_SHA="$(yq .src-sha "$ZLIB_FORMULA_FILEPATH")"
+                ################################################################################################
 
-                        RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.zlib"
+                SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+                SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+                __install_native_package_to_core_dir_via_cmake expat "$SRC_URL" "$SRC_SHA" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF
 
-                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                            note "zlib already has been built, skipped."
-                        else
-                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
+                ################################################################################################
 
-                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/zlib"
+                SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3410100.tar.gz'
+                SRC_SHA='4dadfbeab9f8e16c695d4fbbc51c16b2f77fb97ff4c1c3d139919dfc038c9e33'
+                __install_native_package_to_core_dir_via_configure sqlite3 "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline
 
-                            run install -d "$SRC_DIR"
-                            run cd         "$SRC_DIR"
+                ################################################################################################
 
-                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+                SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
+                SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
+                __install_native_package_to_core_dir_via_configure libtiff "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers
 
-                            sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+                ################################################################################################
 
-                            run "$CMAKE" -DCMAKE_INSTALL_PREFIX=$NDKPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_VERBOSE_MAKEFILE=OFF -S . -B build.d
-                            run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
-                            run "$CMAKE" --install build.d
+                SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
+                SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
+                __install_native_package_to_core_dir_via_configure openssl "$SRC_URL" "$SRC_SHA" 
 
-                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                        fi
+                ################################################################################################
 
-                        ################################################################################################
+                unset PYTHONHOME
+                unset PYTHONPATH
 
-                        step "install sqlite3"
-
-                        SQLITE_FORMULA_FILEPATH="$NDKPKG_FORMULA_REPO_ROOT/offical-core/formula/sqlite.yml"
-
-                        SRC_URL="$(yq .src-url "$SQLITE_FORMULA_FILEPATH")"
-                        SRC_SHA="$(yq .src-sha "$SQLITE_FORMULA_FILEPATH")"
-
-                        RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.sqlite"
-
-                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                            note "sqlite3 already has been built, skipped."
-                        else
-                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/sqlite"
-
-                            run install -d "$SRC_DIR"
-                            run cd         "$SRC_DIR"
-
-                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                            run ./configure "--prefix=$NDKPKG_CORE_DIR" --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline
-                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                            run "$GMAKE" install
-
-                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                        fi
-
-                        ################################################################################################
-
-                        step "install libffi"
-
-                        SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
-                        SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
-
-                        RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.libffi"
-
-                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                            note "libffi already has been built, skipped."
-                        else
-                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/libffi"
-
-                            run install -d "$SRC_DIR"
-                            run cd         "$SRC_DIR"
-
-                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                            run ./configure "--prefix=$NDKPKG_CORE_DIR" --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers
-                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                            run "$GMAKE" install
-
-                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                        fi
-
-                        ################################################################################################
-
-                        step "install expat"
-
-                        SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-                        SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-
-                        RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.expat"
-
-                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                            note "expat already has been built, skipped."
-                        else
-                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/expat"
-
-                            run install -d "$SRC_DIR"
-                            run cd         "$SRC_DIR"
-
-                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                            run "$CMAKE" -DCMAKE_INSTALL_PREFIX=$NDKPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_VERBOSE_MAKEFILE=OFF -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF -S . -B build.d
-                            run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
-                            run "$CMAKE" --install build.d
-
-                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                        fi
-
-                        ################################################################################################
-
-                        step "install openssl"
-
-                        SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
-                        SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
-
-                        RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.openssl"
-
-                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                            note "openssl already has been built, skipped."
-                        else
-                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/openssl"
-
-                            run install -d "$SRC_DIR"
-                            run cd         "$SRC_DIR"
-
-                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                            # https://github.com/openssl/openssl/issues/19232
-                            if [ "$NATIVE_OS_KIND" = openbsd ] ; then
-                                run sed -i 's/-Wl,-z,defs//' Configurations/shared-info.pl
-                            fi
-
-                            run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=$NDKPKG_CORE_DIR --libdir=$NDKPKG_CORE_DIR/lib --openssldir=$NDKPKG_CORE_DIR/etc/ssl
-                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                            run "$GMAKE" install
-
-                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                        fi
-
-                        ################################################################################################
-
-                        step "install python3"
-
-                        SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
-                        SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
-
-                        RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.python3"
-
-                        if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                            note "python3 already has been built, skipped."
-                        else
-                            wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                            SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/python3"
-
-                            run install -d "$SRC_DIR"
-                            run cd         "$SRC_DIR"
-
-                            run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                            unset PYTHONHOME
-                            unset PYTHONPATH
-
-                            run ./configure "--prefix=$NDKPKG_CORE_DIR" --with-system-expat --with-system-ffi --with-openssl=$NDKPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --enable-loadable-sqlite-extensions --disable-profiling
-                            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                            run "$GMAKE" install
-
-                            printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                        fi
-
-                esac
+                SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
+                SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
+                __install_native_package_to_core_dir_via_configure python3 "$SRC_URL" "$SRC_SHA" --with-system-expat --with-system-ffi --with-openssl=$NDKPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --enable-loadable-sqlite-extensions --disable-profiling
             }
 
             :
@@ -5054,17 +4894,45 @@ $DOT_CONTENT
         do
             if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
                 note "perl module $item has been already installed."
-            else
-                case $item in
-                    XML::Parser)
-                        # https://metacpan.org/release/TODDR/XML-Parser-2.46/source/Makefile.PL#L8-9
-                        export EXPATLIBPATH="$expat_LIBRARY_DIR"
-                        export EXPATINCPATH="$expat_INCLUDE_DIR"
-                        echo EXPATLIBPATH=$EXPATLIBPATH
-                        echo EXPATINCPATH=$EXPATINCPATH
-                        ;;
-                esac
+                continue
+            fi
 
+            if [ "$item" = 'XML::Parser' ] ; then
+                SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+                SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+                __install_native_package_to_core_dir_via_cmake expat "$SRC_URL" "$SRC_SHA" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF
+
+                #########################################################################################
+
+                step "install perl module XML::Parser"
+
+                SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz'
+                SRC_SHA='d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d'
+
+                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.perl-XML-Parser"
+
+                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                    note "perl module XML::Parser already has been built, skipped."
+                else
+                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
+
+                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/perl-XML-Parser"
+
+                    run install -d "$SRC_DIR"
+                    run cd         "$SRC_DIR"
+
+                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+
+                    run perl Makefile.PL EXPATLIBPATH="$NDKPKG_CORE_DIR/lib" EXPATINCPATH="$NDKPKG_CORE_DIR/include"
+                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                    run "$GMAKE" install
+
+                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+                fi
+
+                #########################################################################################
+
+            else
                 # Would you like to configure as much as possible automatically? [yes]
                 run "printf '%s\n' 'yes' | cpan $item"
             fi
@@ -6214,6 +6082,8 @@ EOF
         # https://github.com/rust-windowing/android-ndk-rs/issues/149
         if [ "$TARGET_OS_ARCH" = 'x86_64' ] ; then
             LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
+        else
+            LIBCLANG_RT_BUILTINS_FILEPATH=
         fi
         run "echo 'INPUT($LIBCLANG_RT_BUILTINS_FILEPATH -l:libunwind.a)' > '$PACKAGE_WORKING_DIR/lib/libgcc.a'"
     fi
