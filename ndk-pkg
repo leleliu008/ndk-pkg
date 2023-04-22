@@ -6852,11 +6852,21 @@ __adjust_pc_files_for_the_given_target() {
         sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
         sed_in_place "s|--sysroot $SYSROOT||"      "$pcfile"
 
-        if grep 'Libs.private:' "$pcfile" > /dev/null ; then
+        if grep -q 'Libs.private:' "$pcfile" ; then
             LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
             LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
             sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
             sed_in_place '/Libs.private/d' "$pcfile"
+        fi
+
+        if grep -q 'Requires.private:' "$pcfile" ; then
+            if grep -q 'Requires:' "$pcfile" ; then
+                REQUIRES_PRIVATE_CONTENT=$(sed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
+                sed_in_place "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
+                sed_in_place '/Requires.private:/d' "$pcfile"
+            else
+                sed_in_place 's|Requires.private:|Requires:|' "$pcfile"
+            fi
         fi
     done
 }
