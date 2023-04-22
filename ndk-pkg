@@ -6005,19 +6005,20 @@ EOF
 #ifndef NDKPKG_COMMON_H
 #define NDKPKG_COMMON_H
 
-// https://pubs.opengroup.org/onlinepubs/000095399/functions/rindex.html
+/* https://pubs.opengroup.org/onlinepubs/000095399/functions/rindex.html */
 #define rindex(a,b) strrchr((a),(b))
 
-// https://pubs.opengroup.org/onlinepubs/000095399/functions/bcmp.html
+/* https://pubs.opengroup.org/onlinepubs/000095399/functions/bcmp.html */
 #define bcmp(b1,b2,len) memcmp((b1), (b2), (size_t)(len))
 
-// https://linux.die.net/man/2/wait3
+/* https://linux.die.net/man/2/wait3 */
 #define wait3(status,options,rusage) waitpid(-1,status,options)
 
-// https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
-// https://linux.die.net/man/3/ftello
-// int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
-// off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
+/* https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
+ * https://linux.die.net/man/3/ftello
+ * int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
+ * off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
+ */
 #if __ANDROID_API__ < 24
     #define ftello(f) ftell(f)
     #define fseeko    fseek
