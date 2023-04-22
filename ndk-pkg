@@ -6718,6 +6718,7 @@ __adjust_pc_files_for_the_given_target() {
         sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
         sed_in_place 's|-lpthread||g'              "$pcfile"
         sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
+        sed_in_place "s|-I$NDKPKG_HOME[^' ]*||g"   "$pcfile"
         sed_in_place "s|-L$NDKPKG_HOME[^' ]*||g"   "$pcfile"
         sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
         sed_in_place "s|--sysroot $SYSROOT||"      "$pcfile"
