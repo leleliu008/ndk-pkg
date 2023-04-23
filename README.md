@@ -9,21 +9,14 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 |HostOS|HostArch|SubSystem|recommended|summary|
 |------|--------|---------|-----------|-------|
 [Android](https://www.android.com/)|`aarch64`|[Termux](https://termux.com/)|❌|not fully tested|
-[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`||✔︎|tested with [Github Actions](https://github.com/features/actions)|
-[Ubuntu](https://ubuntu.com/)|`x86_64`||✔︎|tested with [Github Actions](https://github.com/features/actions)|
-[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`|[glibc](http://www.gnu.org/software/libc/)|✔︎|tested with [Github Actions](https://github.com/features/actions)|
-[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|tested with [Github Actions](https://github.com/features/actions)|
+[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`||✔︎|tested with `Github Actions`|
+[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`|[glibc](http://www.gnu.org/software/libc/)|✔︎|tested with `Github Actions`|
+[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|tested with `Github Actions`|
 
-## unsupported host operating systems and subsystems
+**Note**:
 
-|HostOS|SubSystem|reason|
-|------|---------|------|
-[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|[musl-libc](http://musl.libc.org/)|no available [Android NDK](https://developer.android.google.cn/ndk)|
-[FreeBSD](https://www.freebsd.org/)||no available  [Android NDK](https://developer.android.google.cn/ndk)|
-[OpenBSD](https://www.openbsd.org/)||no available [Android NDK](https://developer.android.google.cn/ndk)|
-[NetBSD](https://www.netbsd.org/)||no available [Android NDK](https://developer.android.google.cn/ndk)|
-[Windows](https://www.microsoft.com/en-us/windows/)|[Cygwin](http://cygwin.org/)|CMake: Builds hosted on 'CYGWIN' not supported. [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)|
-[Windows](https://www.microsoft.com/en-us/windows/)|[MSYS2](https://www.msys2.org/)|CMake: Builds hosted on 'MSYS' not supported. [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)|
+- This software do NOT work on [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/), because these is no available [Android NDK](https://developer.android.google.cn/ndk) can run on these platforms.
+- This software do NOT work on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to `CMake: Builds hosted on 'CYGWIN' not supported.` [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)
 
 ## Install ndk-pkg via Docker
 
