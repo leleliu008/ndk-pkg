@@ -1464,6 +1464,7 @@ filetype_from_url() {
     }
 
     cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
+ndkvers: $ANDROID_NDK_VERS
 build-on:
     os-arch: $NATIVE_OS_ARCH
     os-kind: $NATIVE_OS_KIND
@@ -3731,25 +3732,13 @@ __upgrade_packages() {
 }
 
 inspect_install_arguments() {
-    NDKINFO=
-    NDKINFO="$(ndkinfo || true)"
-
-    if [ -z "$NDKINFO" ] ; then
-        warn "Android NDK Not Found. I will install it via uppm."
-        uppm install android-ndk-r23c
-
-        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r23c")"
-    fi
-
-    eval "$NDKINFO"
-
-    export ANDROID_NDK_HOME
-    export ANDROID_NDK_ROOT
-
     # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
     unset TARGET_ARCH
 
+    unset USER_SPECIFIED_PACKAGE_SPEC_OR_NAME_LIST
     unset USER_SPECIFIED_PACKAGE_SPEC_LIST
+
+    unset USER_SPECIFIED_ANDROID_NDK_HOME
 
     DRYRUN=no
 
@@ -3826,19 +3815,52 @@ inspect_install_arguments() {
                 BUILD_NJOBS="${1#*=}"
                 is_integer "$BUILD_NJOBS" || abort 1 "--jobs=INTEGER argument's value must be an integer."
                 ;;
+            --ndk-home=*)
+                USER_SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
+                ;;
             -*) abort 1 "unrecognized option: $1"
                 ;;
-            *)  PACKAGE_SPEC=
-                PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-                if [ -z "$USER_SPECIFIED_PACKAGE_SPEC_LIST" ] ; then
-                    USER_SPECIFIED_PACKAGE_SPEC_LIST="$PACKAGE_SPEC"
-                else
-                    USER_SPECIFIED_PACKAGE_SPEC_LIST="$USER_SPECIFIED_PACKAGE_SPEC_LIST $PACKAGE_SPEC"
-                fi
+            *)  USER_SPECIFIED_PACKAGE_SPEC_OR_NAME_LIST="$USER_SPECIFIED_PACKAGE_SPEC_OR_NAME_LIST $1"
         esac
         shift
     done
+
+    #########################################################################################
+
+    for item in $USER_SPECIFIED_PACKAGE_SPEC_OR_NAME_LIST
+    do
+        PACKAGE_SPEC="$(inspect_package_spec "$item")"
+
+        if [ -z "$USER_SPECIFIED_PACKAGE_SPEC_LIST" ] ; then
+            USER_SPECIFIED_PACKAGE_SPEC_LIST="$PACKAGE_SPEC"
+        else
+            USER_SPECIFIED_PACKAGE_SPEC_LIST="$USER_SPECIFIED_PACKAGE_SPEC_LIST $PACKAGE_SPEC"
+        fi
+    done
+
+    #########################################################################################
+
+    NDKINFO=
+
+    if [ -z "$USER_SPECIFIED_ANDROID_NDK_HOME" ] ; then
+        NDKINFO="$(ndkinfo || true)"
+    else
+        NDKINFO="$(ndkinfo "$USER_SPECIFIED_ANDROID_NDK_HOME")"
+    fi
+
+    if [ -z "$NDKINFO" ] ; then
+        warn "Android NDK Not Found. I will install it via uppm."
+        uppm install android-ndk-r23c
+
+        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r23c")"
+    fi
+
+    eval "$NDKINFO"
+
+    export ANDROID_NDK_HOME
+    export ANDROID_NDK_ROOT
+
+    #########################################################################################
 
     if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
@@ -6001,24 +6023,24 @@ EOF
 
     step "create ndk-pkg-common.h"
 
+    # https://pubs.opengroup.org/onlinepubs/000095399/functions/rindex.html
+    # https://pubs.opengroup.org/onlinepubs/000095399/functions/bcmp.html
+    # https://linux.die.net/man/2/wait3
+    # https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
+    # https://linux.die.net/man/3/ftello
+    # int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
+    # off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
+
     cat > "$NDKPKG_COMMON_H_FILEPATH" <<EOF
 #ifndef NDKPKG_COMMON_H
 #define NDKPKG_COMMON_H
 
-/* https://pubs.opengroup.org/onlinepubs/000095399/functions/rindex.html */
 #define rindex(a,b) strrchr((a),(b))
 
-/* https://pubs.opengroup.org/onlinepubs/000095399/functions/bcmp.html */
 #define bcmp(b1,b2,len) memcmp((b1), (b2), (size_t)(len))
 
-/* https://linux.die.net/man/2/wait3 */
 #define wait3(status,options,rusage) waitpid(-1,status,options)
 
-/* https://stackoverflow.com/questions/32826175/ftello-and-fseeko-android-build-errors
- * https://linux.die.net/man/3/ftello
- * int   fseeko(FILE* __fp, off_t __offset, int __whence) __RENAME(fseeko64) __INTRODUCED_IN(24);
- * off_t ftello(FILE* __fp) __RENAME(ftello64) __INTRODUCED_IN(24);
- */
 #if __ANDROID_API__ < 24
     #define ftello(f) ftell(f)
     #define fseeko    fseek
@@ -7329,7 +7351,7 @@ xmakew() {
         run $XMAKE --jobs=$BUILD_NJOBS &&
         run $XMAKE install -o "$NATIVE_INSTALL_DIR"
     else
-        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_OS_ABI --ndk_sdkver=$TARGET_OS_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$PACKAGE_BCACHED_DIR"
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_OS_ABI --ndk_sdkver=$TARGET_OS_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$PACKAGE_BCACHED_DIR --cc=$CC --cxx=$CXX --cflags='$CFLAGS' --cxxflags='$CXXFLAGS' --ldflags='$LDFLAGS' --shflags='$LDFLAGS'"
 
         run $XMAKE config $XMAKE_CONFIG_OPTIONS &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
