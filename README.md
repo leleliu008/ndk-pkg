@@ -2,6 +2,8 @@
 
 a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build projects that are written in C/C++/Rust/Golang.
 
+**Note**: This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+
 ## supported host operating systems and subsystems
 
 |HostOS|HostArch|SubSystem|recommended|summary|
@@ -177,8 +179,8 @@ android {
 - If packages that have been published to `mavenCentral` doesn't meet your needs, you can install package then deploy it to `mavenLocal` via running following commands:
 
     ```bash
-    ndk-pkg install libpng --min-sdk-api-level=21
-    ndk-pkg deploy  libpng 21 mavenLocal
+    ndk-pkg install libpng
+    ndk-pkg deploy  libpng mavenLocal
     ```
 
     enables `mavenLocal` repository in `build.gradle`
@@ -199,54 +201,6 @@ android {
 **Examples:**
 
 - <https://github.com/leleliu008/android-calendar-for-the-aged>
-
-## Integrate with CMake directly
-
-**Note:**
-
-- `Integrate with Android Gradle Plugin` is the recommended way of using this software. If you do not use Android Gradle Plugin's prefab feature for some reasons, you can integrate this software with CMake directly.
-
-**step1. fetch [ndk-pkg.cmake](https://github.com/leleliu008/ndk-pkg/blob/master/ndk-pkg.cmake) to the directory where your Android project's CMakeLists.txt is located in**
-
-```bash
-#method1
-ndk-pkg integrate cmake --output-dir=/path/of/your/android/project
-
-#method2
-curl -L -o /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
-
-#method3
-Invoke-WebRequest -OutFile /path/of/your/android/project/ndk-pkg.cmake https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake
-```
-
-**step2. add following code to your Android project's CMakeLists.txt**
-
-```cmake
-if (ANDROID)
-    include(ndk-pkg.cmake)
-endif()
-```
-
-**step3. invoke [find_package(PACKAGE-NAME [REQUIRED] CONFIG)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
-
-```cmake
-find_package(curl REQUIRED CONFIG)
-target_link_libraries(xx curl::libcurl.so)
-```
-
-or
-
-```cmake
-find_package(curl CONFIG)
-if (curl_FOUND)
-    target_link_libraries(xx curl::libcurl.so)
-endif()
-```
-
-**Note:**
-
-- Every package provides several cmake imported targets and each target has form: `${PACKAGE_NAME}::${LIBRARY_FILE_NAME}`
-- If you want to know what cmake imported targets are provided by `${PACKAGE_NAME}`, you can look at `~/.ndk-pkg/install.d/android/${ANDROID_PLATFORM_LEVEL}/${PACKAGE_NAME}/${ANDROID_ABI}/lib-no-versioning/cmake/${PACKAGE_NAME}/${PACKAGE_NAME}Config.cmake`
 
 ## ~/.ndk-pkg
 
@@ -578,18 +532,18 @@ all relevant dirs and files are located in `~/.ndk-pkg` directory.
 - **pack the given installed package as prefab aar and then deploy it to Maven local repository**
 
     ```bash
-    ndk-pkg deploy curl 21 mavenLocal
-    ndk-pkg deploy curl 21 mavenLocal -d
-    ndk-pkg deploy curl 21 mavenLocal -x
+    ndk-pkg deploy curl mavenLocal
+    ndk-pkg deploy curl mavenLocal -d
+    ndk-pkg deploy curl mavenLocal -x
     ```
 
 - **pack the given installed package as prefab aar and then deploy it to Maven remote repository**
 
     ```bash
-    ndk-pkg deploy curl 21 mavenRemote    < ~/OSSRH-config
-    ndk-pkg deploy curl 21 mavenRemote -d < ~/OSSRH-config
-    ndk-pkg deploy curl 21 mavenRemote -x < ~/OSSRH-config
-    ndk-pkg deploy curl 21 mavenRemote -x <<EOF
+    ndk-pkg deploy curl mavenRemote    < ~/OSSRH-config
+    ndk-pkg deploy curl mavenRemote -d < ~/OSSRH-config
+    ndk-pkg deploy curl mavenRemote -x < ~/OSSRH-config
+    ndk-pkg deploy curl mavenRemote -x <<EOF
     SERVER_ID=OSSRH
     SERVER_URL=https://s01.oss.sonatype.org/service/local/repositories/comfpliu-1025/content
     SERVER_USERNAME=leleliu008
