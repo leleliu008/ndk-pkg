@@ -5680,7 +5680,7 @@ EOF
 
     # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
     # because we only want to use our own
-    export PKG_CONFIG_LIBDIR="$NDKPKG_CORE_DIR/lib/pkgconfig"
+    export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
 
     if [ -z "$PKG_CONFIG_PATH" ] ; then
         export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
