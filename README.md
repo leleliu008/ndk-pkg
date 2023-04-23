@@ -4,7 +4,7 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 
 **Note**: This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
 
-## supported host operating systems and subsystems
+## supported platforms
 
 |HostOS|HostArch|SubSystem|recommended|summary|
 |------|--------|---------|-----------|-------|
@@ -236,8 +236,8 @@ all relevant dirs and files are located in `~/.ndk-pkg` directory.
     ```
 
     **Note**:
-  - above command will install all the essential tools (e.g. `coreutils` `findutils` `gawk` `gsed` `grep` `gtar` `gzip` `lzip` `unzip` `zip` `jq` `yq` `git` `curl` `tree`) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
-  - dependent tools (e.g. `automake`, `autoconf`, `libtool`, `gmake`, `cmake`, `xmake`, etc) when installing package will also be installed via [uppm](https://github.com/leleliu008/uppm).
+  - above command will install all the essential tools (e.g. `bash` `coreutils` `findutils` `gawk` `gsed` `grep` `gtar` `gzip` `lzip` `unzip` `zip` `jq` `yq` `git` `curl` `tree`) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
+  - dependent tools (e.g. `automake`, `autoconf`, `libtool`, `gmake`, `cmake`, `pkg-config`, etc) when installing package will also be installed via [uppm](https://github.com/leleliu008/uppm).
 
 - **install essential tools via homebrew**
 
@@ -246,8 +246,8 @@ all relevant dirs and files are located in `~/.ndk-pkg` directory.
     ```
 
     **Note**:
-  - above command will install all the essential tools (e.g. `coreutils` `findutils` `gawk` `gsed` `grep` `gnu-tar` `gzip` `lzip` `unzip` `zip` `jq` `yq` `git` `curl` `tree`) that are used by this shell script via [homebrew](https://brew.sh/)
-  - dependent tools (e.g. `automake`, `autoconf`, `libtool`, `gmake`, `cmake`, `xmake`, etc) when installing package will also be installed via [homebrew](https://brew.sh/).
+  - above command will install all the essential tools (e.g. `bash` `coreutils` `findutils` `gawk` `gsed` `grep` `gnu-tar` `gzip` `lzip` `unzip` `zip` `jq` `yq` `git` `curl` `tree`) that are used by this shell script via [homebrew](https://brew.sh/)
+  - dependent tools (e.g. `automake`, `autoconf`, `libtool`, `gmake`, `cmake`, `pkg-config`, etc) when installing package will also be installed via [homebrew](https://brew.sh/).
 
 - **integrate `zsh-completion` script**
 
