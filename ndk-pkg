@@ -7119,13 +7119,98 @@ configure() {
         export ac_cv_func_calloc_0_nonnull=yes
         export ac_cv_func_realloc_0_nonnull=yes
 
-        CONFIGURE_ARGS="
-            --host='$TARGET_TRIPLE'
-            --prefix='$PACKAGE_INSTALL_DIR'
-            --disable-option-checking
-            --disable-rpath
-            --disable-nls
-            --enable-largefile
+        CONFIGURE_ARG_ENABLE_NLS=no
+        CONFIGURE_ARG_ENABLE_RPATH=no
+        CONFIGURE_ARG_ENABLE_LARGEFILE=no
+
+        CONFIGURE_ARG_ENABLE_DEBUG=
+        CONFIGURE_ARG_ENABLE_STATIC=
+        CONFIGURE_ARG_ENABLE_SHARED=
+
+        for arg in "$@"
+        do
+            case $arg in
+                --enable-nls)      CONFIGURE_ARG_ENABLE_NLS=yes ;;
+                --enable-nls=yes)  CONFIGURE_ARG_ENABLE_NLS=yes ;;
+                --enable-nls=no)   CONFIGURE_ARG_ENABLE_NLS=no  ;;
+                --disable-nls)     CONFIGURE_ARG_ENABLE_NLS=no  ;;
+
+                --enable-rpath)     CONFIGURE_ARG_ENABLE_RPATH=yes ;;
+                --enable-rpath=yes) CONFIGURE_ARG_ENABLE_RPATH=yes ;;
+                --enable-rpath=no)  CONFIGURE_ARG_ENABLE_RPATH=no  ;;
+                --disable-rpath)    CONFIGURE_ARG_ENABLE_RPATH=no  ;;
+
+                --enable-largefile)     CONFIGURE_ARG_ENABLE_LARGEFILE=yes ;;
+                --enable-largefile=yes) CONFIGURE_ARG_ENABLE_LARGEFILE=yes ;;
+                --enable-largefile=no)  CONFIGURE_ARG_ENABLE_LARGEFILE=no  ;;
+                --disable-largefile)    CONFIGURE_ARG_ENABLE_LARGEFILE=no  ;;
+
+                --enable-debug)     CONFIGURE_ARG_ENABLE_DEBUG=yes ;;
+                --enable-debug=yes) CONFIGURE_ARG_ENABLE_DEBUG=yes ;;
+                --enable-debug=no)  CONFIGURE_ARG_ENABLE_DEBUG=no  ;;
+                --disable-debug)    CONFIGURE_ARG_ENABLE_DEBUG=no  ;;
+
+                --enable-static)     CONFIGURE_ARG_ENABLE_STATIC=yes ;;
+                --enable-static=yes) CONFIGURE_ARG_ENABLE_STATIC=yes ;;
+                --enable-static=no)  CONFIGURE_ARG_ENABLE_STATIC=no  ;;
+                --disable-static)    CONFIGURE_ARG_ENABLE_STATIC=no  ;;
+
+                --enable-shared)     CONFIGURE_ARG_ENABLE_SHARED=yes ;;
+                --enable-shared=yes) CONFIGURE_ARG_ENABLE_SHARED=yes ;;
+                --enable-shared=no)  CONFIGURE_ARG_ENABLE_SHARED=no  ;;
+                --disable-shared)    CONFIGURE_ARG_ENABLE_SHARED=no  ;;
+            esac
+        done
+
+        CONFIGURE_ARGS="--host='$TARGET_TRIPLE' --prefix='$PACKAGE_INSTALL_DIR' --disable-option-checking"
+
+        if [ "$CONFIGURE_ARG_ENABLE_NLS" = yes ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-nls"
+        else
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-nls"
+        fi
+
+        if [ "$CONFIGURE_ARG_ENABLE_RPATH" = yes ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-rpath"
+        else
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-rpath"
+        fi
+
+        if [ "$CONFIGURE_ARG_ENABLE_LARGEFILE" = yes ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-largefile"
+        else
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-largefile"
+        fi
+
+        if [ -z "$CONFIGURE_ARG_ENABLE_DEBUG" ] ; then
+            if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
+                CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
+            else
+                CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
+            fi
+        fi
+
+        if [ -z "$CONFIGURE_ARG_ENABLE_STATIC" ] ; then
+            case $INSTALL_LIB in
+                static) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static"  ;;
+                shared) CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static" ;;
+                both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static"  ;;
+                yes)    CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static"  ;;
+                no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static" ;;
+            esac
+        fi
+
+        if [ -z "$CONFIGURE_ARG_ENABLE_SHARED" ] ; then
+            case $INSTALL_LIB in
+                static) CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-shared" ;;
+                shared) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"  ;;
+                both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"  ;;
+                yes)    CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"  ;;
+                no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-shared" ;;
+            esac
+        fi
+
+        CONFIGURE_ENVS="$CONFIGURE_ENVS
             CC='$CC'
             CFLAGS='$CFLAGS'
             CXX='$CXX'
@@ -7140,21 +7225,7 @@ configure() {
             PKG_CONFIG_LIBDIR='$PKG_CONFIG_LIBDIR'
             CC_FOR_BUILD='$CC_FOR_BUILD'"
 
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
-            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
-        else
-            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
-        fi
-
-        case $INSTALL_LIB in
-            static) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --disable-shared" ;;
-            shared) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared --disable-static" ;;
-            both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
-            yes)    CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static --enable-shared"  ;;
-            no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static --disable-shared";;
-        esac
-
-        if run $PACKAGE_BSCRIPT_DIR/configure $CONFIGURE_ARGS $@ ; then
+        if run $PACKAGE_BSCRIPT_DIR/configure $CONFIGURE_ARGS $@ $CONFIGURE_ENVS ; then
             echo
         else
             # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
