@@ -85,7 +85,7 @@ options = "metadata,umask=22,fmask=11"
 mountFsTab = true
 ```
 
-_instructions installing ndk-pkg on WSL is same as described in section [Install ndk-pkg via HomeBrew](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-homebrew) and [Install ndk-pkg via cURL on UNIX](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-curl-on-unix)_
+_instructions installing ndk-pkg on WSL is same as described in section [Install ndk-pkg via cURL on UNIX](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-curl-on-unix)_
 
 **Things You Should Do Immediately After Installing ndk-pkg on WSL** :
 
@@ -229,25 +229,16 @@ all relevant dirs and files are located in `~/.ndk-pkg` directory.
 
     **Note**: If `--ndk-home=<ANDROID-NDK-HOME>` option is not given, then `~/.ndk-pkg/android-ndk-r[1-9][0-9][a-z]` and value of `ANDROID_NDK_ROOT` and `ANDROID_NDK_HOME` environment variable would be checked in order.
 
-- **install essential tools via uppm**
+- **install essential tools used by this shell script**
 
     ```bash
     ndk-pkg setup
     ```
 
-    **Note**:
-  - above command will install all the essential tools (e.g. `bash` `coreutils` `findutils` `gawk` `gsed` `grep` `gtar` `gzip` `lzip` `unzip` `zip` `jq` `yq` `git` `curl` `tree`) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
-  - dependent tools (e.g. `automake`, `autoconf`, `libtool`, `gmake`, `cmake`, `pkg-config`, etc) when installing package will also be installed via [uppm](https://github.com/leleliu008/uppm).
+    **Note**: above command do two things:
 
-- **install essential tools via homebrew**
-
-    ```bash
-    ndk-pkg setup --use-brew
-    ```
-
-    **Note**:
-  - above command will install all the essential tools (e.g. `bash` `coreutils` `findutils` `gawk` `gsed` `grep` `gnu-tar` `gzip` `lzip` `unzip` `zip` `jq` `yq` `git` `curl` `tree`) that are used by this shell script via [homebrew](https://brew.sh/)
-  - dependent tools (e.g. `automake`, `autoconf`, `libtool`, `gmake`, `cmake`, `pkg-config`, etc) when installing package will also be installed via [homebrew](https://brew.sh/).
+  - install [uppm](https://github.com/leleliu008/uppm)
+  - install all the essential tools (e.g. `bash` `coreutils` `findutils` `gawk` `gsed` `grep` `gtar` `gzip` `lzip` `unzip` `zip` `jq` `yq` `git` `curl` `tree`) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
 
 - **integrate `zsh-completion` script**
 
