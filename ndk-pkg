@@ -6177,18 +6177,19 @@ $PACKAGE_DOPATCH_ACTIONS
 }"
         dopatch "$1"
     else
-        case $PACKAGE_BUILD_SYSTEM in
-            autogen)
-                note "dopatch mapping was not found in formula."
-                run NOCONFIGURE=yes ./autogen.sh
-                ;;
-            autotools)
-                note "dopatch mapping was not found in formula."
-                run autoreconf -ivf
-                ;;
-            *)  note "dopatch mapping was not found in formula, skipped."
-        esac
+        note "dopatch mapping was not found in formula, skipped."
     fi
+
+    #########################################################################################
+
+    case $PACKAGE_BUILD_SYSTEM in
+        autogen)
+            [ -f configure ] || run NOCONFIGURE=yes ./autogen.sh
+            ;;
+        autotools)
+            [ -f configure ] || run autoreconf -ivf
+            ;;
+    esac
 
     #########################################################################################
 
