@@ -1757,7 +1757,7 @@ __list_available_packages() {
 __list_installed_packages() {
     if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT" ] ; then
         cd "$NDKPKG_PACKAGE_INSTALLED_ROOT" || return 1
-        find . -maxdepth 5 -mindepth 5 -type f -regex '\./android-[1-9][0-9]/\(arm64-v8a\|x86\|x86_64\)/[^/]*/\.ndk-pkg/receipt\.yml' | cut -c3- | sed 's|/\.ndk-pkg/receipt\.yml$||'
+        find . -maxdepth 5 -mindepth 5 -type f -regex '\./android-[1-9][0-9]/\(arm64-v8a\|x86\|x86_64\)/[^/]*/\.ndk-pkg/METADATA\.yml' | cut -c3- | sed 's|/\.ndk-pkg/METADATA\.yml$||'
     else
         return 0
     fi
@@ -7378,8 +7378,24 @@ cmakew() {
             *)      BUILD_SHARED_LIBS=ON
         esac
 
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
+        CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
+
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
+        case $LINK_TYPE in
+            static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+        esac
+
+        if [ "$LOG_LEVEL" -gt 0 ] ; then
+            run cat "$CMAKE_PROJECT_INCLUDE"
+        fi
+
         CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS
         -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
+        -DCMAKE_PROJECT_INCLUDE='$CMAKE_PROJECT_INCLUDE'
         -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR
         -DCMAKE_FIND_ROOT_PATH='$CMAKE_FIND_ROOT_PATH'
         -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER

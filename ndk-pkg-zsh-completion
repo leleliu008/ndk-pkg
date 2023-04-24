@@ -39,7 +39,6 @@ _commands=(
     'pack:pack the given installed package.'
     'deploy:pack the given installed package as prefab aar and then deploy the prefab aar to maven repository.'
     'logs:show logs of the given installed package.'
-    'ldd:list dynamic dependencies.'
     'gen-github-workflows:generate github workflows.'
     'gen-url-transform-sample:generate url-transform sample.'
     'compare-versions:compare package versions with brew or maven central.'
@@ -168,14 +167,12 @@ function _ndk_pkg() {
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
                         '3:type:(7z zip aar tar.gz tar.xz tar.bz2)' \
                         '--keep-packing-dir[do not delete packing dir even if packed success]'
                     ;;
                 deploy)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
                         '3:where:(mavenLocal mavenRemote)' \
                         '(--xtrace -x)'{--xtrace,-x}'[trace execution of commands]' \
                         '(--debug -d)'{--debug,-d}'[debug the process of deployment]'
@@ -183,22 +180,19 @@ function _ndk_pkg() {
                 tree)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
                         '-L[level]:level:(3)' \
                         '--dirsfirst[show dirs first]'
                     ;;
                 logs)
-                    _arguments \
-                        '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
-                        '3:abi:(armeabi-v7a arm64-v8a x86 x86_64)'
+                    _arguments '1:package-name:_ndk_pkg_installed_packages'
                     ;;
                 install)
                     _arguments \
                         ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
+                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:{_files -/}' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete installing dir even if installed success]' \
+                        '--keep-working-dir[do not delete installing direcotory even if this package is successfully installed]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
@@ -211,9 +205,10 @@ function _ndk_pkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
+                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:{_files -/}' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete installing dir even if installed success]' \
+                        '--keep-working-dir[do not delete installing direcotory even if this package is successfully installed]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
@@ -226,9 +221,10 @@ function _ndk_pkg() {
                 upgrade)
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
+                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:{_files -/}' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete installing dir even if installed success]' \
+                        '--keep-working-dir[do not delete installing direcotory even if this package is successfully installed]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
@@ -238,11 +234,8 @@ function _ndk_pkg() {
                         '-v[verbose mode. many messages will be output to terminal]' \
                         '-q[silent mode. no any messages will be output to terminal]'
                     ;;
-
                 uninstall)
-                    _arguments \
-                        '*:package-name:_ndk_pkg_installed_packages' \
-                        '--api=-[set the min android-sdk api-level]:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
+                    _arguments '*:package-name:_ndk_pkg_installed_packages'
                         ;;
                 ls-installed)
                     _arguments '--api=-[set the min android-sdk api-level]:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)'
@@ -256,14 +249,10 @@ function _ndk_pkg() {
                         '2:condition-operator:(eq ne ge gt le lt)'
                     ;;
                 is-installed)
-                    _arguments \
-                        '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)'
+                    _arguments '1:package-name:_ndk_pkg_installed_packages'
                     ;;
                 is-outdated)
-                    _arguments \
-                        '1:package-name:_ndk_pkg_outdated_packages' \
-                        '2:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)'
+                    _arguments '1:package-name:_ndk_pkg_outdated_packages'
                     ;;
                 integrate)
                     _arguments '1:what:(zsh cmake)'
