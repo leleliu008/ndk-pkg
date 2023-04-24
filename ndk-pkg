@@ -1531,7 +1531,7 @@ EOF
     #######################################################################################################
 
     PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$1"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ndk-pkg/receipt.yml"
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ndk-pkg/METADATA.yml"
 
     unset PACKAGE_RECEIPT_SIGNATURE
     unset PACKAGE_RECEIPT_TIMESTAMP
@@ -1700,8 +1700,8 @@ is_package_available() {
         return 1
     }
 
-    [ -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/manifest.txt" ] || return 13
-    [ -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/receipt.yml" ]  || return 14
+    [ -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/MANIFEST.txt" ] || return 13
+    [ -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/METADATA.yml" ]  || return 14
 }
 
 # }}}
@@ -2051,7 +2051,7 @@ EOF
             ;;
         installed-files)
             if is_package_installed "$1" ; then
-                cut -d '|' -f3 "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/manifest.txt"
+                cut -d '|' -f3 "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/MANIFEST.txt"
             else
                 error "package '$1' is not installed."
                 return 1
@@ -6262,8 +6262,8 @@ $PACKAGE_DOBUILD_ACTIONS
 
     PACKAGE_METAINF_DIR="$PACKAGE_INSTALL_DIR/.ndk-pkg"
 
-    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/manifest.txt"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINF_DIR/receipt.yml"
+    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/MANIFEST.txt"
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINF_DIR/METADATA.yml"
 
     install -d "$PACKAGE_METAINF_DIR"
 
@@ -6516,10 +6516,10 @@ $PACKAGE_DOBUILD_ACTIONS
 
     cd "$PACKAGE_INSTALL_DIR"
 
-    step "generate manifest.txt"
+    step "generate MANIFEST.txt"
     __generate_manifest_of_the_given_package "$1"
 
-    step "generate receipt.yml"
+    step "generate METADATA.yml"
     __generate_receipt_of_the_given_package "$1"
 
     #########################################################################################
