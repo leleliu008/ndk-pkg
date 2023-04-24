@@ -6184,10 +6184,30 @@ $PACKAGE_DOPATCH_ACTIONS
 
     case $PACKAGE_BUILD_SYSTEM in
         autogen)
-            [ -f configure ] || run NOCONFIGURE=yes ./autogen.sh
+            if [ -f configure ] ; then
+                CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
+
+                if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
+                    run NOCONFIGURE=yes ./autogen.sh
+                elif [ "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" -lt "$TIMESTAMP_UNIX" ] ; then
+                    run NOCONFIGURE=yes ./autogen.sh
+                fi
+            else
+                run NOCONFIGURE=yes ./autogen.sh
+            fi
             ;;
         autotools)
-            [ -f configure ] || run autoreconf -ivf
+            if [ -f configure ] ; then
+                CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
+
+                if [ -z "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" ] ; then
+                    run autoreconf -ivf
+                elif [ "$CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP" -lt "$TIMESTAMP_UNIX" ] ; then
+                    run autoreconf -ivf
+                fi
+            else
+                run autoreconf -ivf
+            fi
             ;;
     esac
 
