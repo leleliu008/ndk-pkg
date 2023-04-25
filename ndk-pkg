@@ -3755,9 +3755,9 @@ inspect_install_arguments() {
 
     BUILD_TYPE=release
 
-    LINK_TYPE=shared-prefered
+    LINK_TYPE=static-prefered
 
-    INSTALL_LIB=shared
+    INSTALL_LIB=static
 
     KEEP_WORKING_DIR=no
 
