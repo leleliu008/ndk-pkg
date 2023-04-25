@@ -6121,6 +6121,35 @@ EOF
 
     #########################################################################################
 
+    [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] && {
+        step "create symlinks for dependent libraries"
+
+        case $LINK_TYPE in
+            static-only|static-prefered) LINK_LIBRARY_TYPE='a'  ;;
+            shared-only|shared-prefered) LINK_LIBRARY_TYPE='so' ;;
+        esac
+
+        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+        do
+            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
+
+            [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] || continue
+
+            for f in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -printf '%P\n')
+            do
+                if [ -e "$PACKAGE_WORKING_DIR/lib/$f" ] ; then
+                    continue
+                else
+                    ln -sfv "$DEPENDENT_PACKAGE_LIBRARY_DIR/$f" "$PACKAGE_WORKING_DIR/lib/$f"
+                fi
+            done
+        done
+
+        unset LINK_LIBRARY_TYPE
+    }
+
+    #########################################################################################
+
     step "config ccache"
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
@@ -6133,35 +6162,6 @@ EOF
     if [ "$CCACHE_ENABLED" = yes ] ; then
         ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
     fi
-
-    #########################################################################################
-
-    [ -n "$RECURSIVE_DEPENDENT_PACKAGES" ] && {
-        step "create symlinks for dependent libraries"
-
-        case $LINK_TYPE in
-            static-only|static-prefered) LINK_LIBRARY_TYPE='a'  ;;
-            shared-only|shared-prefered) LINK_LIBRARY_TYPE='so' ;;
-        esac
-
-        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-        do
-            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
-
-            if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
-                for f in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -printf '%P\n')
-                do
-                    if [ -e "$PACKAGE_WORKING_DIR/lib/$f" ] ; then
-                        continue
-                    else
-                        ln -sf "$DEPENDENT_PACKAGE_LIBRARY_DIR/$f" "$PACKAGE_WORKING_DIR/lib/$f"
-                    fi
-                done
-            fi
-        done
-
-        unset LINK_LIBRARY_TYPE
-    }
 
     #########################################################################################
 
