@@ -3755,9 +3755,9 @@ inspect_install_arguments() {
 
     BUILD_TYPE=release
 
-    LINK_TYPE=static-prefered
+    LINK_TYPE=shared-prefered
 
-    INSTALL_LIB=static
+    INSTALL_LIB=shared
 
     KEEP_WORKING_DIR=no
 
@@ -4161,6 +4161,7 @@ requested min sdk api level: $TARGET_OS_VERS
 
      NATIVE_OS_KIND = $NATIVE_OS_KIND
      NATIVE_OS_TYPE = $NATIVE_OS_TYPE
+     NATIVE_OS_CODE = $NATIVE_OS_CODE
      NATIVE_OS_NAME = $NATIVE_OS_NAME
      NATIVE_OS_VERS = $NATIVE_OS_VERS
      NATIVE_OS_ARCH = $NATIVE_OS_ARCH
