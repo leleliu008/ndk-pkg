@@ -6137,11 +6137,11 @@ EOF
 
             for f in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -printf '%P\n')
             do
-                if [ -e "$PACKAGE_WORKING_DIR/lib/$f" ] ; then
-                    continue
-                else
-                    ln -sfv "$DEPENDENT_PACKAGE_LIBRARY_DIR/$f" "$PACKAGE_WORKING_DIR/lib/$f"
-                fi
+                #if [ -e "$PACKAGE_WORKING_DIR/lib/$f" ] ; then
+                #    continue
+                #else
+                    cp -v "$DEPENDENT_PACKAGE_LIBRARY_DIR/$f" "$PACKAGE_WORKING_DIR/lib/$f"
+                #fi
             done
         done
 
