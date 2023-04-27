@@ -4742,6 +4742,12 @@ $DOT_CONTENT
             if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
                 ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
             fi
+
+            if [ "$item" = 'docbook-xsl' ] ; then
+                # http://xmlsoft.org/xslt/xsltproc.html
+                export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
+                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+            fi
         done
 
         (
@@ -4759,12 +4765,6 @@ $DOT_CONTENT
             CMAKE="$HOME/.uppm/installed/cmake/bin/cmake"
 
             #########################################################################################
-
-            [ "$PACKAGE_USE_DOCBOOK" = yes ] && {
-                # http://xmlsoft.org/xslt/xsltproc.html
-                export XML_CATALOG_FILES="$DEPENDENT_PACKAGE_INSTALL_DIR/catalog.xml"
-                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
-            }
 
             [ "$PACKAGE_USE_PERL" = yes ] && {
                 SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
