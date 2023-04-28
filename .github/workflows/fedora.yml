@@ -1,4 +1,4 @@
-name: macOS
+name: Fedora
 
 on:
   push:
@@ -8,15 +8,19 @@ on:
 
 jobs:
   test:
-
+    runs-on: ubuntu-20.04
+    
     strategy:
       fail-fast: false
       matrix:
-        version: [12, 11]
+        tag: [37, 36, 35, 34]
 
-    runs-on: macos-${{ matrix.version }}
+    container: fedora:${{ matrix.tag }}
 
     steps:
+      - run: dnf -y update
+      - run: dnf -y install curl xz-utils g++ git
+
       - uses: actions/checkout@v3
 
       - run: ./ndk-pkg --help
@@ -31,7 +35,7 @@ jobs:
 
       - run: ./ndk-pkg sysinfo
 
-      - run: ./ndk-pkg ndkinfo
+        #- run: NDKPKG_XTRACE=1 ./ndk-pkg ndkinfo
 
         #- run: ./ndk-pkg integrate zsh
 
