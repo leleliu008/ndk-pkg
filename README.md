@@ -15,7 +15,7 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 
 **Note**:
 
-- This software do NOT work on [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/), because these is no available [Android NDK](https://developer.android.google.cn/ndk) can run on these platforms.
+- This software do NOT work on [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/), because there is no available [Android NDK](https://developer.android.google.cn/ndk) can run on these platforms.
 - This software do NOT work on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to `CMake: Builds hosted on 'CYGWIN' not supported.` [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)
 
 ## Install ndk-pkg via Docker
@@ -188,9 +188,12 @@ android {
 
 ## ~/.ndk-pkg
 
-all relevant dirs and files are located in `~/.ndk-pkg` directory.
+all relevant directories and files are located in `~/.ndk-pkg` directory.
 
-**Note**: Please do NOT place your own files in `~/.ndk-pkg` directory, as `ndk-pkg` will change files in `~/.ndk-pkg` directory without notice.
+**Caveats**:
+
+- Please do NOT place your own files in `~/.ndk-pkg` directory, as `ndk-pkg` will change files in `~/.ndk-pkg` directory without notice.
+- Please do NOT run `ndk-pkg` command in parallell to avoid destroying the data.
 
 ## ndk-pkg command usage
 
