@@ -1,4 +1,4 @@
-name: Fedora
+name: ArchLinux
 
 on:
   push:
@@ -8,18 +8,13 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     
-    strategy:
-      fail-fast: false
-      matrix:
-        tag: [38, 37, 36, 35]
-
-    container: fedora:${{ matrix.tag }}
+    container: archlinux
 
     steps:
-      - run: dnf -y update
-      - run: dnf -y install curl xz g++ git
+      - run: pacman -Syyuu --noconfirm
+      - run: pacman -S     --noconfirm curl g++ git
 
       - uses: actions/checkout@v3
 
