@@ -8145,6 +8145,15 @@ main() {
             printf '%s\n' "$NDKPKG_VERSION"
             return 0
             ;;
+        env)
+            cat <<EOF
+ndk-pkg.vers: $NDKPKG_VERSION
+ndk-pkg.home: $NDKPKG_HOME
+ndk-pkg.path: $NDKPKG
+ndk-pkg.link: https://github.com/leleliu008/ndk-pkg
+EOF
+            return 0
+            ;;
         setup)
             shift
             __setup "$@"
@@ -8223,15 +8232,6 @@ main() {
         sysinfo)
             shift
             sysinfo
-            return 0
-            ;;
-        env)
-            cat <<EOF
-ndk-pkg.vers: $NDKPKG_VERSION
-ndk-pkg.home: $NDKPKG_HOME
-ndk-pkg.path: $NDKPKG
-ndk-pkg.link: https://github.com/leleliu008/ndk-pkg
-EOF
             return 0
             ;;
 
