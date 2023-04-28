@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: dnf -y update
-      - run: dnf -y install curl xz-utils g++ git
+      - run: dnf -y install curl g++ git
 
       - uses: actions/checkout@v3
 
