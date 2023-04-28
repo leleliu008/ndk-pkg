@@ -1,4 +1,4 @@
-name: openSUSE Leap
+name: WSL
 
 on:
   push:
@@ -7,19 +7,44 @@ on:
     branches: [ master, dev ]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    
+  testing:
+    runs-on: windows-latest
+
     strategy:
       fail-fast: false
       matrix:
-        tag: [15.1, 15.2, 15.3, 15.4]
+        distribution: [Ubuntu-20.04, Debian, openSUSE-Leap-15.2]
 
-    container: opensuse/leap:${{ matrix.tag }}
+    defaults:
+      run:
+        shell: wsl-bash {0}
 
     steps:
-      - run: zypper update  -y
-      - run: zypper install -y curl xz g++ git
+      # https://github.com/marketplace/actions/setup-wsl
+      - uses: Vampire/setup-wsl@v1
+        with:
+          distribution: ${{ matrix.distribution }}
+
+      - name: Use unix line endings
+        shell: bash
+        run: |
+          # Github's actions/checkout@v3 when run on Windows mangles the line-endings to DOS-style
+          # but we're running Linux *on top* of Windows, so we need to not mangle them!
+          # https://github.com/actions/checkout/issues/135#issuecomment-602171132
+          # https://github.com/actions/virtual-environments/issues/50#issuecomment-663920265
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - run: export -p
+
+      - run: apt -y update && apt -y install curl xz-utils g++ git
+        if:  ${{ matrix.distribution == 'Debian'  }}
+
+      - run: apt -y update && apt -y install curl xz-utils g++ git
+        if:  ${{ matrix.distribution == 'Ubuntu-20.04'  }}
+
+      - run: zypper update -y && zypper install -y curl xz g++ git
+        if:  ${{ matrix.distribution == 'openSUSE-Leap-15.2'  }}
 
       - uses: actions/checkout@v3
 
