@@ -38,7 +38,7 @@ jobs:
 
       - run: ./ndk-pkg sysinfo
 
-      - run: NDKPKG_XTRACE=1 ./ndk-pkg ndkinfo
+        #- run: NDKPKG_XTRACE=1 ./ndk-pkg ndkinfo
 
       - run: ./ndk-pkg integrate zsh
 

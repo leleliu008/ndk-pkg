@@ -7724,26 +7724,20 @@ EOF
 # ndkinfo [ANDROID-NDK-HOME]
 ndkinfo() {
     if [ -z "$1" ] ; then
-        for d in $(find "$NDKPKG_HOME" -maxdepth 1 -mindepth 1 -type d -name "android-ndk-r2[1-9][a-e]" | sort -r)
+        DS=
+
+        if [ -d "$NDKPKG_HOME" ] ; then
+            DS="$(find "$NDKPKG_HOME" -maxdepth 1 -mindepth 1 -type d -name "android-ndk-r2[1-9][a-e]" | sort -r)"
+        fi
+
+        DS="$DS $ANDROID_NDK_ROOT $ANDROID_NDK_HOME"
+
+        for d in $DS
         do
-            if [ -d "$d" ] ; then
-                if ndk_info "$d" ; then
-                    return 0
-                fi
+            if ndk_info "$d" ; then
+                return 0
             fi
         done
-
-        if [ -n "$ANDROID_NDK_ROOT" ] ; then
-            if ndk_info "$ANDROID_NDK_ROOT" ; then
-                return 0
-            fi
-        fi
-
-        if [ -n "$ANDROID_NDK_HOME" ] ; then
-            if ndk_info "$ANDROID_NDK_HOME" ; then
-                return 0
-            fi
-        fi
 
         return 1
     else
