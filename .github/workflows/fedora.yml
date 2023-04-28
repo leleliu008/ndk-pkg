@@ -13,13 +13,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: [37, 36, 35, 34]
+        tag: [38, 37, 36, 35]
 
     container: fedora:${{ matrix.tag }}
 
     steps:
       - run: dnf -y update
-      - run: dnf -y install curl g++ git
+      - run: dnf -y install curl liblzma-devel g++ git
 
       - uses: actions/checkout@v3
 

@@ -4674,11 +4674,7 @@ $DOT_CONTENT
         PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL ccache"
     fi
 
-    if [ "$NATIVE_OS_KIND" != darwin ] ; then
-        PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL patchelf"
-    fi
-
-    PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL tree"
+    PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL patchelf tree"
 
     #########################################################################################
 
