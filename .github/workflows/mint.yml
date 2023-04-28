@@ -1,4 +1,4 @@
-name: openSUSE Leap
+name: LinuxMint
 
 on:
   push:
@@ -13,13 +13,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: [15.1, 15.2, 15.3, 15.4]
+        tag: [19.3, 20.1]
 
-    container: opensuse/leap:${{ matrix.tag }}
+    container: linuxmintd/mint${{ matrix.tag }}-amd64
 
     steps:
-      - run: zypper update  -y
-      - run: zypper install -y curl tar xz gcc-c++ git
+      - run: apt -y update
+      - run: apt -y install curl xz-utils g++ git
+
+        #      - run: git config --global --add safe.directory /__w/ndk-pkg/ndk-pkg
+
 
       - uses: actions/checkout@v3
 

@@ -1,4 +1,4 @@
-name: openSUSE Leap
+name: Rocky Linux
 
 on:
   push:
@@ -13,13 +13,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: [15.1, 15.2, 15.3, 15.4]
+        tag: ['9', '8']
 
-    container: opensuse/leap:${{ matrix.tag }}
+    container: rockylinux:${{ matrix.tag }}
 
     steps:
-      - run: zypper update  -y
-      - run: zypper install -y curl tar xz gcc-c++ git
+      - run: dnf -y update
+      - run: dnf -y install xz gcc-c++
+      - run:  |
+          command -v curl > /dev/null || dnf -y install curl
+          #https://bugs.launchpad.net/tripleo/+bug/1953156
 
       - uses: actions/checkout@v3
 

@@ -1,4 +1,4 @@
-name: openSUSE Leap
+name: VoidLinux-glibc
 
 on:
   push:
@@ -10,16 +10,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    strategy:
-      fail-fast: false
-      matrix:
-        tag: [15.1, 15.2, 15.3, 15.4]
-
-    container: opensuse/leap:${{ matrix.tag }}
+    container: voidlinux/voidlinux
 
     steps:
-      - run: zypper update  -y
-      - run: zypper install -y curl tar xz gcc-c++ git
+      - run: xbps-install -Syu xbps
+      - run: xbps-install -S
+      - run: xbps-install -Syu curl gcc git
+
 
       - uses: actions/checkout@v3
 
