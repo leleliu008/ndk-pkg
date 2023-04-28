@@ -7951,9 +7951,6 @@ ${COLOR_GREEN}ndk-pkg ndkinfo [--ndk-home=<ANDROID-NDK-HOME>]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg integrate zsh   [--output-dir=<DIR>]${COLOR_OFF}
     download a zsh-completion script file to a approprivate location.
 
-${COLOR_GREEN}ndk-pkg integrate cmake [--output-dir=<DIR>]${COLOR_OFF}
-    download ndk-pkg.cmake to a approprivate location.
-
 ${COLOR_GREEN}ndk-pkg update${COLOR_OFF}
     update all the available formula repositories.
 
@@ -7969,7 +7966,7 @@ ${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
     list all the outdated  packages.
 
-${COLOR_GREEN}ndk-pkg is-available <PACKAGE-NAME> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-available <PACKAGE-NAME>${COLOR_OFF}
     check if the given package is available.
 
 ${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-NAME>${COLOR_OFF}
@@ -8063,19 +8060,16 @@ ${COLOR_GREEN}ndk-pkg install   <PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
 
     INSTALL-OPTIONS:
         ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
-        ${COLOR_BLUE}--api=N${COLOR_OFF}
         ${COLOR_BLUE}--jobs=N${COLOR_OFF}
-        ${COLOR_BLUE}-q|--quiet${COLOR_OFF}
-        ${COLOR_BLUE}-v|--verbose${COLOR_OFF}
-        ${COLOR_BLUE}-d|--debug${COLOR_OFF}
+        ${COLOR_BLUE}-q${COLOR_OFF}
+        ${COLOR_BLUE}-v${COLOR_OFF}
+        ${COLOR_BLUE}-vv${COLOR_OFF}
         ${COLOR_BLUE}--build-type=<debug|release>${COLOR_OFF}
         ${COLOR_BLUE}--link-type=<static-only|shared-only|static-prefered|shared-prefered>${COLOR_OFF}
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
         ${COLOR_BLUE}--export-compile-commands-json${COLOR_OFF}
-        ${COLOR_BLUE}--tree-args=ARGS${COLOR_OFF}
-        ${COLOR_BLUE}--strip-args=ARGS${COLOR_OFF}
         ${COLOR_BLUE}--dry-run${COLOR_OFF}
-        ${COLOR_BLUE}--keep-work-dir${COLOR_OFF}
+        ${COLOR_BLUE}--keep-working-dir${COLOR_OFF}
 
 ${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     reinstall the given packages.

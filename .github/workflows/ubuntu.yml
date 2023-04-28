@@ -19,6 +19,8 @@ jobs:
     container: ubuntu:${{ matrix.version }}
 
     steps:
+      - run: export -p
+
       - run: apt -y update
       - run: apt -y install curl xz-utils g++
 
@@ -36,7 +38,7 @@ jobs:
 
       - run: ./ndk-pkg sysinfo
 
-      - run: ./ndk-pkg ndkinfo
+      - run: NDKPKG_XTRACE=1 ./ndk-pkg ndkinfo
 
       - run: ./ndk-pkg integrate zsh
 
