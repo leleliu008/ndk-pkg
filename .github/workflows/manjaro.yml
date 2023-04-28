@@ -1,0 +1,133 @@
+name: Manjaro Linux
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    container: manjarolinux/base
+
+    steps:
+      - run: pacman -Syyuu --noconfirm
+      - run: pacman -S     --noconfirm gcc git
+
+      - uses: actions/checkout@v3
+
+      - run: ./ndk-pkg --help
+      - run: ./ndk-pkg -h
+
+      - run: ./ndk-pkg --version
+      - run: ./ndk-pkg -V
+
+      - run: ./ndk-pkg env
+
+      - run: ./ndk-pkg setup
+
+      - run: ./ndk-pkg sysinfo
+
+        #- run: NDKPKG_XTRACE=1 ./ndk-pkg ndkinfo
+
+        #- run: ./ndk-pkg integrate zsh
+
+      - run: ./ndk-pkg update
+      - run: git -C ~/.ndk-pkg/repos.d/offical-core -c protocol.version=2 fetch --progress origin +refs/heads/dev:refs/remotes/origin/dev
+      - run: git -C ~/.ndk-pkg/repos.d/offical-core checkout dev
+
+      - run: ./ndk-pkg search lib
+      - run: ./ndk-pkg search libzip
+
+
+      - run: ./ndk-pkg info @all
+      - run: ./ndk-pkg info libzip
+      - run: ./ndk-pkg info libzip --yaml
+      - run: ./ndk-pkg info libzip --json
+      - run: ./ndk-pkg info libzip version
+      - run: ./ndk-pkg info libzip license
+      - run: ./ndk-pkg info libzip summary
+      - run: ./ndk-pkg info libzip web-url
+      - run: ./ndk-pkg info libzip git-url
+      - run: ./ndk-pkg info libzip git-sha
+      - run: ./ndk-pkg info libzip git-ref
+      - run: ./ndk-pkg info libzip src-url
+      - run: ./ndk-pkg info libzip src-sha
+
+
+      - run: ./ndk-pkg formula libzip
+      - run: ./ndk-pkg formula libzip --yaml
+      - run: ./ndk-pkg formula libzip --json
+      - run: ./ndk-pkg formula libzip version
+      - run: ./ndk-pkg formula libzip license
+      - run: ./ndk-pkg formula libzip summary
+      - run: ./ndk-pkg formula libzip web-url
+      - run: ./ndk-pkg formula libzip git-url
+      - run: ./ndk-pkg formula libzip git-sha
+      - run: ./ndk-pkg formula libzip git-ref
+      - run: ./ndk-pkg formula libzip src-url
+      - run: ./ndk-pkg formula libzip src-sha
+
+
+      - run: ./ndk-pkg depends libzip
+      - run: ./ndk-pkg depends libzip -t dot
+      - run: ./ndk-pkg depends libzip -t box
+      - run: ./ndk-pkg depends libzip -t dot -o a/
+      - run: ./ndk-pkg depends libzip -o libzip.box
+
+
+      - run: ./ndk-pkg install libzip
+
+
+      - run: ./ndk-pkg receipt libzip
+      - run: ./ndk-pkg receipt libzip --yaml
+      - run: ./ndk-pkg receipt libzip --json
+      - run: ./ndk-pkg receipt libzip version
+      - run: ./ndk-pkg receipt libzip license
+      - run: ./ndk-pkg receipt libzip summary
+      - run: ./ndk-pkg receipt libzip web-url
+      - run: ./ndk-pkg receipt libzip git-url
+      - run: ./ndk-pkg receipt libzip git-sha
+      - run: ./ndk-pkg receipt libzip git-ref
+      - run: ./ndk-pkg receipt libzip src-url
+      - run: ./ndk-pkg receipt libzip src-sha
+
+
+      - run: ./ndk-pkg info libzip installed-dir
+      - run: ./ndk-pkg info libzip installed-files
+      - run: ./ndk-pkg info libzip installed-version
+      - run: ./ndk-pkg info libzip installed-timestamp-unix
+      - run: ./ndk-pkg info libzip installed-timestamp-iso-8601
+      - run: ./ndk-pkg info libzip installed-timestamp-rfc-3339
+      - run: ./ndk-pkg info libzip installed-timestamp-iso-8601-utc
+      - run: ./ndk-pkg info libzip installed-timestamp-rfc-3339-utc
+
+
+      - run: ./ndk-pkg tree libzip
+      - run: ./ndk-pkg tree libzip -a
+
+      - run: ./ndk-pkg pack libzip
+      - run: ./ndk-pkg pack libzip -t tar.gz
+      - run: ./ndk-pkg pack libzip -t tar.xz
+      - run: ./ndk-pkg pack libzip -t tar.xz -o .
+      - run: ./ndk-pkg pack libzip -o .
+      - run: ./ndk-pkg pack libzip -o xx.tar.xz
+
+
+      - run: ./ndk-pkg formula-repo-list
+
+      - run: ./ndk-pkg ls-available
+      - run: ./ndk-pkg ls-installed
+      - run: ./ndk-pkg ls-outdated
+
+      - run: ./ndk-pkg is-available libzip
+      - run: ./ndk-pkg is-installed libzip
+      - run: ./ndk-pkg is-outdated  libzip || echo "not outdated"
+
+      - run: ./ndk-pkg uninstall libzip
+
+      - run: ./ndk-pkg fetch curl
+
+      - run: ./ndk-pkg upgrade-self
