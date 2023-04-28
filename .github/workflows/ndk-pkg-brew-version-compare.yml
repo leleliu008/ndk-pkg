@@ -21,6 +21,12 @@ jobs:
       - run: ./ndk-pkg env
       - run: ./ndk-pkg setup
       - run: ./ndk-pkg update
-      - run: git -C ~/.ndk-pkg/repos.d/offical-core checkout ${{ github.ref_name }}
+
+      - run: |
+          cd ~/.ndk-pkg/repos.d/offical-core
+          git fetch --progress origin +refs/heads/dev:refs/remotes/origin/dev
+          git checkout dev
+        if: ${{ github.ref_name = 'dev' }}
+
       - run: ./ndk-pkg compare-versions brew
       - run: ./ndk-pkg compare-versions maven

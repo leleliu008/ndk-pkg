@@ -41,7 +41,7 @@ jobs:
         if:  ${{ matrix.distribution == 'Debian'  }}
 
       - run: apt -y update && apt -y install curl xz-utils g++ git
-        if:  ${{ matrix.distribution == 'Ubuntu-20.04'  }}
+        if:  ${{ matrix.distribution == 'Ubuntu-22.04'  }}
 
       - run: zypper update -y && zypper install -y curl tar xz gcc-c++ git
         if:  ${{ matrix.distribution == 'openSUSE-Leap-15.2'  }}
