@@ -581,7 +581,9 @@ all relevant directories and files are located in `~/.ndk-pkg` directory.
 
 - **NDKPKG_DEFAULT_TARGET_OS_SPEC**
 
-    some commands need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET-OS-SPEC>/<PACKAGE-NAME>`, you can omit `<TARGET-OS-SPEC>/`. If `<TARGET-OS-SPEC>/` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21/arm64-v8a` will be used as the default.
+    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET-OS-SPEC>/<PACKAGE-NAME>`, To simplify the usage, you are allowed to omit `<TARGET-OS-SPEC>/`. If `<TARGET-OS-SPEC>/` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21/arm64-v8a` will be used as the default.
+
+    `<TARGET-OS-SPEC>` has the form `android-<MIN-SDK-API-LEVEL>/<TARGET_OS_ABI>`
 
     example:
 
