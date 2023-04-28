@@ -1701,7 +1701,7 @@ is_package_available() {
     }
 
     [ -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/MANIFEST.txt" ] || return 13
-    [ -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/METADATA.yml" ]  || return 14
+    [ -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/METADATA.yml" ] || return 14
 }
 
 # }}}
@@ -2042,43 +2042,61 @@ EOF
             __show_information_as_json__of_the_given_package "$1"
             ;;
         installed-dir)
-            if is_package_installed "$1" ; then
-                printf '%s\n' "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1"
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+            if is_package_installed "$PACKAGE_SPEC" ; then
+                printf '%s\n' "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
             else
-                error "package '$1' is not installed."
+                error "package '$PACKAGE_SPEC' is not installed."
                 return 1
             fi
             ;;
         installed-files)
-            if is_package_installed "$1" ; then
-                cut -d '|' -f3 "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/MANIFEST.txt"
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+            if is_package_installed "$PACKAGE_SPEC" ; then
+                cut -d '|' -f3 "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC/.ndk-pkg/MANIFEST.txt"
             else
-                error "package '$1' is not installed."
+                error "package '$PACKAGE_SPEC' is not installed."
                 return 1
             fi
             ;;
         installed-timestamp-unix)
-            __load_receipt_of_the_given_package "$1"
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
             printf '%s\n' "$PACKAGE_RECEIPT_TIMESTAMP"
             ;;
         installed-timestamp-rfc-3339)
-            __load_receipt_of_the_given_package "$1"
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
             format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z'
             ;;
         installed-timestamp-iso-8601)
-            __load_receipt_of_the_given_package "$1"
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
             format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%dT%H:%M:%S%:z'
             ;;
         installed-timestamp-rfc-3339-utc)
-            __load_receipt_of_the_given_package "$1"
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
             format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z' -u
             ;;
         installed-timestamp-iso-8601-utc)
-            __load_receipt_of_the_given_package "$1"
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
             format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%dT%H:%M:%SZ' -u
             ;;
         installed-version)
-            __load_receipt_of_the_given_package "$1"
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
             printf '%s\n' "$RECEIPT_PACKAGE_VERSION"
             ;;
         dopatch)
@@ -2253,20 +2271,21 @@ __fetch_resources_of_the_given_package() {
 
 # examples:
 # __pack_the_given_installed_package <PACKAGE-NAME|PACKAGE-SPEC> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-packing-dir]
-# __pack_the_given_installed_package    autoconf     -t tar.xz
   __pack_the_given_installed_package() {
     PACKAGE_SPEC=
     PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
     __load_receipt_of_the_given_package "$PACKAGE_SPEC"
 
-    unset TARGET_OS_VERS
-    unset TARGET_OS_ARCH
-
-    unset RECEIPT_PACKAGE_NAME
-
     TARGET_OS_VERS="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-    TARGET_OS_ARCH="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2)"
+    TARGET_OS_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2)"
+
+    case $TARGET_OS_ABI in
+        armeabi-v7a) TARGET_OS_ARCH='armv7a'  ;;
+        arm64-v8a)   TARGET_OS_ARCH='aarch64' ;;
+        x86)         TARGET_OS_ARCH='i686'    ;;
+        x86_64)      TARGET_OS_ARCH='x86_64'  ;;
+    esac
 
     RECEIPT_PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
 
@@ -2309,7 +2328,7 @@ __fetch_resources_of_the_given_package() {
         shift
     done
 
-    PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-$TARGET_PLATFORM_NAME_CANONICAL_NAME$TARGET_OS_VERS-$TARGET_OS_ARCH"
+    PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android$TARGET_OS_VERS-$TARGET_OS_ARCH"
 
     ###########################################################################################
 
@@ -2418,9 +2437,7 @@ __fetch_resources_of_the_given_package() {
         step "delete packing directory"
         run rm -rf "$PACKING_DIR"
     fi
-
 }
-
 
 # https://developer.android.com/studio/projects/android-library#aar-contents
 #
@@ -2442,52 +2459,63 @@ __fetch_resources_of_the_given_package() {
         return 1
     }
 
-    __load_installed_metadata_of_the_given_package "$1" "$2"
+    __load_receipt_of_the_given_package "$1"
 
-    unset PACKAGE_HAVE_INCLUDE
-    unset PACKAGE_HAVE_LIBRARY
+    PACKAGE_HAVE_INCLUDE=no
+    PACKAGE_HAVE_LIBRARY=no
+    PACKAGE_INSTALLED_LIBS=
 
-    unset PACKAGE_INSTALLED_DIR
-    unset PACKAGE_INSTALLED_ABIS
-    unset PACKAGE_INSTALLED_LIBS
+    PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
-    PACKAGE_INSTALLED_DIR="$NDKPKG_INSTALL_DIR/android/$2/$1"
+    if [ -d "$PACKAGE_INSTALLED_DIR/include" ] ; then
+        PACKAGE_HAVE_INCLUDE=yes
+    fi
 
-    PACKAGE_INSTALLED_ABIS="$(cat "$PACKAGE_INSTALLED_DIR/installed-abis")"
+    if [ -d "$PACKAGE_INSTALLED_DIR/lib-no-versioning" ] ; then
+        for item in $(cd "$PACKAGE_INSTALLED_DIR/lib-no-versioning" && ls)
+        do
+            [ -d "$item" ] && continue
 
-    for INSTALLED_ABI in $PACKAGE_INSTALLED_ABIS
-    do
-        if [ -d "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/include" ] ; then
-            PACKAGE_HAVE_INCLUDE=yes
-        fi
+            case $item in
+                lib*.a|lib*.so) PACKAGE_INSTALLED_LIBS="$PACKAGE_INSTALLED_LIBS $item"
+            esac
+        done
+    fi
 
-        if [ -d "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib-no-versioning" ] ; then
-            for item in $(cd "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib-no-versioning" && ls)
-            do
-                [ -d "$item" ] && continue
+    if [ -n "$PACKAGE_INSTALLED_LIBS" ] ; then
+        PACKAGE_HAVE_LIBRARY=yes
+    fi
 
-                case $item in
-                    lib*.a|lib*.so) PACKAGE_INSTALLED_LIBS="$PACKAGE_INSTALLED_LIBS $item"
-                esac
-            done
-        fi
-
-        if [ -n "$PACKAGE_INSTALLED_LIBS" ] ; then
-            PACKAGE_HAVE_LIBRARY=yes
-        fi
-
-        if [ "$PACKAGE_HAVE_INCLUDE" != yes ] && [ "$PACKAGE_HAVE_LIBRARY" != yes ] ; then
-            abort 1 "no libraries in package $1."
-        fi
-    done
+    if [ "$PACKAGE_HAVE_INCLUDE" != yes ] && [ "$PACKAGE_HAVE_LIBRARY" != yes ] ; then
+        abort 1 "no libraries in package $1."
+    fi
 
     step "find or install android ndk"
-    setup_build_toolchains_env
-    NM="$(path_of_tool_in_the_toolchain nm)"
-    READELF="$(path_of_tool_in_the_toolchain readelf)"
+
+    NDKINFO=
+
+    if [ -z "$USER_SPECIFIED_ANDROID_NDK_HOME" ] ; then
+        NDKINFO="$(ndkinfo || true)"
+    else
+        NDKINFO="$(ndkinfo "$USER_SPECIFIED_ANDROID_NDK_HOME")"
+    fi
+
+    if [ -z "$NDKINFO" ] ; then
+        warn "Android NDK Not Found. I will install it via uppm."
+        uppm install android-ndk-r23c
+
+        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r23c")"
+    fi
+
+    eval "$NDKINFO"
+
+    export ANDROID_NDK_HOME
+    export ANDROID_NDK_ROOT
+
+    #########################################################################################
 
     step "create the packing directory"
-    PACKING_DIR="$NDKPKG_HOME/prefab.d/android/$INSTALLED_PACKAGE_SDK_API/$INSTALLED_PACKAGE_NAME"
+    PACKING_DIR="$NDKPKG_HOME/prefab.d/$PACKAGE_SPEC"
 
     if [ -d "$PACKING_DIR" ] ; then
         run rm -rf "$PACKING_DIR"
@@ -2499,38 +2527,30 @@ __fetch_resources_of_the_given_package() {
 
     step "create META-INF entry"
     run install -d META-INF
-    cat > META-INF/README <<EOF
-built  by ndk-pkg $INSTALLED_BY_NDK_PKG_VERSION in $(format_unix_timestamp "$INSTALLED_TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S' -u) UTC
-packed by ndk-pkg $NDKPKG_VERSION in $(date -u '+%Y-%m-%d %H:%M:%S') UTC
+    cat > META-INF/README.ndk-pkg <<EOF
+built  by $PACKAGE_RECEIPT_SIGNATURE in $(format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S' -u) UTC
+packed by ndk-pkg-$NDKPKG_VERSION in $(date -u '+%Y-%m-%d %H:%M:%S') UTC
 
 For more details, please refer to https://github.com/leleliu008/ndk-pkg
 EOF
-    if [ -f "$PACKAGE_INSTALLED_DIR/LICENSE" ] ; then
-        run cp "$PACKAGE_INSTALLED_DIR/LICENSE" META-INF/
-    else
-        run cp "$PACKAGE_INSTALLED_DIR/LICENSE[1-9]" META-INF/
-    fi
-
-    if [ -f "$PACKAGE_INSTALLED_DIR/AUTHORS" ] ; then
-        run cp "$PACKAGE_INSTALLED_DIR/AUTHORS" META-INF/
-    fi
+    run cp "$PACKAGE_INSTALLED_DIR/.ndk-pkg"/* META-INF/
 
     unset JAVA_PACKAGE_NAME
 
     # java package name characters [a-z0-9_.]
-    JAVA_PACKAGE_NAME="$(printf '%s\n' "$1" | tr '+-.' '_' | tr A-Z a-z)"
+    JAVA_PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_NAME" | tr '+-.' '_' | tr A-Z a-z)"
 
     step "create AndroidManifest.xml entry"
     cat > AndroidManifest.xml <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fpliu.ndk.pkg.prefab.android$INSTALLED_PACKAGE_SDK_API.$JAVA_PACKAGE_NAME"
-    android:versionCode="$INSTALLED_TIMESTAMP_UNIX"
+    package="com.fpliu.ndk.pkg.prefab.android$TARGET_OS_VERS.$JAVA_PACKAGE_NAME"
+    android:versionCode="$PACKAGE_RECEIPT_TIMESTAMP"
     android:versionName="$RECEIPT_PACKAGE_VERSION" >
 
     <uses-sdk
-        android:minSdkVersion="$INSTALLED_PACKAGE_SDK_API"
+        android:minSdkVersion="$TARGET_OS_VERS"
         android:targetSdkVersion="30" />
 
 </manifest>
@@ -2544,7 +2564,7 @@ EOF
     unset PREFAB_JSON_VERSION
 
     if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
-        PREFAB_JSON_VERSION="$INSTALLED_TIMESTAMP_UNIX"
+        PREFAB_JSON_VERSION="$PACKAGE_RECEIPT_TIMESTAMP"
     else
         unset SED_E
 
@@ -2581,7 +2601,7 @@ EOF
     cat > prefab/prefab.json <<EOF
 {
   "schema_version": 2,
-  "name": "$INSTALLED_PACKAGE_NAME",
+  "name": "$PACKAGE_NAME",
   "version": "$PREFAB_JSON_VERSION",
   "dependencies": []
 }
@@ -2611,17 +2631,17 @@ EOF
   }
 }
 EOF
-            for INSTALLED_ABI in $PACKAGE_INSTALLED_ABIS
+            for TARGET_ABI in $PACKAGE_TARGET_ABIS
             do
-                ABI_DIR="$MODULE_DIR/libs/android.$INSTALLED_ABI"
+                ABI_DIR="$MODULE_DIR/libs/android.$TARGET_ABI"
 
                 run install -d "$ABI_DIR"
 
                 if [ "$PACKAGE_HAVE_INCLUDE" = yes ] ; then
-                    run cp -r "$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/include" "$ABI_DIR"
+                    run cp -r "$PACKAGE_INSTALLED_DIR/$TARGET_ABI/include" "$ABI_DIR"
                 fi
 
-                LIBRARY_FILEPATH="$PACKAGE_INSTALLED_DIR/$INSTALLED_ABI/lib-no-versioning/$LIBRARY_FILENAME"
+                LIBRARY_FILEPATH="$PACKAGE_INSTALLED_DIR/$TARGET_ABI/lib-no-versioning/$LIBRARY_FILENAME"
 
                 run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
 
@@ -2644,7 +2664,7 @@ EOF
                     fi
                 fi
 
-                printf '%s\n' "{\"api\": $INSTALLED_PACKAGE_SDK_API,\"ndk\": $BUILD_USE_TOOLCHAIN_VERS_MAJOR,\"abi\": \"$INSTALLED_ABI\",\"stl\": \"$STL\",\"static\":$IS_STATIC_LIBRARY}" > "$ABI_DIR/abi.json"
+                printf '%s\n' "{\"api\": $INSTALLED_PACKAGE_SDK_API,\"ndk\": $BUILD_USE_TOOLCHAIN_VERS_MAJOR,\"abi\": \"$TARGET_ABI\",\"stl\": \"$STL\",\"static\":$IS_STATIC_LIBRARY}" > "$ABI_DIR/abi.json"
             done
         done
     else
@@ -2691,6 +2711,9 @@ EOF
         error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TO-WHERE>, <MIN-SDK-API-LEVEL> must be a integer."
         return 1
     }
+
+    PACKAGE_SPEC=
+    PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
     is_package_installed "$1" "$2" || {
         error "package '$1' is not installed."
@@ -3699,7 +3722,7 @@ __upgrade_packages() {
             esac
         fi
 
-        note "$1 will be treated as a package name, and it will be expanded to $PACKAGE_SPEC"
+        #note "$1 will be treated as a package name, and it will be expanded to $PACKAGE_SPEC"
     else
         case $1 in
             android-[1-9][0-9]/*/*/*)
@@ -7940,19 +7963,19 @@ ${COLOR_GREEN}ndk-pkg cleanup${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg ls-available${COLOR_OFF}
     list all the available packages.
 
-${COLOR_GREEN}ndk-pkg ls-installed [--api=<MIN-SDK-API-LEVEL>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
     list all the installed packages.
 
-${COLOR_GREEN}ndk-pkg ls-outdated  [--api=<MIN-SDK-API-LEVEL>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
     list all the outdated  packages.
 
 ${COLOR_GREEN}ndk-pkg is-available <PACKAGE-NAME> [eq|ne|ge|gt|le|lt VERSION]${COLOR_OFF}
     check if the given package is available.
 
-${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-NAME> <MIN-SDK-API-LEVEL>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-NAME>${COLOR_OFF}
     check if the given package is installed.
 
-${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-NAME> <MIN-SDK-API-LEVEL>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
     check if the given package is outdated.
 
 ${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN>${COLOR_OFF}
@@ -7989,10 +8012,10 @@ ${COLOR_GREEN}ndk-pkg formula-repo-list${COLOR_OFF}
     list all available formula repositories.
 
 
-${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> <MIN-SDK-API-LEVEL> [--dirsfirst | -L N]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
     list the installed files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
 ${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> mavenLocal  [-d] [-x]${COLOR_OFF}
@@ -8009,7 +8032,7 @@ ${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> mavenRemote [-d]
     SERVER_PASSWORD=
     GPG_PASSPHRASE=
 
-${COLOR_GREEN}ndk-pkg logs <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <armeabi-v7a|arm64-v8a|x86|x86_64>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg logs <PACKAGE-NAME|PACKAGE_SPEC>${COLOR_OFF}
     show logs of the given installed package.
 
 ${COLOR_GREEN}ndk-pkg info <PACKAGE-NAME> [--json] [--yaml] [<KEY>]${COLOR_OFF}
@@ -8063,7 +8086,7 @@ ${COLOR_GREEN}ndk-pkg upgrade   [PACKAGE-NAME]... [INSTALL-OPTIONS]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg upgrade-self${COLOR_OFF}
     upgrade this software.
 
-${COLOR_GREEN}ndk-pkg uninstall <PACKAGE-NAME>... [--api=<MIN-SDK-API-LEVEL>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg uninstall <PACKAGE-NAME|PACKAGE_SPEC>...${COLOR_OFF}
     uninstall the given packages.
 
 ${COLOR_GREEN}ndk-pkg gen-url-transform-sample${COLOR_OFF}
@@ -8217,8 +8240,14 @@ EOF
         ls-outdated)  shift; __list__outdated_packages ;;
 
         is-available) shift; is_package_available "$@" ;;
-        is-installed) shift; is_package_installed "$@" ;;
         is-outdated)  shift; is_package__outdated "$@" ;;
+
+        is-installed)
+            shift
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            is_package_installed "$PACKAGE_SPEC"
+            ;;
 
         formula) shift; __show_formula_of_the_given_package "$@" ;;
         receipt) shift; __show_receipt_of_the_given_package "$@" ;;

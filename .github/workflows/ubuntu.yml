@@ -1,0 +1,137 @@
+name: Ubuntu
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [20.04, 22.04]
+
+    container: ubuntu:${{ matrix.version }}
+
+    steps:
+      - run: apt -y update
+      - run: apt -y install curl xz-utils g++
+
+      - uses: actions/checkout@v3
+
+      - run: ./ndk-pkg --help
+      - run: ./ndk-pkg -h
+
+      - run: ./ndk-pkg --version
+      - run: ./ndk-pkg -V
+
+      - run: ./ndk-pkg env
+
+      - run: ./ndk-pkg setup
+
+      - run: ./ndk-pkg sysinfo
+
+      - run: ./ndk-pkg ndkinfo
+
+      - run: ./ndk-pkg integrate zsh
+
+      - run: ./ndk-pkg update
+
+      - run: ./ndk-pkg search lib
+      - run: ./ndk-pkg search libzip
+
+
+      - run: ./xcpkg info @all
+      - run: ./xcpkg info libzip
+      - run: ./xcpkg info libzip --yaml
+      - run: ./xcpkg info libzip --json
+      - run: ./xcpkg info libzip version
+      - run: ./xcpkg info libzip license
+      - run: ./xcpkg info libzip summary
+      - run: ./xcpkg info libzip web-url
+      - run: ./xcpkg info libzip git-url
+      - run: ./xcpkg info libzip git-sha
+      - run: ./xcpkg info libzip git-ref
+      - run: ./xcpkg info libzip src-url
+      - run: ./xcpkg info libzip src-sha
+
+
+      - run: ./xcpkg formula libzip
+      - run: ./xcpkg formula libzip --yaml
+      - run: ./xcpkg formula libzip --json
+      - run: ./xcpkg formula libzip version
+      - run: ./xcpkg formula libzip license
+      - run: ./xcpkg formula libzip summary
+      - run: ./xcpkg formula libzip web-url
+      - run: ./xcpkg formula libzip git-url
+      - run: ./xcpkg formula libzip git-sha
+      - run: ./xcpkg formula libzip git-ref
+      - run: ./xcpkg formula libzip src-url
+      - run: ./xcpkg formula libzip src-sha
+
+
+      - run: ./xcpkg depends libzip
+      - run: ./xcpkg depends libzip -t dot
+      - run: ./xcpkg depends libzip -t box
+      - run: ./xcpkg depends libzip -t dot -o a/
+      - run: ./xcpkg depends libzip -o libzip.box
+
+
+      - run: ./xcpkg install libzip
+
+
+      - run: ./xcpkg receipt libzip
+      - run: ./xcpkg receipt libzip --yaml
+      - run: ./xcpkg receipt libzip --json
+      - run: ./xcpkg receipt libzip version
+      - run: ./xcpkg receipt libzip license
+      - run: ./xcpkg receipt libzip summary
+      - run: ./xcpkg receipt libzip web-url
+      - run: ./xcpkg receipt libzip git-url
+      - run: ./xcpkg receipt libzip git-sha
+      - run: ./xcpkg receipt libzip git-ref
+      - run: ./xcpkg receipt libzip src-url
+      - run: ./xcpkg receipt libzip src-sha
+
+
+      - run: ./xcpkg info libzip installed-dir
+      - run: ./xcpkg info libzip installed-files
+      - run: ./xcpkg info libzip installed-version
+      - run: ./xcpkg info libzip installed-timestamp-unix
+      - run: ./xcpkg info libzip installed-timestamp-iso-8601
+      - run: ./xcpkg info libzip installed-timestamp-rfc-3339
+      - run: ./xcpkg info libzip installed-timestamp-iso-8601-utc
+      - run: ./xcpkg info libzip installed-timestamp-rfc-3339-utc
+
+
+      - run: ./xcpkg tree libzip
+      - run: ./xcpkg tree libzip -a
+
+      - run: ./xcpkg pack libzip
+      - run: ./xcpkg pack libzip -t tar.gz
+      - run: ./xcpkg pack libzip -t tar.xz
+      - run: ./xcpkg pack libzip -t tar.xz -o .
+      - run: ./xcpkg pack libzip -o .
+      - run: ./xcpkg pack libzip -o xx.tar.xz
+
+
+      - run: ./ndk-pkg formula-repo-list
+
+      - run: ./ndk-pkg ls-available
+      - run: ./ndk-pkg ls-installed
+      - run: ./ndk-pkg ls-outdated
+
+      - run: ./ndk-pkg is-available libzip
+      - run: ./ndk-pkg is-installed libzip
+      - run: ./ndk-pkg is-outdated  libzip || echo "not outdated"
+
+      - run: ./ndk-pkg uninstall libzip
+
+      - run: ./ndk-pkg fetch curl
+
+      - run: ./ndk-pkg upgrade-self

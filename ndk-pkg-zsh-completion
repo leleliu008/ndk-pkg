@@ -56,11 +56,23 @@ function _ndk_pkg_available_packages() {
 
 function _ndk_pkg_installed_packages() {
     local -a _installed_packages
+    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null))
+    _describe 'installed-packages' _installed_packages
+}
+
+function _ndk_pkg_installed_package_names() {
+    local -a _installed_packages
     _installed_packages=($(ndk-pkg ls-installed 2>/dev/null | cut -d/ -f3))
     _describe 'installed-packages' _installed_packages
 }
 
 function _ndk_pkg_outdated_packages() {
+    local -a _outdated_packages
+    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null))
+    _describe 'outdated-packages' _outdated_packages
+}
+
+function _ndk_pkg_outdated_package_names() {
     local -a _outdated_packages
     _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null | cut -d/ -f3))
     _describe 'outdated-packages' _outdated_packages
@@ -167,7 +179,8 @@ function _ndk_pkg() {
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '3:type:(7z zip aar tar.gz tar.xz tar.bz2)' \
+                        '-t[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
+                        '-o[set output filepath or directory]:output-path:{_files}' \
                         '--keep-packing-dir[do not delete packing dir even if packed success]'
                     ;;
                 deploy)
@@ -236,17 +249,9 @@ function _ndk_pkg() {
                     ;;
                 uninstall)
                     _arguments '*:package-name:_ndk_pkg_installed_packages'
-                        ;;
-                ls-installed)
-                    _arguments '--api=-[set the min android-sdk api-level]:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)'
-                    ;;
-                ls-outdated)
-                    _arguments '--api=-[set the min android-sdk api-level]:min-sdk-api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)'
                     ;;
                 is-available)
-                    _arguments \
-                        '1:package-name:_ndk_pkg_available_packages' \
-                        '2:condition-operator:(eq ne ge gt le lt)'
+                    _arguments '1:package-name:_ndk_pkg_available_packages'
                     ;;
                 is-installed)
                     _arguments '1:package-name:_ndk_pkg_installed_packages'
