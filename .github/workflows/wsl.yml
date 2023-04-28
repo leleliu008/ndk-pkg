@@ -43,7 +43,7 @@ jobs:
       - run: apt -y update && apt -y install curl xz-utils g++ git
         if:  ${{ matrix.distribution == 'Ubuntu-20.04'  }}
 
-      - run: zypper update -y && zypper install -y curl xz g++ git
+      - run: zypper update -y && zypper install -y curl xz gcc-c++ git
         if:  ${{ matrix.distribution == 'openSUSE-Leap-15.2'  }}
 
       - uses: actions/checkout@v3

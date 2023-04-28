@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - run: zypper update  -y
-      - run: zypper install -y curl xz g++ git
+      - run: zypper install -y curl xz gcc-c++ git
 
       - uses: actions/checkout@v3
 
