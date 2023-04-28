@@ -1828,7 +1828,7 @@ __show_information_as_yaml__of_all_available_packages() {
         if [ "$FIRST" = yes ] ; then
             FIRST=no
         else
-            printf '---\n'
+            printf '%s\n' '---'
         fi
         __show_information_as_yaml__of_the_given_package "$PACKAGE"
     done
