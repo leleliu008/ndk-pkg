@@ -40,7 +40,7 @@ jobs:
 
         #- run: NDKPKG_XTRACE=1 ./ndk-pkg ndkinfo
 
-      - run: ./ndk-pkg integrate zsh
+        #- run: ./ndk-pkg integrate zsh
 
       - run: ./ndk-pkg update
 
