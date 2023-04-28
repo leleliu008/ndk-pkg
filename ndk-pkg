@@ -6695,7 +6695,7 @@ __adjust_elf_files_for_the_given_target() {
                 unset FILE_HEADER_EXPACT
                 unset FILE_HEADER_ACTUAL
 
-                FILE_HEADER_ACTUAL="$(hexdump -n 20 -v -e '1/1 "%02X" ""' "$FILEPATH")"
+                FILE_HEADER_ACTUAL="$(head -c 20 "$FILEPATH" | base16-encode)"
 
                 # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
                 case $FILE_HEADER_ACTUAL in
