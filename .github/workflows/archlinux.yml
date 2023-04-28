@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - run: pacman -Syyuu --noconfirm
-      - run: pacman -S     --noconfirm curl g++ git
+      - run: pacman -S     --noconfirm curl gcc git
 
       - uses: actions/checkout@v3
 
