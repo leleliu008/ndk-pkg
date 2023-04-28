@@ -18,9 +18,9 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      - run: bin/ndk-pkg env
-      - run: bin/ndk-pkg setup
-      - run: bin/ndk-pkg update
+      - run: ./ndk-pkg env
+      - run: ./ndk-pkg setup
+      - run: ./ndk-pkg update
       - run: git -C ~/.ndk-pkg/repos.d/offical-core checkout ${{ github.ref_name }}
-      - run: bin/ndk-pkg compare-versions brew
-      - run: bin/ndk-pkg compare-versions maven
+      - run: ./ndk-pkg compare-versions brew
+      - run: ./ndk-pkg compare-versions maven

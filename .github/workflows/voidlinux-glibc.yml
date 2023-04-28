@@ -15,7 +15,7 @@ jobs:
     steps:
       - run: xbps-install -Syu xbps
       - run: xbps-install -S
-      - run: xbps-install -Syu curl gcc git
+      - run: xbps-install -Syu curl xz gcc git
 
 
       - uses: actions/checkout@v3

@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        distribution: [Ubuntu-20.04, Debian, openSUSE-Leap-15.2]
+        distribution: [Ubuntu-22.04, Debian, openSUSE-Leap-15.2]
 
     defaults:
       run:
@@ -21,7 +21,7 @@ jobs:
 
     steps:
       # https://github.com/marketplace/actions/setup-wsl
-      - uses: Vampire/setup-wsl@v1
+      - uses: Vampire/setup-wsl@v2
         with:
           distribution: ${{ matrix.distribution }}
 
