@@ -43,6 +43,7 @@ jobs:
         #- run: ./ndk-pkg integrate zsh
 
       - run: ./ndk-pkg update
+      - run: ~/.uppm/installed/git/bin/git -C ~/.ndk-pkg/repos.d/offical-core -c protocol.version=2 fetch --progress origin +refs/heads/dev:refs/remotes/origin/dev
       - run: ~/.uppm/installed/git/bin/git -C ~/.ndk-pkg/repos.d/offical-core checkout dev
 
       - run: ./ndk-pkg search lib
