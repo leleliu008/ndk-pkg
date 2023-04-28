@@ -8228,13 +8228,19 @@ EOF
         ls-outdated)  shift; __list__outdated_packages ;;
 
         is-available) shift; is_package_available "$@" ;;
-        is-outdated)  shift; is_package__outdated "$@" ;;
 
         is-installed)
             shift
             PACKAGE_SPEC=
             PACKAGE_SPEC="$(inspect_package_spec "$1")"
             is_package_installed "$PACKAGE_SPEC"
+            ;;
+
+        is-outdated)
+            shift
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+            is_package__outdated "$PACKAGE_SPEC"
             ;;
 
         formula) shift; __show_formula_of_the_given_package "$@" ;;
@@ -8278,14 +8284,13 @@ EOF
       reinstall) shift; __reinstall_the_given_packages "$@" ;;
       uninstall) shift; __uninstall_the_given_packages "$@" ;;
 
+        upgrade-self)
+            shift
+            __upgrade_self "$NDKPKG_UPGRAGE_URL" "$@"
+            ;;
         upgrade)
             shift
-            case $1 in
-                @self)
-                    shift
-                    __upgrade_self "$NDKPKG_UPGRAGE_URL" "$@" ;;
-                *)  __upgrade_packages "$@" ;;
-            esac
+            __upgrade_packages "$@"
             ;;
         integrate)
             shift
@@ -8293,29 +8298,6 @@ EOF
                 zsh)
                     shift
                     __integrate_zsh_completions "$NDKPKG_ZSH_COMPLETION_SCRIPT_URL" "$@"
-                    ;;
-                cmake)
-                    shift
-
-                    unset OUTPUT_DIR
-
-                    for arg in "$@"
-                    do
-                        case $arg in
-                            --output-dir=*)
-                                OUTPUT_DIR="${arg#*=}"
-                                if [ -z "$OUTPUT_DIR" ] ; then
-                                    abort 1 "ndk-pkg integrate cmake [--output-dir=<DIR>] , <DIR> must not be empty."
-                                fi
-                                OUTPUT_DIR=$(globing "$OUTPUT_DIR")
-                                ;;
-                            *)  abort 1 "ndk-pkg integrate cmake [--output-dir=<DIR>] , unrecognized argument: $arg"
-                        esac
-                    done
-
-                    [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=$NDKPKG_HOME
-
-                    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg.cmake' --output-dir="$OUTPUT_DIR"
                     ;;
                 *)  abort 1 "ndk-pkg integrate $1: not support."
             esac
