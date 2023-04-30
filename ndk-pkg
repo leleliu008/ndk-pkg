@@ -5621,14 +5621,9 @@ int main(int argc, char * argv[]) {
             if (strcmp(argv[i], options[j]) == 0) {
                 indexes[j] = i;
             }
-
-            if ((indexes[0] > 0) && (indexes[1] > 0) && (indexes[2] > 0) && (indexes[3] > 0) && (indexes[4] > 0)) {
-                goto lable;
-            }
         }
     }
 
-    lable:
     // printf("      -shared = %d\n", indexes[0]);
     // printf("      -static = %d\n", indexes[1]);
     // printf("     --static = %d\n", indexes[2]);
@@ -5774,14 +5769,9 @@ int main(int argc, char * argv[]) {
             if (strcmp(argv[i], options[j]) == 0) {
                 indexes[j] = i;
             }
-
-            if ((indexes[0] > 0) && (indexes[1] > 0) && (indexes[2] > 0) && (indexes[3] > 0) && (indexes[4] > 0)) {
-                goto lable;
-            }
         }
     }
 
-    lable:
     // printf("      -shared = %d\n", indexes[0]);
     // printf("      -static = %d\n", indexes[1]);
     // printf("     --static = %d\n", indexes[2]);
