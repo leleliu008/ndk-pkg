@@ -164,7 +164,7 @@ android {
 
     ```bash
     ndk-pkg install libpng
-    ndk-pkg deploy  libpng mavenLocal
+    ndk-pkg deploy-maven-local libpng
     ```
 
     enables `mavenLocal` repository in `build.gradle`
@@ -510,18 +510,19 @@ all relevant directories and files are located in `~/.ndk-pkg` directory.
 - **pack the given installed package as prefab aar and then deploy it to Maven local repository**
 
     ```bash
-    ndk-pkg deploy curl mavenLocal
-    ndk-pkg deploy curl mavenLocal -d
-    ndk-pkg deploy curl mavenLocal -x
+    ndk-pkg deploy-maven-local curl
+    ndk-pkg deploy-maven-local curl --debug
+    ndk-pkg deploy-maven-local curl --api=26
+    ndk-pkg deploy-maven-local curl --api=26 --abi=x86_64 --abi=arm64-v8a
     ```
 
 - **pack the given installed package as prefab aar and then deploy it to Maven remote repository**
 
     ```bash
-    ndk-pkg deploy curl mavenRemote    < ~/OSSRH-config
-    ndk-pkg deploy curl mavenRemote -d < ~/OSSRH-config
-    ndk-pkg deploy curl mavenRemote -x < ~/OSSRH-config
-    ndk-pkg deploy curl mavenRemote -x <<EOF
+    ndk-pkg deploy-maven-remote curl          < ~/OSSRH-config
+    ndk-pkg deploy-maven-remote curl --debug  < ~/OSSRH-config
+    ndk-pkg deploy-maven-remote curl --api=26 < ~/OSSRH-config
+    ndk-pkg deploy-maven-remote curl --api=26 --abi=x86_64 --abi=arm64-v8a <<EOF
     SERVER_ID=OSSRH
     SERVER_URL=https://s01.oss.sonatype.org/service/local/repositories/comfpliu-1025/content
     SERVER_USERNAME=leleliu008
@@ -579,17 +580,22 @@ all relevant directories and files are located in `~/.ndk-pkg` directory.
     export NDKPKG_XTRACE=1
     ```
 
-- **NDKPKG_DEFAULT_TARGET_OS_SPEC**
+- **NDKPKG_DEFAULT_TARGET_ANDROID_SPEC**
 
-    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET-OS-SPEC>/<PACKAGE-NAME>`, To simplify the usage, you are allowed to omit `<TARGET-OS-SPEC>/`. If `<TARGET-OS-SPEC>/` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21/arm64-v8a` will be used as the default.
+    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET-ANDROID-SPEC>/<PACKAGE-NAME>`, To simplify the usage, you are allowed to omit `<TARGET-ANDROID-SPEC>/`. If `<TARGET-ANDROID-SPEC>/` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21/arm64-v8a` will be used as the default.
 
-    `<TARGET-OS-SPEC>` has the form `android-<MIN-SDK-API-LEVEL>/<TARGET_OS_ABI>`
+    `<TARGET-ANDROID-SPEC>` has the form `android-<MIN-SDK-API-LEVEL>/<ANDROID-ABI>`
 
-    example:
+    **Example**:
 
     ```bash
-    export NDKPKG_DEFAULT_TARGET_OS_SPEC='android-21/arm64-v8a'
+    export NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21/arm64-v8a'
     ```
+
+    **References**:
+
+  - <https://developer.android.com/tools/releases/platforms>
+  - <https://developer.android.com/ndk/guides/abis>
 
 - **other relevant environment variables**
 
@@ -601,7 +607,7 @@ all relevant directories and files are located in `~/.ndk-pkg` directory.
     |[pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)|[reference](https://www.linuxhowtos.org/manpages/1/pkg-config.htm#lbAF)|
     |[aclocal](https://www.gnu.org/software/automake/manual/html_node/configure.html)|[reference](https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html)|
 
-    example:
+    **Example**:
 
     ```bash
     export GOPROXY='https://goproxy.cn'

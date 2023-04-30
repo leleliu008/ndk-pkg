@@ -1549,6 +1549,9 @@ EOF
         return 1
     fi
 
+    RECEIPT_NDK_VERSION=
+    RECEIPT_NDK_VERSION="$(yq '.ndkvers | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
     #######################################################################################################
 
     for key in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel exetype symlink
@@ -2277,17 +2280,10 @@ __fetch_resources_of_the_given_package() {
 
     __load_receipt_of_the_given_package "$PACKAGE_SPEC"
 
-    TARGET_OS_VERS="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-    TARGET_OS_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2)"
+    ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+    ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2)"
 
-    case $TARGET_OS_ABI in
-        armeabi-v7a) TARGET_OS_ARCH='armv7a'  ;;
-        arm64-v8a)   TARGET_OS_ARCH='aarch64' ;;
-        x86)         TARGET_OS_ARCH='i686'    ;;
-        x86_64)      TARGET_OS_ARCH='x86_64'  ;;
-    esac
-
-    RECEIPT_PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
+    PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
 
     shift
 
@@ -2296,6 +2292,8 @@ __fetch_resources_of_the_given_package() {
     unset OUTPUT_DIR
     unset OUTPUT_FILETYPE
     unset OUTPUT_FILEPATH
+
+    unset KEEP_PACKING_DIR
 
     while [ -n "$1" ]
     do
@@ -2328,7 +2326,16 @@ __fetch_resources_of_the_given_package() {
         shift
     done
 
-    PACKED_DIR_NAME="$RECEIPT_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android$TARGET_OS_VERS-$TARGET_OS_ARCH"
+    ###########################################################################################
+
+    case $ANDROID_ABI in
+        armeabi-v7a) ANDROID_ARCH='armv7a'  ;;
+        arm64-v8a)   ANDROID_ARCH='aarch64' ;;
+        x86)         ANDROID_ARCH='i686'    ;;
+        x86_64)      ANDROID_ARCH='x86_64'  ;;
+    esac
+
+    PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android$ANDROID_API-$ANDROID_ARCH"
 
     ###########################################################################################
 
@@ -2439,37 +2446,33 @@ __fetch_resources_of_the_given_package() {
     fi
 }
 
-# https://developer.android.com/studio/projects/android-library#aar-contents
-#
-# __create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>
-# __create_prefab_aar_for_the_given_installed_package       v8                21
-  __create_prefab_aar_for_the_given_installed_package() {
+# __create_prefab_for_the_given_installed_package <PACKAGE-SPEC> [OUTPUT-DIR]
+  __create_prefab_for_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "__create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <PACKAGE-NAME> is not given."
+        error "__create_prefab_for_the_given_installed_package <PACKAGE-SPEC>, <PACKAGE-SPEC> is not given."
         return 1
     }
 
-    [ -z "$2" ] && {
-        error "__create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> is not given."
-        return 1
-    }
+    PACKAGE_SPEC=
+    PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
-    is_integer "$2" || {
-        error "__create_prefab_aar_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL>, <MIN-SDK-API-LEVEL> must be a integer."
-        return 1
-    }
+    __load_receipt_of_the_given_package "$PACKAGE_SPEC"
 
-    __load_receipt_of_the_given_package "$1"
+    RECEIPT_NDK_VERSION_MAJOR="$(printf '%s\n' "$RECEIPT_NDK_VERSION" | cut -d. -f1)"
 
-    PACKAGE_HAVE_INCLUDE=no
-    PACKAGE_HAVE_LIBRARY=no
-    PACKAGE_INSTALLED_LIBS=
+    ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+    ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2)"
+
+    PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
 
     PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
-    if [ -d "$PACKAGE_INSTALLED_DIR/include" ] ; then
-        PACKAGE_HAVE_INCLUDE=yes
-    fi
+    [ -d "$PACKAGE_INSTALLED_DIR/include" ] || {
+        error "no C/C++ header files in package $PACKAGE_SPEC"
+        return 1
+    }
+
+    PACKAGE_INSTALLED_LIBS=
 
     if [ -d "$PACKAGE_INSTALLED_DIR/lib-no-versioning" ] ; then
         for item in $(cd "$PACKAGE_INSTALLED_DIR/lib-no-versioning" && ls)
@@ -2480,14 +2483,6 @@ __fetch_resources_of_the_given_package() {
                 lib*.a|lib*.so) PACKAGE_INSTALLED_LIBS="$PACKAGE_INSTALLED_LIBS $item"
             esac
         done
-    fi
-
-    if [ -n "$PACKAGE_INSTALLED_LIBS" ] ; then
-        PACKAGE_HAVE_LIBRARY=yes
-    fi
-
-    if [ "$PACKAGE_HAVE_INCLUDE" != yes ] && [ "$PACKAGE_HAVE_LIBRARY" != yes ] ; then
-        abort 1 "no libraries in package $1."
     fi
 
     step "find or install android ndk"
@@ -2514,49 +2509,6 @@ __fetch_resources_of_the_given_package() {
 
     #########################################################################################
 
-    step "create the packing directory"
-    PACKING_DIR="$NDKPKG_HOME/prefab.d/$PACKAGE_SPEC"
-
-    if [ -d "$PACKING_DIR" ] ; then
-        run rm -rf "$PACKING_DIR"
-    fi
-    run install -d "$PACKING_DIR"
-
-    step "cd  to the packing directory"
-    run cd $PACKING_DIR
-
-    step "create META-INF entry"
-    run install -d META-INF
-    cat > META-INF/README.ndk-pkg <<EOF
-built  by $PACKAGE_RECEIPT_SIGNATURE in $(format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S' -u) UTC
-packed by ndk-pkg-$NDKPKG_VERSION in $(date -u '+%Y-%m-%d %H:%M:%S') UTC
-
-For more details, please refer to https://github.com/leleliu008/ndk-pkg
-EOF
-    run cp "$PACKAGE_INSTALLED_DIR/.ndk-pkg"/* META-INF/
-
-    unset JAVA_PACKAGE_NAME
-
-    # java package name characters [a-z0-9_.]
-    JAVA_PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_NAME" | tr '+-.' '_' | tr A-Z a-z)"
-
-    step "create AndroidManifest.xml entry"
-    cat > AndroidManifest.xml <<EOF
-<?xml version="1.0" encoding="utf-8"?>
-<manifest
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fpliu.ndk.pkg.prefab.android$TARGET_OS_VERS.$JAVA_PACKAGE_NAME"
-    android:versionCode="$PACKAGE_RECEIPT_TIMESTAMP"
-    android:versionName="$RECEIPT_PACKAGE_VERSION" >
-
-    <uses-sdk
-        android:minSdkVersion="$TARGET_OS_VERS"
-        android:targetSdkVersion="30" />
-
-</manifest>
-EOF
-
-    step "create prefab entry"
     run install -d prefab
 
     # https://google.github.io/prefab/#package-metadata
@@ -2607,12 +2559,9 @@ EOF
 }
 EOF
 
-    if [ "$PACKAGE_HAVE_LIBRARY" = yes ] ; then
+    if [ -n "$PACKAGE_INSTALLED_LIBS" ] ; then
         for LIBRARY_FILENAME in $PACKAGE_INSTALLED_LIBS
         do
-            unset LIBRARY_FILENAME_PREFIX
-            unset IS_STATIC_LIBRARY
-
             case $LIBRARY_FILENAME in
                 *.a)  LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.a}"  ; IS_STATIC_LIBRARY=true  ;;
                 *.so) LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}" ; IS_STATIC_LIBRARY=false ;;
@@ -2631,130 +2580,402 @@ EOF
   }
 }
 EOF
-            for TARGET_ABI in $PACKAGE_TARGET_ABIS
-            do
-                ABI_DIR="$MODULE_DIR/libs/android.$TARGET_ABI"
+            ABI_DIR="$MODULE_DIR/libs/android.$ANDROID_ABI"
 
-                run install -d "$ABI_DIR"
+            run install -d "$ABI_DIR"
 
-                if [ "$PACKAGE_HAVE_INCLUDE" = yes ] ; then
-                    run cp -r "$PACKAGE_INSTALLED_DIR/$TARGET_ABI/include" "$ABI_DIR"
+            run cp -r "$PACKAGE_INSTALLED_DIR/include" "$ABI_DIR"
+
+            LIBRARY_FILEPATH="$PACKAGE_INSTALLED_DIR/lib-no-versioning/$LIBRARY_FILENAME"
+
+            run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
+
+            STL=none
+
+            # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
+            if [ "$IS_STATIC_LIBRARY" = true ] ; then
+                if   "$ANDROID_NDK_TOOL_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                    abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+                elif "$ANDROID_NDK_TOOL_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
+                    STL=c++_shared
                 fi
-
-                LIBRARY_FILEPATH="$PACKAGE_INSTALLED_DIR/$TARGET_ABI/lib-no-versioning/$LIBRARY_FILENAME"
-
-                run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
-
-                STL=none
-
-                # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
-                if [ "$IS_STATIC_LIBRARY" = true ] ; then
-                    if   "$NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
-                        abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
-                    elif "$NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
-                        STL=c++_shared
-                    fi
-                else
-                    if "$READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
-                        STL=c++_shared
-                    elif "$NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
-                        # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
-                        # https://developer.android.com/ndk/guides/cpp-support
-                        abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
-                    fi
+            else
+                if "$ANDROID_NDK_TOOL_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
+                    STL=c++_shared
+                elif "$ANDROID_NDK_TOOL_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                    # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
+                    # https://developer.android.com/ndk/guides/cpp-support
+                    abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
                 fi
+            fi
 
-                printf '%s\n' "{\"api\": $INSTALLED_PACKAGE_SDK_API,\"ndk\": $BUILD_USE_TOOLCHAIN_VERS_MAJOR,\"abi\": \"$TARGET_ABI\",\"stl\": \"$STL\",\"static\":$IS_STATIC_LIBRARY}" > "$ABI_DIR/abi.json"
-            done
+            printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "$RECEIPT_NDK_VERSION_MAJOR" "$ANDROID_API" "$ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
         done
     else
-        # header only
-        MODULE_DIR="prefab/modules/$INSTALLED_PACKAGE_NAME"
+        # headers only
+        MODULE_DIR="prefab/modules/$PACKAGE_NAME"
         run install -d "$MODULE_DIR"
         run cp -r "$PACKAGE_INSTALLED_DIR/armeabi-v7a/include" "$MODULE_DIR"
     fi
-
-    if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
-        PACKED_FILE_NAME="$INSTALLED_PACKAGE_NAME-$INSTALLED_TIMESTAMP_UNIX.aar"
-    else
-        PACKED_FILE_NAME="$INSTALLED_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION.aar"
-    fi
-
-    if command -v tree > /dev/null ; then
-        step "tree $PWD"
-        run tree --dirsfirst
-    fi
-
-    step "packing"
-    run zip -9 -r "$PACKED_FILE_NAME" .
-
-    step "check integrity of packed file"
-    run unzip -t "$PACKED_FILE_NAME"
-
-    step "show size of packed file"
-    run du -sh $PACKED_FILE_NAME
 }
 
-# __deploy_prefab_aar_for_the_given_installed_package <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <mavenLocal|mavenRemote> [-d] [-x]
-  __deploy_prefab_aar_for_the_given_installed_package() {
+# __deploy_prefab_aar_to_maven_local_repository_for_the_given_installed_package <PACKAGE-NAME> [--api=<VALUE>] [--abi=<VALUE>] [--debug] [--keep-working-dir]
+  __deploy_prefab_aar_to_maven_local_repository_for_the_given_installed_package() {
     [ -z "$1" ] && {
-        error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TO-WHERE>, <PACKAGE-NAME> is not given."
+        error "$_0 deploy <PACKAGE-NAME> [OPTIONS] , <PACKAGE-NAME> is unspecified."
         return 1
     }
 
-    [ -z "$2" ] && {
-        error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TO-WHERE>, <MIN-SDK-API-LEVEL> is not given."
-        return 1
-    }
+    PACKAGE_NAME="$1"
 
-    is_integer "$2" || {
-        error "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TO-WHERE>, <MIN-SDK-API-LEVEL> must be a integer."
-        return 1
-    }
+    shift
 
-    PACKAGE_SPEC=
-    PACKAGE_SPEC="$(inspect_package_spec "$1")"
+    unset ANDROID_API
 
-    is_package_installed "$1" "$2" || {
-        error "package '$1' is not installed."
-        return 1
-    }
-
-    case $3 in
-        mavenLocal|mavenRemote)
-            ;;
-        *)  abort 1 "$_0 deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> <TO-WHERE>, <TO-WHERE> shall be mavenLocal or mavenRemote"
-    esac
+    unset ANDROID_ABIS
 
     unset MVN_OPTIONS
 
-    for option in $(shiftn 3 $@)
+    unset KEEP_WORKING_DIR
+
+    for arg in "$@"
     do
-        case $option in
-            -d|--debug)
+        case $arg in
+            --keep-working-dir)
+                KEEP_WORKING_DIR=yes
+                ;;
+            --api=*)
+                ANDROID_API="${arg#'--api='}"
+
+                [ -z "$ANDROID_API" ] && {
+                    error "$_0 deploy <PACKAGE-NAME> [--api=<VALUE>] , <VALUE> is unspecified."
+                    return 1
+                }
+
+                is_integer "$ANDROID_API" || {
+                    error "$_0 deploy <PACKAGE-NAME> [--api=<VALUE>] , <VALUE> must be a integer."
+                    return 1
+                }
+
+                ;;
+            --abi=*)
+                ANDROID_ABI="${arg#'--abi='}"
+
+                [ -z "$ANDROID_ABI" ] && {
+                    error "$_0 deploy <PACKAGE-NAME> [--abi=<VALUE>] , <VALUE> is unspecified."
+                    return 1
+                }
+
+                if [ -z "$ANDROID_ABIS" ] ; then
+                    ANDROID_ABIS="$ANDROID_ABI"
+                else
+                    ANDROID_ABIS="$ANDROID_ABIS $ANDROID_ABI"
+                fi
+
+                ;;
+            --debug)
                 MVN_OPTIONS=-X
                 ;;
-            *)  abort 1 "unrecognized option: $option"
+            *)  warn "unrecognized argument: $arg"
         esac
     done
 
-    __create_prefab_aar_for_the_given_installed_package $@
+    [ -z "$ANDROID_API" ] && {
+        case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
+            '') ANDROID_API=21
+                ;;
+            android-[1-9][0-9]/armeabi-v7a)
+                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                ;;
+            android-[1-9][0-9]/arm64-v8a)
+                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                ;;
+            android-[1-9][0-9]/x86)
+                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                ;;
+            android-[1-9][0-9]/x86_64)
+                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                ;;
+            *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
+        esac
+    }
 
-    uppm install maven
+    [ -z "$ANDROID_ABIS" ] && {
+        case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
+            '') ANDROID_ABIS='arm64-v8a'
+                ;;
+            android-[1-9][0-9]/armeabi-v7a)
+                ANDROID_ABIS='armeabi-v7a'
+                ;;
+            android-[1-9][0-9]/arm64-v8a)
+                ANDROID_ABIS='arm64-v8a'
+                ;;
+            android-[1-9][0-9]/x86)
+                ANDROID_ABIS='x86'
+                ;;
+            android-[1-9][0-9]/x86_64)
+                ANDROID_ABIS='x86_64'
+                ;;
+            *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
+        esac
+    }
 
-    if [ "$3" = mavenLocal ] ; then
-        # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
-        step "deploying to maven local repository"
-        run ~/.uppm/installed/maven/bin/mvn \
-            $MVN_OPTIONS \
-            install:install-file \
-            -Dfile=$PACKED_FILE_NAME \
-            -DgroupId=com.fpliu.ndk.pkg.prefab.android.$INSTALLED_PACKAGE_SDK_API \
-            -DartifactId=$INSTALLED_PACKAGE_NAME \
-            -Dversion=$RECEIPT_PACKAGE_VERSION \
-            -Dpackaging=aar
-        return $?
+    #########################################################################################
+
+    step "create the working directory"
+    WORKING_DIR="$(mktemp -d)"
+
+    step "cd  to the working directory"
+    run cd $WORKING_DIR
+
+    for ANDROID_ABI in $ANDROID_ABIS
+    do
+        __create_prefab_for_the_given_installed_package "android-$ANDROID_API/$ANDROID_ABI/$PACKAGE_NAME" prefab
+    done
+
+    #########################################################################################
+
+    # https://developer.android.com/studio/projects/android-library#aar-contents
+    step "create META-INF"
+    run install -d META-INF
+    cat > META-INF/README.ndk-pkg <<EOF
+packed by ndk-pkg-$NDKPKG_VERSION in $(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S') UTC
+
+For more details, please refer to https://github.com/leleliu008/ndk-pkg
+EOF
+    run cp "$PACKAGE_INSTALLED_DIR/.ndk-pkg"/* META-INF/
+
+    #########################################################################################
+
+    unset JAVA_PACKAGE_NAME
+
+    # java package name characters [a-z0-9_.]
+    JAVA_PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_NAME" | tr '+-.' '_' | tr A-Z a-z)"
+
+    step "create AndroidManifest.xml"
+    cat > AndroidManifest.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.fpliu.ndk.pkg.prefab.android$ANDROID_API.$JAVA_PACKAGE_NAME"
+    android:versionCode="$TIMESTAMP_UNIX"
+    android:versionName="$RECEIPT_PACKAGE_VERSION" >
+
+    <uses-sdk
+        android:minSdkVersion="$ANDROID_API"
+        android:targetSdkVersion="33" />
+
+</manifest>
+EOF
+
+    #########################################################################################
+
+    if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
+        PACKED_FILE_NAME="$PACKAGE_NAME-$PACKAGE_RECEIPT_TIMESTAMP.aar"
+    else
+        PACKED_FILE_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION.aar"
     fi
+
+    step "packing the prefab aar file"
+    run zip -9 -r "$PACKED_FILE_NAME" .
+
+    step "check integrity of the prefab aar file"
+    run unzip -t  "$PACKED_FILE_NAME"
+
+    step "show size of the prefab aar file"
+    run du -sh    "$PACKED_FILE_NAME"
+
+    #########################################################################################
+
+    #uppm install maven
+
+    # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
+    step "deploying the prefab aar to maven local repository"
+    run mvn \
+        $MVN_OPTIONS \
+        install:install-file \
+        -Dfile=$PACKED_FILE_NAME \
+        -DgroupId=com.fpliu.ndk.pkg.prefab.android.$ANDROID_API \
+        -DartifactId=$PACKAGE_NAME \
+        -Dversion=$RECEIPT_PACKAGE_VERSION \
+        -Dpackaging=aar
+
+    if [ "$KEEP_WORKING_DIR" = yes ] ; then
+        printf '\n'
+        note "the working dir '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
+    else
+        step "delete the working directory"
+        run rm -rf "$WORKING_DIR"
+    fi
+}
+
+# __deploy_prefab_aar_to_maven_remote_repository_for_the_given_installed_package <PACKAGE-NAME> [--api <VALUE>] [--abi <VALUE>] [--debug]
+  __deploy_prefab_aar_to_maven_remote_repository_for_the_given_installed_package() {
+    [ -z "$1" ] && {
+        error "$_0 deploy <PACKAGE-NAME> [OPTIONS] , <PACKAGE-NAME> is unspecified."
+        return 1
+    }
+
+    PACKAGE_NAME="$1"
+
+    shift
+
+    unset ANDROID_API
+
+    unset ANDROID_ABIS
+
+    unset MVN_OPTIONS
+
+    unset KEEP_WORKING_DIR
+
+    for arg in "$@"
+    do
+        case $arg in
+            --keep-working-dir)
+                KEEP_WORKING_DIR=yes
+                ;;
+            --api=*)
+                ANDROID_API="${arg#'--api='}"
+
+                [ -z "$ANDROID_API" ] && {
+                    error "$_0 deploy <PACKAGE-NAME> [--api=<VALUE>] , <VALUE> is unspecified."
+                    return 1
+                }
+
+                is_integer "$ANDROID_API" || {
+                    error "$_0 deploy <PACKAGE-NAME> [--api=<VALUE>] , <VALUE> must be a integer."
+                    return 1
+                }
+
+                ;;
+            --abi=*)
+                ANDROID_ABI="${arg#'--abi='}"
+
+                [ -z "$ANDROID_ABI" ] && {
+                    error "$_0 deploy <PACKAGE-NAME> [--abi=<VALUE>] , <VALUE> is unspecified."
+                    return 1
+                }
+
+                if [ -z "$ANDROID_ABIS" ] ; then
+                    ANDROID_ABIS="$ANDROID_ABI"
+                else
+                    ANDROID_ABIS="$ANDROID_ABIS $ANDROID_ABI"
+                fi
+
+                ;;
+            --debug)
+                MVN_OPTIONS=-X
+                ;;
+            *)  abort 1 "unrecognized argument: $arg"
+        esac
+    done
+
+    [ -z "$ANDROID_API" ] && {
+        case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
+            '') ANDROID_API=21
+                ;;
+            android-[1-9][0-9]/armeabi-v7a)
+                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                ;;
+            android-[1-9][0-9]/arm64-v8a)
+                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                ;;
+            android-[1-9][0-9]/x86)
+                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                ;;
+            android-[1-9][0-9]/x86_64)
+                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                ;;
+            *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
+        esac
+    }
+
+    [ -z "$ANDROID_ABIS" ] && {
+        case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
+            '') ANDROID_ABIS='arm64-v8a'
+                ;;
+            android-[1-9][0-9]/armeabi-v7a)
+                ANDROID_ABIS='armeabi-v7a'
+                ;;
+            android-[1-9][0-9]/arm64-v8a)
+                ANDROID_ABIS='arm64-v8a'
+                ;;
+            android-[1-9][0-9]/x86)
+                ANDROID_ABIS='x86'
+                ;;
+            android-[1-9][0-9]/x86_64)
+                ANDROID_ABIS='x86_64'
+                ;;
+            *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
+        esac
+    }
+
+    #########################################################################################
+
+    step "create the working directory"
+    WORKING_DIR="$(mktemp -d)"
+
+    step "cd  to the working directory"
+    run cd $WORKING_DIR
+
+    for ANDROID_ABI in $ANDROID_ABIS
+    do
+        __create_prefab_for_the_given_installed_package "android-$ANDROID_API/$ANDROID_ABI/$PACKAGE_NAME" prefab
+    done
+
+    #########################################################################################
+
+    # https://developer.android.com/studio/projects/android-library#aar-contents
+    step "create META-INF"
+    run install -d META-INF
+    cat > META-INF/README.ndk-pkg <<EOF
+packed by ndk-pkg-$NDKPKG_VERSION in $(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S') UTC
+
+For more details, please refer to https://github.com/leleliu008/ndk-pkg
+EOF
+    run cp "$PACKAGE_INSTALLED_DIR/.ndk-pkg"/* META-INF/
+
+    #########################################################################################
+
+    unset JAVA_PACKAGE_NAME
+
+    # java package name characters [a-z0-9_.]
+    JAVA_PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_NAME" | tr '+-.' '_' | tr A-Z a-z)"
+
+    step "create AndroidManifest.xml"
+    cat > AndroidManifest.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.fpliu.ndk.pkg.prefab.android$ANDROID_API.$JAVA_PACKAGE_NAME"
+    android:versionCode="$TIMESTAMP_UNIX"
+    android:versionName="$RECEIPT_PACKAGE_VERSION" >
+
+    <uses-sdk
+        android:minSdkVersion="$ANDROID_API"
+        android:targetSdkVersion="33" />
+
+</manifest>
+EOF
+
+    #########################################################################################
+
+    if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
+        PACKED_FILE_NAME="$PACKAGE_NAME-$PACKAGE_RECEIPT_TIMESTAMP.aar"
+    else
+        PACKED_FILE_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION.aar"
+    fi
+
+    step "packing the prefab aar file"
+    run zip -9 -r "$PACKED_FILE_NAME" .
+
+    step "check integrity of the prefab aar file"
+    run unzip -t  "$PACKED_FILE_NAME"
+
+    step "show size of the prefab aar file"
+    run du -sh    "$PACKED_FILE_NAME"
+
+    #########################################################################################
 
     unset SERVER_ID
     unset SERVER_URL
@@ -2774,8 +2995,8 @@ EOF
         esac
     done
 
-    [ -z "$SERVER_ID" ] && abort 1 "SERVER_ID must not be enpty."
-    [ -z "$SERVER_URL" ] && abort 1 "SERVER_URL must not be enpty."
+    [ -z "$SERVER_ID" ]       && abort 1 "SERVER_ID must not be enpty."
+    [ -z "$SERVER_URL" ]      && abort 1 "SERVER_URL must not be enpty."
     [ -z "$SERVER_USERNAME" ] && abort 1 "SERVER_USERNAME must not be enpty."
     [ -z "$SERVER_PASSWORD" ] && abort 1 "SERVER_PASSWORD must not be enpty."
     [ -z "$GPG_PASSPHRASE"  ] && abort 1 "GPG_PASSPHRASE must not be enpty."
@@ -2934,7 +3155,7 @@ EOF
 </settings>
 EOF
 
-    uppm install maven
+    #uppm install maven
 
     # here I can use maven-deploy-plugin and maven-gpg-plugin
     # maven-gpg-plugin is prefered as it is automatically signed with gpg.
@@ -2944,7 +3165,7 @@ EOF
     # https://maven.apache.org/resolver/configuration.html
 
     step "deploying"
-    run ~/.uppm/installed/maven/bin/mvn \
+    run mvn \
         --settings settings.xml \
         $MVN_OPTIONS \
         gpg:sign-and-deploy-file \
@@ -2954,6 +3175,14 @@ EOF
         -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 \
         -DrepositoryId=$SERVER_ID \
         -Durl=$SERVER_URL
+
+    if [ "$KEEP_WORKING_DIR" = yes ] ; then
+        printf '\n'
+        note "the working dir '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
+    else
+        step "delete the working directory"
+        run rm -rf "$WORKING_DIR"
+    fi
 }
 
 # }}}
@@ -3703,22 +3932,22 @@ __upgrade_packages() {
     [ -z "$1" ] && abort 1 "neither package-name nor package-spec is specified."
 
     if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-._]{1,50}$' ; then
-        if [ -z "$NDKPKG_DEFAULT_TARGET_OS_SPEC" ] ; then
+        if [ -z "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" ] ; then
             PACKAGE_SPEC="android-21/arm64-v8a/$1"
         else
-            case $NDKPKG_DEFAULT_TARGET_OS_SPEC in
+            case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
                 android-[1-9][0-9]/*)
-                    TARGET_OS_VERS="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_OS_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-                    TARGET_OS_ABI="$( printf '%s\n' "$NDKPKG_DEFAULT_TARGET_OS_SPEC" | cut -d/ -f2)"
+                    TARGET_OS_VERS="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                    TARGET_OS_ABI="$( printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f2)"
 
                     case $TARGET_OS_ABI in
                         armeabi-v7a|arm64-v8a|x86|x86_64) ;;
-                        *)  abort 1 "you have set NDKPKG_DEFAULT_TARGET_OS_SPEC=$NDKPKG_DEFAULT_TARGET_OS_SPEC , but it is an invalid target spec. unrecognized abi: $TARGET_OS_ABI"
+                        *)  abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec. unrecognized abi: $TARGET_OS_ABI"
                     esac
 
-                    PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_OS_SPEC/$1"
+                    PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
                     ;;
-                *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_OS_SPEC=$NDKPKG_DEFAULT_TARGET_OS_SPEC , but it is an invalid package spec."
+                *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
             esac
         fi
 
@@ -8005,13 +8234,21 @@ ${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
     pack the given installed package.
 
-${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> mavenLocal  [-d] [-x]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg deploy-maven-local <PACKAGE-NAME> [--api=<VALUE>] [--abi=<VALUE>] [--debug] [--keep-working-dir]${COLOR_OFF}
     pack the given installed package as prefab aar and then deploy it to maven local repository.
 
-${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME> <MIN-SDK-API-LEVEL> mavenRemote [-d] [-x] < CONFIG-FILE${COLOR_OFF}
+    ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option can be specified multiple times.
+
+    If ${COLOR_RED}--api=<VALUE>${COLOR_OFF} or ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option is unspecifed, ${COLOR_RED}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF} environment variable will be checked, if this environment variable is not set, ${COLOR_RED}android-21/arm64-v8a${COLOR_OFF} will be used as the default value.
+
+${COLOR_GREEN}ndk-pkg deploy-maven-remote <PACKAGE-NAME> [--abi=<VALUE>] [--abi=<VALUE>] [--debug] [--keep-working-dir] < REMOTE-CONFIG-FILE${COLOR_OFF}
     pack the given installed package as prefab aar and then deploy it to maven remote repository.
 
-    CONFIG-FILE contains following content:
+    ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option can be specified multiple times.
+
+    If ${COLOR_RED}--api=<VALUE>${COLOR_OFF} or ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option is unspecifed, ${COLOR_RED}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF} environment variable will be checked, if this environment variable is not set, ${COLOR_RED}android-21/arm64-v8a${COLOR_OFF} will be used as the default value.
+
+    REMOTE-CONFIG-FILE contains following content:
 
     SERVER_ID=
     SERVER_URL=
@@ -8302,7 +8539,8 @@ EOF
         depends)  shift; __show_packages_depended_by_the_given_package "$@" ;;
         fetch)    shift;        __fetch_resources_of_the_given_package "$@" ;;
 
-        deploy)   shift; __deploy_prefab_aar_for_the_given_installed_package "$@" ;;
+        deploy-maven-local)   shift; __deploy_prefab_aar_to_maven_local_repository_for_the_given_installed_package "$@" ;;
+        deploy-maven-remote)  shift; __deploy_prefab_aar_to_maven_remote_repository_for_the_given_installed_package "$@" ;;
 
         logs) shift; __logs_the_given_installed_package "$@" ;;
         pack) shift; __pack_the_given_installed_package "$@" ;;
