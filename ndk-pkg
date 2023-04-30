@@ -1464,7 +1464,7 @@ filetype_from_url() {
     }
 
     cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
-ndkvers: $ANDROID_NDK_VERS
+ndkvers: $ANDROID_NDK_VERSION
 build-on:
     os-arch: $NATIVE_OS_ARCH
     os-kind: $NATIVE_OS_KIND
@@ -2328,6 +2328,36 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
+    OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=no
+
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALLED_DIR" && find -not -name . -type f -exec base64-encode '{}' \;)"
+
+    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
+    do
+        BASE64_DECODED_RELATIVE_FILEPATH=
+        BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+
+        FILEPATH="$PACKAGE_INSTALLED_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+
+        FILEMAGIC=
+        FILEMAGIC="$(head -c 4 "$FILEPATH" | base16-encode)"
+
+        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+        if [ "$FILEMAGIC" = '7F454C46' ] ; then
+            OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
+            break
+        elif basename "$FILEPATH" | grep -q '^lib.*\.a$' ; then
+            OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
+            break
+        elif basename "$FILEPATH" | grep -q '^lib.*\.so' ; then
+            OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
+            break
+        fi
+    done
+
+    ###########################################################################################
+
     case $ANDROID_ABI in
         armeabi-v7a) ANDROID_ARCH='armv7a'  ;;
         arm64-v8a)   ANDROID_ARCH='aarch64' ;;
@@ -2335,7 +2365,11 @@ __fetch_resources_of_the_given_package() {
         x86_64)      ANDROID_ARCH='x86_64'  ;;
     esac
 
-    PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android$ANDROID_API-$ANDROID_ARCH"
+    if [ "$OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL" = yes ] ; then
+        PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android$ANDROID_API-$ANDROID_ARCH"
+    else
+        PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$ANDROID_ARCH"
+    fi
 
     ###########################################################################################
 
@@ -2594,15 +2628,15 @@ EOF
 
             # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
             if [ "$IS_STATIC_LIBRARY" = true ] ; then
-                if   "$ANDROID_NDK_TOOL_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                if   "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
                     abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
-                elif "$ANDROID_NDK_TOOL_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
+                elif "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
                     STL=c++_shared
                 fi
             else
-                if "$ANDROID_NDK_TOOL_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
+                if "$ANDROID_NDK_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
                     STL=c++_shared
-                elif "$ANDROID_NDK_TOOL_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                elif "$ANDROID_NDK_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
                     # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
                     # https://developer.android.com/ndk/guides/cpp-support
                     abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
@@ -4349,11 +4383,11 @@ __install_the_given_package() {
     case $TARGET_OS_ARCH in
         i686|armv7a)
             TARGET_OS_NBIT=32
-            DYNAMIC_LINKER_PATH='/system/bin/linker'
+            ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker'
             ;;
         x86_64|aarch64)
             TARGET_OS_NBIT=64
-            DYNAMIC_LINKER_PATH='/system/bin/linker64'
+            ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker64'
             ;;
     esac
 
@@ -4389,12 +4423,12 @@ __install_the_given_package() {
     fi
 
     if [ "$PACKAGE_INSTALL_STATICALLY_LINKED_EXECUTABLE" = yes ] ; then
-        TARGET_OS_VERS="$ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_MAX"
+        TARGET_OS_VERS="$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL"
         TARGET_OS_SPEC="android-$TARGET_OS_VERS/$TARGET_OS_ABI"
     fi
 
     if [ -z "$PACKAGE_SDK_API" ] ; then
-        PACKAGE_SDK_API="$ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_MIN"
+        PACKAGE_SDK_API="$ANDROID_NDK_SUPPORTED_MIN_SDK_API_LEVEL"
     fi
 
     printf '%s\n' "
@@ -5541,17 +5575,17 @@ $PACKAGE_BUILD0_ACTIONS
     export      CC="${ANDROID_NDK_TOOLCHAIN_BIND}/${TARGET_TRIPLE}${TARGET_OS_VERS}-clang"
     export     CXX="${ANDROID_NDK_TOOLCHAIN_BIND}/${TARGET_TRIPLE}${TARGET_OS_VERS}-clang++"
     export     CPP="$CC -E"
-    export      LD="$ANDROID_NDK_TOOL_LD"
-    export      AS="$ANDROID_NDK_TOOL_AS"
-    export      AR="$ANDROID_NDK_TOOL_AR"
-    export      NM="$ANDROID_NDK_TOOL_NM"
-    export    SIZE="$ANDROID_NDK_TOOL_SIZE"
-    export   STRIP="$ANDROID_NDK_TOOL_STRIP"
-    export  RANLIB="$ANDROID_NDK_TOOL_RANLIB"
-    export STRINGS="$ANDROID_NDK_TOOL_STRINGS"
-    export OBJDUMP="$ANDROID_NDK_TOOL_OBJDUMP"
-    export OBJCOPY="$ANDROID_NDK_TOOL_OBJCOPY"
-    export READELF="$ANDROID_NDK_TOOL_READELF"
+    export      LD="$ANDROID_NDK_LD"
+    export      AS="$ANDROID_NDK_AS"
+    export      AR="$ANDROID_NDK_AR"
+    export      NM="$ANDROID_NDK_NM"
+    export    SIZE="$ANDROID_NDK_SIZE"
+    export   STRIP="$ANDROID_NDK_STRIP"
+    export  RANLIB="$ANDROID_NDK_RANLIB"
+    export STRINGS="$ANDROID_NDK_STRINGS"
+    export OBJDUMP="$ANDROID_NDK_OBJDUMP"
+    export OBJCOPY="$ANDROID_NDK_OBJCOPY"
+    export READELF="$ANDROID_NDK_READELF"
     export SYSROOT="$ANDROID_NDK_SYSROOT"
 
     for TOOL in CC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT
@@ -6350,7 +6384,7 @@ EOF
     run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/libpthread.a'"
     run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/librt.a'"
 
-    if [ "$ANDROID_NDK_VERS_MAJOR" -ge 23 ] ; then
+    if [ "$ANDROID_NDK_VERSION_MAJOR" -ge 23 ] ; then
         # https://github.com/rust-windowing/android-ndk-rs/issues/149
         if [ "$TARGET_OS_ARCH" = 'x86_64' ] ; then
             LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
@@ -6906,67 +6940,62 @@ EOF
 }
 
 __adjust_elf_files_for_the_given_target() {
-    for x in bin sbin lib
-    do
-        if [ -d "$PACKAGE_INSTALL_DIR/$x" ] ; then
-            for y in $(ls "$PACKAGE_INSTALL_DIR/$x")
-            do
-                FILEPATH="$PACKAGE_INSTALL_DIR/$x/$y"
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
+    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find -not -name . -type f -exec base64-encode '{}' \;)"
 
-                if [ -d "$FILEPATH" ] ; then
-                    continue
+    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
+    do
+        BASE64_DECODED_RELATIVE_FILEPATH=
+        BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
+
+        FILEPATH="$PACKAGE_INSTALL_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
+
+        [ -w "$FILEPATH" ] || continue
+
+        FILE_HEADER_EXPACT=
+        FILE_HEADER_ACTUAL=
+        FILE_HEADER_ACTUAL="$(head -c 20 "$FILEPATH" | base16-encode)"
+
+        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+        case $FILE_HEADER_ACTUAL in
+            7F454C46*)
+                ELF_TYPE=
+                ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
+
+                case $TARGET_OS_ABI in
+                    armeabi-v7a) FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}002800" ;;
+                    arm64-v8a)   FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}00B700" ;;
+                    x86)         FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}000300" ;;
+                    x86_64)      FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}003E00" ;;
+                esac
+
+                if [ "$FILE_HEADER_EXPACT" != "$FILE_HEADER_ACTUAL" ] ; then
+                    abort 1 "ELF file header mismatch: $FILEPATH\n    expect : $FILE_HEADER_EXPACT\n    actual : $FILE_HEADER_ACTUAL"
                 fi
 
-                unset FILE_HEADER_EXPACT
-                unset FILE_HEADER_ACTUAL
+                PT_INTERP=
+                PT_INTERP="$(patchelf --print-interpreter "$FILEPATH")"
 
-                FILE_HEADER_ACTUAL="$(head -c 20 "$FILEPATH" | base16-encode)"
+                if [ -n  "$PT_INTERP" ] ; then
+                    if [ "$PT_INTERP" != "$ANDROID_DYNAMIC_LINKER_PATH" ] ; then
+                        abort 1 "ELF file PT_INTERP mismatch: $FILEPATH\n    expect : $ANDROID_DYNAMIC_LINKER_PATH\n    actual : $PT_INTERP"
+                    fi
+                fi
 
-                # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                case $FILE_HEADER_ACTUAL in
-                    7F454C46*)
-                        unset ELF_TYPE
+                if basename "$FILEPATH" | grep -q '^lib.*\.so' ; then
+                    :
+                else
+                    # https://source.android.com/security/enhancements/enhancements50
+                    # Android 5.0 and later only support position-independent executables (-fPIE)
+                    if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
+                        abort 1 "invalid ELF file: $FILEPATH. Android 5.0 and later requires dynamically linked executable to support PIE (position-independent executables)."
+                    fi
 
-                        case $y in
-                            *.o)    ELF_TYPE=01 ;;
-                            *.so*)  ELF_TYPE=03 ;;
-                            *)      ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
-                        esac
-
-                        case $TARGET_OS_ABI in
-                            armeabi-v7a) FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}002800" ;;
-                            arm64-v8a)   FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}00B700" ;;
-                            x86)         FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}000300" ;;
-                            x86_64)      FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}003E00" ;;
-                        esac
-
-                        if [ "$FILE_HEADER_EXPACT" != "$FILE_HEADER_ACTUAL" ] ; then
-                            abort 1 "ELF file header mismatch: $FILEPATH\n    expect : $FILE_HEADER_EXPACT\n    actual : $FILE_HEADER_ACTUAL"
-                        fi
-
-                        if [ "$x" = bin ] || [ "$x" = sbin ] ; then
-                            if [ "$ELF_TYPE" = 03 ] ; then
-                                # https://source.android.com/security/enhancements/enhancements50
-                                # Android 5.0 and later only support position-independent executables (-fPIE)
-                                if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
-                                    abort 1 "invalid elf file: $FILEPATH. It is not Position Independent Executable."
-                                fi
-
-                                unset PT_INTERP
-                                PT_INTERP="$(patchelf --print-interpreter "$FILEPATH")"
-
-                                if [ -n "$PT_INTERP" ] && [ "$PT_INTERP" != "$DYNAMIC_LINKER_PATH" ] ; then
-                                    abort 1 "ELF file PT_INTERP mismatch: $FILEPATH\n    expect : $DYNAMIC_LINKER_PATH\n    actual : $PT_INTERP"
-                                fi
-                            fi
-                        fi
-
-                        if [ "$BUILD_TYPE" = release ] ; then
-                            run "$STRIP" $STRIP_ARG "$FILEPATH" || true
-                        fi
-                esac
-            done
-        fi
+                    if [ "$BUILD_TYPE" = release ] ; then
+                        run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                    fi
+                fi
+        esac
     done
 }
 
@@ -6976,7 +7005,7 @@ __adjust_la_files_for_the_given_target() {
         return 0
     }
 
-    LA_FILES="$(find "$PACKAGE_INSTALL_DIR/lib" -name "*.la")"
+    LA_FILES="$(find "$PACKAGE_INSTALL_DIR/lib" -name '*.la')"
 
     [ -z "$LA_FILES" ] && {
         note "no .la files installed, skipped"
@@ -7844,16 +7873,16 @@ ndk_info() {
     [ -e "$ANDROID_CMAKE_TOOLCHAIN_FILE" ] || abort 1 "'$ANDROID_CMAKE_TOOLCHAIN_FILE' was expected to be exist, but it was not."
     [ -f "$ANDROID_CMAKE_TOOLCHAIN_FILE" ] || abort 1 "'$ANDROID_CMAKE_TOOLCHAIN_FILE' was expected to be a regular file, but it was not."
 
-    ANDROID_NDK_VERS=
-    ANDROID_NDK_VERS_MAJOR=
+    ANDROID_NDK_VERSION=
+    ANDROID_NDK_VERSION_MAJOR=
 
-    ANDROID_NDK_VERS="$(sed -n '/Pkg.Revision/p' "$NDK_SOURCE_PROPERTIES_FILEPATH" | sed  's/Pkg\.Revision = \(.*\).*/\1/')"
+    ANDROID_NDK_VERSION="$(sed -n '/Pkg.Revision/p' "$NDK_SOURCE_PROPERTIES_FILEPATH" | sed  's/Pkg\.Revision = \(.*\).*/\1/')"
 
-    if [ -z "$ANDROID_NDK_VERS" ] ; then
+    if [ -z "$ANDROID_NDK_VERSION" ] ; then
         abort 1 "no Pkg.Revision property in $NDK_SOURCE_PROPERTIES_FILEPATH"
     fi
 
-    ANDROID_NDK_VERS_MAJOR="$(printf '%s\n' "$ANDROID_NDK_VERS" | cut -d. -f1)"
+    ANDROID_NDK_VERSION_MAJOR="$(printf '%s\n' "$ANDROID_NDK_VERSION" | cut -d. -f1)"
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
@@ -7878,70 +7907,70 @@ ndk_info() {
 
     #########################################################################################
 
-    ANDROID_NDK_TOOL_CC="$ANDROID_NDK_TOOLCHAIN_BIND/clang"
-    ANDROID_NDK_TOOL_CXX="$ANDROID_NDK_TOOLCHAIN_BIND/clang++"
-    ANDROID_NDK_TOOL_CPP="$ANDROID_NDK_TOOL_CC -E"
+    ANDROID_NDK_CC="$ANDROID_NDK_TOOLCHAIN_BIND/clang"
+    ANDROID_NDK_CXX="$ANDROID_NDK_TOOLCHAIN_BIND/clang++"
+    ANDROID_NDK_CPP="$ANDROID_NDK_CC -E"
 
     # https://github.com/android/ndk/wiki/Changelog-r22
     # https://github.com/android/ndk/wiki/Changelog-r23
-    if [ "$ANDROID_NDK_VERS_MAJOR" -ge 22 ] ; then
-        ANDROID_NDK_TOOL_LD="$ANDROID_NDK_TOOLCHAIN_BIND/ld.lld"
-        ANDROID_NDK_TOOL_AS="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-as"
-        ANDROID_NDK_TOOL_AR="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-ar"
-        ANDROID_NDK_TOOL_NM="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-nm"
-        ANDROID_NDK_TOOL_SIZE="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-size"
-        ANDROID_NDK_TOOL_STRIP="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-strip"
-        ANDROID_NDK_TOOL_RANLIB="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-ranlib"
-        ANDROID_NDK_TOOL_STRINGS="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-strings"
-        ANDROID_NDK_TOOL_OBJDUMP="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-objdump"
-        ANDROID_NDK_TOOL_OBJCOPY="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-objcopy"
-        ANDROID_NDK_TOOL_READELF="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-readelf"
+    if [ "$ANDROID_NDK_VERSION_MAJOR" -ge 22 ] ; then
+        ANDROID_NDK_LD="$ANDROID_NDK_TOOLCHAIN_BIND/ld.lld"
+        ANDROID_NDK_AS="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-as"
+        ANDROID_NDK_AR="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-ar"
+        ANDROID_NDK_NM="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-nm"
+        ANDROID_NDK_SIZE="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-size"
+        ANDROID_NDK_STRIP="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-strip"
+        ANDROID_NDK_RANLIB="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-ranlib"
+        ANDROID_NDK_STRINGS="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-strings"
+        ANDROID_NDK_OBJDUMP="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-objdump"
+        ANDROID_NDK_OBJCOPY="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-objcopy"
+        ANDROID_NDK_READELF="$ANDROID_NDK_TOOLCHAIN_BIND/llvm-readelf"
     else
-        ANDROID_NDK_TOOL_LD="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-ld"
-        ANDROID_NDK_TOOL_AS="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-as"
-        ANDROID_NDK_TOOL_AR="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-ar"
-        ANDROID_NDK_TOOL_NM="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-nm"
-        ANDROID_NDK_TOOL_SIZE="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-size"
-        ANDROID_NDK_TOOL_STRIP="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-strip"
-        ANDROID_NDK_TOOL_RANLIB="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-ranlib"
-        ANDROID_NDK_TOOL_STRINGS="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-strings"
-        ANDROID_NDK_TOOL_OBJDUMP="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-objdump"
-        ANDROID_NDK_TOOL_OBJCOPY="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-objcopy"
-        ANDROID_NDK_TOOL_READELF="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-readelf"
+        ANDROID_NDK_LD="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-ld"
+        ANDROID_NDK_AS="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-as"
+        ANDROID_NDK_AR="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-ar"
+        ANDROID_NDK_NM="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-nm"
+        ANDROID_NDK_SIZE="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-size"
+        ANDROID_NDK_STRIP="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-strip"
+        ANDROID_NDK_RANLIB="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-ranlib"
+        ANDROID_NDK_STRINGS="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-strings"
+        ANDROID_NDK_OBJDUMP="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-objdump"
+        ANDROID_NDK_OBJCOPY="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-objcopy"
+        ANDROID_NDK_READELF="$ANDROID_NDK_TOOLCHAIN_BIND/aarch64-linux-android-readelf"
     fi
 
     #########################################################################################
 
     ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_ALL="$(ls "$ANDROID_NDK_TOOLCHAIN_BIND" | sed -n '/aarch64-linux-android[1-9][0-9]-clang++/p' | cut -d- -f3 | sed 's/android//')"
-    ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_MIN="$(printf '%s\n' "$ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_ALL" | sort | head -n 1)"
-    ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_MAX="$(printf '%s\n' "$ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_ALL" | sort | tail -n 1)"
+    ANDROID_NDK_SUPPORTED_MIN_SDK_API_LEVEL="$(printf '%s\n' "$ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_ALL" | sort | head -n 1)"
+    ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL="$(printf '%s\n' "$ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_ALL" | sort | tail -n 1)"
 
     #########################################################################################
 
     cat <<EOF
 ANDROID_NDK_HOME='$1'
 ANDROID_NDK_ROOT='$1'
-ANDROID_NDK_VERS='$ANDROID_NDK_VERS'
-ANDROID_NDK_VERS_MAJOR='$ANDROID_NDK_VERS_MAJOR'
+ANDROID_NDK_VERSION='$ANDROID_NDK_VERSION'
+ANDROID_NDK_VERSION_MAJOR='$ANDROID_NDK_VERSION_MAJOR'
 ANDROID_NDK_TOOLCHAIN_ROOT='$ANDROID_NDK_TOOLCHAIN_ROOT'
 ANDROID_NDK_TOOLCHAIN_BIND='$ANDROID_NDK_TOOLCHAIN_BIND'
 ANDROID_NDK_SYSROOT='$ANDROID_NDK_SYSROOT'
-ANDROID_NDK_TOOL_CC='$ANDROID_NDK_TOOL_CC'
-ANDROID_NDK_TOOL_CXX='$ANDROID_NDK_TOOL_CXX'
-ANDROID_NDK_TOOL_CPP='$ANDROID_NDK_TOOL_CPP'
-ANDROID_NDK_TOOL_LD='$ANDROID_NDK_TOOL_LD'
-ANDROID_NDK_TOOL_AS='$ANDROID_NDK_TOOL_AS'
-ANDROID_NDK_TOOL_AR='$ANDROID_NDK_TOOL_AR'
-ANDROID_NDK_TOOL_NM='$ANDROID_NDK_TOOL_NM'
-ANDROID_NDK_TOOL_SIZE='$ANDROID_NDK_TOOL_SIZE'
-ANDROID_NDK_TOOL_STRIP='$ANDROID_NDK_TOOL_STRIP'
-ANDROID_NDK_TOOL_RANLIB='$ANDROID_NDK_TOOL_RANLIB'
-ANDROID_NDK_TOOL_STRINGS='$ANDROID_NDK_TOOL_STRINGS'
-ANDROID_NDK_TOOL_OBJDUMP='$ANDROID_NDK_TOOL_OBJDUMP'
-ANDROID_NDK_TOOL_OBJCOPY='$ANDROID_NDK_TOOL_OBJCOPY'
-ANDROID_NDK_TOOL_READELF='$ANDROID_NDK_TOOL_READELF'
-ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_MIN='$ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_MIN'
-ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_MAX='$ANDROID_NDK_SUPPORTED_SDK_API_LEVEL_MAX'
+ANDROID_NDK_CC='$ANDROID_NDK_CC'
+ANDROID_NDK_CXX='$ANDROID_NDK_CXX'
+ANDROID_NDK_CPP='$ANDROID_NDK_CPP'
+ANDROID_NDK_LD='$ANDROID_NDK_LD'
+ANDROID_NDK_AS='$ANDROID_NDK_AS'
+ANDROID_NDK_AR='$ANDROID_NDK_AR'
+ANDROID_NDK_NM='$ANDROID_NDK_NM'
+ANDROID_NDK_SIZE='$ANDROID_NDK_SIZE'
+ANDROID_NDK_STRIP='$ANDROID_NDK_STRIP'
+ANDROID_NDK_RANLIB='$ANDROID_NDK_RANLIB'
+ANDROID_NDK_STRINGS='$ANDROID_NDK_STRINGS'
+ANDROID_NDK_OBJDUMP='$ANDROID_NDK_OBJDUMP'
+ANDROID_NDK_OBJCOPY='$ANDROID_NDK_OBJCOPY'
+ANDROID_NDK_READELF='$ANDROID_NDK_READELF'
+ANDROID_NDK_SUPPORTED_MIN_SDK_API_LEVEL='$ANDROID_NDK_SUPPORTED_MIN_SDK_API_LEVEL'
+ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL='$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL'
 EOF
 }
 
