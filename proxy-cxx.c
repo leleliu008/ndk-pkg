@@ -9,6 +9,42 @@
 #define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
 
 int main(int argc, char * argv[]) {
+    const char * options[5] = { "-shared", "-static", "--static", "-pie", "-Wl,-Bdynamic" };
+          int    indexes[5] = {    -1,         -1,        -1,       -1,         -1        };
+
+    for (int i = 1; i < argc; i++) {
+        for (int j = 0; j < 5; j++) {
+            if (strcmp(argv[i], options[j]) == 0) {
+                indexes[j] = i;
+            }
+
+            if ((indexes[0] > 0) && (indexes[1] > 0) && (indexes[2] > 0) && (indexes[3] > 0) && (indexes[4] > 0)) {
+                goto lable;
+            }
+        }
+    }
+
+    lable:
+    // printf("      -shared = %d\n", indexes[0]);
+    // printf("      -static = %d\n", indexes[1]);
+    // printf("     --static = %d\n", indexes[2]);
+    // printf("-Wl,-Bdynamic = %d\n", indexes[3]);
+    // printf("         -pie = %d\n", indexes[4]);
+
+    int action = 0;
+
+    if (indexes[0] > 0) {
+        // if -shared option is specified, then remove -static , --static , -pie options if they also are specified
+        action = ACTION_CREATE_SHARED_LIBRARY;
+    } else if ((indexes[1] > 0) || (indexes[2] > 0)) {
+        // if -shared option is not specified, but -static or --static option is specified, then remove -pie , -Wl,-Bdynamic option if it also is specified
+        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
+    } else if (indexes[3] > 0) {
+        action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
+    }
+
+    /////////////////////////////////////////////////////////////////
+
     char * const cxx = getenv("ANDROID_NDK_CXX");
 
     if (cxx == NULL) {
@@ -19,35 +55,6 @@ int main(int argc, char * argv[]) {
     if (cxx[0] == '\0') {
         fprintf(stderr, "ANDROID_NDK_CXX environment variable value should be a non-empty string.\n");
         return 2;
-    }
-
-    int action = 0;
-
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-c") == 0) {
-            action = ACTION_COMPILE;
-            break;
-        }
-
-        if (strcmp(argv[i], "-shared") == 0) {
-            action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-            break;
-        }
-
-        if (strcmp(argv[i], "-static") == 0) {
-            action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-            break;
-        }
-
-        if (strcmp(argv[i], "--static") == 0) {
-            action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-            break;
-        }
-
-        if (strcmp(argv[i], "-pie") == 0) {
-            action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
-            break;
-        }
     }
 
     /////////////////////////////////////////////////////////////////
@@ -107,7 +114,7 @@ int main(int argc, char * argv[]) {
     argv2[argc + 2] = NULL;
 
     for (int i = 0; argv2[i] != NULL; i++) {
-        printf("+%s ", argv2[i]);
+        printf("%s ", argv2[i]);
     }
     printf("\n");
 
