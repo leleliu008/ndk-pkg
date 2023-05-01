@@ -97,7 +97,9 @@ int main(int argc, char * argv[]) {
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
     // if -shared option is not passed, but -static or --static option is passed, then remove -pie , -Wl,-Bdynamic option if it also is passed
         for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
+            if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
+                argv2[i + 2] = (char*)"-static";
+            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
                 argv2[i + 2] = (char*)"-static";
             } else if (strcmp(argv[i], "-pie") == 0) {
                 argv2[i + 2] = (char*)"-static";

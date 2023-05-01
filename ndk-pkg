@@ -2345,8 +2345,22 @@ __fetch_resources_of_the_given_package() {
 
         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
         if [ "$FILEMAGIC" = '7F454C46' ] ; then
-            OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
-            break
+            # may report: patchelf: cannot find section '.interp'. The input file is most likely statically linked
+            PT_INTERP=
+            PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+            if [ -n "$PT_INTERP" ] ; then
+                OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
+                break
+            fi
+
+            DT_SONAME=
+            DT_SONAME="$(patchelf --print-soname "$FILEPATH")"
+
+            if [ -n "$DT_SONAME" ] ; then
+                OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
+                break
+            fi
         elif basename "$FILEPATH" | grep -q '^lib.*\.a$' ; then
             OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
             break
@@ -5704,7 +5718,9 @@ int main(int argc, char * argv[]) {
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
         for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
+            if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
+                argv2[i + 2] = (char*)"-static";
+            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
                 argv2[i + 2] = (char*)"-static";
             } else if (strcmp(argv[i], "-pie") == 0) {
                 argv2[i + 2] = (char*)"-static";
@@ -5834,7 +5850,9 @@ int main(int argc, char * argv[]) {
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
     // if -shared option is not passed, but -static or --static option is passed, then remove -pie , -Wl,-Bdynamic option if it also is passed
         for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
+            if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
+                argv2[i + 2] = (char*)"-static";
+            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
                 argv2[i + 2] = (char*)"-static";
             } else if (strcmp(argv[i], "-pie") == 0) {
                 argv2[i + 2] = (char*)"-static";
@@ -6312,6 +6330,8 @@ EOF
         unset RUSTFLAGS
 
         if [ "$LINK_TYPE" = 'static-only' ] ; then
+            run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
+
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
         fi
 
@@ -6459,29 +6479,33 @@ EOF
     if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
         step "config environment variables for go"
 
-        # https://golang.org/doc/install/source#environment
+        # https://pkg.go.dev/cmd/cgo
         export CGO_ENABLED=1
         export CGO_CFLAGS="$CFLAGS"
         export CGO_CXXFLAGS="$CXXFLAGS"
         export CGO_CPPFLAGS="$CPPFLAGS"
         export CGO_LDFLAGS="$LDFLAGS"
 
+        # https://go.dev/blog/go116-module-changes
         export GO111MODULE='auto'
 
         if [ "$COUNTRY" = china ] ; then
             export GOPROXY='https://goproxy.cn'
         fi
 
+        # https://golang.org/doc/install/source#environment
         export GOOS='android'
 
         case $TARGET_OS_ARCH in
-            armv7*)  export GOARCH=arm   ;;
-            arm64*)  export GOARCH=arm64 ;;
+            armv7a)  export GOARCH=arm   ;;
             aarch64) export GOARCH=arm64 ;;
-            i386)    export GOARCH=386   ;;
             i686)    export GOARCH=386   ;;
             x86_64)  export GOARCH=amd64 ;;
         esac
+
+        if [ "$LINK_TYPE" = 'static-only' ] ; then
+            run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
+        fi
     fi
 
     #########################################################################################
@@ -7385,7 +7409,6 @@ gow() {
 
     printf '\n'
 
-
     # https://pkg.go.dev/cmd/go
     # https://pkg.go.dev/cmd/link
 
@@ -7429,7 +7452,7 @@ gow() {
     GO_BUILD_ARGS='-trimpath'
 
     if [ -z "$GO_BUILD_ARGV_V" ] ; then
-        if [ "$LOG_LEVEL" -gt "$LOG_LEVEL_QUIET" ] ; then
+        if [ "$LOG_LEVEL" -gt 0 ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
         fi
     else
@@ -7437,18 +7460,24 @@ gow() {
     fi
 
     if [ -z "$GO_BUILD_ARGV_X" ] ; then
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        if [ "$LOG_LEVEL" -ge 2 ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
         fi
     else
         GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
     fi
 
-    if [ -z "$GO_BUILD_ARGV_LDFLAGS" ] ; then
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '-s -w'"
-    else
-        GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '-s -w $GO_BUILD_ARGV_LDFLAGS'"
+    if [ "$BUILD_TYPE" = release ] ; then
+        GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -s -w"
     fi
+
+    if [ "$NATIVE_OS_KIND" != darwin ] ; then
+        if [ "$LINK_TYPE" = static-only ] && [ "$CGO_ENABLED" -eq 1 ] ; then
+            GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
+        fi
+    fi
+
+    GO_BUILD_ARGS="$GO_BUILD_ARGS -ldflags '$GO_BUILD_ARGV_LDFLAGS'"
 
     if [ -z "$GO_BUILD_ARGV_O" ] ; then
         GO_BUILD_ARGS="$GO_BUILD_ARGS -o $PACKAGE_BCACHED_DIR/"
@@ -7458,6 +7487,7 @@ gow() {
 
     GO_BUILD_ARGS="$GO_BUILD_ARGS $GO_BUILD_ARGS_EXTRA"
 
+    # shellcheck disable=SC2086
     run go build $GO_BUILD_ARGS
 
     for item in $(ls "$PACKAGE_BCACHED_DIR")
