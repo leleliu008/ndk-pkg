@@ -7172,13 +7172,18 @@ __adjust_elf_files_for_the_given_target() {
                         abort 1 "ELF file PT_INTERP mismatch: $FILEPATH\n    expect : $ANDROID_DYNAMIC_LINKER_PATH\n    actual : $PT_INTERP"
                     fi
 
-                    # shared library do not have .interp section usually.
-                    # dynamically linked executable have the .interp section usually.
-                    #
-                    # https://source.android.com/security/enhancements/enhancements50
-                    # Android 5.0 and later only support position-independent executables (-fPIE)
-                    if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
-                        abort 1 "invalid ELF file: $FILEPATH. Android 5.0 and later requires dynamically linked executable to support PIE (position-independent executables)."
+                    DT_SONAME=
+                    DT_SONAME="$(patchelf --print-soname "$FILEPATH")"
+
+                    if [ -z "$DT_SONAME" ] ; then
+                        # In general, a shared library would not have the .interp section.
+                        # a dynamically linked executable always have the .interp section.
+                        #
+                        # https://source.android.com/security/enhancements/enhancements50
+                        # Android 5.0 and later only support position-independent executables (-fPIE)
+                        if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
+                            abort 1 "invalid ELF file: $FILEPATH. Android 5.0 and later requires dynamically linked executable to support PIE (position-independent executables)."
+                        fi
                     fi
                 fi
 
