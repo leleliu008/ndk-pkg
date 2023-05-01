@@ -5559,6 +5559,7 @@ $PACKAGE_BUILD0_ACTIONS
 
     export ANDROID_TARGET="${TARGET_TRIPLE}${TARGET_OS_VERS}"
     export ANDROID_NDK_CC
+    export ANDROID_NDK_CXX
     export ANDROID_NDK_SYSROOT
 
     #########################################################################################
