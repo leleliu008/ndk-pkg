@@ -1759,8 +1759,8 @@ __list_available_packages() {
 
 __list_installed_packages() {
     if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT" ] ; then
-        cd "$NDKPKG_PACKAGE_INSTALLED_ROOT" || return 1
-        find . -maxdepth 5 -mindepth 5 -type f -regex '\./android-[1-9][0-9]/\(arm64-v8a\|x86\|x86_64\)/[^/]*/\.ndk-pkg/METADATA\.yml' | cut -c3- | sed 's|/\.ndk-pkg/METADATA\.yml$||'
+         cd "$NDKPKG_PACKAGE_INSTALLED_ROOT" || return 1
+        find . -maxdepth 5 -mindepth 5 -type f -regex '\./android-[1-9][0-9]/\(armeabi-v7a\|arm64-v8a\|x86\|x86_64\)/[^/]*/\.ndk-pkg/METADATA\.yml' | cut -c3- | sed 's|/\.ndk-pkg/METADATA\.yml$||'
     else
         return 0
     fi
@@ -2544,7 +2544,7 @@ __fetch_resources_of_the_given_package() {
     fi
 
     if [ -z "$NDKINFO" ] ; then
-        warn "Android NDK Not Found. I will install it via uppm."
+        warn "Android NDK not found, it will be installed via uppm."
         uppm install android-ndk-r23c
 
         NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r23c")"
@@ -3388,17 +3388,12 @@ package_name_transform_from_uppm_to_brew() {
         blake3)   printf '%s\n' 'b3sum'     ;;
         libwebp)  printf '%s\n' 'webp'      ;;
         proj7)    printf '%s\n' 'proj@7'    ;;
-        openssl)  printf '%s\n' 'openssl@1.1';;
         freetype2)printf '%s\n' 'freetype'  ;;
         freetype2-with-harfbuzz)
                   printf '%s\n' 'freetype'  ;;
         libmediainfo|mediainfo)
                   printf '%s\n' 'media-info';;
         tcl-core) printf '%s\n' 'tcl-tk'    ;;
-        openssl1.1.x)
-                  printf '%s\n' 'openssl@1.1';;
-        gnu-binutils)
-                  printf '%s\n' 'binutils'  ;;
         *)        printf '%s\n' "$1"
     esac
 }
@@ -3977,56 +3972,53 @@ __upgrade_packages() {
 
 # inspect_package_spec <PACKAGE-NAME|PACKAGE-SPEC>
   inspect_package_spec() {
-    [ -z "$1" ] && abort 1 "neither package-name nor package-spec is specified."
+    case $1 in
+        '') abort 1 "neither package-name nor package-spec is specified."
+            ;;
+        android-[1-9][0-9]/*/*/*)
+            abort 1 "invalid package spec: $1"
+            ;;
+        android-[1-9][0-9]/*/*)
+            ANDROID_API="$(printf '%s\n' "$1" | cut -d/ -f1 | cut -d- -f2)"
+            ANDROID_ABI="$(printf '%s\n' "$1" | cut -d/ -f2)"
 
-    if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-._]{1,50}$' ; then
-        if [ -z "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" ] ; then
-            PACKAGE_SPEC="android-21/arm64-v8a/$1"
-        else
-            case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-                android-[1-9][0-9]/*)
-                    TARGET_OS_VERS="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-                    TARGET_OS_ABI="$( printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f2)"
-
-                    case $TARGET_OS_ABI in
-                        armeabi-v7a|arm64-v8a|x86|x86_64) ;;
-                        *)  abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec. unrecognized abi: $TARGET_OS_ABI"
-                    esac
-
-                    PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
-                    ;;
-                *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
+            case $ANDROID_ABI in
+                armeabi-v7a|arm64-v8a|x86|x86_64) ;;
+                *)  abort 1 "invalid package spec. unrecognized android abi: $TARGET_OS_ABI"
             esac
-        fi
 
-        #note "$1 will be treated as a package name, and it will be expanded to $PACKAGE_SPEC"
-    else
-        case $1 in
-            android-[1-9][0-9]/*/*/*)
-                abort 1 "invalid package spec: $1"
-                ;;
-            android-[1-9][0-9]/*/*)
-                TARGET_OS_VERS="$(printf '%s\n' "$1" | cut -d/ -f1 | cut -d- -f2)"
-                TARGET_OS_ABI="$( printf '%s\n' "$1" | cut -d/ -f2)"
+            PACKAGE_NAME="$(printf '%s\n' "$1" | cut -d/ -f3)"
 
-                case $TARGET_OS_ABI in
-                    armeabi-v7a|arm64-v8a|x86|x86_64) ;;
-                    *)  abort 1 "invalid package spec. unrecognized abi: $TARGET_OS_ABI"
+            if printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
+                :
+            else
+                abort 1 "invalid package spec: $1\npackage name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
+            fi
+
+            PACKAGE_SPEC="$1"
+            ;;
+        *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
+                case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
+                    '') PACKAGE_SPEC="android-21/arm64-v8a/$1"
+                        ;;
+                    android-[1-9][0-9]/armeabi-v7a)
+                        PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
+                        ;;
+                    android-[1-9][0-9]/arm64-v8a)
+                        PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
+                        ;;
+                    android-[1-9][0-9]/x86)
+                        PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
+                        ;;
+                    android-[1-9][0-9]/x86_64)
+                        PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
+                        ;;
+                    *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
                 esac
-
-                PACKAGE_NAME="$(printf '%s\n' "$1" | cut -d/ -f3)"
-
-                if printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-._]{1,50}$' ; then
-                    :
-                else
-                    abort 1 "invalid package spec: $1\npackage name must match the regular expression pattern: ^[A-Za-z0-9+-._]{1,50}$"
-                fi
-
-                PACKAGE_SPEC="$1"
-                ;;
-            *)  abort 1 "invalid package spec: $1"
-        esac
-    fi
+            else
+                abort 1 "invalid package name or spec: $1"
+            fi
+    esac
 
     printf '%s\n' "$PACKAGE_SPEC"
 }
@@ -4149,7 +4141,7 @@ inspect_install_arguments() {
     fi
 
     if [ -z "$NDKINFO" ] ; then
-        warn "Android NDK Not Found. I will install it via uppm."
+        warn "Android NDK not found, it will be installed via uppm."
         uppm install android-ndk-r23c
 
         NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r23c")"
@@ -7029,7 +7021,7 @@ $PACKAGE_DOBUILD_ACTIONS
         run  ccache -s
     }
 
-    [ "$KEEP_INSTALLING_DIR" != yes ] && {
+    [ "$KEEP_WORKING_DIR" != yes ] && {
         step "delete the installing directory"
         run rm -rf "$PACKAGE_WORKING_DIR"
     }
