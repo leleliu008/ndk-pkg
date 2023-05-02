@@ -9,27 +9,22 @@
 #define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
 
 int main(int argc, char * argv[]) {
-    const char * options[5] = { "-shared", "-static", "--static", "-pie", "-Wl,-Bdynamic" };
-          int    indexes[5] = {    -1,         -1,        -1,       -1,         -1        };
+    const char * options[5] = { "-shared", "-static", "--static", "-pie", "-c" };
+          int    indexes[5] = {    -1,         -1,        -1,       -1,    -1  };
 
     for (int i = 1; i < argc; i++) {
         for (int j = 0; j < 5; j++) {
             if (strcmp(argv[i], options[j]) == 0) {
                 indexes[j] = i;
             }
-
-            if ((indexes[0] > 0) && (indexes[1] > 0) && (indexes[2] > 0) && (indexes[3] > 0) && (indexes[4] > 0)) {
-                goto lable;
-            }
         }
     }
 
-    lable:
     // printf("      -shared = %d\n", indexes[0]);
     // printf("      -static = %d\n", indexes[1]);
     // printf("     --static = %d\n", indexes[2]);
-    // printf("-Wl,-Bdynamic = %d\n", indexes[3]);
-    // printf("         -pie = %d\n", indexes[4]);
+    // printf("         -pie = %d\n", indexes[3]);
+    // printf("           -c = %d\n", indexes[4]);
 
     int action = 0;
 
