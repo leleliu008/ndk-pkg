@@ -126,7 +126,29 @@ int main(int argc, char * argv[]) {
             int i = indexes[5] + 1;
 
             if (i < argc) {
-                char * filename = argv[i];
+                char * filepath = argv[i];
+                char * filename = NULL;
+
+                int len = 0;
+
+                for (;;) {
+                    if (filepath[len] == '\0') {
+                        break;
+                    } else {
+                        len++;
+                    }
+                }
+
+                for (int i = len - 1; i > 0; i--) {
+                    if (filepath[i] == '/') {
+                        filename = filepath + i + 1;
+                        break;
+                    }
+                }
+
+                if (filename == NULL) {
+                    filename = filepath;
+                }
 
                 regex_t regex;
 

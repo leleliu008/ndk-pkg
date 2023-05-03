@@ -5726,7 +5726,29 @@ int main(int argc, char * argv[]) {
             int i = indexes[5] + 1;
 
             if (i < argc) {
-                char * filename = argv[i];
+                char * filepath = argv[i];
+                char * filename = NULL;
+
+                int len = 0;
+
+                for (;;) {
+                    if (filepath[len] == '\0') {
+                        break;
+                    } else {
+                        len++;
+                    }
+                }
+
+                for (int i = len - 1; i > 0; i--) {
+                    if (filepath[i] == '/') {
+                        filename = filepath + i + 1;
+                        break;
+                    }
+                }
+
+                if (filename == NULL) {
+                    filename = filepath;
+                }
 
                 regex_t regex;
 
@@ -6909,7 +6931,7 @@ $PACKAGE_DOBUILD_ACTIONS
 
         for SO_FILE_PATH_HAVE_VERSION in $(find "$PACKAGE_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.so.*')
         do
-            unset SO_FILE_NAME_NO_VERSION
+            SO_FILE_NAME_NO_VERSION=
             SO_FILE_NAME_NO_VERSION="$(basename "$SO_FILE_PATH_HAVE_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
 
             if [ ! -f "$TARGET_NOVERSIOING_LIBRARY_DIR/$SO_FILE_NAME_NO_VERSION" ] ; then
@@ -6919,8 +6941,8 @@ $PACKAGE_DOBUILD_ACTIONS
 
         cd "$TARGET_NOVERSIOING_LIBRARY_DIR"
 
-        #step "adjust no versioning .so files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        #__adjust_no_versioning_so_files_for_the_given_target  "$@"
+        step "adjust no versioning .so files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        __adjust_no_versioning_so_files_for_the_given_target  "$@"
 
         step "create cmake config files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __create_cmake_config_files_for_the_given_target "$@"
@@ -6960,44 +6982,20 @@ $PACKAGE_DOBUILD_ACTIONS
 
 # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
 __adjust_no_versioning_so_files_for_the_given_target() {
-    for sofile in $(find . -maxdepth 1 -mindepth 1 -name 'lib*.so' -exec basename {} \;)
+    for sofile in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so' -printf '%P\n')
     do
         DT_SONAME="$(patchelf --print-soname "$sofile")"
 
         case $DT_SONAME in
-            '') ;;
-            lib*.so)
-                ;;
-            lib*.so.*)
-                run patchelf --set-soname "$sofile" "$sofile"
-                ;;
+            '') abort 1 "unexpected so file: $sofile\n    DT_SONAME: not set" ;;
+            lib*.so) ;;
             *)  abort 1 "unexpected so file: $sofile\n    DT_SONAME: $DT_SONAME"
         esac
 
         for DT_NEEDED in $(patchelf --print-needed "$sofile")
         do
             case $DT_NEEDED in
-                lib*.so)
-                    ;;
-                lib*.so.*)
-                    unset NEW_DT_NEEDED
-                    NEW_DT_NEEDED="$(printf '%s\n' "$DT_NEEDED" | sed 's|\(.*\.so\).*|\1|g')"
-                    run patchelf --replace-needed  "$DT_NEEDED" "$NEW_DT_NEEDED" "$sofile"
-                    ;;
-                */*)
-                    unset NEW_DT_NEEDED
-                    NEW_DT_NEEDED="$(basename "$DT_NEEDED")"
-                    case $NEW_DT_NEEDED in
-                        lib*.so)
-                            run patchelf --replace-needed  "$DT_NEEDED" "$NEW_DT_NEEDED" "$sofile"
-                            ;;
-                        lib*.so.*)
-                            NEW_DT_NEEDED="$(printf '%s\n' "$NEW_DT_NEEDED" | sed 's|\(.*\.so\).*|\1|g')"
-                            run patchelf --replace-needed  "$DT_NEEDED" "$NEW_DT_NEEDED" "$sofile"
-                            ;;
-                        *)  abort 1 "unexpected so file: $sofile\n    DT_NEEDED: $DT_NEEDED"
-                    esac
-                    ;;
+                lib*.so) ;;
                 *)  abort 1 "unexpected so file: $sofile\n    DT_NEEDED: $DT_NEEDED"
             esac
         done
