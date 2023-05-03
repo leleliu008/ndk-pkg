@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <regex.h>
 
 #define ACTION_COMPILE 1
 #define ACTION_CREATE_SHARED_LIBRARY 2
@@ -9,22 +10,17 @@
 #define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
 
 int main(int argc, char * argv[]) {
-    const char * options[5] = { "-shared", "-static", "--static", "-pie", "-c" };
-          int    indexes[5] = {    -1,         -1,        -1,       -1,    -1  };
+    const char * options[6] = { "-shared", "-static", "--static", "-pie", "-c", "-o" };
+          int    indexes[6] = {    -1,         -1,        -1,       -1,    -1,   -1  };
 
     for (int i = 1; i < argc; i++) {
-        for (int j = 0; j < 5; j++) {
+        for (int j = 0; j < 6; j++) {
             if (strcmp(argv[i], options[j]) == 0) {
                 indexes[j] = i;
+                break;
             }
         }
     }
-
-    // printf("      -shared = %d\n", indexes[0]);
-    // printf("      -static = %d\n", indexes[1]);
-    // printf("     --static = %d\n", indexes[2]);
-    // printf("         -pie = %d\n", indexes[3]);
-    // printf("           -c = %d\n", indexes[4]);
 
     int action = 0;
 
@@ -40,17 +36,31 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char * const cc = getenv("ANDROID_NDK_CC");
+#ifdef USED_AS_CXX
+    char * const compiler = getenv("ANDROID_NDK_CXX");
 
-    if (cc == NULL) {
+    if (compiler == NULL) {
+        fprintf(stderr, "ANDROID_NDK_CXX environment variable is not set.\n");
+        return 1;
+    }
+
+    if (compiler[0] == '\0') {
+        fprintf(stderr, "ANDROID_NDK_CXX environment variable value should be a non-empty string.\n");
+        return 2;
+    }
+#else
+    char * const compiler = getenv("ANDROID_NDK_CC");
+
+    if (compiler == NULL) {
         fprintf(stderr, "ANDROID_NDK_CC environment variable is not set.\n");
         return 1;
     }
 
-    if (cc[0] == '\0') {
+    if (compiler[0] == '\0') {
         fprintf(stderr, "ANDROID_NDK_CC environment variable value should be a non-empty string.\n");
         return 2;
     }
+#endif
 
     /////////////////////////////////////////////////////////////////
 
@@ -90,9 +100,11 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char * argv2[argc + 3];
+    char   sonameArg[100] = {0};
 
-    argv2[0] = cc;
+    char * argv2[argc + 4];
+
+    argv2[0] = compiler;
     argv2[1] = targetArg;
     argv2[2] = sysrootArg;
 
@@ -106,6 +118,38 @@ int main(int argc, char * argv[]) {
                 argv2[i + 2] = (char*)"--shared";
             } else {
                 argv2[i + 2] = argv[i];
+            }
+        }
+
+        // if -o option is specified.
+        if (indexes[5] > 0) {
+            int i = indexes[5] + 1;
+
+            if (i < argc) {
+                char * filename = argv[i];
+
+                regex_t regex;
+
+                if (regcomp(&regex, "^lib.*\\.so", 0) != 0) {
+                    perror(NULL);
+                    regfree(&regex);
+                    return 1;
+                }
+
+                regmatch_t regmatch[2];
+
+                if (regexec(&regex, filename, 2, regmatch, 0) == 0) {
+                    //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
+                    //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
+
+                    if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
+                        int n = regmatch[0].rm_eo - regmatch[0].rm_so;
+                        const char * str = &filename[regmatch[0].rm_so];
+                        snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
+                    }
+                }
+
+                regfree(&regex);
             }
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
@@ -126,14 +170,19 @@ int main(int argc, char * argv[]) {
         }
     }
 
-    argv2[argc + 2] = NULL;
+    if (sonameArg[0] == '\0') {
+        argv2[argc + 2] = NULL;
+    } else {
+        argv2[argc + 2] = sonameArg;
+        argv2[argc + 3] = NULL;
+    }
 
     for (int i = 0; argv2[i] != NULL; i++) {
         printf("%s ", argv2[i]);
     }
     printf("\n");
 
-    execv (cc, argv2);
-    perror(cc);
+    execv (compiler, argv2);
+    perror(compiler);
     return -1;
 }

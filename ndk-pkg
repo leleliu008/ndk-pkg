@@ -5602,6 +5602,7 @@ $PACKAGE_BUILD0_ACTIONS
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <regex.h>
 
 #define ACTION_COMPILE 1
 #define ACTION_CREATE_SHARED_LIBRARY 2
@@ -5609,22 +5610,17 @@ $PACKAGE_BUILD0_ACTIONS
 #define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
 
 int main(int argc, char * argv[]) {
-    const char * options[5] = { "-shared", "-static", "--static", "-pie", "-Wl,-Bdynamic" };
-          int    indexes[5] = {    -1,         -1,        -1,       -1,         -1        };
+    const char * options[6] = { "-shared", "-static", "--static", "-pie", "-c", "-o" };
+          int    indexes[6] = {    -1,         -1,        -1,       -1,    -1,   -1  };
 
     for (int i = 1; i < argc; i++) {
-        for (int j = 0; j < 5; j++) {
+        for (int j = 0; j < 6; j++) {
             if (strcmp(argv[i], options[j]) == 0) {
                 indexes[j] = i;
+                break;
             }
         }
     }
-
-    // printf("      -shared = %d\n", indexes[0]);
-    // printf("      -static = %d\n", indexes[1]);
-    // printf("     --static = %d\n", indexes[2]);
-    // printf("-Wl,-Bdynamic = %d\n", indexes[3]);
-    // printf("         -pie = %d\n", indexes[4]);
 
     int action = 0;
 
@@ -5640,17 +5636,31 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char * const cc = getenv("ANDROID_NDK_CC");
+#ifdef USED_AS_CXX
+    char * const compiler = getenv("ANDROID_NDK_CXX");
 
-    if (cc == NULL) {
+    if (compiler == NULL) {
+        fprintf(stderr, "ANDROID_NDK_CXX environment variable is not set.\n");
+        return 1;
+    }
+
+    if (compiler[0] == '\0') {
+        fprintf(stderr, "ANDROID_NDK_CXX environment variable value should be a non-empty string.\n");
+        return 2;
+    }
+#else
+    char * const compiler = getenv("ANDROID_NDK_CC");
+
+    if (compiler == NULL) {
         fprintf(stderr, "ANDROID_NDK_CC environment variable is not set.\n");
         return 1;
     }
 
-    if (cc[0] == '\0') {
+    if (compiler[0] == '\0') {
         fprintf(stderr, "ANDROID_NDK_CC environment variable value should be a non-empty string.\n");
         return 2;
     }
+#endif
 
     /////////////////////////////////////////////////////////////////
 
@@ -5690,9 +5700,11 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char * argv2[argc + 3];
+    char   sonameArg[100] = {0};
 
-    argv2[0] = cc;
+    char * argv2[argc + 4];
+
+    argv2[0] = compiler;
     argv2[1] = targetArg;
     argv2[2] = sysrootArg;
 
@@ -5706,6 +5718,38 @@ int main(int argc, char * argv[]) {
                 argv2[i + 2] = (char*)"--shared";
             } else {
                 argv2[i + 2] = argv[i];
+            }
+        }
+
+        // if -o option is specified.
+        if (indexes[5] > 0) {
+            int i = indexes[5] + 1;
+
+            if (i < argc) {
+                char * filename = argv[i];
+
+                regex_t regex;
+
+                if (regcomp(&regex, "^lib.*\\.so", 0) != 0) {
+                    perror(NULL);
+                    regfree(&regex);
+                    return 1;
+                }
+
+                regmatch_t regmatch[2];
+
+                if (regexec(&regex, filename, 2, regmatch, 0) == 0) {
+                    //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
+                    //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
+
+                    if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
+                        int n = regmatch[0].rm_eo - regmatch[0].rm_so;
+                        const char * str = &filename[regmatch[0].rm_so];
+                        snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
+                    }
+                }
+
+                regfree(&regex);
             }
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
@@ -5726,154 +5770,35 @@ int main(int argc, char * argv[]) {
         }
     }
 
-    argv2[argc + 2] = NULL;
+    if (sonameArg[0] == '\0') {
+        argv2[argc + 2] = NULL;
+    } else {
+        argv2[argc + 2] = sonameArg;
+        argv2[argc + 3] = NULL;
+    }
 
     for (int i = 0; argv2[i] != NULL; i++) {
         printf("%s ", argv2[i]);
     }
     printf("\n");
 
-    execv (cc, argv2);
-    perror(cc);
+    execv (compiler, argv2);
+    perror(compiler);
     return -1;
 }
 EOF
 
     PROXY_CC="$NDKPKG_CORE_BIN_DIR/proxy-target-cc"
 
-    run "$CC_FOR_BUILD" -std=c99 -o "$PROXY_CC" proxy-target-cc.c
+    run "$CC_FOR_BUILD" -UUSED_AS_CXX -std=c99 -o "$PROXY_CC" proxy-target-cc.c
 
     ##################################################################################
 
     step "create proxy for C++ Compiler for target build"
 
-    cat > proxy-target-c++.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#define ACTION_COMPILE 1
-#define ACTION_CREATE_SHARED_LIBRARY 2
-#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE 3
-#define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
-
-int main(int argc, char * argv[]) {
-    const char * options[5] = { "-shared", "-static", "--static", "-pie", "-Wl,-Bdynamic" };
-          int    indexes[5] = {    -1,         -1,        -1,       -1,         -1        };
-
-    for (int i = 1; i < argc; i++) {
-        for (int j = 0; j < 5; j++) {
-            if (strcmp(argv[i], options[j]) == 0) {
-                indexes[j] = i;
-            }
-        }
-    }
-
-    // printf("      -shared = %d\n", indexes[0]);
-    // printf("      -static = %d\n", indexes[1]);
-    // printf("     --static = %d\n", indexes[2]);
-    // printf("-Wl,-Bdynamic = %d\n", indexes[3]);
-    // printf("         -pie = %d\n", indexes[4]);
-
-    int action = 0;
-
-    if (indexes[0] > 0) {
-        // if -shared option is specified, then remove -static , --static , -pie options if they also are specified
-        action = ACTION_CREATE_SHARED_LIBRARY;
-    } else if ((indexes[1] > 0) || (indexes[2] > 0)) {
-        // if -shared option is not specified, but -static or --static option is specified, then remove -pie , -Wl,-Bdynamic option if it also is specified
-        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-    } else if (indexes[3] > 0) {
-        action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    char * const cxx = getenv("ANDROID_NDK_CXX");
-
-    if (cxx == NULL) {
-        fprintf(stderr, "ANDROID_NDK_CXX environment variable is not set.\n");
-        return 1;
-    }
-
-    if (cxx[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_CXX environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * const TARGET = getenv("ANDROID_TARGET");
-
-    size_t   targetArgLength = strlen(TARGET) + 10;
-    char     targetArg[targetArgLength];
-    snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * const SYSROOT = getenv("ANDROID_NDK_SYSROOT");
-
-    size_t   sysrootArgLength = strlen(SYSROOT) + 11;
-    char     sysrootArg[sysrootArgLength];
-    snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
-
-    /////////////////////////////////////////////////////////////////
-
-    char * argv2[argc + 3];
-
-    argv2[0] = cxx;
-    argv2[1] = targetArg;
-    argv2[2] = sysrootArg;
-
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
-    // if -shared option is passed, then remove -static , --static , -pie options if they also are passed
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-static") == 0) {
-                argv2[i + 2] = (char*)"--shared";
-            } else if (strcmp(argv[i], "--static") == 0) {
-                argv2[i + 2] = (char*)"--shared";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i + 2] = (char*)"--shared";
-            } else {
-                argv2[i + 2] = argv[i];
-            }
-        }
-    } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
-    // if -shared option is not passed, but -static or --static option is passed, then remove -pie , -Wl,-Bdynamic option if it also is passed
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else {
-                argv2[i + 2] = argv[i];
-            }
-        }
-    } else {
-        for (int i = 1; i < argc; i++) {
-            argv2[i + 2] = argv[i];
-        }
-    }
-
-    argv2[argc + 2] = NULL;
-
-    for (int i = 0; argv2[i] != NULL; i++) {
-        printf("%s ", argv2[i]);
-    }
-    printf("\n");
-
-    execv (cxx, argv2);
-    perror(cxx);
-    return -1;
-}
-EOF
-
     PROXY_CXX="$NDKPKG_CORE_BIN_DIR/proxy-target-c++"
 
-    run "$CC_FOR_BUILD" -std=c99 -o "$PROXY_CXX" proxy-target-c++.c
+    run "$CC_FOR_BUILD" -DUSED_AS_CXX -std=c99 -o "$PROXY_CXX" proxy-target-cc.c
 
     #########################################################################################
 
@@ -6994,8 +6919,8 @@ $PACKAGE_DOBUILD_ACTIONS
 
         cd "$TARGET_NOVERSIOING_LIBRARY_DIR"
 
-        step "adjust no versioning .so files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __adjust_no_versioning_so_files_for_the_given_target  "$@"
+        #step "adjust no versioning .so files for ${COLOR_GREEN}$@${COLOR_OFF}"
+        #__adjust_no_versioning_so_files_for_the_given_target  "$@"
 
         step "create cmake config files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __create_cmake_config_files_for_the_given_target "$@"
