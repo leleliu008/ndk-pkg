@@ -359,30 +359,37 @@ all relevant directories and files are located in `~/.ndk-pkg` directory.
 - **install packages**
 
     ```bash
-    ndk-pkg install curl
-    ndk-pkg install curl bzip2 -v
+    ndk-pkg install libbz2
+    ndk-pkg install libbz2 liblzma
+    ndk-pkg install libbz2 liblzma -v
+    ndk-pkg install android-31/arm64-v8a/bat --link-type=static-only --install-lib=static
     ```
 
 - **reinstall packages**
 
     ```bash
-    ndk-pkg reinstall curl
-    ndk-pkg reinstall curl bzip2 -v
+    ndk-pkg reinstall libbz2
+    ndk-pkg reinstall libbz2 liblzma
+    ndk-pkg reinstall libbz2 liblzma -v
+    ndk-pkg reinstall android-31/arm64-v8a/bat --link-type=static-only --install-lib=static
     ```
 
 - **uninstall packages**
 
     ```bash
-    ndk-pkg uninstall curl
-    ndk-pkg uninstall curl bzip2 -v
+    ndk-pkg uninstall libbz2
+    ndk-pkg uninstall libbz2 liblzma
+    ndk-pkg uninstall libbz2 liblzma -v
+    ndk-pkg uninstall android-31/arm64-v8a/bat
     ```
 
 - **upgrade the outdated packages**
 
     ```bash
-    ndk-pkg upgrade
-    ndk-pkg upgrade curl
-    ndk-pkg upgrade curl bzip2 -v
+    ndk-pkg upgrade libbz2
+    ndk-pkg upgrade libbz2 liblzma
+    ndk-pkg upgrade libbz2 liblzma -v
+    ndk-pkg upgrade android-31/arm64-v8a/bat --link-type=static-only --install-lib=static
     ```
 
 - **upgrade this software**
