@@ -8,9 +8,10 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 
 |HostOS|HostArch|SubSystem|recommended|summary|
 |------|--------|---------|-----------|-------|
-[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`||✔︎|tested with `Github Actions`|
+*|`x86_64`|[Docker](https://www.docker.com/)|✔︎|tested with `Github Actions`|
 [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`|[glibc](http://www.gnu.org/software/libc/)|✔︎|tested with `Github Actions`|
-[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|tested with `Github Actions`|
+[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||tested with `Github Actions`|
+[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||tested with `Github Actions`|
 
 **Note**:
 
