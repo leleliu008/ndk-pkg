@@ -2522,8 +2522,8 @@ __fetch_resources_of_the_given_package() {
 
     PACKAGE_INSTALLED_LIBS=
 
-    if [ -d "$PACKAGE_INSTALLED_DIR/lib-no-versioning" ] ; then
-        for item in $(cd "$PACKAGE_INSTALLED_DIR/lib-no-versioning" && ls)
+    if [ -d "$PACKAGE_INSTALLED_DIR/lib-for-apk" ] ; then
+        for item in $(cd "$PACKAGE_INSTALLED_DIR/lib-for-apk" && ls)
         do
             [ -d "$item" ] && continue
 
@@ -2634,7 +2634,7 @@ EOF
 
             run cp -r "$PACKAGE_INSTALLED_DIR/include" "$ABI_DIR"
 
-            LIBRARY_FILEPATH="$PACKAGE_INSTALLED_DIR/lib-no-versioning/$LIBRARY_FILENAME"
+            LIBRARY_FILEPATH="$PACKAGE_INSTALLED_DIR/lib-for-apk/$LIBRARY_FILENAME"
 
             run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
 
@@ -6922,7 +6922,7 @@ $PACKAGE_DOBUILD_ACTIONS
 
         step "install no versioning libraries for ${COLOR_GREEN}$@${COLOR_OFF}"
 
-        TARGET_NOVERSIOING_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib-no-versioning"
+        TARGET_NOVERSIOING_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib-for-apk"
 
         run install -d "$TARGET_NOVERSIOING_LIBRARY_DIR/cmake/$PACKAGE_NAME"
 
@@ -7011,13 +7011,13 @@ __create_cmake_config_files_for_the_given_target() {
 get_filename_component(${PACKAGE_NAME}_INSTALL_DIR "\${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
 
 set(${PACKAGE_NAME}_INCLUDE_DIR "\${${PACKAGE_NAME}_INSTALL_DIR}/include")
-set(${PACKAGE_NAME}_LIBRARY_DIR "\${${PACKAGE_NAME}_INSTALL_DIR}/lib-no-versioning")
+set(${PACKAGE_NAME}_LIBRARY_DIR "\${${PACKAGE_NAME}_INSTALL_DIR}/lib-for-apk")
 
 EOF
 
     unset CMAKE_IMPORTED_TARGETS
 
-    for libfilename in $(find . -maxdepth 1 -mindepth 1 -a \( -name 'lib*.a' -o -name 'lib*.so' \) -exec basename {} \;)
+    for libfilename in $(find . -maxdepth 1 -mindepth 1 -a \( -name 'lib*.a' -o -name 'lib*.so' \) -printf '%P\n')
     do
         case $libfilename in
             lib*.a)  LIBRARY_TYPE=STATIC ;;

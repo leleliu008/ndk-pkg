@@ -8,14 +8,13 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 
 |HostOS|HostArch|SubSystem|recommended|summary|
 |------|--------|---------|-----------|-------|
-[Android](https://www.android.com/)|`aarch64`|[Termux](https://termux.com/)|❌|not fully tested|
 [macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`||✔︎|tested with `Github Actions`|
 [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`|[glibc](http://www.gnu.org/software/libc/)|✔︎|tested with `Github Actions`|
 [Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)|✔︎|tested with `Github Actions`|
 
 **Note**:
 
-- This software do NOT work on [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/), because there is no available [Android NDK](https://developer.android.google.cn/ndk) can run on these platforms.
+- This software do NOT work on [Android](https://www.android.com/), [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/), because there is no available [Android NDK](https://developer.android.google.cn/ndk) can run on these platforms.
 - This software do NOT work on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to `CMake: Builds hosted on 'CYGWIN' not supported.` [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)
 
 ## Install ndk-pkg via Docker
@@ -46,14 +45,6 @@ docker exec -it ndk-pkg ndk-pkg install curl
 **Note:** you can use `podman` instead of `docker`
 
 ## Install ndk-pkg via cURL on UNIX
-
-```bash
-curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
-chmod a+x ndk-pkg
-./ndk-pkg setup
-```
-
-## Install ndk-pkg via cURL on Termux
 
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
