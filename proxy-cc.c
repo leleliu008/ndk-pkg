@@ -121,58 +121,71 @@ int main(int argc, char * argv[]) {
             }
         }
 
-        // if -o option is specified.
-        if (indexes[5] > 0) {
+        char * filepath = NULL;
+        char * filename = NULL;
+
+        if (indexes[5] == -1) {
+            // It's rare to see. like -o/a/b/libxx.so.1
+            for (int i = 1; i < argc; i++) {
+                if (strncmp(argv[i], "-o", 2) == 0) {
+                    indexes[5] = i;
+                    filepath = &argv[i][2];
+                    break;
+                }
+            }
+        } else {
+            // if -o <FILE> option is specified.
             int i = indexes[5] + 1;
 
             if (i < argc) {
-                char * filepath = argv[i];
-                char * filename = NULL;
-
-                int len = 0;
-
-                for (;;) {
-                    if (filepath[len] == '\0') {
-                        break;
-                    } else {
-                        len++;
-                    }
-                }
-
-                for (int i = len - 1; i > 0; i--) {
-                    if (filepath[i] == '/') {
-                        filename = filepath + i + 1;
-                        break;
-                    }
-                }
-
-                if (filename == NULL) {
-                    filename = filepath;
-                }
-
-                regex_t regex;
-
-                if (regcomp(&regex, "^lib.*\\.so", 0) != 0) {
-                    perror(NULL);
-                    regfree(&regex);
-                    return 1;
-                }
-
-                regmatch_t regmatch[2];
-
-                if (regexec(&regex, filename, 2, regmatch, 0) == 0) {
-                    //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
-                    //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
-
-                    if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
-                        int n = regmatch[0].rm_eo - regmatch[0].rm_so;
-                        const char * str = &filename[regmatch[0].rm_so];
-                        snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
-                    }
-                }
-
-                regfree(&regex);
+                filepath = argv[i];
             }
+        }
+
+        if (filepath != NULL) {
+            int len = 0;
+
+            for (;;) {
+                if (filepath[len] == '\0') {
+                    break;
+                } else {
+                    len++;
+                }
+            }
+
+            for (int i = len - 1; i > 0; i--) {
+                if (filepath[i] == '/') {
+                    filename = filepath + i + 1;
+                    break;
+                }
+            }
+
+            if (filename == NULL) {
+                filename = filepath;
+            }
+
+            regex_t regex;
+
+            if (regcomp(&regex, "^lib.*\\.so", 0) != 0) {
+                perror(NULL);
+                regfree(&regex);
+                return 1;
+            }
+
+            regmatch_t regmatch[2];
+
+            if (regexec(&regex, filename, 2, regmatch, 0) == 0) {
+                //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
+                //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
+
+                if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
+                    int n = regmatch[0].rm_eo - regmatch[0].rm_so;
+                    const char * str = &filename[regmatch[0].rm_so];
+                    snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
+                }
+            }
+
+            regfree(&regex);
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
         for (int i = 1; i < argc; i++) {

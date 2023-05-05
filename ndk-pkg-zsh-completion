@@ -202,7 +202,7 @@ function _ndk_pkg() {
                     ;;
                 install)
                     _arguments \
-                        ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
+                        ':package-name:_ndk_pkg_available_packages' \
                         '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:{_files -/}' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
