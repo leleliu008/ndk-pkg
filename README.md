@@ -620,7 +620,7 @@ a ndk-pkg formula's filename suffix must be `.yml`
 
 a ndk-pkg formula'a filename prefix would be treated as the package name.
 
-a ndk-pkg formula'a filename prefix must match regular expression pattern `^[A-Za-z0-9+-._]{1,50}$`
+a ndk-pkg formula'a filename prefix must match regular expression pattern `^[A-Za-z0-9+-._@]{1,50}$`
 
 a ndk-pkg formula's file content must follow [the ndk-pkg formula scheme](https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core)
 

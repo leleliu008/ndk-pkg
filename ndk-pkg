@@ -8343,11 +8343,11 @@ ${COLOR_GREEN}ndk-pkg --version${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
     show version of this command.
 
+${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
+    show basic information about this software.
+
 ${COLOR_GREEN}ndk-pkg sysinfo${COLOR_OFF}
     show basic information about your current running operation system.
-
-${COLOR_GREEN}ndk-pkg env [-v]${COLOR_OFF}
-    show basic information about this software.
 
 ${COLOR_GREEN}ndk-pkg ndkinfo [--ndk-home=<ANDROID-NDK-HOME>]${COLOR_OFF}
     show basic information about the specified location of Android NDK.
@@ -8362,8 +8362,15 @@ ${COLOR_GREEN}ndk-pkg integrate zsh   [--output-dir=<DIR>]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg update${COLOR_OFF}
     update all the available formula repositories.
 
+${COLOR_GREEN}ndk-pkg upgrade-self${COLOR_OFF}
+    upgrade this software.
+
+${COLOR_GREEN}ndk-pkg gen-url-transform-sample${COLOR_OFF}
+    generate url-transform sample.
+
 ${COLOR_GREEN}ndk-pkg cleanup${COLOR_OFF}
     delete the unused cached files.
+
 
 ${COLOR_GREEN}ndk-pkg ls-available${COLOR_OFF}
     list all the available packages.
@@ -8374,6 +8381,7 @@ ${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
     list all the outdated  packages.
 
+
 ${COLOR_GREEN}ndk-pkg is-available <PACKAGE-NAME>${COLOR_OFF}
     check if the given package is available.
 
@@ -8383,17 +8391,6 @@ ${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
     check if the given package is outdated.
 
-${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN>${COLOR_OFF}
-    search all available packages whose name matches the given regular expression pattern.
-
-${COLOR_GREEN}ndk-pkg formula <PACKAGE-NAME> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
-    show formula of the given available package.
-
-${COLOR_GREEN}ndk-pkg receipt <PACKAGE-SPEC> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
-    show receipt of the given installed package.
-
-${COLOR_GREEN}ndk-pkg formula-edit <PACKAGE-NAME> --editor=<EDITOR>${COLOR_OFF}
-    edit the formula of the given package.
 
 ${COLOR_GREEN}ndk-pkg formula-repo-init <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]${COLOR_OFF}
     create a new empty formula repository.
@@ -8417,36 +8414,15 @@ ${COLOR_GREEN}ndk-pkg formula-repo-list${COLOR_OFF}
     list all available formula repositories.
 
 
-${COLOR_GREEN}ndk-pkg tree <PACKAGE-NAME> [--dirsfirst | -L N]${COLOR_OFF}
-    list the installed files of the given installed package in a tree-like format.
+${COLOR_GREEN}ndk-pkg formula-edit <PACKAGE-NAME> --editor=<EDITOR>${COLOR_OFF}
+    edit the formula of the given package.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-NAME> <7z|zip|aar|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
-    pack the given installed package.
+${COLOR_GREEN}ndk-pkg formula <PACKAGE-NAME> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
+    show formula of the given available package.
 
-${COLOR_GREEN}ndk-pkg deploy-maven-local <PACKAGE-NAME> [--api=<VALUE>] [--abi=<VALUE>] [--debug] [--keep-working-dir]${COLOR_OFF}
-    pack the given installed package as prefab aar and then deploy it to maven local repository.
 
-    ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option can be specified multiple times.
-
-    If ${COLOR_RED}--api=<VALUE>${COLOR_OFF} or ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option is unspecifed, ${COLOR_RED}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF} environment variable will be checked, if this environment variable is not set, ${COLOR_RED}android-21/arm64-v8a${COLOR_OFF} will be used as the default value.
-
-${COLOR_GREEN}ndk-pkg deploy-maven-remote <PACKAGE-NAME> [--abi=<VALUE>] [--abi=<VALUE>] [--debug] [--keep-working-dir] < REMOTE-CONFIG-FILE${COLOR_OFF}
-    pack the given installed package as prefab aar and then deploy it to maven remote repository.
-
-    ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option can be specified multiple times.
-
-    If ${COLOR_RED}--api=<VALUE>${COLOR_OFF} or ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option is unspecifed, ${COLOR_RED}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF} environment variable will be checked, if this environment variable is not set, ${COLOR_RED}android-21/arm64-v8a${COLOR_OFF} will be used as the default value.
-
-    REMOTE-CONFIG-FILE contains following content:
-
-    SERVER_ID=
-    SERVER_URL=
-    SERVER_USERNAME=
-    SERVER_PASSWORD=
-    GPG_PASSPHRASE=
-
-${COLOR_GREEN}ndk-pkg logs <PACKAGE-NAME|PACKAGE_SPEC>${COLOR_OFF}
-    show logs of the given installed package.
+${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN>${COLOR_OFF}
+    search all available packages whose name matches the given regular expression pattern.
 
 ${COLOR_GREEN}ndk-pkg info <PACKAGE-NAME> [--json] [--yaml] [<KEY>]${COLOR_OFF}
     show information of the given package.
@@ -8471,7 +8447,8 @@ ${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-
 
     If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
 
-${COLOR_GREEN}ndk-pkg install   <PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
+
+${COLOR_GREEN}ndk-pkg install   <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
     install the given packages.
 
     INSTALL-OPTIONS:
@@ -8487,21 +8464,72 @@ ${COLOR_GREEN}ndk-pkg install   <PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
         ${COLOR_BLUE}--dry-run${COLOR_OFF}
         ${COLOR_BLUE}--keep-working-dir${COLOR_OFF}
 
-${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ndk-pkg upgrade   [PACKAGE-NAME]... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg upgrade   [PACKAGE-SPEC]... [INSTALL-OPTIONS]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
-${COLOR_GREEN}ndk-pkg upgrade-self${COLOR_OFF}
-    upgrade this software.
-
-${COLOR_GREEN}ndk-pkg uninstall <PACKAGE-NAME|PACKAGE_SPEC>...${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg uninstall <PACKAGE_SPEC>...${COLOR_OFF}
     uninstall the given packages.
 
-${COLOR_GREEN}ndk-pkg gen-url-transform-sample${COLOR_OFF}
-    generate url-transform sample.
 
+${COLOR_GREEN}ndk-pkg receipt <PACKAGE-SPEC> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
+    show receipt of the given installed package.
+
+${COLOR_GREEN}ndk-pkg tree <PACKAGE-SPEC> [--dirsfirst | -L N]${COLOR_OFF}
+    list the installed files of the given installed package in a tree-like format.
+
+${COLOR_GREEN}ndk-pkg logs <PACKAGE_SPEC>${COLOR_OFF}
+    show logs of the given installed package.
+
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> <zip|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
+    pack the given installed package.
+
+
+${COLOR_GREEN}ndk-pkg deploy-maven-local <PACKAGE-NAME> [--api=<VALUE>] [--abi=<VALUE>] [--debug] [--keep-working-dir]${COLOR_OFF}
+    pack the given installed package as prefab aar and then deploy it to maven local repository.
+
+    ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option can be specified multiple times.
+
+    If ${COLOR_RED}--api=<VALUE>${COLOR_OFF} or ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option is unspecifed, ${COLOR_RED}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF} environment variable will be checked, if this environment variable is not set, ${COLOR_RED}android-21/arm64-v8a${COLOR_OFF} will be used as the default value.
+
+${COLOR_GREEN}ndk-pkg deploy-maven-remote <PACKAGE-NAME> [--abi=<VALUE>] [--abi=<VALUE>] [--debug] [--keep-working-dir] < REMOTE-CONFIG-FILE${COLOR_OFF}
+    pack the given installed package as prefab aar and then deploy it to maven remote repository.
+
+    ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option can be specified multiple times.
+
+    If ${COLOR_RED}--api=<VALUE>${COLOR_OFF} or ${COLOR_RED}--abi=<VALUE>${COLOR_OFF} option is unspecifed, ${COLOR_RED}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF} environment variable will be checked, if this environment variable is not set, ${COLOR_RED}android-21/arm64-v8a${COLOR_OFF} will be used as the default value.
+
+    REMOTE-CONFIG-FILE contains following content:
+
+    SERVER_ID=
+    SERVER_URL=
+    SERVER_USERNAME=
+    SERVER_PASSWORD=
+    GPG_PASSPHRASE=
+
+
+======================================
+
+${COLOR_GREEN}PACKAGE-SPEC${COLOR_OFF}
+    a formatted string that has form: <ANDROID-SPEC>/<PACKAGE-NAME>
+
+${COLOR_GREEN}PACKAGE-NAME${COLOR_OFF}
+    must match regular expression pattern ^[A-Za-z0-9+-_.@]{1,50}$
+
+${COLOR_GREEN}ANDROID-SPEC${COLOR_OFF}
+    a formatted string that has form: android-<ANDROID-API>/<ANDROID_ABI>
+
+${COLOR_GREEN}ANDROID-API${COLOR_OFF}
+    indicates which minimum Android SDK API level would be built for or run on.
+
+    Reference: https://developer.android.com/tools/releases/platforms
+
+${COLOR_GREEN}ANDROID-ABI${COLOR_OFF}
+    indicates which Android ABI would be built for or run on.
+
+    Reference: https://developer.android.com/ndk/guides/abis
     "
 
     if [ -z "$1" ] ; then
