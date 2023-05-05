@@ -7667,7 +7667,7 @@ configure() {
             esac
         fi
 
-        CONFIGURE_ENVS="$CONFIGURE_ENVS
+        CONFIGURE_ENVS="$CONFIGURE_ENVS --with-pic
             CC='$CC'
             CFLAGS='$CFLAGS'
             CXX='$CXX'
