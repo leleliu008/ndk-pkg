@@ -61,8 +61,8 @@ jobs:
           install -d "ndk-pkg-$RELEASE_VERSION/bin/"
           install -d "ndk-pkg-$RELEASE_VERSION/share/zsh/site-functions/"
 
-          run cp ndk-pkg "ndk-pkg-$RELEASE_VERSION/bin/ndk-pkg"
-          run cp ndk-pkg-zsh-completion "ndk-pkg-$RELEASE_VERSION/share/zsh/site-functions/_ndk-pkg"
+          cp ndk-pkg "ndk-pkg-$RELEASE_VERSION/bin/ndk-pkg"
+          cp ndk-pkg-zsh-completion "ndk-pkg-$RELEASE_VERSION/share/zsh/site-functions/_ndk-pkg"
 
           RELEASE_FILE_NAME="ndk-pkg-$RELEASE_VERSION.tar.gz"
 

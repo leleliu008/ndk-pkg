@@ -24,8 +24,6 @@ jobs:
 
       - run: |
           cd ~/.ndk-pkg/repos.d/offical-core
-          git fetch --progress origin +refs/heads/dev:refs/remotes/origin/dev
-          git checkout dev
         if: ${{ github.ref_name == 'dev' }}
 
       - run: ./ndk-pkg compare-versions brew
