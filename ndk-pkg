@@ -4363,7 +4363,7 @@ __install_native_package_to_core_dir_via_cmake() {
     fi
 
     run "$CMAKE" -S . -B build.d -DCMAKE_INSTALL_PREFIX=$NDKPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$@"
-    run "$CMAKE" --build   build.d -- "--jobs=$NATIVE_OS_NCPU"
+    run "$CMAKE" --build   build.d -- -j$BUILD_NJOBS
     run "$CMAKE" --install build.d
 
     printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
