@@ -4750,6 +4750,86 @@ EOF
 
     #########################################################################################
 
+    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+        step "config environment variables for cmake for native build"
+
+        # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
+
+        unset CMAKE_PREFIX_PATH
+        unset CMAKE_APPLE_SILICON_PROCESSOR
+        unset CMAKE_BUILD_PARALLEL_LEVEL
+        unset CMAKE_BUILD_TYPE
+        unset CMAKE_CONFIGURATION_TYPES
+        unset CMAKE_CONFIG_TYPE
+        unset CMAKE_EXPORT_COMPILE_COMMANDS
+        unset CMAKE_GENERATOR
+        unset CMAKE_GENERATOR_INSTANCE
+        unset CMAKE_GENERATOR_PLATFORM
+        unset CMAKE_GENERATOR_TOOLSET
+        unset CMAKE_INSTALL_MODE
+        unset CMAKE_C_COMPILER_LAUNCHER
+        unset CMAKE_C_LINKER_LAUNCHER
+        unset CMAKE_CXX_COMPILER_LAUNCHER
+        unset CMAKE_CXX_LINKER_LAUNCHER
+        unset CMAKE_MSVCIDE_RUN_PATH
+        unset CMAKE_NO_VERBOSE
+        unset CMAKE_OSX_ARCHITECTURES
+        unset CMAKE_TOOLCHAIN_FILE
+        unset DESTDIR
+        unset CTEST_INTERACTIVE_DEBUG_MODE
+        unset CTEST_OUTPUT_ON_FAILURE
+        unset CTEST_PARALLEL_LEVEL
+        unset CTEST_PROGRESS_OUTPUT
+        unset CTEST_USE_LAUNCHERS_DEFAULT
+        unset DASHBOARD_TEST_FROM_CTEST
+
+        # https://cmake.org/cmake/help/latest/envvar/CMAKE_BUILD_PARALLEL_LEVEL.html
+        export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
+
+        # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
+        if [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] ; then
+            export CMAKE_GENERATOR='Ninja'
+        else
+            export CMAKE_GENERATOR='Unix Makefiles'
+        fi
+
+        # https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
+        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] ; then
+            export CMAKE_EXPORT_COMPILE_COMMANDS=ON
+        else
+            export CMAKE_EXPORT_COMPILE_COMMANDS=OFF
+        fi
+
+        case $BUILD_TYPE in
+            debug)   CMAKE_BUILD_TYPE=Debug   ;;
+            release) CMAKE_BUILD_TYPE=Release ;;
+        esac
+
+        case $INSTALL_LIB in
+            static)  BUILD_SHARED_LIBS=OFF ;;
+            *)       BUILD_SHARED_LIBS=ON
+        esac
+
+        if [ "$LOG_LEVEL" -eq 0 ] ; then
+            CMAKE_VERBOSE_MAKEFILE=OFF
+            CMAKE_COLOR_MAKEFILE=OFF
+        else
+            CMAKE_VERBOSE_MAKEFILE=ON
+            CMAKE_COLOR_MAKEFILE=ON
+        fi
+
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
+        if [ "$LOG_LEVEL" -ge 3 ] ; then
+            CMAKE_FIND_DEBUG_MODE=ON
+        else
+            CMAKE_FIND_DEBUG_MODE=OFF
+        fi
+
+        env | sed -n '/^CMAKE_/p'
+    fi
+
+    #########################################################################################
+
     unset RECURSIVE_DEPENDENT_PACKAGE_NAMES
 
     [ -n "$PACKAGE_DEP_PKG" ] && {
@@ -5128,6 +5208,24 @@ $DOT_CONTENT
 
                 ################################################################################################
 
+                SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
+                SRC_SHA='0100da0b55f552134d732acdd0325e84a0ef731a305c15f6a2ea24308de09759'
+                __install_native_package_to_core_dir_via_cmake libbz2 "$SRC_URL" "$SRC_SHA" -DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON
+
+                ################################################################################################
+
+                SRC_URL='https://github.com/xz-mirror/xz/releases/download/v5.4.0/xz-5.4.0.tar.xz'
+                SRC_SHA='5f260e3b43f75cf43ca43d107dd18209f7d516782956a74ddd53288e02a83a31'
+                __install_native_package_to_core_dir_via_configure liblzma "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc
+
+                ################################################################################################
+
+                SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
+                SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
+                __install_native_package_to_core_dir_via_configure gdbm "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline
+
+                ################################################################################################
+
                 SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
                 SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
                 __install_native_package_to_core_dir_via_cmake expat "$SRC_URL" "$SRC_SHA" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF
@@ -5155,9 +5253,24 @@ $DOT_CONTENT
                 unset PYTHONHOME
                 unset PYTHONPATH
 
+                export ZLIB_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+                export ZLIB_LIBS="-L$NDKPKG_CORE_DIR/lib -l:libz.a"
+
+                export BZIP2_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+                export BZIP2_LIBS="-L$NDKPKG_CORE_DIR/lib -l:libbz2.a"
+
+                export LIBLZMA_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+                export LIBLZMA_LIBS="-L$NDKPKG_CORE_DIR/lib -l:liblzma.a"
+
+                export LIBSQLITE3_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+                export LIBSQLITE3_LIBS="-L$NDKPKG_CORE_DIR/lib -l:libsqlite3.a"
+
+                export GDBM_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+                export GDBM_LIBS="-L$NDKPKG_CORE_DIR/lib -l:libgdbm.a -l:libgdbm_compat.a"
+
                 SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
                 SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
-                __install_native_package_to_core_dir_via_configure python3 "$SRC_URL" "$SRC_SHA" --with-system-expat --with-system-ffi --with-openssl=$NDKPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --enable-loadable-sqlite-extensions --disable-profiling
+                __install_native_package_to_core_dir_via_configure python3 "$SRC_URL" "$SRC_SHA" --with-system-expat --with-system-ffi --with-openssl=$NDKPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling
             }
 
             :
