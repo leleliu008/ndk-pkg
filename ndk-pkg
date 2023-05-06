@@ -2545,9 +2545,9 @@ __fetch_resources_of_the_given_package() {
 
     if [ -z "$NDKINFO" ] ; then
         warn "Android NDK not found, it will be installed via uppm."
-        uppm install android-ndk-r23c
+        uppm install android-ndk-r25c
 
-        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r23c")"
+        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r25c")"
     fi
 
     eval "$NDKINFO"
@@ -4142,9 +4142,9 @@ inspect_install_arguments() {
 
     if [ -z "$NDKINFO" ] ; then
         warn "Android NDK not found, it will be installed via uppm."
-        uppm install android-ndk-r23c
+        uppm install android-ndk-r25c
 
-        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r23c")"
+        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r25c")"
     fi
 
     eval "$NDKINFO"
