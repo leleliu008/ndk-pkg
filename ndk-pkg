@@ -8543,12 +8543,6 @@ ${COLOR_GREEN}ndk-pkg info <PACKAGE-NAME> [--json] [--yaml] [<KEY>]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg info @all [--json] [--yaml]${COLOR_OFF}
     show information of all the available packages.
 
-${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
-    download formula resources of the given package to the local cache.
-
-${COLOR_GREEN}ndk-pkg fetch @all${COLOR_OFF}
-    download formula resources of all the available packages to the local cache.
-
 ${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     show the packages that are depended by the given package.
 
@@ -8559,6 +8553,13 @@ ${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-
     If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a filepath, then <OUTPUT-PATH> must ends with one of .dot|.box|.svg|.png
 
     If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
+
+
+${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
+    download formula resources of the given package to the local cache.
+
+${COLOR_GREEN}ndk-pkg fetch @all${COLOR_OFF}
+    download formula resources of all the available packages to the local cache.
 
 
 ${COLOR_GREEN}ndk-pkg install   <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
@@ -8593,11 +8594,19 @@ ${COLOR_GREEN}ndk-pkg receipt <PACKAGE-SPEC> [--path] [--yaml] [--json] [<KEY>]$
 ${COLOR_GREEN}ndk-pkg tree <PACKAGE-SPEC> [--dirsfirst | -L N]${COLOR_OFF}
     list the installed files of the given installed package in a tree-like format.
 
-${COLOR_GREEN}ndk-pkg logs <PACKAGE_SPEC>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg logs <PACKAGE-SPEC>${COLOR_OFF}
     show logs of the given installed package.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> <zip|tar.gz|tar.xz|tar.bz2>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-packing-dir] [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     pack the given installed package.
+
+    <OUTPUT-PATH> can be either the filepath or directory where the packed archive will be written to. If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+
+    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a filepath, then <OUTPUT-PATH> must ends with one of .tar.gz|.tar.xz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz|.tbz2|zip
+
+    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a directory, then <OUTPUT-TYPE> will be .tar.xz, OUTPUT-PATH will be expanded to <OUTPUT-PATH>/\$XCPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$TARGET_PLATFORM_NAME-\$TARGET_PLATFORM_ARCH.tar.xz
+
+    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPUT-TYPE> will be .tar.xz, OUTPUT-PATH will be \$XCPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$TARGET_PLATFORM_NAME-\$TARGET_PLATFORM_ARCH.tar.xz
 
 
 ${COLOR_GREEN}ndk-pkg deploy-maven-local <PACKAGE-NAME> [--api=<VALUE>] [--abi=<VALUE>] [--debug] [--keep-working-dir]${COLOR_OFF}
@@ -8632,15 +8641,15 @@ ${COLOR_GREEN}PACKAGE-NAME${COLOR_OFF}
     must match regular expression pattern ^[A-Za-z0-9+-_.@]{1,50}$
 
 ${COLOR_GREEN}ANDROID-SPEC${COLOR_OFF}
-    a formatted string that has form: android-<ANDROID-API>/<ANDROID_ABI>
+    a formatted string that has form: android-<ANDROID-API>/<ANDROID-ABI>
 
 ${COLOR_GREEN}ANDROID-API${COLOR_OFF}
-    indicates which minimum Android SDK API level would be built for or run on.
+    indicates which minimum Android SDK API level would be built for or can run on.
 
     Reference: https://developer.android.com/tools/releases/platforms
 
 ${COLOR_GREEN}ANDROID-ABI${COLOR_OFF}
-    indicates which Android ABI would be built for or run on.
+    indicates which Android ABI would be built for or can run on.
 
     Reference: https://developer.android.com/ndk/guides/abis
     "
