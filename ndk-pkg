@@ -5254,19 +5254,19 @@ $DOT_CONTENT
                 unset PYTHONPATH
 
                 export ZLIB_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export ZLIB_LIBS="-L$NDKPKG_CORE_DIR/lib -l:libz.a"
+                export ZLIB_LIBS="-L$NDKPKG_CORE_DIR/lib -lz"
 
                 export BZIP2_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export BZIP2_LIBS="-L$NDKPKG_CORE_DIR/lib -l:libbz2.a"
+                export BZIP2_LIBS="-L$NDKPKG_CORE_DIR/lib -lbz2"
 
                 export LIBLZMA_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export LIBLZMA_LIBS="-L$NDKPKG_CORE_DIR/lib -l:liblzma.a"
+                export LIBLZMA_LIBS="-L$NDKPKG_CORE_DIR/lib -llzma"
 
                 export LIBSQLITE3_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export LIBSQLITE3_LIBS="-L$NDKPKG_CORE_DIR/lib -l:libsqlite3.a"
+                export LIBSQLITE3_LIBS="-L$NDKPKG_CORE_DIR/lib -lsqlite3"
 
                 export GDBM_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export GDBM_LIBS="-L$NDKPKG_CORE_DIR/lib -l:libgdbm.a -l:libgdbm_compat.a"
+                export GDBM_LIBS="-L$NDKPKG_CORE_DIR/lib -lgdbm -lgdbm_compat"
 
                 SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
                 SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
