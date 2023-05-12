@@ -2545,9 +2545,19 @@ __fetch_resources_of_the_given_package() {
 
     if [ -z "$NDKINFO" ] ; then
         warn "Android NDK not found, it will be installed via uppm."
-        uppm install android-ndk-r25c
 
-        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r25c")"
+        # https://github.com/microsoft/WSL/issues/8681
+        # https://github.com/microsoft/WSL/issues/4071
+
+        if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
+            DEFAULT_NDK_REVERSION=r23c
+        else
+            DEFAULT_NDK_REVERSION=r25c
+        fi
+
+        uppm install android-ndk-$DEFAULT_NDK_REVERSION
+
+        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-$DEFAULT_NDK_REVERSION")"
     fi
 
     eval "$NDKINFO"
@@ -4142,9 +4152,19 @@ inspect_install_arguments() {
 
     if [ -z "$NDKINFO" ] ; then
         warn "Android NDK not found, it will be installed via uppm."
-        uppm install android-ndk-r25c
 
-        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-r25c")"
+        # https://github.com/microsoft/WSL/issues/8681
+        # https://github.com/microsoft/WSL/issues/4071
+
+        if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
+            DEFAULT_NDK_REVERSION=r23c
+        else
+            DEFAULT_NDK_REVERSION=r25c
+        fi
+
+        uppm install android-ndk-$DEFAULT_NDK_REVERSION
+
+        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-$DEFAULT_NDK_REVERSION")"
     fi
 
     eval "$NDKINFO"
