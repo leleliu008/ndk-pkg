@@ -41,9 +41,7 @@ _commands=(
     'deploy-maven-local:pack the given installed package as prefab aar and then deploy it to maven local repository.'
     'deploy-maven-remote:pack the given installed package as prefab aar and then deploy it to maven remote repository.'
     'logs:show logs of the given installed package.'
-    'gen-github-workflows:generate github workflows.'
     'gen-url-transform-sample:generate url-transform sample.'
-    'compare-versions:compare package versions with brew or maven central.'
 )
 
 function _ndk_pkg_commands() {
@@ -263,14 +261,6 @@ function _ndk_pkg() {
                     ;;
                 integrate)
                     _arguments '1:what:(zsh cmake)'
-                    ;;
-                compare-versions)
-                    _arguments ':which:(brew maven)'
-                    ;;
-                gen-github-workflows)
-                    _arguments \
-                        '--group-size=-[set the group size]:group-size:(50 40 30 20)' \
-                        '--output-dir=-[set the output dir]:output-dir:{_files -/}'
                     ;;
                 *);;
             esac

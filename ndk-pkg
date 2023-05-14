@@ -3383,84 +3383,6 @@ __cleanup() {
 
 # }}}
 ##############################################################################
-# {{{ ndk-pkg compare-versions
-
-package_name_transform_from_uppm_to_brew() {
-    case $1 in
-        gm4)      printf '%s\n' 'm4'        ;;
-        file)     printf '%s\n' 'file-formula' ;;
-        xattr)    printf '%s\n' 'attr'      ;;
-        patch)    printf '%s\n' 'gpatch'    ;;
-        delta)    printf '%s\n' 'git-delta' ;;
-        gmake)    printf '%s\n' 'make'      ;;
-        gtar)     printf '%s\n' 'gnu-tar'   ;;
-        libjxl)   printf '%s\n' 'jpeg-xl'   ;;
-        blake3)   printf '%s\n' 'b3sum'     ;;
-        libwebp)  printf '%s\n' 'webp'      ;;
-        proj7)    printf '%s\n' 'proj@7'    ;;
-        freetype2)printf '%s\n' 'freetype'  ;;
-        freetype2-with-harfbuzz)
-                  printf '%s\n' 'freetype'  ;;
-        libmediainfo|mediainfo)
-                  printf '%s\n' 'media-info';;
-        tcl-core) printf '%s\n' 'tcl-tk'    ;;
-        *)        printf '%s\n' "$1"
-    esac
-}
-
-__compare_versions_with_brew() {
-    cd "$NDKPKG_HOME/repos.d/offical-core/formula"
-
-    for item in $(find . -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; | sort | uniq)
-    do
-        __load_formula_of_the_given_package "$item"
-
-        BREW_PKG_NMAE="$(package_name_transform_from_uppm_to_brew "$PACKAGE_NAME")"
-
-        if brew info "$BREW_PKG_NMAE" > /dev/null 2>&1 ; then
-            BREW_PKG_VERS=$(brew info "$BREW_PKG_NMAE" --json | yq '.[0].versions.stable')
-
-            if version_match "$BREW_PKG_VERS" gt "$PACKAGE_VERSION" ; then
-                printf "${COLOR_RED}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
-            else
-                :
-                #printf "${COLOR_GREEN}%-10s %-10s  |  %-10s %-10s${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION" "$BREW_PKG_NMAE" "$BREW_PKG_VERS"
-            fi
-        else
-            printf "${COLOR_BLUE}%-10s %-10s  |${COLOR_OFF}\n" "$PACKAGE_NAME" "$PACKAGE_VERSION"
-        fi
-    done
-}
-
-# https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/
-__compare_versions_with_maven_central() {
-    WORKING_DIR="$(mktemp -d)"
-
-    cd "$WORKING_DIR"
-
-    wfetch 'https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21' --output-name=artifacts.html --silent
-
-    for artifactId in $(sed -n '/<a href=.* title=/p' artifacts.html | sed 's|<a href="\(.*\)/" .*|\1|')
-    do
-        rm -f maven-metadata.xml
-
-        wfetch "https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/${artifactId}/maven-metadata.xml" --output-name=maven-metadata.xml --silent
-
-        LATEST_VERSION_IN_MAVEN_CENTRAL=$(sed -n '/latest/p' maven-metadata.xml | sed -e 's|[[:space:]]||g' -e 's|<latest>\(.*\)</latest>|\1|')
-        AVAILABLE_VERSION_IN_FORMULA_REPO=$(__show_information_of_the_given_package "$artifactId" version)
-
-        if version_match "$AVAILABLE_VERSION_IN_FORMULA_REPO" gt "$LATEST_VERSION_IN_MAVEN_CENTRAL" ; then
-            printf "${COLOR_RED}%-15s %-10s %-10s${COLOR_OFF}\n" "$artifactId" "$AVAILABLE_VERSION_IN_FORMULA_REPO" "$LATEST_VERSION_IN_MAVEN_CENTRAL"
-        else
-            :
-        fi
-    done
-
-    rm -rf "$WORKING_DIR"
-}
-
-# }}}
-##############################################################################
 # {{{ ndk-pkg gen-url-transform-sample
 
 __gen_url_transform_sample() {
@@ -3488,126 +3410,6 @@ EOF
 
     success "url-transform sample has been written into $NDKPKG_HOME/url-transform.sample"
     note "You can rename url-transform.sample to url-transform then edit it to meet your needs. To apply this, you should run 'export NDKPKG_URL_TRANSFORM=$NDKPKG_HOME/url-transform' in your terminal."
-}
-
-# }}}
-##############################################################################
-# {{{ ndk-pkg gen-github-workflows
-
-__gen_github_workflows() {
-    unset GROUP_SIZE
-    unset OUTPUT_DIR
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --group-size=*)
-                GROUP_SIZE="${1#*=}"
-                is_integer "$GROUP_SIZE" || abort 1 "--group-size=<INTEGER>, <INTEGER> must be an integer."
-                ;;
-            --output-dir=*)
-                OUTPUT_DIR="${1#*=}"
-
-                case "$OUTPUT_DIR" in
-                    '') abort 1 "--output-dir=<DIR>, <DIR> must be non-empty." ;;
-                    /*) ;;
-                    \~|\~/) OUTPUT_DIR="${HOME}" ;;
-                    \~/*)   OUTPUT_DIR="${HOME}${OUTPUT_DIR#'~/'}" ;;
-                    .|./)   OUTPUT_DIR="${PWD}" ;;
-                    *)      OUTPUT_DIR="${PWD}/$OUTPUT_DIR" ;;
-                esac
-
-                [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
-        esac
-        shift
-    done
-
-    if [ -z "$GROUP_SIZE" ] ; then
-        abort 1 "--group-size=<INTEGER> option must be given."
-    fi
-
-    if [ -z "$OUTPUT_DIR" ] ; then
-        OUTPUT_DIR="$NDKPKG_HOME/repos.d/offical-core/.github/workflows"
-    fi
-
-    GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH="$NDKPKG_HOME/repos.d/offical-core/.github/workflows/template"
-
-    if [ ! -f "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" ] ; then
-        __sync_available_formula_repositories
-    fi
-
-    unset AVAILABLE_PACKAGES
-    unset YDEPENDED_PACKAGES
-    unset NDEPENDED_PACKAGES
-
-    AVAILABLE_PACKAGES=$(__list_available_packages)
-
-    for item in test v8 webrtc
-    do
-        AVAILABLE_PACKAGES=$(printf '%s\n' "$AVAILABLE_PACKAGES" | sed "s|^$item$||")
-    done
-
-    for x in $AVAILABLE_PACKAGES
-    do
-        __load_formula_of_the_given_package "$x"
-
-        YDEPENDED_PACKAGES="$YDEPENDED_PACKAGES $PACKAGE_DEP_PKG"
-    done
-
-    YDEPENDED_PACKAGES=$(printf '%s\n' "$YDEPENDED_PACKAGES" | tr ' ' '\n' | sort | uniq)
-
-    printf '%s\n' "YDEPENDED_PACKAGES=$YDEPENDED_PACKAGES"
-
-    unset AVAILABLE_PACKAGES_COUNT
-
-    AVAILABLE_PACKAGES_COUNT="$(list_size $AVAILABLE_PACKAGES)"
-
-    printf '%s\n' "$AVAILABLE_PACKAGES_COUNT"
-
-    I=0
-    J=0
-    K=0
-
-    for x in $AVAILABLE_PACKAGES
-    do
-        I=$(expr "$I" + 1)
-        K=$(expr "$K" + 1)
-
-        EXIST=n
-
-        for y in $YDEPENDED_PACKAGES
-        do
-            if [ "$x" = "$y" ] ; then
-                EXIST=y
-                break
-            fi
-        done
-
-        if [ "$EXIST" = n ] ; then
-            if [ -z "$NDEPENDED_PACKAGES" ] ; then
-                NDEPENDED_PACKAGES="$x"
-            else
-                NDEPENDED_PACKAGES="$NDEPENDED_PACKAGES $x"
-            fi
-        fi
-
-        if [ "$I" -eq "$AVAILABLE_PACKAGES_COUNT" ] || [ "$K" -eq "$GROUP_SIZE" ] ; then
-            unset OUTPUT_FILEPATH
-
-            J=$(expr "$J" + 1)
-            OUTPUT_FILEPATH="$OUTPUT_DIR/ci$J.yml"
-            NDEPENDED_PACKAGES=$(printf '%s\n' "$NDEPENDED_PACKAGES" | tr ' ' ,)
-
-            echo
-            run cp "$GITHUB_ACTIONS_WORKFLOW_TEMPLATE_FILEPATH" "$OUTPUT_FILEPATH"
-            sed_in_place "s/INDEX/$J/"                          "$OUTPUT_FILEPATH"
-            sed_in_place "s/PKGLIST/$NDEPENDED_PACKAGES/"       "$OUTPUT_FILEPATH"
-
-            unset NDEPENDED_PACKAGES
-
-            K=0
-        fi
-    done
 }
 
 # }}}
@@ -4421,7 +4223,6 @@ __install_the_given_package() {
 
     trap  __install_the_given_package_onexit EXIT
 
-    # brew install meson
     # Error: The current work directory doesn't exist, cannot proceed.
     # beacuse previous package's work direcotory is deleted.
     cd "$HOME"
@@ -5036,266 +4837,234 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    if [ "$NDKPKG_USE_EXTERNAL_PACKAGE_MANAGER" = brew ] ; then
-        step "install needed packages via brew"
+    step "install needed packages via uppm"
 
-        BREW="$(command -v brew)" || abort 1 "command not found: brew"
+    UPPM="$NDKPKG_CORE_BIN_DIR/uppm"
 
-        run "$BREW" update
-        run "$BREW" --env
+    run "$UPPM" env
+    run "$UPPM" update
 
-        for item in $PACKAGE_DEP_UPP_ALL
-        do
-            BREW_PACKAGE_NAME=
-            BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_brew "$item")"
+    # these packages are not relocatable, we should build them from source locally.
+    PACKAGE_USE_PERL=no
+    PACKAGE_USE_TEXINFO=no
+    PACKAGE_USE_HELP2MAN=no
+    PACKAGE_USE_INTLTOOL=no
+    PACKAGE_USE_PYTHON3=no
+    PACKAGE_USE_LIBTOOL=no
+    PACKAGE_USE_AUTOMAKE=no
+    PACKAGE_USE_AUTOCONF=no
 
-            run "$BREW" install "$BREW_PACKAGE_NAME"
+    for item in $PACKAGE_DEP_UPP_ALL
+    do
+        case $item in
+            perl)     PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ;;
+            texinfo)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_TEXINFO=yes  ;;
+            help2man) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_HELP2MAN=yes ;;
+            intltool) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_INTLTOOL=yes ;;
+            python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_PYTHON3=yes  ;;
+            libtool)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ;                        PACKAGE_USE_LIBTOOL=yes  ;;
+            autoconf) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ;;
+            automake) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
+        esac
+    done
 
-            BREW_PACKAGE_INSTALLED_DIR=
-            BREW_PACKAGE_INSTALLED_DIR="$("$BREW" --prefix "$BREW_PACKAGE_NAME")"
+    for item in $PACKAGE_DEP_UPP_ALL
+    do
+        case $item in
+            python3|perl|texinfo|help2man|intltool|libtool|autoconf|automake) continue
+        esac
 
-            if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                PATH="$BREW_PACKAGE_INSTALLED_DIR/bin:$PATH"
-            fi
+        run "$UPPM" install "$item"
 
-            if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                PATH="$BREW_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-            fi
+        UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
 
-            if [ -d  "$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin" ] ; then
-                PATH="$BREW_PACKAGE_INSTALLED_DIR/libexec/gnubin:$PATH"
-            fi
-        done
-    elif [ "$NDKPKG_USE_EXTERNAL_PACKAGE_MANAGER" = uppm ] ; then
-        step "install needed packages via uppm"
+        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
+            PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
+        fi
 
-        UPPM="$NDKPKG_CORE_BIN_DIR/uppm"
+        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+            PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        fi
 
-        run "$UPPM" env
-        run "$UPPM" update
+        if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+            ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        fi
 
-        # these packages are not relocatable, we should build them from source locally.
-        PACKAGE_USE_PERL=no
-        PACKAGE_USE_TEXINFO=no
-        PACKAGE_USE_HELP2MAN=no
-        PACKAGE_USE_INTLTOOL=no
-        PACKAGE_USE_PYTHON3=no
-        PACKAGE_USE_LIBTOOL=no
-        PACKAGE_USE_AUTOMAKE=no
-        PACKAGE_USE_AUTOCONF=no
+        if [ "$item" = 'docbook-xsl' ] ; then
+            # http://xmlsoft.org/xslt/xsltproc.html
+            export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
+            printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+        fi
+    done
 
-        for item in $PACKAGE_DEP_UPP_ALL
-        do
-            case $item in
-                perl)     PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ;;
-                texinfo)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_TEXINFO=yes  ;;
-                help2man) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_HELP2MAN=yes ;;
-                intltool) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_INTLTOOL=yes ;;
-                python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_PYTHON3=yes  ;;
-                libtool)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ;                        PACKAGE_USE_LIBTOOL=yes  ;;
-                autoconf) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ;;
-                automake) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
-            esac
-        done
+    (
+        PPFLAGS="$PPFLAGS -I$NDKPKG_CORE_DIR/include"
+        LDFLAGS="$LDFLAGS -L$NDKPKG_CORE_DIR/lib -Wl,-rpath,$NDKPKG_CORE_DIR/lib"
 
-        for item in $PACKAGE_DEP_UPP_ALL
-        do
-            case $item in
-                python3|perl|texinfo|help2man|intltool|libtool|autoconf|automake) continue
-            esac
+        export CPPFLAGS="$PPFLAGS"
+        export  LDFLAGS="$LDFLAGS"
 
-            run "$UPPM" install "$item"
+        export PKG_CONFIG_PATH="$NDKPKG_CORE_DIR/lib/pkgconfig"
 
-            UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
+        unset MACOSX_DEPLOYMENT_TARGET
 
-            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
-            fi
+        GMAKE="$HOME/.uppm/installed/gmake/bin/gmake"
+        CMAKE="$HOME/.uppm/installed/cmake/bin/cmake"
 
-            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-            fi
+        #########################################################################################
 
-            if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-                ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-            fi
+        [ "$PACKAGE_USE_PERL" = yes ] && {
+            SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
+            SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
+            __install_native_package_to_core_dir_via_configure perl "$SRC_URL" "$SRC_SHA"
+        }
 
-            if [ "$item" = 'docbook-xsl' ] ; then
-                # http://xmlsoft.org/xslt/xsltproc.html
-                export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
-                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
-            fi
-        done
+        [ "$PACKAGE_USE_TEXINFO" = yes ] && {
+            SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.tar.xz'
+            SRC_SHA='20744b82531ce7a04d8cee34b07143ad59777612c3695d5855f29fba40fbe3e0'
+            __install_native_package_to_core_dir_via_configure texinfo "$SRC_URL" "$SRC_SHA" --with-included-regex --enable-threads=posix
+        }
 
-        (
-            PPFLAGS="$PPFLAGS -I$NDKPKG_CORE_DIR/include"
-            LDFLAGS="$LDFLAGS -L$NDKPKG_CORE_DIR/lib -Wl,-rpath,$NDKPKG_CORE_DIR/lib"
+        [ "$PACKAGE_USE_HELP2MAN" = yes ] && {
+            SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
+            SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
+            __install_native_package_to_core_dir_via_configure help2man "$SRC_URL" "$SRC_SHA"
+        }
 
-            export CPPFLAGS="$PPFLAGS"
-            export  LDFLAGS="$LDFLAGS"
-
-            export PKG_CONFIG_PATH="$NDKPKG_CORE_DIR/lib/pkgconfig"
-
-            unset MACOSX_DEPLOYMENT_TARGET
-
-            GMAKE="$HOME/.uppm/installed/gmake/bin/gmake"
-            CMAKE="$HOME/.uppm/installed/cmake/bin/cmake"
+        [ "$PACKAGE_USE_INTLTOOL" = yes ] && {
+            SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+            SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+            __install_native_package_to_core_dir_via_cmake expat "$SRC_URL" "$SRC_SHA" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF
 
             #########################################################################################
 
-            [ "$PACKAGE_USE_PERL" = yes ] && {
-                SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
-                SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
-                __install_native_package_to_core_dir_via_configure perl "$SRC_URL" "$SRC_SHA"
-            }
+            step "install perl module XML::Parser"
 
-            [ "$PACKAGE_USE_TEXINFO" = yes ] && {
-                SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.tar.xz'
-                SRC_SHA='20744b82531ce7a04d8cee34b07143ad59777612c3695d5855f29fba40fbe3e0'
-                __install_native_package_to_core_dir_via_configure texinfo "$SRC_URL" "$SRC_SHA" --with-included-regex --enable-threads=posix
-            }
+            SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz'
+            SRC_SHA='d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d'
 
-            [ "$PACKAGE_USE_HELP2MAN" = yes ] && {
-                SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
-                SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
-                __install_native_package_to_core_dir_via_configure help2man "$SRC_URL" "$SRC_SHA"
-            }
+            RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.perl-XML-Parser"
 
-            [ "$PACKAGE_USE_INTLTOOL" = yes ] && {
-                SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-                SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-                __install_native_package_to_core_dir_via_cmake expat "$SRC_URL" "$SRC_SHA" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF
+            if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+                note "perl module XML::Parser already has been built, skipped."
+            else
+                wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
 
-                #########################################################################################
+                SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/perl-XML-Parser"
 
-                step "install perl module XML::Parser"
+                run install -d "$SRC_DIR"
+                run cd         "$SRC_DIR"
 
-                SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz'
-                SRC_SHA='d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d'
+                run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
 
-                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.perl-XML-Parser"
+                run perl Makefile.PL EXPATLIBPATH="$NDKPKG_CORE_DIR/lib" EXPATINCPATH="$NDKPKG_CORE_DIR/include"
+                run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                run "$GMAKE" install
 
-                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                    note "perl module XML::Parser already has been built, skipped."
-                else
-                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
+                printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+            fi
 
-                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/perl-XML-Parser"
+            #########################################################################################
 
-                    run install -d "$SRC_DIR"
-                    run cd         "$SRC_DIR"
+            SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
+            SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
+            __install_native_package_to_core_dir_via_configure intltool "$SRC_URL" "$SRC_SHA"
+        }
 
-                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+        [ "$PACKAGE_USE_LIBTOOL" = yes ] && {
+            SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+            SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
+            __install_native_package_to_core_dir_via_configure libtool "$SRC_URL" "$SRC_SHA" --enable-ltdl-install
+        }
 
-                    run perl Makefile.PL EXPATLIBPATH="$NDKPKG_CORE_DIR/lib" EXPATINCPATH="$NDKPKG_CORE_DIR/include"
-                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                    run "$GMAKE" install
+        [ "$PACKAGE_USE_AUTOCONF" = yes ] && {
+            SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
+            SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
+            __install_native_package_to_core_dir_via_configure autoconf "$SRC_URL" "$SRC_SHA"
+        }
 
-                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                fi
+        [ "$PACKAGE_USE_AUTOMAKE" = yes ] && {
+            SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+            SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
+            __install_native_package_to_core_dir_via_configure automake "$SRC_URL" "$SRC_SHA"
+        }
 
-                #########################################################################################
+        [ "$PACKAGE_USE_PYTHON3" = yes ] && {
+            ZLIB_FORMULA_FILEPATH="$NDKPKG_FORMULA_REPO_ROOT/offical-core/formula/zlib.yml"
 
-                SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
-                SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
-                __install_native_package_to_core_dir_via_configure intltool "$SRC_URL" "$SRC_SHA"
-            }
+            SRC_URL="$(yq .src-url "$ZLIB_FORMULA_FILEPATH")"
+            SRC_SHA="$(yq .src-sha "$ZLIB_FORMULA_FILEPATH")"
+            __install_native_package_to_core_dir_via_cmake zlib "$SRC_URL" "$SRC_SHA"
 
-            [ "$PACKAGE_USE_LIBTOOL" = yes ] && {
-                SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-                SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
-                __install_native_package_to_core_dir_via_configure libtool "$SRC_URL" "$SRC_SHA" --enable-ltdl-install
-            }
+            ################################################################################################
 
-            [ "$PACKAGE_USE_AUTOCONF" = yes ] && {
-                SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
-                SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
-                __install_native_package_to_core_dir_via_configure autoconf "$SRC_URL" "$SRC_SHA"
-            }
+            SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
+            SRC_SHA='0100da0b55f552134d732acdd0325e84a0ef731a305c15f6a2ea24308de09759'
+            __install_native_package_to_core_dir_via_cmake libbz2 "$SRC_URL" "$SRC_SHA" -DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON
 
-            [ "$PACKAGE_USE_AUTOMAKE" = yes ] && {
-                SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
-                SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
-                __install_native_package_to_core_dir_via_configure automake "$SRC_URL" "$SRC_SHA"
-            }
+            ################################################################################################
 
-            [ "$PACKAGE_USE_PYTHON3" = yes ] && {
-                ZLIB_FORMULA_FILEPATH="$NDKPKG_FORMULA_REPO_ROOT/offical-core/formula/zlib.yml"
+            SRC_URL='https://github.com/xz-mirror/xz/releases/download/v5.4.0/xz-5.4.0.tar.xz'
+            SRC_SHA='5f260e3b43f75cf43ca43d107dd18209f7d516782956a74ddd53288e02a83a31'
+            __install_native_package_to_core_dir_via_configure liblzma "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc
 
-                SRC_URL="$(yq .src-url "$ZLIB_FORMULA_FILEPATH")"
-                SRC_SHA="$(yq .src-sha "$ZLIB_FORMULA_FILEPATH")"
-                __install_native_package_to_core_dir_via_cmake zlib "$SRC_URL" "$SRC_SHA"
+            ################################################################################################
 
-                ################################################################################################
+            SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
+            SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
+            __install_native_package_to_core_dir_via_configure gdbm "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline
 
-                SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
-                SRC_SHA='0100da0b55f552134d732acdd0325e84a0ef731a305c15f6a2ea24308de09759'
-                __install_native_package_to_core_dir_via_cmake libbz2 "$SRC_URL" "$SRC_SHA" -DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON
+            ################################################################################################
 
-                ################################################################################################
+            SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+            SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+            __install_native_package_to_core_dir_via_cmake expat "$SRC_URL" "$SRC_SHA" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF
 
-                SRC_URL='https://github.com/xz-mirror/xz/releases/download/v5.4.0/xz-5.4.0.tar.xz'
-                SRC_SHA='5f260e3b43f75cf43ca43d107dd18209f7d516782956a74ddd53288e02a83a31'
-                __install_native_package_to_core_dir_via_configure liblzma "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc
+            ################################################################################################
 
-                ################################################################################################
+            SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3410100.tar.gz'
+            SRC_SHA='4dadfbeab9f8e16c695d4fbbc51c16b2f77fb97ff4c1c3d139919dfc038c9e33'
+            __install_native_package_to_core_dir_via_configure sqlite3 "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline
 
-                SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
-                SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
-                __install_native_package_to_core_dir_via_configure gdbm "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline
+            ################################################################################################
 
-                ################################################################################################
+            SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
+            SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
+            __install_native_package_to_core_dir_via_configure libtiff "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers
 
-                SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-                SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-                __install_native_package_to_core_dir_via_cmake expat "$SRC_URL" "$SRC_SHA" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF
+            ################################################################################################
 
-                ################################################################################################
+            SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
+            SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
+            __install_native_package_to_core_dir_via_configure openssl "$SRC_URL" "$SRC_SHA" 
 
-                SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3410100.tar.gz'
-                SRC_SHA='4dadfbeab9f8e16c695d4fbbc51c16b2f77fb97ff4c1c3d139919dfc038c9e33'
-                __install_native_package_to_core_dir_via_configure sqlite3 "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline
+            ################################################################################################
 
-                ################################################################################################
+            unset PYTHONHOME
+            unset PYTHONPATH
 
-                SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
-                SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
-                __install_native_package_to_core_dir_via_configure libtiff "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers
+            export ZLIB_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+            export ZLIB_LIBS="-L$NDKPKG_CORE_DIR/lib -lz"
 
-                ################################################################################################
+            export BZIP2_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+            export BZIP2_LIBS="-L$NDKPKG_CORE_DIR/lib -lbz2"
 
-                SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
-                SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
-                __install_native_package_to_core_dir_via_configure openssl "$SRC_URL" "$SRC_SHA" 
+            export LIBLZMA_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+            export LIBLZMA_LIBS="-L$NDKPKG_CORE_DIR/lib -llzma"
 
-                ################################################################################################
+            export LIBSQLITE3_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+            export LIBSQLITE3_LIBS="-L$NDKPKG_CORE_DIR/lib -lsqlite3"
 
-                unset PYTHONHOME
-                unset PYTHONPATH
+            export GDBM_CFLAGS="-I$NDKPKG_CORE_DIR/include"
+            export GDBM_LIBS="-L$NDKPKG_CORE_DIR/lib -lgdbm -lgdbm_compat"
 
-                export ZLIB_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export ZLIB_LIBS="-L$NDKPKG_CORE_DIR/lib -lz"
+            SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
+            SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
+            __install_native_package_to_core_dir_via_configure python3 "$SRC_URL" "$SRC_SHA" --with-system-expat --with-system-ffi --with-openssl=$NDKPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling
+        }
 
-                export BZIP2_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export BZIP2_LIBS="-L$NDKPKG_CORE_DIR/lib -lbz2"
-
-                export LIBLZMA_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export LIBLZMA_LIBS="-L$NDKPKG_CORE_DIR/lib -llzma"
-
-                export LIBSQLITE3_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export LIBSQLITE3_LIBS="-L$NDKPKG_CORE_DIR/lib -lsqlite3"
-
-                export GDBM_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-                export GDBM_LIBS="-L$NDKPKG_CORE_DIR/lib -lgdbm -lgdbm_compat"
-
-                SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
-                SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
-                __install_native_package_to_core_dir_via_configure python3 "$SRC_URL" "$SRC_SHA" --with-system-expat --with-system-ffi --with-openssl=$NDKPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling
-            }
-
-            :
-        )
-    fi
+        :
+    )
 
     PATH="$(printf '%s\n' "$PATH" | sed "s|:$NDKPKG_CORE_BIN_DIR||g")"
     PATH="$NDKPKG_CORE_BIN_DIR:$PATH"
@@ -5383,14 +5152,11 @@ $DOT_CONTENT
         command -v rustup > /dev/null || {
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
+            install -d "$PACKAGE_WORKING_DIR/tmp"
 
-            if [ -f    "$NDKPKG_HOME/tmp.d/rustup-init.sh" ] ; then
-                run rm "$NDKPKG_HOME/tmp.d/rustup-init.sh"
-            fi
+            wfetch 'https://sh.rustup.rs' --output-path="$PACKAGE_WORKING_DIR/tmp/rustup-init.sh"
 
-            wfetch 'https://sh.rustup.rs' --output-path="$NDKPKG_HOME/tmp.d/rustup-init.sh"
-
-            run bash "$NDKPKG_HOME/tmp.d/rustup-init.sh" -y
+            run bash "$PACKAGE_WORKING_DIR/tmp/rustup-init.sh" -y
 
             export CARGO_HOME="$HOME/.cargo"
             export PATH="$CARGO_HOME/bin:$PATH"
@@ -8908,23 +8674,6 @@ EOF
         info)
             shift
             __show_information_of_the_given_package "$@"
-            ;;
-        gen-github-workflows)
-            shift
-            __gen_github_workflows "$@"
-            ;;
-        compare-versions)
-            shift
-            case $1 in
-                brew)
-                    __compare_versions_with_brew
-                    ;;
-                maven)
-                    __compare_versions_with_maven_central
-                    ;;
-                '') abort 1 "$_0 compare-versions <brew|maven>, brew or maven subcommand is not given." ;;
-                *)  abort 1 "unrecognized argument: $1"
-            esac
             ;;
         *)  abort 1 "unrecognized argument: $1"
     esac
