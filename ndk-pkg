@@ -4508,6 +4508,9 @@ EOF
          LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
+        CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NDKPKG_CORE_DIR/include"
+         LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD  -L$NDKPKG_CORE_DIR/lib -Wl,-rpath,$NDKPKG_CORE_DIR/lib"
+
     if [ "$LOG_LEVEL" -ge 3 ] ; then
           CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -v"
         CXXFLAGS_FOR_BUILD="$CXXFLAGS_FOR_BUILD -v"
@@ -4848,6 +4851,7 @@ $DOT_CONTENT
 
     # these packages are not relocatable, we should build them from source locally.
     PACKAGE_USE_PERL=no
+    PACKAGE_USE_OPENSSL=no
     PACKAGE_USE_TEXINFO=no
     PACKAGE_USE_HELP2MAN=no
     PACKAGE_USE_INTLTOOL=no
@@ -4860,10 +4864,11 @@ $DOT_CONTENT
     do
         case $item in
             perl)     PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ;;
+            openssl)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_OPENSSL=yes  ;;
             texinfo)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_TEXINFO=yes  ;;
             help2man) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_HELP2MAN=yes ;;
             intltool) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_INTLTOOL=yes ;;
-            python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_PYTHON3=yes  ;;
+            python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_PYTHON3=yes  ; PACKAGE_USE_OPENSSL=yes ;;
             libtool)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ;                        PACKAGE_USE_LIBTOOL=yes  ;;
             autoconf) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ;;
             automake) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
@@ -4900,12 +4905,6 @@ $DOT_CONTENT
     done
 
     (
-        PPFLAGS="$PPFLAGS -I$NDKPKG_CORE_DIR/include"
-        LDFLAGS="$LDFLAGS -L$NDKPKG_CORE_DIR/lib -Wl,-rpath,$NDKPKG_CORE_DIR/lib"
-
-        export CPPFLAGS="$PPFLAGS"
-        export  LDFLAGS="$LDFLAGS"
-
         export PKG_CONFIG_PATH="$NDKPKG_CORE_DIR/lib/pkgconfig"
 
         unset MACOSX_DEPLOYMENT_TARGET
@@ -4919,6 +4918,12 @@ $DOT_CONTENT
             SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
             SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
             __install_native_package_to_core_dir_via_configure perl "$SRC_URL" "$SRC_SHA"
+        }
+
+        [ "$PACKAGE_USE_OPENSSL" = yes ] && {
+            SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
+            SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
+            __install_native_package_to_core_dir_via_configure openssl "$SRC_URL" "$SRC_SHA"
         }
 
         [ "$PACKAGE_USE_TEXINFO" = yes ] && {
@@ -5033,12 +5038,6 @@ $DOT_CONTENT
             SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
             SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
             __install_native_package_to_core_dir_via_configure libtiff "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers
-
-            ################################################################################################
-
-            SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
-            SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
-            __install_native_package_to_core_dir_via_configure openssl "$SRC_URL" "$SRC_SHA" 
 
             ################################################################################################
 
@@ -5273,6 +5272,14 @@ $DOT_CONTENT
 
     unset  M4
     export M4="$(command -v m4 || true)"
+
+    PATCHELF=$(command -v patchelf) || abort 1 "command not found: patchelf"
+    run "$PATCHELF" --version
+    printf '\n'
+
+    TREE=$(command -v tree) || abort 1 "command not found: tree"
+    run "$TREE" --version
+    printf '\n'
 
     #########################################################################################
 
@@ -8171,8 +8178,6 @@ __setup() {
     UPPM_PACKAGE_ACLOCAL_PATH="${UPPM_PACKAGE_ACLOCAL_PATH#':'}"
 
     cat > "$NDKPKG_CORE_DIR/env" <<EOF
-NDKPKG_USE_EXTERNAL_PACKAGE_MANAGER=uppm
-
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
