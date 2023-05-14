@@ -262,7 +262,10 @@ function _ndk_pkg() {
                 integrate)
                     _arguments '1:what:(zsh cmake)'
                     ;;
-                *);;
+                ndkinfo)
+                    _arguments '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:{_files -/}'
+                    ;;
+                *)  ;;
             esac
             ;;
         *);;

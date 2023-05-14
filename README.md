@@ -228,7 +228,7 @@ all relevant directories and files are located in `~/.ndk-pkg` directory.
     ndk-pkg ndkinfo --ndk-home=/usr/local/share/android-ndk
     ```
 
-    **Note**: If `--ndk-home=<ANDROID-NDK-HOME>` option is not given, then `~/.ndk-pkg/android-ndk-r[1-9][0-9][a-z]` and value of `ANDROID_NDK_ROOT` and `ANDROID_NDK_HOME` environment variable would be checked in order.
+    **Note**: If `--ndk-home=<ANDROID-NDK-HOME>` option is not given, then value of `ANDROID_NDK_ROOT` and `ANDROID_NDK_HOME` environment variable would be checked in order.
 
 - **install essential tools used by this shell script**
 
@@ -546,18 +546,9 @@ all relevant directories and files are located in `~/.ndk-pkg` directory.
 
     This environment variable already have been set on the most operating systems, if not set or set a empty string, you will receive an error message.
 
-- **ANDROID_NDK_ROOT or ANDROID_NDK_HOME**
+- **ANDROID_NDK_ROOT and ANDROID_NDK_HOME**
 
-    If `--ndk-home=<ANDROID-NDK-HOME>` option is not given when installing a package, then `~/.ndk-pkg/android-ndk-r[1-9][0-9][a-z]` and value of `ANDROID_NDK_ROOT` and `ANDROID_NDK_HOME` environment variable would be checked in order. If Not Found, a specific version of `Android NDK` will be automatically installed to `~/.ndk-pkg/android-ndk-r[1-9][0-9][a-z]`.
-
-- **SSL_CERT_FILE**
-
-    ```bash
-    curl -LO https://curl.se/ca/cacert.pem
-    export SSL_CERT_FILE="$PWD/cacert.pem"
-    ```
-
-    In general, you don't need to set this environment variable, but, if you encounter the reporting `the SSL certificate is invalid`, trying to run above commands in your terminal will do the trick.
+    If `--ndk-home=<ANDROID-NDK-HOME>` option is not given when installing a package, then value of `ANDROID_NDK_ROOT` and `ANDROID_NDK_HOME` environment variable would be checked in order. If they both are not set or set a empty string or are invalid android ndk home directory, a specific version of `Android NDK` will be automatically installed via [uppm](https://github.com/leleliu008/uppm).
 
 - **NDKPKG_URL_TRANSFORM**
 

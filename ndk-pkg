@@ -2544,20 +2544,21 @@ __fetch_resources_of_the_given_package() {
     fi
 
     if [ -z "$NDKINFO" ] ; then
-        warn "Android NDK not found, it will be installed via uppm."
-
         # https://github.com/microsoft/WSL/issues/8681
         # https://github.com/microsoft/WSL/issues/4071
 
         if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-            DEFAULT_NDK_REVERSION=r23c
+            UPPM_PACKAGE_NAME_NDK='android-ndk-r23c'
         else
-            DEFAULT_NDK_REVERSION=r25c
+            UPPM_PACKAGE_NAME_NDK='android-ndk-r25c'
         fi
 
-        uppm install android-ndk-$DEFAULT_NDK_REVERSION
+        uppm is-installed "$UPPM_PACKAGE_NAME_NDK" || {
+            warn "Android NDK not found, it will be installed via uppm."
+            uppm install  "$UPPM_PACKAGE_NAME_NDK"
+        }
 
-        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-$DEFAULT_NDK_REVERSION")"
+        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/$UPPM_PACKAGE_NAME_NDK")"
     fi
 
     eval "$NDKINFO"
@@ -3953,20 +3954,21 @@ inspect_install_arguments() {
     fi
 
     if [ -z "$NDKINFO" ] ; then
-        warn "Android NDK not found, it will be installed via uppm."
-
         # https://github.com/microsoft/WSL/issues/8681
         # https://github.com/microsoft/WSL/issues/4071
 
         if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-            DEFAULT_NDK_REVERSION=r23c
+            UPPM_PACKAGE_NAME_NDK='android-ndk-r23c'
         else
-            DEFAULT_NDK_REVERSION=r25c
+            UPPM_PACKAGE_NAME_NDK='android-ndk-r25c'
         fi
 
-        uppm install android-ndk-$DEFAULT_NDK_REVERSION
+        uppm is-installed "$UPPM_PACKAGE_NAME_NDK" || {
+            warn "Android NDK not found, it will be installed via uppm."
+            uppm install  "$UPPM_PACKAGE_NAME_NDK"
+        }
 
-        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/android-ndk-$DEFAULT_NDK_REVERSION")"
+        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/$UPPM_PACKAGE_NAME_NDK")"
     fi
 
     eval "$NDKINFO"
@@ -8037,20 +8039,13 @@ EOF
 # ndkinfo [ANDROID-NDK-HOME]
 ndkinfo() {
     if [ -z "$1" ] ; then
-        DS=
-
-        if [ -d "$NDKPKG_HOME" ] ; then
-            DS="$(find "$NDKPKG_HOME" -maxdepth 1 -mindepth 1 -type d -name "android-ndk-r2[1-9][a-e]" | sort -r)"
+        if [ -n "$ANDROID_NDK_ROOT" ] && ndk_info "$ANDROID_NDK_ROOT" ; then
+            return 0
         fi
 
-        DS="$DS $ANDROID_NDK_ROOT $ANDROID_NDK_HOME"
-
-        for d in $DS
-        do
-            if ndk_info "$d" ; then
-                return 0
-            fi
-        done
+        if [ -n "$ANDROID_NDK_HOME" ] && ndk_info "$ANDROID_NDK_HOME" ; then
+            return 0
+        fi
 
         return 1
     else
@@ -8251,7 +8246,7 @@ ${COLOR_GREEN}ndk-pkg sysinfo${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg ndkinfo [--ndk-home=<ANDROID-NDK-HOME>]${COLOR_OFF}
     show basic information about the specified location of Android NDK.
 
-    if --ndk-home=<ANDROID-NDK-HOME> option is not specified, <ANDROID-NDK-HOME> will be calculated in following order:
+    If --ndk-home=<ANDROID-NDK-HOME> option is not given, <ANDROID-NDK-HOME> will be calculated in following order:
     1. ${COLOR_PURPLE}ANDROID_NDK_ROOT${COLOR_OFF} environment variable
     2. ${COLOR_PURPLE}ANDROID_NDK_HOME${COLOR_OFF} environment variable
 
@@ -8460,7 +8455,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.2.0
+    NDKPKG_VERSION=0.2.1
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
@@ -8572,13 +8567,28 @@ EOF
     case $1 in
         ndkinfo)
             shift
-            ndkinfo "$@"
-            return 0
+
+            unset USER_SPECIFIED_ANDROID_NDK_HOME
+
+            for arg in "$@"
+            do
+                case $arg in
+                    --ndk-home=*)
+                        USER_SPECIFIED_ANDROID_NDK_HOME="${arg#*=}"
+                        ;;
+                esac
+            done
+
+            if [ -z "$USER_SPECIFIED_ANDROID_NDK_HOME" ] ; then
+                ndkinfo
+            else
+                ndkinfo "$USER_SPECIFIED_ANDROID_NDK_HOME"
+            fi
+
             ;;
         sysinfo)
             shift
             sysinfo
-            return 0
             ;;
 
         ls-available) shift; __list_available_packages ;;
