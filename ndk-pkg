@@ -4850,6 +4850,7 @@ $DOT_CONTENT
     run "$UPPM" update
 
     # these packages are not relocatable, we should build them from source locally.
+    PACKAGE_USE_RUBY=no
     PACKAGE_USE_PERL=no
     PACKAGE_USE_OPENSSL=no
     PACKAGE_USE_TEXINFO=no
@@ -4869,6 +4870,7 @@ $DOT_CONTENT
             help2man) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_HELP2MAN=yes ;;
             intltool) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_INTLTOOL=yes ;;
             python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_PYTHON3=yes  ; PACKAGE_USE_OPENSSL=yes ;;
+            ruby)     PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_RUBY=yes     ; PACKAGE_USE_OPENSSL=yes ;;
             libtool)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ;                        PACKAGE_USE_LIBTOOL=yes  ;;
             autoconf) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ;;
             automake) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
@@ -4878,7 +4880,7 @@ $DOT_CONTENT
     for item in $PACKAGE_DEP_UPP_ALL
     do
         case $item in
-            python3|perl|texinfo|help2man|intltool|libtool|autoconf|automake) continue
+            python3|perl|ruby|texinfo|help2man|intltool|libtool|autoconf|automake) continue
         esac
 
         run "$UPPM" install "$item"
@@ -5062,6 +5064,32 @@ $DOT_CONTENT
             SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
             SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
             __install_native_package_to_core_dir_via_configure python3 "$SRC_URL" "$SRC_SHA" --with-system-expat --with-system-ffi --with-openssl=$NDKPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling
+        }
+
+        [ "$PACKAGE_USE_RUBY" = yes ] && {
+            ZLIB_FORMULA_FILEPATH="$NDKPKG_FORMULA_REPO_ROOT/offical-core/formula/zlib.yml"
+
+            SRC_URL="$(yq .src-url "$ZLIB_FORMULA_FILEPATH")"
+            SRC_SHA="$(yq .src-sha "$ZLIB_FORMULA_FILEPATH")"
+            __install_native_package_to_core_dir_via_cmake zlib "$SRC_URL" "$SRC_SHA"
+
+            ################################################################################################
+
+            SRC_URL='https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz'
+            SRC_SHA='c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4'
+            __install_native_package_to_core_dir_via_configure libyaml "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --enable-largefile
+
+            ################################################################################################
+
+            SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
+            SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
+            __install_native_package_to_core_dir_via_configure libtiff "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers
+
+            ################################################################################################
+
+            SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
+            SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
+            __install_native_package_to_core_dir_via_configure libtiff "$SRC_URL" "$SRC_SHA" --disable-dependency-tracking --enable-static --enable-shared --disable-docs
         }
 
         :
@@ -6032,18 +6060,13 @@ EOF
     # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
     # because we only want to use our own
     export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
-
-    if [ -z "$PKG_CONFIG_PATH" ] ; then
-        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
-    else
-        export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
-    fi
+    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig"
 
     for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
     do
-        for i in lib share
+        for d in lib share
         do
-            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/$i/pkgconfig"
+            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/$d/pkgconfig"
 
             if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
                 PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEPENDENT_PACKAGE_PKGCONF_DIR"
