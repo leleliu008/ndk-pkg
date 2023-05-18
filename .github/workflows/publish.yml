@@ -6,46 +6,7 @@ on:
     #- cron: '0 1 * * *'
 
 jobs:
-
-  check:
-    runs-on: ubuntu-latest
-
-    env:
-      GH_TOKEN: ${{ github.token }}
-
-    steps:
-      - id:  check-if-has-new-commit
-        run: |
-          cat > QUERY <<EOF
-          {
-            repository(owner: "leleliu008", name: "ndk-pkg") {
-                latestRelease {
-                  name
-                }
-            }
-          }
-          EOF
-
-          LATEST_RELEASE_GIT_SHA="$(gh api graphql -f "query=$(cat QUERY)" --jq .data.repository.latestRelease.name | cut -d+ -f2)"
-
-          printf 'LATEST_RELEASE_GIT_SHA=%s\n' "$LATEST_RELEASE_GIT_SHA"
-
-          if [ "$LATEST_RELEASE_GIT_SHA" = ${{ github.sha }} ] ; then
-              printf 'HAS_NEW_COMMIT=no\n'        >> "$GITHUB_OUTPUT"
-          else
-              printf 'HAS_NEW_COMMIT=yes\n'       >> "$GITHUB_OUTPUT"
-          fi
-
-          printf 'GIT_SHA=%s\n' ${{ github.sha }} >> "$GITHUB_OUTPUT"
-
-    outputs:
-      if-has-new-commit: ${{ steps.check-if-has-new-commit.outputs.HAS_NEW_COMMIT }}
-      git-sha:           ${{ steps.check-if-has-new-commit.outputs.GIT_SHA }}
-
-
   publish:
-    needs: [check]
-    if: needs.check.outputs.if-has-new-commit == 'yes'
 
     runs-on: ubuntu-latest
 
@@ -59,10 +20,10 @@ jobs:
           RELEASE_VERSION="$(./ndk-pkg --version)"
 
           install -d "ndk-pkg-$RELEASE_VERSION/bin/"
-          install -d "ndk-pkg-$RELEASE_VERSION/share/zsh/site-functions/"
+          install -d "ndk-pkg-$RELEASE_VERSION/share/zsh/vendor-completions/"
 
           cp ndk-pkg "ndk-pkg-$RELEASE_VERSION/bin/ndk-pkg"
-          cp ndk-pkg-zsh-completion "ndk-pkg-$RELEASE_VERSION/share/zsh/site-functions/_ndk-pkg"
+          cp ndk-pkg-zsh-completion "ndk-pkg-$RELEASE_VERSION/share/zsh/vendor-completions/_ndk-pkg"
 
           RELEASE_FILE_NAME="ndk-pkg-$RELEASE_VERSION.tar.gz"
 
@@ -77,6 +38,4 @@ jobs:
           \`\`\`
           EOF
 
-          TAGNAME="$RELEASE_VERSION+${{ needs.check.outputs.git-sha }}"
-
-          gh release create "$TAGNAME" "$RELEASE_FILE_NAME" --title "$TAGNAME" --notes-file notes.md
+          gh release create "$RELEASE_VERSION" "$RELEASE_FILE_NAME" --title "$RELEASE_VERSION" --notes-file notes.md
