@@ -8521,10 +8521,11 @@ main() {
             ;;
         env)
             cat <<EOF
-ndk-pkg.vers: $NDKPKG_VERSION
-ndk-pkg.home: $NDKPKG_HOME
-ndk-pkg.path: $NDKPKG
-ndk-pkg.link: https://github.com/leleliu008/ndk-pkg
+ndk-pkg.version: $NDKPKG_VERSION
+ndk-pkg.homedir: $NDKPKG_HOME
+ndk-pkg.exepath: $NDKPKG
+ndk-pkg.website: https://github.com/leleliu008/ndk-pkg
+ndk-pkg.license: Apache-2.0
 EOF
             return 0
             ;;
