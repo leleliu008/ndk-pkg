@@ -230,6 +230,18 @@ all relevant directories and files are located in `~/.ndk-pkg` directory.
 
     **Note**: If `--ndk-home=<ANDROID-NDK-HOME>` option is not given, then value of `ANDROID_NDK_ROOT` and `ANDROID_NDK_HOME` environment variable would be checked in order.
 
+- **generate url-transform sample**
+
+    ```bash
+    ndk-pkg gen-url-transform-sample
+    ```
+
+- **delete the unused cached files**
+
+    ```bash
+    ndk-pkg cleanup
+    ```
+
 - **install essential tools used by this shell script**
 
     ```bash
@@ -498,18 +510,6 @@ all relevant directories and files are located in `~/.ndk-pkg` directory.
     ndk-pkg pack android-21/arm64-v8a/curl -t zip
     ndk-pkg pack android-21/arm64-v8a/curl -t zip -o a/
     ndk-pkg pack android-21/arm64-v8a/curl -o a/x.zip
-    ```
-
-- **generate url-transform sample**
-
-    ```bash
-    ndk-pkg gen-url-transform-sample
-    ```
-
-- **delete the unused cached files**
-
-    ```bash
-    ndk-pkg cleanup
     ```
 
 - **pack the given installed package as prefab aar and then deploy it to Maven local repository**

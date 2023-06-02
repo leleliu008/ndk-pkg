@@ -8279,6 +8279,9 @@ ${COLOR_GREEN}ndk-pkg ndkinfo [--ndk-home=<ANDROID-NDK-HOME>]${COLOR_OFF}
     1. ${COLOR_PURPLE}ANDROID_NDK_ROOT${COLOR_OFF} environment variable
     2. ${COLOR_PURPLE}ANDROID_NDK_HOME${COLOR_OFF} environment variable
 
+${COLOR_GREEN}ndk-pkg gen-url-transform-sample${COLOR_OFF}
+    generate url-transform sample.
+
 ${COLOR_GREEN}ndk-pkg integrate zsh   [--output-dir=<DIR>]${COLOR_OFF}
     download a zsh-completion script file to a approprivate location.
 
@@ -8287,9 +8290,6 @@ ${COLOR_GREEN}ndk-pkg update${COLOR_OFF}
 
 ${COLOR_GREEN}ndk-pkg upgrade-self${COLOR_OFF}
     upgrade this software.
-
-${COLOR_GREEN}ndk-pkg gen-url-transform-sample${COLOR_OFF}
-    generate url-transform sample.
 
 ${COLOR_GREEN}ndk-pkg cleanup${COLOR_OFF}
     delete the unused cached files.
@@ -8484,7 +8484,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.2.2
+    NDKPKG_VERSION=0.2.3
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
