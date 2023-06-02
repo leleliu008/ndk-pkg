@@ -5121,6 +5121,10 @@ $DOT_CONTENT
     [ -n "$PACKAGE_DEP_PLM" ] && {
         step "install needed perl modules via cpan"
 
+        # https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
+        # Would you like to configure as much as possible automatically? [yes]
+        export PERL_MM_USE_DEFAULT=1
+
         for item in $PACKAGE_DEP_PLM
         do
             if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
@@ -5164,8 +5168,7 @@ $DOT_CONTENT
                 #########################################################################################
 
             else
-                # Would you like to configure as much as possible automatically? [yes]
-                run "printf '%s\n' 'yes' | cpan $item"
+                run cpan "$item"
             fi
         done
 
@@ -8499,6 +8502,10 @@ main() {
     NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"
 
     TIMESTAMP_UNIX="$(date +%s)"
+
+    if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
+        export UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
+    fi
 
     #########################################################################################
 
