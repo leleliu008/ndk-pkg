@@ -76,7 +76,7 @@ int main(int argc, char * argv[]) {
         return 2;
     }
 
-    size_t   targetArgLength = strlen(TARGET) + 10;
+    size_t   targetArgLength = strlen(TARGET) + 10U;
     char     targetArg[targetArgLength];
     snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
 
@@ -94,7 +94,7 @@ int main(int argc, char * argv[]) {
         return 2;
     }
 
-    size_t   sysrootArgLength = strlen(SYSROOT) + 11;
+    size_t   sysrootArgLength = strlen(SYSROOT) + 11U;
     char     sysrootArg[sysrootArgLength];
     snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
 
