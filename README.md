@@ -59,6 +59,14 @@ chmod a+x ndk-pkg
 ./ndk-pkg setup
 ```
 
+## Install ndk-pkg via wget on UNIX
+
+```bash
+wget https://cdn.jsdelivr.net/gh/leleliu008/ndk-pkg/ndk-pkg
+chmod a+x ndk-pkg
+./ndk-pkg setup
+```
+
 ## Install ndk-pkg on WSL
 
 **Note:**
