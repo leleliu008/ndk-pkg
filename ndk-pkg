@@ -4320,6 +4320,8 @@ EXPORT_COMPILE_COMMANDS_JSON = $EXPORT_COMPILE_COMMANDS_JSON
     install -d "$PACKAGE_INSTALLING_LIB_DIR"
     install -d "$PACKAGE_BCACHED_DIR"
 
+    install -d "$NDKPKG_CORE_DIR/libexec"
+
     cat <<EOF
 PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
 PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
@@ -4406,16 +4408,16 @@ EOF
 
         ##################################################################################
 
-        step "create proxy for C Compiler for native build"
+        step "create wrapper for C Compiler for native build"
 
-        cat > proxy-native-c.c <<EOF
+        cat > wrapper-native-cc.c <<EOF
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 int main(int argc, char * argv[]) {
-    char * argv2[argc + 2];
+    char* argv2[argc + 2];
 
     argv2[0] = (char*)"$CC_FOR_BUILD";
     argv2[1] = (char*)"-isysroot";
@@ -4429,26 +4431,26 @@ int main(int argc, char * argv[]) {
 
     execv (argv2[0], argv2);
     perror(argv2[0]);
-    return -1;
+    return 255;
 }
 EOF
 
-        PROXY_CC_FOR_BUILD="$NDKPKG_CORE_BIN_DIR/proxy-native-cc"
+        WRAPPER_CC_FOR_BUILD="$NDKPKG_CORE_DIR/libexec/wrapper-native-cc"
 
-        run "$CC_FOR_BUILD" -std=c99 -isysroot "$SYSROOT_FOR_BUILD" -o "$PROXY_CC_FOR_BUILD" proxy-native-c.c
+        run "$CC_FOR_BUILD" -std=c99 -isysroot "$SYSROOT_FOR_BUILD" -o "$WRAPPER_CC_FOR_BUILD" wrapper-native-cc.c
 
         ##################################################################################
 
-        step "create proxy for C++ Compiler for native build"
+        step "create wrapper for C++ Compiler for native build"
 
-        cat > proxy-native-c++.c <<EOF
+        cat > wrapper-native-c++.c <<EOF
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 int main(int argc, char * argv[]) {
-    char * argv2[argc + 2];
+    char* argv2[argc + 2];
 
     argv2[0] = (char*)"$CXX_FOR_BUILD";
     argv2[1] = (char*)"-isysroot";
@@ -4462,21 +4464,21 @@ int main(int argc, char * argv[]) {
 
     execv (argv2[0], argv2);
     perror(argv2[0]);
-    return -1;
+    return 255;
 }
 EOF
 
-        PROXY_CXX_FOR_BUILD="$NDKPKG_CORE_BIN_DIR/proxy-native-c++"
+        WRAPPER_CXX_FOR_BUILD="$NDKPKG_CORE_DIR/libexec/wrapper-native-c++"
 
-        run "$CC_FOR_BUILD" -std=c99 -isysroot "$SYSROOT_FOR_BUILD" -o "$PROXY_CXX_FOR_BUILD" proxy-native-c++.c
+        run "$CC_FOR_BUILD" -std=c99 -isysroot "$SYSROOT_FOR_BUILD" -o "$WRAPPER_CXX_FOR_BUILD" wrapper-native-c++.c
 
         ##################################################################################
 
         export PROXIED_CC_FOR_BUILD="$CC_FOR_BUILD"
         export PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
 
-        export CC_FOR_BUILD="$PROXY_CC_FOR_BUILD"
-        export CXX_FOR_BUILD="$PROXY_CXX_FOR_BUILD"
+        export CC_FOR_BUILD="$WRAPPER_CC_FOR_BUILD"
+        export CXX_FOR_BUILD="$WRAPPER_CXX_FOR_BUILD"
         export CPP_FOR_BUILD="$CC_FOR_BUILD -E"
 
         cat <<EOF
@@ -5534,9 +5536,9 @@ $PACKAGE_BUILD0_ACTIONS
 
     ##################################################################################
 
-    step "create proxy for C Compiler for target build"
+    step "create wrapper for C Compiler for target build"
 
-    cat > proxy-target-cc.c <<EOF
+    cat > wrapper-target-cc.c <<EOF
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5752,9 +5754,9 @@ int main(int argc, char * argv[]) {
     }
 
     for (int i = 0; argv2[i] != NULL; i++) {
-        printf("%s ", argv2[i]);
+        fprintf(stderr, "%s ", argv2[i]);
     }
-    printf("\n");
+    fprintf(stderr, "\n");
 
     execv (compiler, argv2);
     perror(compiler);
@@ -5762,22 +5764,22 @@ int main(int argc, char * argv[]) {
 }
 EOF
 
-    PROXY_CC="$NDKPKG_CORE_BIN_DIR/proxy-target-cc"
+    WRAPPER_CC="$NDKPKG_CORE_DIR/libexec/wrapper-target-cc"
 
-    run "$CC_FOR_BUILD" -UUSED_AS_CXX -std=c99 -o "$PROXY_CC" proxy-target-cc.c
+    run "$CC_FOR_BUILD" -UUSED_AS_CXX -std=c99 -o "$WRAPPER_CC" wrapper-target-cc.c
 
     ##################################################################################
 
-    step "create proxy for C++ Compiler for target build"
+    step "create wrapper for C++ Compiler for target build"
 
-    PROXY_CXX="$NDKPKG_CORE_BIN_DIR/proxy-target-c++"
+    WRAPPER_CXX="$NDKPKG_CORE_DIR/libexec/wrapper-target-c++"
 
-    run "$CC_FOR_BUILD" -DUSED_AS_CXX -std=c99 -o "$PROXY_CXX" proxy-target-cc.c
+    run "$CC_FOR_BUILD" -DUSED_AS_CXX -std=c99 -o "$WRAPPER_CXX" wrapper-target-cc.c
 
     #########################################################################################
 
-    export CC="$PROXY_CC"
-    export CXX="$PROXY_CXX"
+    export CC="$WRAPPER_CC"
+    export CXX="$WRAPPER_CXX"
     export CPP="$CC -E"
 
 cat <<EOF
@@ -6534,8 +6536,8 @@ EOF
     step "config ccache"
 
     if [ "$CCACHE_ENABLED" = yes ] ; then
-        run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/proxy-target-cc"
-        run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/proxy-target-c++"
+        run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-cc"
+        run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-c++"
     else
         note "ccache is disabled, skipped."
     fi
@@ -8344,9 +8346,6 @@ ${COLOR_GREEN}ndk-pkg formula <PACKAGE-NAME> [--path] [--yaml] [--json] [<KEY>]$
     show formula of the given available package.
 
 
-${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN>${COLOR_OFF}
-    search all available packages whose name matches the given regular expression pattern.
-
 ${COLOR_GREEN}ndk-pkg info <PACKAGE-NAME> [--json] [--yaml] [<KEY>]${COLOR_OFF}
     show information of the given package.
 
@@ -8363,6 +8362,10 @@ ${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-
     If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a filepath, then <OUTPUT-PATH> must ends with one of .dot|.box|.svg|.png
 
     If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
+
+
+${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN>${COLOR_OFF}
+    search all available packages whose name matches the given regular expression pattern.
 
 
 ${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
@@ -8484,7 +8487,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.2.3
+    NDKPKG_VERSION=0.2.4
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
@@ -8525,7 +8528,6 @@ ndk-pkg.version: $NDKPKG_VERSION
 ndk-pkg.homedir: $NDKPKG_HOME
 ndk-pkg.exepath: $NDKPKG
 ndk-pkg.website: https://github.com/leleliu008/ndk-pkg
-ndk-pkg.license: Apache-2.0
 EOF
             return 0
             ;;

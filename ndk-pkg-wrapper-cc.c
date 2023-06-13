@@ -213,9 +213,9 @@ int main(int argc, char * argv[]) {
     }
 
     for (int i = 0; argv2[i] != NULL; i++) {
-        printf("%s ", argv2[i]);
+        fprintf(stderr, "%s ", argv2[i]);
     }
-    printf("\n");
+    fprintf(stderr, "\n");
 
     execv (compiler, argv2);
     perror(compiler);
