@@ -54,7 +54,7 @@ docker exec -it ndk-pkg ndk-pkg install curl
 ## Install ndk-pkg via cURL on UNIX
 
 ```bash
-curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/bin/ndk-pkg
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 chmod a+x ndk-pkg
 ./ndk-pkg setup
 ```
