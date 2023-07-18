@@ -7,8 +7,9 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 Please read these caveats carefully before starting to use this software.
 
 - This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+
 - This software can NOT run on [Android](https://www.android.com/), [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/) due to lack of [Android NDK](https://developer.android.google.cn/ndk) for these platforms.
-  
+
 - This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to `CMake: Builds hosted on 'CYGWIN' not supported.` [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)
 
 - Please do NOT place your own files in `~/.ndk-pkg` directory, as `ndk-pkg` will change files in `~/.ndk-pkg` directory without notice.
@@ -230,6 +231,10 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │   └── share
 │       ├── aclocal
 │       └── man
+├── downloads
+│   ├── 8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313.tgz
+│   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz
+│   └── c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4.tgz
 ├── installed
 │   └── android-21
 │       └── arm64-v8a
@@ -257,7 +262,9 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     └── 3457395
 ```
 
-**Caveats**: Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change files under `~/.ndk-pkg` directory without notice.
+**Caveats**:
+
+- Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change files under `~/.ndk-pkg` directory without notice.
 
 ## ndk-pkg command usage
 
