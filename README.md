@@ -2,9 +2,20 @@
 
 a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build projects that are written in C/C++/Rust/Golang.
 
-**Note**: This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+## Caveats
 
-## supported platforms
+Please read these caveats carefully before starting to use this software.
+
+- This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+- This software can NOT run on [Android](https://www.android.com/), [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/) due to lack of [Android NDK](https://developer.android.google.cn/ndk) for these platforms.
+  
+- This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to `CMake: Builds hosted on 'CYGWIN' not supported.` [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)
+
+- Please do NOT place your own files in `~/.ndk-pkg` directory, as `ndk-pkg` will change files in `~/.ndk-pkg` directory without notice.
+
+- Please do NOT run `ndk-pkg` command in parallell to avoid generating dirty data.
+
+## Supported platforms
 
 |HostOS|HostArch|SubSystem|recommended|summary|
 |------|--------|---------|-----------|-------|
@@ -12,11 +23,6 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`|[glibc](http://www.gnu.org/software/libc/)|✔︎|tested with `Github Actions`|
 [Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||tested with `Github Actions`|
 [macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||tested with `Github Actions`|
-
-**Note**:
-
-- This software do NOT work on [Android](https://www.android.com/), [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/), because there is no available [Android NDK](https://developer.android.google.cn/ndk) can run on these platforms.
-- This software do NOT work on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to `CMake: Builds hosted on 'CYGWIN' not supported.` [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L271-L291)
 
 ## Install ndk-pkg via Docker
 
@@ -46,7 +52,7 @@ docker exec -it ndk-pkg ndk-pkg update
 If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package:
 
 ```bash
-docker exec -it ndk-pkg ndk-pkg install curl
+docker exec -it ndk-pkg ndk-pkg install android-21/arm64-v8a/curl
 ```
 
 **Note:** you can use `podman` instead of `docker`
@@ -196,10 +202,7 @@ android {
 
 all relevant directories and files are located in `~/.ndk-pkg` directory.
 
-**Caveats**:
-
-- Please do NOT place your own files in `~/.ndk-pkg` directory, as `ndk-pkg` will change files in `~/.ndk-pkg` directory without notice.
-- Please do NOT run `ndk-pkg` command in parallell to avoid destroying the data.
+**Caveats**: Please do NOT place your own files in `~/.ndk-pkg` directory, as `ndk-pkg` will change files in `~/.ndk-pkg` directory without notice.
 
 ## ndk-pkg command usage
 
