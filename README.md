@@ -200,9 +200,64 @@ android {
 
 ## ~/.ndk-pkg
 
-all relevant directories and files are located in `~/.ndk-pkg` directory.
+all relevant directories and files are located under `~/.ndk-pkg` directory.
 
-**Caveats**: Please do NOT place your own files in `~/.ndk-pkg` directory, as `ndk-pkg` will change files in `~/.ndk-pkg` directory without notice.
+a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
+
+```text
+~/.ndk-pkg
+├── core
+│   ├── bin
+│   │   ├── uppm
+│   │   ├── perl
+│   │   ├── python3
+│   │   └── automake
+│   ├── env
+│   ├── etc
+│   │   └── ssl
+│   │       └── certs
+│   │           └── cacert.pem
+│   ├── include
+│   │   ├── lzma.h
+│   │   └── zlib.h
+│   ├── lib
+│   │   ├── cmake
+│   │   ├── pkgconfig
+│   │   └── libz.a
+│   ├── libexec
+│   │   ├── wrapper-target-c++
+│   │   └── wrapper-target-cc
+│   └── share
+│       ├── aclocal
+│       └── man
+├── installed
+│   └── android-21
+│       └── arm64-v8a
+│           ├── jansson
+│           ├── libiconv
+│           ├── libxml2
+│           ├── libyaml
+│           ├── pixman
+│           ├── uctags
+│           └── zlib
+├── repos.d
+│   └── offical-core
+│       ├── formula
+│       │   ├── jansson.yml
+│       │   ├── libiconv.yml
+│       │   ├── libxml2.yml
+│       │   ├── libyaml.yml
+│       │   ├── pixman.yml
+│       │   ├── uctags.yml
+│       │   └── zlib.yml
+│       └── .ndk-pkg-formula-repo.yml
+└── run
+    ├── 3409784
+    ├── 3447656
+    └── 3457395
+```
+
+**Caveats**: Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change files under `~/.ndk-pkg` directory without notice.
 
 ## ndk-pkg command usage
 
