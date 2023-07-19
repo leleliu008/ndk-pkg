@@ -2556,12 +2556,14 @@ __fetch_resources_of_the_given_package() {
             UPPM_PACKAGE_NAME_NDK='android-ndk-r25c'
         fi
 
-        uppm is-installed "$UPPM_PACKAGE_NAME_NDK" || {
+        "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" || {
             warn "Android NDK not found, it will be installed via uppm."
-            uppm install  "$UPPM_PACKAGE_NAME_NDK"
+            "$UPPM" install  "$UPPM_PACKAGE_NAME_NDK"
         }
 
-        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/$UPPM_PACKAGE_NAME_NDK")"
+        ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
+
+        NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
     fi
 
     eval "$NDKINFO"
@@ -3972,12 +3974,14 @@ inspect_install_arguments() {
             UPPM_PACKAGE_NAME_NDK='android-ndk-r25c'
         fi
 
-        uppm is-installed "$UPPM_PACKAGE_NAME_NDK" || {
+        "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" || {
             warn "Android NDK not found, it will be installed via uppm."
-            uppm install  "$UPPM_PACKAGE_NAME_NDK"
+            "$UPPM" install  "$UPPM_PACKAGE_NAME_NDK"
         }
 
-        NDKINFO="$(ndkinfo "$HOME/.uppm/installed/$UPPM_PACKAGE_NAME_NDK")"
+        ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
+
+        NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
     fi
 
     eval "$NDKINFO"
@@ -4307,7 +4311,7 @@ __install_the_given_packages() {
 
     case $BUILD_SYSTEM_NAME in
         cmake)
-            CMAKE="$HOME/.uppm/installed/cmake/bin/cmake"
+            CMAKE="$(command -v cmake)" || abort 1 "command not found: cmake"
 
             run "$CMAKE" -S . -B build.d -DCMAKE_INSTALL_PREFIX=$NDKPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$BUILD_CONFIG_ARGS"
             run "$CMAKE" --build   build.d -- -j$BUILD_NJOBS
@@ -4327,7 +4331,7 @@ __install_the_given_packages() {
                 *)  run ./configure "--prefix=$NDKPKG_CORE_DIR" "$BUILD_CONFIG_ARGS"
             esac
 
-            GMAKE="$HOME/.uppm/installed/gmake/bin/gmake"
+            GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
 
             run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
             run "$GMAKE" install
@@ -4990,8 +4994,6 @@ $DOT_CONTENT
     #########################################################################################
 
     step "install needed packages via uppm"
-
-    UPPM="$NDKPKG_CORE_BIN_DIR/uppm"
 
     run "$UPPM" env
     run "$UPPM" update
@@ -5784,7 +5786,7 @@ EOF
     TARGET_TRIPLE2=$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/arm/')
 
     SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
-    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2/$TARGET_OS_VERS"
+    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2"
 
     NDKPKG_COMMON_H_FILEPATH="$PACKAGE_INSTALLING_INC_DIR/ndk-pkg-common.h"
 
@@ -8167,8 +8169,6 @@ __setup() {
 
     export SSL_CERT_FILE="$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
 
-    UPPM="$NDKPKG_CORE_BIN_DIR/uppm"
-
     run "$UPPM" env
     run "$UPPM" update
 
@@ -8482,7 +8482,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.2.5
+    NDKPKG_VERSION=0.3.0
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
@@ -8498,6 +8498,8 @@ main() {
 
     NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
     NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"
+
+    UPPM="$NDKPKG_CORE_BIN_DIR/uppm"
 
     TIMESTAMP_UNIX="$(date +%s)"
 
