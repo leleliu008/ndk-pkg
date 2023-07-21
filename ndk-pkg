@@ -5114,15 +5114,11 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    # cpan use the C/C++ Compiler same as perl was built with
-    # so make sure C/C++ Compiler be found before reaching here
+    # cpan use the C/C++ compiler same as perl was built with
+    # so make sure C/C++ compiler be found before reaching here
 
     [ -n "$PACKAGE_DEP_PLM" ] && {
         step "install needed perl modules via cpan"
-
-        # https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
-        # Would you like to configure as much as possible automatically? [yes]
-        export PERL_MM_USE_DEFAULT=1
 
         for item in $PACKAGE_DEP_PLM
         do
@@ -5132,41 +5128,12 @@ $DOT_CONTENT
             fi
 
             if [ "$item" = 'XML::Parser' ] ; then
-                SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-                SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-                __install_native_package_to_core_dir_via_cmake expat "$SRC_URL" "$SRC_SHA" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF
-
-                #########################################################################################
-
-                step "install perl module XML::Parser"
-
-                SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz'
-                SRC_SHA='d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d'
-
-                RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.perl-XML-Parser"
-
-                if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
-                    note "perl module XML::Parser already has been built, skipped."
-                else
-                    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-dir="$NDKPKG_DOWNLOADS_DIR"
-
-                    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/perl-XML-Parser"
-
-                    run install -d "$SRC_DIR"
-                    run cd         "$SRC_DIR"
-
-                    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
-
-                    run perl Makefile.PL EXPATLIBPATH="$NDKPKG_CORE_DIR/lib" EXPATINCPATH="$NDKPKG_CORE_DIR/include"
-                    run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                    run "$GMAKE" install
-
-                    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
-                fi
-
-                #########################################################################################
-
+                __install_native_package_to_core_dir expat
+                __install_native_package_to_core_dir perl-XML-Parser
             else
+                # Would you like to configure as much as possible automatically? [yes]
+                # https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
+                export PERL_MM_USE_DEFAULT=1
                 run cpan "$item"
             fi
         done
@@ -5728,7 +5695,9 @@ int main(int argc, char * argv[]) {
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
         for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
+            if (strcmp(argv[i], "-rdynamic") == 0) {
+                argv2[i + 2] = (char*)"-static";
+            } else if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
                 argv2[i + 2] = (char*)"-static";
             } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
                 argv2[i + 2] = (char*)"-static";
@@ -8482,7 +8451,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.3.0
+    NDKPKG_VERSION=0.3.1
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'

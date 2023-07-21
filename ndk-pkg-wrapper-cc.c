@@ -189,7 +189,9 @@ int main(int argc, char * argv[]) {
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
         for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
+            if (strcmp(argv[i], "-rdynamic") == 0) {
+                argv2[i + 2] = (char*)"-static";
+            } else if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
                 argv2[i + 2] = (char*)"-static";
             } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
                 argv2[i + 2] = (char*)"-static";
