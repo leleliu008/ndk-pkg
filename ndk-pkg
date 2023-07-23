@@ -8149,7 +8149,7 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for item in bash coreutils findutils easyutils gawk gsed grep gtar gzip lzip unzip zip xz bzip2 jq yq git curl tree
+    for item in bash coreutils findutils easyutils gawk gsed grep gtar gzip lzip unzip zip xz bzip2 jq yq git curl tree patchelf
     do
         run "$UPPM" install "$item"
 
@@ -8186,21 +8186,6 @@ EOF
     #################################################################################
 
     success "ndk-pkg have been succefully setup."
-}
-
-__setup_ubuntu() {
-    run $sudo apt -y update
-    run $sudo apt -y install g++ linux-headers-generic
-}
-
-__setup_fedora() {
-    run $sudo dnf -y update
-    run $sudo dnf -y install g++
-}
-
-__setup_alpine() {
-    run $sudo apk update
-    run $sudo apk add bash  g++ libc-dev linux-headers
 }
 
 # }}}

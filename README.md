@@ -25,6 +25,10 @@ Please read these caveats carefully before starting to use this software.
 [Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||tested with `Github Actions`|
 [macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||tested with `Github Actions`|
 
+## Manually build ndk-pkg packages via GitHub Actions
+
+for details please refer to https://github.com/leleliu008/ndk-pkg-package-manually-build
+
 ## Install ndk-pkg via Docker
 
 **step1. create the ndk-pkg docker container**
