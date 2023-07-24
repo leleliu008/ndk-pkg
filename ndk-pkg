@@ -8345,6 +8345,10 @@ ${COLOR_GREEN}ndk-pkg install   <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
         ${COLOR_BLUE}--dry-run${COLOR_OFF}
         ${COLOR_BLUE}--keep-working-dir${COLOR_OFF}
 
+    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
+
+    ${COLOR_RED}C and C++ compiler for native build should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
+
 ${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
     reinstall the given packages.
 
@@ -8399,7 +8403,9 @@ ${COLOR_GREEN}ndk-pkg deploy-maven-remote <PACKAGE-NAME> [--abi=<VALUE>] [--abi=
     GPG_PASSPHRASE=
 
 
-======================================
+==================
+Naming explanation
+==================
 
 ${COLOR_GREEN}PACKAGE-SPEC${COLOR_OFF}
     a formatted string that has form: <ANDROID-SPEC>/<PACKAGE-NAME>
@@ -8419,6 +8425,69 @@ ${COLOR_GREEN}ANDROID-ABI${COLOR_OFF}
     indicates which Android ABI would be built for or can run on.
 
     Reference: https://developer.android.com/ndk/guides/abis
+
+
+=====================
+Environment variables
+=====================
+
+${COLOR_GREEN}HOME${COLOR_OFF}
+    This environment variable already have been set on the most operating systems, if not set or set a empty string, you will receive an error message.
+
+${COLOR_GREEN}PATH${COLOR_OFF}
+    This environment variable already have been set on the most operating systems, if not set or set a empty string, you will receive an error message.
+
+${COLOR_GREEN}ANDROID_NDK_ROOT and ANDROID_NDK_HOME${COLOR_OFF}
+    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
+
+${COLOR_GREEN}NDKPKG_URL_TRANSFORM${COLOR_OFF}
+
+    If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
+
+    exmaple:
+
+    ${COLOR_RED}export NDKPKG_URL_TRANSFORM=/path/of/url-transform${COLOR_OFF}
+
+    /path/of/url-transform command would be invoked as /path/of/url-transform <URL>
+
+    /path/of/url-transform command must output a <URL>
+
+    a url-transform sample can be generated via running ${COLOR_RED}ndk-pkg gen-url-transform-sample${COLOR_OFF}
+
+${COLOR_GREEN}NDKPKG_XTRACE${COLOR_OFF}
+    for debugging purposes. to enable set -x: ${COLOR_RED}export NDKPKG_XTRACE=1${COLOR_OFF}
+
+${COLOR_GREEN}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF}
+    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <TARGET-ANDROID-SPEC>/<PACKAGE-NAME>, To simplify the usage, you are allowed to omit <TARGET-ANDROID-SPEC>/. If <TARGET-ANDROID-SPEC>/ is omitted, this environment variable will be used, if this environment variable is not set, then android-21/arm64-v8a will be used as the default.
+
+    <TARGET-ANDROID-SPEC> has the form android-<MIN-SDK-API-LEVEL>/<ANDROID-ABI>
+
+    Example:
+
+    ${COLOR_RED}export NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21/arm64-v8a'${COLOR_OFF}
+
+    References:
+
+    https://developer.android.com/tools/releases/platforms
+    https://developer.android.com/ndk/guides/abis
+
+${COLOR_GREEN}GOPROXY${COLOR_OFF}
+    Example: ${COLOR_RED}export GOPROXY='https://goproxy.cn'${COLOR_OFF}
+
+
+=======
+Caveats
+=======
+
+This software is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+
+This software can NOT run on Android, musl-libc based GNU/Linux, FreeBSD, OpenBSD, NetBSD due to lack of Android NDK for these platforms.
+
+This software can NOT run on Cygwin and MSYS2 due to CMake: Builds hosted on 'CYGWIN' not supported. Android-Determine.cmake
+
+Please do NOT place your own files under ~/.ndk-pkg directory, as ndk-pkg will change files under ~/.ndk-pkg directory without notice.
+
+Please do NOT run ndk-pkg command in parallell to avoid generating dirty data.
     "
 
     if [ -z "$1" ] ; then
@@ -8441,7 +8510,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.3.2
+    NDKPKG_VERSION=0.3.3
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
