@@ -27,6 +27,20 @@ Please read these caveats carefully before starting to use this software.
 
 ## Manually build ndk-pkg packages via GitHub Actions
 
+This is the recommended way of using this software.
+
+In this way, you don't need to care about other things than:
+
+- what package would you like to build?
+- which minimum Android SDK API level would you like support?
+- which Android ABI would you like to build for?
+- which build type would you like to use?
+- which link type would you like to use?
+
+||
+|-|
+|<img src="1.png" width="311px" >|
+
 for details please refer to https://github.com/leleliu008/ndk-pkg-package-manually-build
 
 ## Install ndk-pkg via Docker
