@@ -327,19 +327,11 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg gen-url-transform-sample
     ```
 
-- **delete the unused cached files**
-
-    ```bash
-    ndk-pkg cleanup
-    ```
-
 - **install essential tools used by this shell script**
 
     ```bash
     ndk-pkg setup
     ```
-
-    This command is only available for POSIX-Shell-based implementation.
 
     This command is actually to do two things:
 
@@ -646,6 +638,12 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     SERVER_PASSWORD=xx
     GPG_PASSPHRASE=yy
     EOF
+    ```
+
+- **delete the unused cached files**
+
+    ```bash
+    ndk-pkg cleanup
     ```
 
 ## environment variables
