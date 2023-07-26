@@ -6,7 +6,7 @@ a package manager for [Android NDK](https://developer.android.google.cn/ndk) to 
 
 Please read these caveats carefully before starting to use this software.
 
-- This project is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
+- This software is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
 
 - This software can NOT run on [Android](https://www.android.com/), [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/) due to lack of [Android NDK](https://developer.android.google.cn/ndk) for these platforms.
 
@@ -339,10 +339,31 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg setup
     ```
 
-    **Note**: above command do two things:
+    This command is only available for POSIX-Shell-based implementation.
 
-  - install [uppm](https://github.com/leleliu008/uppm)
-  - install all the essential tools (e.g. `bash` `coreutils` `findutils` `gawk` `gsed` `grep` `gtar` `gzip` `lzip` `unzip` `zip` `jq` `yq` `git` `curl` `tree`) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
+    This command is actually to do two things:
+
+  - install [uppm](https://github.com/leleliu008/uppm) to `~/.ndk-pkg/core`
+  - install other essential tools (listed below) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
+
+    - [GNU Bash](https://www.gnu.org/software/bash/manual/bash.html)
+    - [GNU CoreUtils](https://www.gnu.org/software/coreutils/manual/coreutils.html)
+    - [GNU FindUtils](https://www.gnu.org/software/findutils/manual/html_mono/find.html)
+    - [GNU awk](https://www.gnu.org/software/gawk/manual/gawk.html)
+    - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
+    - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
+    - [curl](https://curl.se/docs/manpage.html)
+    - [git](https://git-scm.com/docs/git)
+    - [GNU tar](https://www.gnu.org/software/tar/manual/tar.html)
+    - [gzip](https://www.gnu.org/software/gzip/manual/gzip.html)
+    - [lzip](https://www.nongnu.org/lzip/)
+    - [bzip2](https://linux.die.net/man/1/bzip2)
+    - [xz](https://linux.die.net/man/1/xz)
+    - [zip](https://linux.die.net/man/1/zip)
+    - [unzip](https://linux.die.net/man/1/unzip)
+    - [yq](https://mikefarah.gitbook.io/yq/)
+    - [jq](https://stedolan.github.io/jq/manual/)
+    - [tree](https://linux.die.net/man/1/tree)
 
 - **integrate `zsh-completion` script**
 
@@ -352,7 +373,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg integrate zsh -v
     ```
 
-    This project provides a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg` then type `TAB` key, the rest of the arguments will be automatically complete for you.
+    This software provides a zsh-completion script for `ndk-pkg`. when you've typed `ndk-pkg` then type `TAB` key, the rest of the arguments will be automatically complete for you.
 
     **Note**: to apply this feature, you may need to run the command `autoload -U compinit && compinit` in your terminal (your current running shell must be zsh).
 
