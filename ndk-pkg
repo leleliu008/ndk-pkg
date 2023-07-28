@@ -6464,12 +6464,12 @@ EOF
         run "echo 'INPUT($LIBCLANG_RT_BUILTINS_FILEPATH -l:libunwind.a)' > '$PACKAGE_WORKING_DIR/lib/libgcc.a'"
     fi
 
-    if [ "$LINK_TYPE" = 'static-only' ] ; then
-        run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libc.a)'  > '$PACKAGE_WORKING_DIR/lib/libc.a'"
-        run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libm.a)'  > '$PACKAGE_WORKING_DIR/lib/libm.a'"
-        run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libz.a)'  > '$PACKAGE_WORKING_DIR/lib/libz.a'"
-        run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libdl.a)' > '$PACKAGE_WORKING_DIR/lib/libdl.a'"
-    fi
+    #if [ "$LINK_TYPE" = 'static-only' ] ; then
+        #run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libc.a)'  > '$PACKAGE_WORKING_DIR/lib/libc.a'"
+        #run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libm.a)'  > '$PACKAGE_WORKING_DIR/lib/libm.a'"
+        #run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libz.a)'  > '$PACKAGE_WORKING_DIR/lib/libz.a'"
+        #run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libdl.a)' > '$PACKAGE_WORKING_DIR/lib/libdl.a'"
+    #fi
 
     #########################################################################################
 
