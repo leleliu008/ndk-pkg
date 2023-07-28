@@ -2452,6 +2452,7 @@ __fetch_resources_of_the_given_package() {
     PACKING_DIR="$NDKPKG_HOME/run/$$"
 
     step "create packing directory"
+    run rm -rf     "$PACKING_DIR"
     run install -d "$PACKING_DIR"
 
     step "change to packing directory"
@@ -2679,7 +2680,7 @@ EOF
         # headers only
         MODULE_DIR="prefab/modules/$PACKAGE_NAME"
         run install -d "$MODULE_DIR"
-        run cp -r "$PACKAGE_INSTALLED_DIR/armeabi-v7a/include" "$MODULE_DIR"
+        run cp -r "$PACKAGE_INSTALLED_DIR/include" "$MODULE_DIR"
     fi
 }
 
@@ -2789,6 +2790,7 @@ EOF
     WORKING_DIR="$NDKPKG_HOME/run/$$"
 
     step "create the working directory"
+    run rm -rf     "$WORKING_DIR"
     run install -d "$WORKING_DIR"
 
     step "cd  to the working directory"
@@ -2981,6 +2983,7 @@ EOF
     WORKING_DIR="$NDKPKG_HOME/run/$$"
 
     step "create the working directory"
+    run rm -rf     "$WORKING_DIR"
     run install -d "$WORKING_DIR"
 
     step "cd  to the working directory"
@@ -3287,6 +3290,7 @@ __cleanup() {
 
     WORKING_DIR="$NDKPKG_HOME/run/$$"
 
+    run rm -rf     "$WORKING_DIR"
     run install -d "$WORKING_DIR"
     run cd         "$WORKING_DIR"
 
@@ -3362,6 +3366,7 @@ __cleanup() {
 
     WORKING_DIR="$NDKPKG_HOME/run/$$"
 
+    run rm -rf     "$WORKING_DIR"
     run install -d "$WORKING_DIR"
     run cd         "$WORKING_DIR"
 
@@ -3663,6 +3668,7 @@ $DOT_CONTENT
 
             TMP_DIR="$NDKPKG_HOME/run/$$"
 
+            rm -rf     "$TMP_DIR"
             install -d "$TMP_DIR"
 
             DOT_CONTENT_FILEPATH="$TMP_DIR/dependencies.dot"
@@ -3689,6 +3695,7 @@ $DOT_CONTENT
 
             TMP_DIR="$NDKPKG_HOME/run/$$"
 
+            rm -rf     "$TMP_DIR"
             install -d "$TMP_DIR"
 
             DOT_CONTENT_FILEPATH="$TMP_DIR/dependencies.dot"
@@ -8101,6 +8108,7 @@ __setup() {
 
     SETUP_WORKING_DIR="$NDKPKG_HOME/run/$$"
 
+    run rm -rf     "$SETUP_WORKING_DIR"
     run install -d "$SETUP_WORKING_DIR"
     run cd         "$SETUP_WORKING_DIR"
 
@@ -8340,6 +8348,7 @@ ${COLOR_GREEN}ndk-pkg install   <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
         ${COLOR_BLUE}-vv${COLOR_OFF}
         ${COLOR_BLUE}--build-type=<debug|release>${COLOR_OFF}
         ${COLOR_BLUE}--link-type=<static-only|shared-only|static-prefered|shared-prefered>${COLOR_OFF}
+        ${COLOR_BLUE}--install-lib=<static|shared|both>${COLOR_OFF}
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
         ${COLOR_BLUE}--export-compile-commands-json${COLOR_OFF}
         ${COLOR_BLUE}--dry-run${COLOR_OFF}
@@ -8510,7 +8519,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.3.3
+    NDKPKG_VERSION=0.3.4
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
