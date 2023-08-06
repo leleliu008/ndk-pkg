@@ -1715,7 +1715,7 @@ is_package_available() {
 
 # is_package__outdated <PACKAGE-SPEC>
   is_package__outdated() {
-    __load_formula_of_the_given_package "$(basename "$1")"
+    __load_formula_of_the_given_package "${1%%/*}"
     __load_receipt_of_the_given_package "$1"
 
     version_match "$PACKAGE_VERSION" gt "$RECEIPT_PACKAGE_VERSION"
