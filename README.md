@@ -71,7 +71,7 @@ docker exec -it ndk-pkg ndk-pkg update
 If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package:
 
 ```bash
-docker exec -it ndk-pkg ndk-pkg install android-21/arm64-v8a/curl
+docker exec -it ndk-pkg ndk-pkg install curl/android-21/arm64-v8a
 ```
 
 **Note:** you can use `podman` instead of `docker`
@@ -227,10 +227,11 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 ~/.ndk-pkg
 ├── core
 │   ├── bin
-│   │   ├── uppm
+│   │   ├── autoconf
+│   │   ├── automake
 │   │   ├── perl
 │   │   ├── python3
-│   │   └── automake
+│   │   └── uppm
 │   ├── env
 │   ├── etc
 │   │   └── ssl
@@ -244,6 +245,8 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │   │   ├── pkgconfig
 │   │   └── libz.a
 │   ├── libexec
+│   │   ├── wrapper-native-c++
+│   │   ├── wrapper-native-cc
 │   │   ├── wrapper-target-c++
 │   │   └── wrapper-target-cc
 │   └── share
@@ -432,19 +435,19 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     ```bash
     ndk-pkg receipt curl
-    ndk-pkg receipt android-21/arm64-v8a/curl
-    ndk-pkg receipt android-21/arm64-v8a/curl --yaml
-    ndk-pkg receipt android-21/arm64-v8a/curl --json
-    ndk-pkg receipt android-21/arm64-v8a/curl --path
-    ndk-pkg receipt android-21/arm64-v8a/curl version
-    ndk-pkg receipt android-21/arm64-v8a/curl license
-    ndk-pkg receipt android-21/arm64-v8a/curl summary
-    ndk-pkg receipt android-21/arm64-v8a/curl web-url
-    ndk-pkg receipt android-21/arm64-v8a/curl git-url
-    ndk-pkg receipt android-21/arm64-v8a/curl git-sha
-    ndk-pkg receipt android-21/arm64-v8a/curl git-ref
-    ndk-pkg receipt android-21/arm64-v8a/curl src-url
-    ndk-pkg receipt android-21/arm64-v8a/curl src-sha
+    ndk-pkg receipt curl/android-21/arm64-v8a
+    ndk-pkg receipt curl/android-21/arm64-v8a --yaml
+    ndk-pkg receipt curl/android-21/arm64-v8a --json
+    ndk-pkg receipt curl/android-21/arm64-v8a --path
+    ndk-pkg receipt curl/android-21/arm64-v8a version
+    ndk-pkg receipt curl/android-21/arm64-v8a license
+    ndk-pkg receipt curl/android-21/arm64-v8a summary
+    ndk-pkg receipt curl/android-21/arm64-v8a web-url
+    ndk-pkg receipt curl/android-21/arm64-v8a git-url
+    ndk-pkg receipt curl/android-21/arm64-v8a git-sha
+    ndk-pkg receipt curl/android-21/arm64-v8a git-ref
+    ndk-pkg receipt curl/android-21/arm64-v8a src-url
+    ndk-pkg receipt curl/android-21/arm64-v8a src-sha
     ```
 
 - **show packages that are depended by the given package**
@@ -481,37 +484,29 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 - **install packages**
 
     ```bash
-    ndk-pkg install libbz2
-    ndk-pkg install libbz2 liblzma
-    ndk-pkg install libbz2 liblzma -v
-    ndk-pkg install android-31/arm64-v8a/bat --link-type=static-only --install-lib=static
+    ndk-pkg install curl
+    ndk-pkg install curl/android-33/arm64-v8a --link-type=static-only --install-lib=static
     ```
 
 - **reinstall packages**
 
     ```bash
-    ndk-pkg reinstall libbz2
-    ndk-pkg reinstall libbz2 liblzma
-    ndk-pkg reinstall libbz2 liblzma -v
-    ndk-pkg reinstall android-31/arm64-v8a/bat --link-type=static-only --install-lib=static
+    ndk-pkg reinstall curl
+    ndk-pkg reinstall curl/android-33/arm64-v8a --link-type=static-only --install-lib=static
     ```
 
 - **uninstall packages**
 
     ```bash
-    ndk-pkg uninstall libbz2
-    ndk-pkg uninstall libbz2 liblzma
-    ndk-pkg uninstall libbz2 liblzma -v
-    ndk-pkg uninstall android-31/arm64-v8a/bat
+    ndk-pkg uninstall curl
+    ndk-pkg uninstall curl/android-33/arm64-v8a
     ```
 
 - **upgrade the outdated packages**
 
     ```bash
-    ndk-pkg upgrade libbz2
-    ndk-pkg upgrade libbz2 liblzma
-    ndk-pkg upgrade libbz2 liblzma -v
-    ndk-pkg upgrade android-31/arm64-v8a/bat --link-type=static-only --install-lib=static
+    ndk-pkg upgrade curl
+    ndk-pkg upgrade curl/android-33/arm64-v8a --link-type=static-only --install-lib=static
     ```
 
 - **upgrade this software**
@@ -578,62 +573,65 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     ```bash
     ndk-pkg is-installed curl
-    ndk-pkg is-installed android-21/arm64-v8a/curl
+    ndk-pkg is-installed curl/android-21/arm64-v8a
     ```
 
 - **check if the given package is outdated**
 
     ```bash
     ndk-pkg is-outdated  curl
-    ndk-pkg is-outdated  android-21/arm64-v8a/curl
+    ndk-pkg is-outdated  curl/android-21/arm64-v8a
     ```
 
 - **list installed files of the given installed package in a tree-like format**
 
     ```bash
     ndk-pkg tree curl
-    ndk-pkg tree android-21/arm64-v8a/curl -L 3
+    ndk-pkg tree curl/android-21/arm64-v8a -L 3
     ```
 
 - **show logs of the given installed package**
 
     ```bash
     ndk-pkg logs curl
-    ndk-pkg logs curl android-21/arm64-v8a/curl
+    ndk-pkg logs curl curl/android-21/arm64-v8a
     ```
 
 - **pack the given installed package**
 
     ```bash
     ndk-pkg pack curl
-    ndk-pkg pack android-21/arm64-v8a/curl
-    ndk-pkg pack android-21/arm64-v8a/curl -t tar.xz
-    ndk-pkg pack android-21/arm64-v8a/curl -t tar.gz
-    ndk-pkg pack android-21/arm64-v8a/curl -t tar.lz
-    ndk-pkg pack android-21/arm64-v8a/curl -t tar.bz2
-    ndk-pkg pack android-21/arm64-v8a/curl -t zip
-    ndk-pkg pack android-21/arm64-v8a/curl -t zip -o a/
-    ndk-pkg pack android-21/arm64-v8a/curl -o a/x.zip
+    ndk-pkg pack curl/android-21/arm64-v8a
+    ndk-pkg pack curl/android-21/arm64-v8a -t tar.xz
+    ndk-pkg pack curl/android-21/arm64-v8a -t tar.gz
+    ndk-pkg pack curl/android-21/arm64-v8a -t tar.lz
+    ndk-pkg pack curl/android-21/arm64-v8a -t tar.bz2
+    ndk-pkg pack curl/android-21/arm64-v8a -t zip
+    ndk-pkg pack curl/android-21/arm64-v8a -t zip -o a/
+    ndk-pkg pack curl/android-21/arm64-v8a -o a/x.zip
     ```
 
-- **pack the given installed package as prefab aar and then deploy it to Maven local repository**
+- **create the google prefab aar for the given installed package**
 
     ```bash
-    ndk-pkg deploy-maven-local curl
-    ndk-pkg deploy-maven-local curl --debug
-    ndk-pkg deploy-maven-local curl --api=26
-    ndk-pkg deploy-maven-local curl --api=26 --abi=x86_64 --abi=arm64-v8a
+    ndk-pkg prefab-create curl/android-21/arm64-v8a,x86_64 -o .
+    ndk-pkg prefab-create curl/android-21/arm64-v8a,x86_64 -o curl-8.1.2.aar
     ```
 
-- **pack the given installed package as prefab aar and then deploy it to Maven remote repository**
+- **create the google prefab aar for the given installed package then deploy it to Maven Local repository**
 
     ```bash
-    ndk-pkg deploy-maven-remote curl          < ~/OSSRH-config
-    ndk-pkg deploy-maven-remote curl --debug  < ~/OSSRH-config
-    ndk-pkg deploy-maven-remote curl --api=26 < ~/OSSRH-config
-    ndk-pkg deploy-maven-remote curl --api=26 --abi=x86_64 --abi=arm64-v8a <<EOF
+    ndk-pkg prefab-depoly curl/android-21/arm64-v8a,x86_64
+    ndk-pkg prefab-depoly curl/android-21/arm64-v8a,x86_64 --debug
+    ```
+
+- **create the google prefab aar for the given installed package then deploy it to Sonatype OSSRH**
+
+    ```bash
+    ndk-pkg prefab-depoly curl/android-21/arm64-v8a,x86_64 --remote < ~/OSSRH-config
+    ndk-pkg prefab-depoly curl/android-21/arm64-v8a,x86_64 --remote <<EOF
     SERVER_ID=OSSRH
-    SERVER_URL=https://s01.oss.sonatype.org/service/local/repositories/comfpliu-1025/content
+    SERVER_URL=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
     SERVER_USERNAME=leleliu008
     SERVER_PASSWORD=xx
     GPG_PASSPHRASE=yy
@@ -688,7 +686,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
 - **NDKPKG_DEFAULT_TARGET_ANDROID_SPEC**
 
-    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET-ANDROID-SPEC>/<PACKAGE-NAME>`, To simplify the usage, you are allowed to omit `<TARGET-ANDROID-SPEC>/`. If `<TARGET-ANDROID-SPEC>/` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21/arm64-v8a` will be used as the default.
+    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<PACKAGE-NAME>/<TARGET-ANDROID-SPEC>`, To simplify the usage, you are allowed to omit `/<TARGET-ANDROID-SPEC>`. If `/<TARGET-ANDROID-SPEC>` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21/arm64-v8a` will be used as the default.
 
     `<TARGET-ANDROID-SPEC>` has the form `android-<MIN-SDK-API-LEVEL>/<ANDROID-ABI>`
 

@@ -998,7 +998,7 @@ filetype_from_url() {
     unset PACKAGE_BUILD_SYSTEM_NDK_BUILD
 
     # package support min sdk api level
-    unset PACKAGE_SDK_API
+    unset PACKAGE_API_MIN
 
     # dir relative to $PACKAGE_WORKING_DIR/src, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
     unset PACKAGE_BSCRIPT
@@ -1047,7 +1047,7 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for key in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel sdk-api
+    for key in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel api-min
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -1477,7 +1477,7 @@ build-on:
     os-ncpu: $NATIVE_OS_NCPU
     os-euid: $NATIVE_OS_EUID
     os-egid: $NATIVE_OS_EGID
-built-for: $TARGET_OS_SPEC
+built-for: $TARGET_ANDROID_SPEC
 signature: ndk-pkg-$NDKPKG_VERSION
 timestamp: $TIMESTAMP_UNIX
 EOF
@@ -1762,7 +1762,7 @@ __list_available_packages() {
 __list_installed_packages() {
     if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT" ] ; then
          cd "$NDKPKG_PACKAGE_INSTALLED_ROOT" || return 1
-        find . -maxdepth 5 -mindepth 5 -type f -regex '\./android-[1-9][0-9]/\(armeabi-v7a\|arm64-v8a\|x86\|x86_64\)/[^/]*/\.ndk-pkg/METADATA\.yml' | cut -c3- | sed 's|/\.ndk-pkg/METADATA\.yml$||'
+        find . -maxdepth 5 -mindepth 5 -type f -regex '\./[^/]*/android-[1-9][0-9]/\(armeabi-v7a\|arm64-v8a\|x86\|x86_64\)/\.ndk-pkg/METADATA\.yml' | cut -c3- | sed 's|/\.ndk-pkg/METADATA\.yml$||'
     else
         return 0
     fi
@@ -1775,7 +1775,7 @@ __list_installed_packages() {
 __list__outdated_packages() {
     for PACKAGE_SPEC in $(__list_installed_packages)
     do
-        PACKAGE_NAME="${PACKAGE_SPEC##*/}"
+        PACKAGE_NAME="${PACKAGE_SPEC%%/*}"
         is_package_available "$PACKAGE_NAME" || continue
         is_package__outdated "$PACKAGE_SPEC" || continue
         printf '%s\n' "$PACKAGE_SPEC"
@@ -1888,7 +1888,7 @@ __show_information_as_shell_of_all_available_packages() {
         --arg xxflags "$PACKAGE_XXFLAGS" \
         --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
-        --arg sdk-api "$PACKAGE_SDK_API" \
+        --arg api-min "$PACKAGE_API_MIN" \
         --arg parallel $PACKAGE_BUILD_IN_PARALLEL \
 '{
     "pkgname":$pkgname,
@@ -1955,7 +1955,7 @@ ppflags: $PACKAGE_PPFLAGS
 ccflags: $PACKAGE_CCFLAGS
 xxflags: $PACKAGE_XXFLAGS
 ldflags: $PACKAGE_LDFLAGS
-sdk-api: $PACKAGE_SDK_API
+api-min: $PACKAGE_API_MIN
 parallel: $PACKAGE_BUILD_IN_PARALLEL
 EOF
     } | yq eval '. | with_entries(select(.value != null))'
@@ -2021,7 +2021,7 @@ PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
 PACKAGE_PPFLAGS
 PACKAGE_LDFLAGS
-PACKAGE_SDK_API
+PACKAGE_API_MIN
 PACKAGE_FORMULA_FILEPATH
 EOF
 }
@@ -2275,17 +2275,17 @@ __fetch_resources_of_the_given_package() {
 # {{{ ndk-pkg pack
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME|PACKAGE-SPEC> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-packing-dir]
+# __pack_the_given_installed_package <PACKAGE-NAME|PACKAGE-SPEC> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-working-dir]
   __pack_the_given_installed_package() {
     PACKAGE_SPEC=
     PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
     __load_receipt_of_the_given_package "$PACKAGE_SPEC"
 
-    ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-    ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2)"
+    PACKAGE_NAME="${PACKAGE_SPEC%%/*}"
 
-    PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
+    TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2 | cut -d- -f2)"
+    TARGET_ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
 
     shift
 
@@ -2295,13 +2295,13 @@ __fetch_resources_of_the_given_package() {
     unset OUTPUT_FILETYPE
     unset OUTPUT_FILEPATH
 
-    unset KEEP_PACKING_DIR
+    unset KEEP_WORKING_DIR
 
     while [ -n "$1" ]
     do
         case $1 in
-            --keep-packing-dir)
-                KEEP_PACKING_DIR=yes
+            --keep-working-dir)
+                KEEP_WORKING_DIR=yes
                 ;;
             -t) shift
 
@@ -2323,7 +2323,7 @@ __fetch_resources_of_the_given_package() {
                     OUTPUT_FILEPATH="$1"
                 fi
                 ;;
-            *)  abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-packing-dir], unrecognized option: $1"
+            *)  abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-working-dir], unrecognized option: $1"
         esac
         shift
     done
@@ -2374,17 +2374,17 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    case $ANDROID_ABI in
-        armeabi-v7a) ANDROID_ARCH='armv7a'  ;;
-        arm64-v8a)   ANDROID_ARCH='aarch64' ;;
-        x86)         ANDROID_ARCH='i686'    ;;
-        x86_64)      ANDROID_ARCH='x86_64'  ;;
+    case $TARGET_ANDROID_ABI in
+        armeabi-v7a) TARGET_ANDROID_ARCH='armv7a'  ;;
+        arm64-v8a)   TARGET_ANDROID_ARCH='aarch64' ;;
+        x86)         TARGET_ANDROID_ARCH='i686'    ;;
+        x86_64)      TARGET_ANDROID_ARCH='x86_64'  ;;
     esac
 
     if [ "$OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL" = yes ] ; then
-        PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android$ANDROID_API-$ANDROID_ARCH"
+        PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android$TARGET_ANDROID_API-$TARGET_ANDROID_ARCH"
     else
-        PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$ANDROID_ARCH"
+        PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$TARGET_ANDROID_ARCH"
     fi
 
     ###########################################################################################
@@ -2449,14 +2449,12 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    PACKING_DIR="$NDKPKG_HOME/run/$$"
+    WORKING_DIR="$NDKPKG_HOME/run/$$"
 
-    step "create packing directory"
-    run rm -rf     "$PACKING_DIR"
-    run install -d "$PACKING_DIR"
-
-    step "change to packing directory"
-    run cd "$PACKING_DIR"
+    step "create the working directory and change to it"
+    run rm -rf     "$WORKING_DIR"
+    run install -d "$WORKING_DIR"
+    run cd         "$WORKING_DIR"
 
     step "make link refer to installed package root dir"
     run ln -s "$PACKAGE_INSTALLED_DIR" "$PACKED_DIR_NAME"
@@ -2489,12 +2487,12 @@ __fetch_resources_of_the_given_package() {
     step "copy packed file to output dir"
     run cp "$OUTPUT_FILENAME" "$OUTPUT_DIR/"
 
-    if [ "$KEEP_PACKING_DIR" = yes ] ; then
+    if [ "$KEEP_WORKING_DIR" = yes ] ; then
         printf '\n'
-        note "the work dir [$PACKING_DIR] is not deleted as --keep-packing-dir option is given."
+        note "the working directory '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
     else
-        step "delete packing directory"
-        run rm -rf "$PACKING_DIR"
+        step "delete the working directory"
+        run rm -rf "$WORKING_DIR"
     fi
 }
 
@@ -2512,10 +2510,10 @@ __fetch_resources_of_the_given_package() {
 
     RECEIPT_NDK_VERSION_MAJOR="$(printf '%s\n' "$RECEIPT_NDK_VERSION" | cut -d. -f1)"
 
-    ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-    ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2)"
+    PACKAGE_NAME="${PACKAGE_SPEC%%/*}"
 
-    PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
+    TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2 | cut -d- -f2)"
+    TARGET_ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
 
     PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
@@ -2645,7 +2643,7 @@ EOF
   }
 }
 EOF
-            ABI_DIR="$MODULE_DIR/libs/android.$ANDROID_ABI"
+            ABI_DIR="$MODULE_DIR/libs/android.$TARGET_ANDROID_ABI"
 
             run install -d "$ABI_DIR"
 
@@ -2674,7 +2672,7 @@ EOF
                 fi
             fi
 
-            printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "$RECEIPT_NDK_VERSION_MAJOR" "$ANDROID_API" "$ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
+            printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "$RECEIPT_NDK_VERSION_MAJOR" "$TARGET_ANDROID_API" "$TARGET_ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
         done
     else
         # headers only
@@ -2695,9 +2693,9 @@ EOF
 
     shift
 
-    unset ANDROID_API
+    unset TARGET_ANDROID_API
 
-    unset ANDROID_ABIS
+    unset TARGET_ANDROID_ABIS
 
     unset MVN_OPTIONS
 
@@ -2710,31 +2708,31 @@ EOF
                 KEEP_WORKING_DIR=yes
                 ;;
             --api=*)
-                ANDROID_API="${arg#'--api='}"
+                TARGET_ANDROID_API="${arg#'--api='}"
 
-                [ -z "$ANDROID_API" ] && {
+                [ -z "$TARGET_ANDROID_API" ] && {
                     error "$_0 deploy <PACKAGE-NAME> [--api=<VALUE>] , <VALUE> is unspecified."
                     return 1
                 }
 
-                is_integer "$ANDROID_API" || {
+                is_integer "$TARGET_ANDROID_API" || {
                     error "$_0 deploy <PACKAGE-NAME> [--api=<VALUE>] , <VALUE> must be a integer."
                     return 1
                 }
 
                 ;;
             --abi=*)
-                ANDROID_ABI="${arg#'--abi='}"
+                TARGET_ANDROID_ABI="${arg#'--abi='}"
 
-                [ -z "$ANDROID_ABI" ] && {
+                [ -z "$TARGET_ANDROID_ABI" ] && {
                     error "$_0 deploy <PACKAGE-NAME> [--abi=<VALUE>] , <VALUE> is unspecified."
                     return 1
                 }
 
-                if [ -z "$ANDROID_ABIS" ] ; then
-                    ANDROID_ABIS="$ANDROID_ABI"
+                if [ -z "$TARGET_ANDROID_ABIS" ] ; then
+                    TARGET_ANDROID_ABIS="$TARGET_ANDROID_ABI"
                 else
-                    ANDROID_ABIS="$ANDROID_ABIS $ANDROID_ABI"
+                    TARGET_ANDROID_ABIS="$TARGET_ANDROID_ABIS $TARGET_ANDROID_ABI"
                 fi
 
                 ;;
@@ -2745,41 +2743,41 @@ EOF
         esac
     done
 
-    [ -z "$ANDROID_API" ] && {
+    [ -z "$TARGET_ANDROID_API" ] && {
         case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-            '') ANDROID_API=21
+            '') TARGET_ANDROID_API=21
                 ;;
             android-[1-9][0-9]/armeabi-v7a)
-                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                TARGET_ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
                 ;;
             android-[1-9][0-9]/arm64-v8a)
-                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                TARGET_ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
                 ;;
             android-[1-9][0-9]/x86)
-                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                TARGET_ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
                 ;;
             android-[1-9][0-9]/x86_64)
-                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                TARGET_ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
                 ;;
             *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
         esac
     }
 
-    [ -z "$ANDROID_ABIS" ] && {
+    [ -z "$TARGET_ANDROID_ABIS" ] && {
         case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-            '') ANDROID_ABIS='arm64-v8a'
+            '') TARGET_ANDROID_ABIS='arm64-v8a'
                 ;;
             android-[1-9][0-9]/armeabi-v7a)
-                ANDROID_ABIS='armeabi-v7a'
+                TARGET_ANDROID_ABIS='armeabi-v7a'
                 ;;
             android-[1-9][0-9]/arm64-v8a)
-                ANDROID_ABIS='arm64-v8a'
+                TARGET_ANDROID_ABIS='arm64-v8a'
                 ;;
             android-[1-9][0-9]/x86)
-                ANDROID_ABIS='x86'
+                TARGET_ANDROID_ABIS='x86'
                 ;;
             android-[1-9][0-9]/x86_64)
-                ANDROID_ABIS='x86_64'
+                TARGET_ANDROID_ABIS='x86_64'
                 ;;
             *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
         esac
@@ -2789,16 +2787,14 @@ EOF
 
     WORKING_DIR="$NDKPKG_HOME/run/$$"
 
-    step "create the working directory"
+    step "create the working directory and change to it"
     run rm -rf     "$WORKING_DIR"
     run install -d "$WORKING_DIR"
+    run cd         "$WORKING_DIR"
 
-    step "cd  to the working directory"
-    run cd "$WORKING_DIR"
-
-    for ANDROID_ABI in $ANDROID_ABIS
+    for TARGET_ANDROID_ABI in $TARGET_ANDROID_ABIS
     do
-        __create_prefab_for_the_given_installed_package "android-$ANDROID_API/$ANDROID_ABI/$PACKAGE_NAME" prefab
+        __create_prefab_for_the_given_installed_package "android-$TARGET_ANDROID_API/$TARGET_ANDROID_ABI/$PACKAGE_NAME" prefab
     done
 
     #########################################################################################
@@ -2825,12 +2821,12 @@ EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fpliu.ndk.pkg.prefab.android$ANDROID_API.$JAVA_PACKAGE_NAME"
+    package="com.fpliu.ndk.pkg.prefab.android$TARGET_ANDROID_API.$JAVA_PACKAGE_NAME"
     android:versionCode="$TIMESTAMP_UNIX"
     android:versionName="$RECEIPT_PACKAGE_VERSION" >
 
     <uses-sdk
-        android:minSdkVersion="$ANDROID_API"
+        android:minSdkVersion="$TARGET_ANDROID_API"
         android:targetSdkVersion="33" />
 
 </manifest>
@@ -2863,14 +2859,14 @@ EOF
         $MVN_OPTIONS \
         install:install-file \
         -Dfile=$PACKED_FILE_NAME \
-        -DgroupId=com.fpliu.ndk.pkg.prefab.android.$ANDROID_API \
+        -DgroupId=com.fpliu.ndk.pkg.prefab.android.$TARGET_ANDROID_API \
         -DartifactId=$PACKAGE_NAME \
         -Dversion=$RECEIPT_PACKAGE_VERSION \
         -Dpackaging=aar
 
     if [ "$KEEP_WORKING_DIR" = yes ] ; then
         printf '\n'
-        note "the working dir '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
+        note "the working directory '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
     else
         step "delete the working directory"
         run rm -rf "$WORKING_DIR"
@@ -2888,9 +2884,9 @@ EOF
 
     shift
 
-    unset ANDROID_API
+    unset TARGET_ANDROID_API
 
-    unset ANDROID_ABIS
+    unset TARGET_ANDROID_ABIS
 
     unset MVN_OPTIONS
 
@@ -2903,31 +2899,31 @@ EOF
                 KEEP_WORKING_DIR=yes
                 ;;
             --api=*)
-                ANDROID_API="${arg#'--api='}"
+                TARGET_ANDROID_API="${arg#'--api='}"
 
-                [ -z "$ANDROID_API" ] && {
+                [ -z "$TARGET_ANDROID_API" ] && {
                     error "$_0 deploy <PACKAGE-NAME> [--api=<VALUE>] , <VALUE> is unspecified."
                     return 1
                 }
 
-                is_integer "$ANDROID_API" || {
+                is_integer "$TARGET_ANDROID_API" || {
                     error "$_0 deploy <PACKAGE-NAME> [--api=<VALUE>] , <VALUE> must be a integer."
                     return 1
                 }
 
                 ;;
             --abi=*)
-                ANDROID_ABI="${arg#'--abi='}"
+                TARGET_ANDROID_ABI="${arg#'--abi='}"
 
-                [ -z "$ANDROID_ABI" ] && {
+                [ -z "$TARGET_ANDROID_ABI" ] && {
                     error "$_0 deploy <PACKAGE-NAME> [--abi=<VALUE>] , <VALUE> is unspecified."
                     return 1
                 }
 
-                if [ -z "$ANDROID_ABIS" ] ; then
-                    ANDROID_ABIS="$ANDROID_ABI"
+                if [ -z "$TARGET_ANDROID_ABIS" ] ; then
+                    TARGET_ANDROID_ABIS="$TARGET_ANDROID_ABI"
                 else
-                    ANDROID_ABIS="$ANDROID_ABIS $ANDROID_ABI"
+                    TARGET_ANDROID_ABIS="$TARGET_ANDROID_ABIS $TARGET_ANDROID_ABI"
                 fi
 
                 ;;
@@ -2938,41 +2934,41 @@ EOF
         esac
     done
 
-    [ -z "$ANDROID_API" ] && {
+    [ -z "$TARGET_ANDROID_API" ] && {
         case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-            '') ANDROID_API=21
+            '') TARGET_ANDROID_API=21
                 ;;
             android-[1-9][0-9]/armeabi-v7a)
-                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                TARGET_ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
                 ;;
             android-[1-9][0-9]/arm64-v8a)
-                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                TARGET_ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
                 ;;
             android-[1-9][0-9]/x86)
-                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                TARGET_ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
                 ;;
             android-[1-9][0-9]/x86_64)
-                ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+                TARGET_ANDROID_API="$(printf '%s\n' "$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
                 ;;
             *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
         esac
     }
 
-    [ -z "$ANDROID_ABIS" ] && {
+    [ -z "$TARGET_ANDROID_ABIS" ] && {
         case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-            '') ANDROID_ABIS='arm64-v8a'
+            '') TARGET_ANDROID_ABIS='arm64-v8a'
                 ;;
             android-[1-9][0-9]/armeabi-v7a)
-                ANDROID_ABIS='armeabi-v7a'
+                TARGET_ANDROID_ABIS='armeabi-v7a'
                 ;;
             android-[1-9][0-9]/arm64-v8a)
-                ANDROID_ABIS='arm64-v8a'
+                TARGET_ANDROID_ABIS='arm64-v8a'
                 ;;
             android-[1-9][0-9]/x86)
-                ANDROID_ABIS='x86'
+                TARGET_ANDROID_ABIS='x86'
                 ;;
             android-[1-9][0-9]/x86_64)
-                ANDROID_ABIS='x86_64'
+                TARGET_ANDROID_ABIS='x86_64'
                 ;;
             *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
         esac
@@ -2982,16 +2978,14 @@ EOF
 
     WORKING_DIR="$NDKPKG_HOME/run/$$"
 
-    step "create the working directory"
+    step "create the working directory and change to it"
     run rm -rf     "$WORKING_DIR"
     run install -d "$WORKING_DIR"
+    run cd         "$WORKING_DIR"
 
-    step "cd  to the working directory"
-    run cd "$WORKING_DIR"
-
-    for ANDROID_ABI in $ANDROID_ABIS
+    for TARGET_ANDROID_ABI in $TARGET_ANDROID_ABIS
     do
-        __create_prefab_for_the_given_installed_package "android-$ANDROID_API/$ANDROID_ABI/$PACKAGE_NAME" prefab
+        __create_prefab_for_the_given_installed_package "android-$TARGET_ANDROID_API/$TARGET_ANDROID_ABI/$PACKAGE_NAME" prefab
     done
 
     #########################################################################################
@@ -3018,12 +3012,12 @@ EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fpliu.ndk.pkg.prefab.android$ANDROID_API.$JAVA_PACKAGE_NAME"
+    package="com.fpliu.ndk.pkg.prefab.android$TARGET_ANDROID_API.$JAVA_PACKAGE_NAME"
     android:versionCode="$TIMESTAMP_UNIX"
     android:versionName="$RECEIPT_PACKAGE_VERSION" >
 
     <uses-sdk
-        android:minSdkVersion="$ANDROID_API"
+        android:minSdkVersion="$TARGET_ANDROID_API"
         android:targetSdkVersion="33" />
 
 </manifest>
@@ -3102,7 +3096,7 @@ EOF
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.fpliu.ndk.pkg.prefab.android.$INSTALLED_PACKAGE_SDK_API</groupId>
+    <groupId>com.fpliu.ndk.pkg.prefab.android.$INSTALLED_PACKAGE_API_MIN</groupId>
     <artifactId>$INSTALLED_PACKAGE_NAME</artifactId>
     <version>$RECEIPT_PACKAGE_VERSION</version>
     <packaging>aar</packaging>
@@ -3462,7 +3456,7 @@ __show_packages_depended_by_the_given_package() {
                     OUTPUT_FILEPATH="$1"
                 fi
                 ;;
-            *)  abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-packing-dir], unrecognized option: $1"
+            *)  abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-working-dir], unrecognized option: $1"
         esac
         shift
     done
@@ -3533,13 +3527,13 @@ __show_packages_depended_by_the_given_package() {
 
     unset DIRECTED_PATH_LIST
 
-    STACK="$PACKAGE_NAME"
+    PACKAGE_NAME_STACK="$PACKAGE_NAME"
 
-    while [ -n "$STACK" ]
+    while [ -n "$PACKAGE_NAME_STACK" ]
     do
-        case $STACK in
-            *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
-            *)    PACKAGE_NAME="${STACK}"     ; STACK=
+        case $PACKAGE_NAME_STACK in
+            *\;*) PACKAGE_NAME="${PACKAGE_NAME_STACK##*;}" ; PACKAGE_NAME_STACK="${PACKAGE_NAME_STACK%;*}" ;;
+            *)    PACKAGE_NAME="${PACKAGE_NAME_STACK}"     ; PACKAGE_NAME_STACK=
         esac
 
         ################################################################
@@ -3613,10 +3607,10 @@ __show_packages_depended_by_the_given_package() {
 
             ############################################################
 
-            if [ -z "$STACK" ] ; then
-                STACK="$DEPENDENT_PACKAGE_NAME"
+            if [ -z "$PACKAGE_NAME_STACK" ] ; then
+                PACKAGE_NAME_STACK="$DEPENDENT_PACKAGE_NAME"
             else
-                STACK="$STACK;$DEPENDENT_PACKAGE_NAME"
+                PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$DEPENDENT_PACKAGE_NAME"
             fi
         done
 
@@ -3806,48 +3800,50 @@ __upgrade_packages() {
     case $1 in
         '') abort 1 "neither package-name nor package-spec is specified."
             ;;
-        android-[1-9][0-9]/*/*/*)
+        */android-[1-9][0-9]/*/*)
             abort 1 "invalid package spec: $1"
             ;;
-        android-[1-9][0-9]/*/*)
-            ANDROID_API="$(printf '%s\n' "$1" | cut -d/ -f1 | cut -d- -f2)"
-            ANDROID_ABI="$(printf '%s\n' "$1" | cut -d/ -f2)"
+        */android-[1-9][0-9]/*)
+            PACKAGE_NAME="${1%%/*}"
 
-            case $ANDROID_ABI in
-                armeabi-v7a|arm64-v8a|x86|x86_64) ;;
-                *)  abort 1 "invalid package spec. unrecognized android abi: $TARGET_OS_ABI"
-            esac
-
-            PACKAGE_NAME="$(printf '%s\n' "$1" | cut -d/ -f3)"
-
-            if printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
+            if [ -z "$PACKAGE_NAME" ] ; then
+                abort 1 "invalid package spec: $1\npackage name is unspecifed."
+            elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                 :
             else
                 abort 1 "invalid package spec: $1\npackage name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
             fi
 
+            TARGET_ANDROID_API="$(printf '%s\n' "$1" | cut -d/ -f2 | cut -d- -f2)"
+            TARGET_ANDROID_ABI="$(printf '%s\n' "$1" | cut -d/ -f3)"
+
+            case $TARGET_ANDROID_ABI in
+                armeabi-v7a|arm64-v8a|x86|x86_64) ;;
+                *)  abort 1 "invalid package spec. unrecognized android abi: $TARGET_ANDROID_ABI"
+            esac
+
             PACKAGE_SPEC="$1"
+            ;;
+        */*)abort 1 "invalid package spec: $1"
             ;;
         *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                 case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-                    '') PACKAGE_SPEC="android-21/arm64-v8a/$1"
+                    '') NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21/arm64-v8a'
                         ;;
                     android-[1-9][0-9]/armeabi-v7a)
-                        PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
                         ;;
                     android-[1-9][0-9]/arm64-v8a)
-                        PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
                         ;;
                     android-[1-9][0-9]/x86)
-                        PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
                         ;;
                     android-[1-9][0-9]/x86_64)
-                        PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC/$1"
                         ;;
                     *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
                 esac
+
+                PACKAGE_SPEC="$1/$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC"
             else
-                abort 1 "invalid package name or spec: $1"
+                abort 1 "invalid package name: $1"
             fi
     esac
 
@@ -4024,13 +4020,13 @@ __install_the_given_packages() {
 
     for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        STACK="${USER_SPECIFIED_PACKAGE_SPEC##*/}"
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
 
-        while [ -n "$STACK" ]
+        while [ -n "$PACKAGE_NAME_STACK" ]
         do
-            case $STACK in
-                *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
-                *)    PACKAGE_NAME="${STACK}"     ; STACK=
+            case $PACKAGE_NAME_STACK in
+                *\;*) PACKAGE_NAME="${PACKAGE_NAME_STACK##*;}" ; PACKAGE_NAME_STACK="${PACKAGE_NAME_STACK%;*}" ;;
+                *)    PACKAGE_NAME="${PACKAGE_NAME_STACK}"     ; PACKAGE_NAME_STACK=
             esac
 
             if [ -f "$SESSION_DIR/$PACKAGE_NAME.yml" ] ; then
@@ -4049,10 +4045,10 @@ __install_the_given_packages() {
                     abort 1 "package '$PACKAGE_NAME' depends itself."
                 fi
 
-                if [ -z "$STACK" ] ; then
-                    STACK="$DEPENDENT_PACKAGE_NAME"
+                if [ -z "$PACKAGE_NAME_STACK" ] ; then
+                    PACKAGE_NAME_STACK="$DEPENDENT_PACKAGE_NAME"
                 else
-                    STACK="$STACK;$DEPENDENT_PACKAGE_NAME"
+                    PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$DEPENDENT_PACKAGE_NAME"
                 fi
             done
         done
@@ -4062,25 +4058,25 @@ __install_the_given_packages() {
 
     for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_OS_VERS=
-        TARGET_OS_ABI=
+        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*/}"
 
-        TARGET_OS_VERS="$(printf '%s\n' "$USER_SPECIFIED_PACKAGE_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-        TARGET_OS_ABI="$( printf '%s\n' "$USER_SPECIFIED_PACKAGE_SPEC" | cut -d/ -f2)"
+        TARGET_ANDROID_API=
+        TARGET_ANDROID_ABI=
 
-        TARGET_OS_SPEC="android-$TARGET_OS_VERS/$TARGET_OS_ABI"
+        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+        TARGET_ANDROID_ABI="$( printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f2)"
 
         ##################################################################
 
         TO_BE_INSTALLED_PACKAGE_NAMES=
 
-        STACK="${USER_SPECIFIED_PACKAGE_SPEC##*/}"
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
 
-        while [ -n "$STACK" ]
+        while [ -n "$PACKAGE_NAME_STACK" ]
         do
-            case $STACK in
-                *\;*) PACKAGE_NAME="${STACK##*;}" ; STACK="${STACK%;*}" ;;
-                *)    PACKAGE_NAME="${STACK}"     ; STACK=
+            case $PACKAGE_NAME_STACK in
+                *\;*) PACKAGE_NAME="${PACKAGE_NAME_STACK##*;}" ; PACKAGE_NAME_STACK="${PACKAGE_NAME_STACK%;*}" ;;
+                *)    PACKAGE_NAME="${PACKAGE_NAME_STACK}"     ; PACKAGE_NAME_STACK=
             esac
 
             ##################################################################
@@ -4101,10 +4097,10 @@ __install_the_given_packages() {
 
             for item in $(eval echo \$PACKAGE_DEP_PKG_"${PACKAGE_NAME_UPPERCASE_UNDERSCORE}")
             do
-                if [ -z "$STACK" ] ; then
-                    STACK="$item"
+                if [ -z "$PACKAGE_NAME_STACK" ] ; then
+                    PACKAGE_NAME_STACK="$item"
                 else
-                    STACK="$STACK;$item"
+                    PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$item"
                 fi
             done
         done
@@ -4113,7 +4109,7 @@ __install_the_given_packages() {
 
         for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
         do
-            PACKAGE_SPEC="$TARGET_OS_SPEC/$PACKAGE_NAME"
+            PACKAGE_SPEC="$PACKAGE_NAME/$TARGET_ANDROID_SPEC"
 
             if is_package_installed "$PACKAGE_SPEC" ; then
                 if [ "$LOG_LEVEL" -gt 0 ] ; then
@@ -4359,20 +4355,20 @@ __install_the_given_package_onexit() {
 __install_the_given_package() {
     printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
 
-    case $TARGET_OS_ABI in
-        armeabi-v7a) TARGET_OS_ARCH='armv7a'  ;;
-        arm64-v8a)   TARGET_OS_ARCH='aarch64' ;;
-        x86)         TARGET_OS_ARCH='i686'    ;;
-        x86_64)      TARGET_OS_ARCH='x86_64'  ;;
+    case $TARGET_ANDROID_ABI in
+        armeabi-v7a) TARGET_ANDROID_ARCH='armv7a'  ;;
+        arm64-v8a)   TARGET_ANDROID_ARCH='aarch64' ;;
+        x86)         TARGET_ANDROID_ARCH='i686'    ;;
+        x86_64)      TARGET_ANDROID_ARCH='x86_64'  ;;
     esac
 
-    case $TARGET_OS_ARCH in
+    case $TARGET_ANDROID_ARCH in
         i686|armv7a)
-            TARGET_OS_NBIT=32
+            TARGET_ANDROID_NBIT=32
             ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker'
             ;;
         x86_64|aarch64)
-            TARGET_OS_NBIT=64
+            TARGET_ANDROID_NBIT=64
             ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker64'
             ;;
     esac
@@ -4401,17 +4397,17 @@ __install_the_given_package() {
         BUILD_NJOBS=1
     fi
 
-    if [ -z "$PACKAGE_SDK_API" ] ; then
-        PACKAGE_SDK_API="$ANDROID_NDK_SUPPORTED_MIN_SDK_API_LEVEL"
+    if [ -z "$PACKAGE_API_MIN" ] ; then
+        PACKAGE_API_MIN="$ANDROID_NDK_SUPPORTED_MIN_SDK_API_LEVEL"
     fi
 
     cat <<EOF
-supported min sdk api level: $PACKAGE_SDK_API
-requested min sdk api level: $TARGET_OS_VERS
+supported min sdk api level: $PACKAGE_API_MIN
+requested min sdk api level: $TARGET_ANDROID_API
 EOF
 
-    if [ "$PACKAGE_SDK_API" -gt "$TARGET_OS_VERS" ] ; then
-        abort 1 "package installation failure: '$1'\n    supported min sdk api level: $PACKAGE_SDK_API\n    requested min sdk api level: $TARGET_OS_VERS"
+    if [ "$PACKAGE_API_MIN" -gt "$TARGET_ANDROID_API" ] ; then
+        abort 1 "package installation failure: '$1'\n    supported min sdk api level: $PACKAGE_API_MIN\n    requested min sdk api level: $TARGET_ANDROID_API"
     fi
 
     #########################################################################################
@@ -4430,9 +4426,9 @@ EOF
      NATIVE_OS_EUID = $NATIVE_OS_EUID
      NATIVE_OS_EGID = $NATIVE_OS_EGID
 
-     TARGET_OS_VERS = $TARGET_OS_VERS
-     TARGET_OS_ARCH = $TARGET_OS_ARCH
-     TARGET_OS_ABI  = $TARGET_OS_ABI
+     TARGET_ANDROID_API = $TARGET_ANDROID_API
+     TARGET_ANDROID_ARCH = $TARGET_ANDROID_ARCH
+     TARGET_ANDROID_ABI  = $TARGET_ANDROID_ABI
 
 NDKPKG_VERSION      = $NDKPKG_VERSION
 NDKPKG_HOME         = $NDKPKG_HOME
@@ -4446,7 +4442,7 @@ NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
 
              DRYRUN = $DRYRUN
      CCACHE_ENABLED = $CCACHE_ENABLED
-   KEEP_PACKING_DIR = $KEEP_WORKING_DIR
+   KEEP_WORKING_DIR = $KEEP_WORKING_DIR
 EXPORT_COMPILE_COMMANDS_JSON = $EXPORT_COMPILE_COMMANDS_JSON
     "
 
@@ -4819,22 +4815,22 @@ EOF
     [ -n "$PACKAGE_DEP_PKG" ] && {
         step "calculate dependency list of $1"
 
-        unset STACK
+        unset PACKAGE_NAME_STACK
 
         for item in $PACKAGE_DEP_PKG
         do
             if [ -z "$item" ] ; then
-                STACK="$item"
+                PACKAGE_NAME_STACK="$item"
             else
-                STACK="$STACK;$item"
+                PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$item"
             fi
         done
 
-        while [ -n "$STACK" ]
+        while [ -n "$PACKAGE_NAME_STACK" ]
         do
-            case $STACK in
-                *\;*) TOPE="${STACK##*;}" ; STACK="${STACK%;*}" ;;
-                *)    TOPE="${STACK}"     ; STACK=
+            case $PACKAGE_NAME_STACK in
+                *\;*) TOPE="${PACKAGE_NAME_STACK##*;}" ; PACKAGE_NAME_STACK="${PACKAGE_NAME_STACK%;*}" ;;
+                *)    TOPE="${PACKAGE_NAME_STACK}"     ; PACKAGE_NAME_STACK=
             esac
 
             RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$TOPE"
@@ -4854,9 +4850,9 @@ EOF
             for item in $(eval echo \$PACKAGE_DEP_PKG_"${TOPE_UPPERCASE_UNDERSCORE}")
             do
                 if [ -z "$item" ] ; then
-                    STACK="$item"
+                    PACKAGE_NAME_STACK="$item"
                 else
-                    STACK="$STACK;$item"
+                    PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$item"
                 fi
             done
         done
@@ -4871,7 +4867,7 @@ EOF
     [ -n "$PACKAGE_DEP_PKG" ] && {
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_OS_SPEC/$DEPENDENT_PACKAGE_NAME"
+            DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/$TARGET_ANDROID_SPEC"
 
             if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
                 RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
@@ -4906,13 +4902,13 @@ EOF
 
         unset DOT_CONTENT
 
-        STACK="$PACKAGE_NAME"
+        PACKAGE_NAME_STACK="$PACKAGE_NAME"
 
-        while [ -n "$STACK" ]
+        while [ -n "$PACKAGE_NAME_STACK" ]
         do
-            case $STACK in
-                *\;*) TOPE="${STACK##*;}" ; STACK="${STACK%;*}" ;;
-                *)    TOPE="${STACK}"     ; STACK=
+            case $PACKAGE_NAME_STACK in
+                *\;*) TOPE="${PACKAGE_NAME_STACK##*;}" ; PACKAGE_NAME_STACK="${PACKAGE_NAME_STACK%;*}" ;;
+                *)    TOPE="${PACKAGE_NAME_STACK}"     ; PACKAGE_NAME_STACK=
             esac
 
             unset TOPE_UPPERCASE_UNDERSCORE
@@ -4935,9 +4931,9 @@ EOF
             do
 
                 if [ -z "$item" ] ; then
-                    STACK="$item"
+                    PACKAGE_NAME_STACK="$item"
                 else
-                    STACK="$STACK;$item"
+                    PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$item"
                 fi
             done
         done
@@ -5470,13 +5466,13 @@ $PACKAGE_BUILD0_ACTIONS
 
     #########################################################################################
 
-    if [ "$TARGET_OS_ARCH" = armv7a ] ; then
+    if [ "$TARGET_ANDROID_ARCH" = armv7a ] ; then
         TARGET_TRIPLE='armv7a-linux-androideabi'
     else
-        TARGET_TRIPLE="$TARGET_OS_ARCH-linux-android"
+        TARGET_TRIPLE="$TARGET_ANDROID_ARCH-linux-android"
     fi
 
-    export ANDROID_TARGET="${TARGET_TRIPLE}${TARGET_OS_VERS}"
+    export ANDROID_TARGET="${TARGET_TRIPLE}${TARGET_ANDROID_API}"
     export ANDROID_NDK_CC
     export ANDROID_NDK_CXX
     export ANDROID_NDK_SYSROOT
@@ -5485,8 +5481,8 @@ $PACKAGE_BUILD0_ACTIONS
 
     step "locate C/C++ toolchain for target build"
 
-    export      CC="${ANDROID_NDK_TOOLCHAIN_BIND}/${TARGET_TRIPLE}${TARGET_OS_VERS}-clang"
-    export     CXX="${ANDROID_NDK_TOOLCHAIN_BIND}/${TARGET_TRIPLE}${TARGET_OS_VERS}-clang++"
+    export      CC="${ANDROID_NDK_TOOLCHAIN_BIND}/${TARGET_TRIPLE}${TARGET_ANDROID_API}-clang"
+    export     CXX="${ANDROID_NDK_TOOLCHAIN_BIND}/${TARGET_TRIPLE}${TARGET_ANDROID_API}-clang++"
     export     CPP="$CC -E"
     export      LD="$ANDROID_NDK_LD"
     export      AS="$ANDROID_NDK_AS"
@@ -5845,7 +5841,7 @@ EOF
     do
         DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
 
-        DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_OS_SPEC/$DEPENDENT_PACKAGE_NAME"
+        DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/$TARGET_ANDROID_SPEC"
         DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
         DEPENDENT_PACKAGE_INCLUDE_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/include"
         DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
@@ -5873,7 +5869,7 @@ EOF
         # https://android.googlesource.com/platform/bionic/+/master/docs/status.md
 
         if [ "$DEPENDENT_PACKAGE_NAME" = libexecinfo ] ; then
-            if [ "$TARGET_OS_VERS" -lt 33 ] ; then
+            if [ "$TARGET_ANDROID_API" -lt 33 ] ; then
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/execinfo.h
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/execinfo.cpp
                 CPPFLAGS="$CPPFLAGS -include $libexecinfo_INCLUDE_DIR/execinfo.h"
@@ -5882,7 +5878,7 @@ EOF
         fi
 
         if [ "$DEPENDENT_PACKAGE_NAME" = libgetloadavg ] ; then
-            if [ "$TARGET_OS_VERS" -lt 29 ] ; then
+            if [ "$TARGET_ANDROID_API" -lt 29 ] ; then
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#157
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getloadavg.cpp
                 # int getloadavg(double __averages[], int __n) __INTRODUCED_IN(29);
@@ -5894,7 +5890,7 @@ EOF
         if [ "$DEPENDENT_PACKAGE_NAME" = libglob ] ; then
             # https://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/glob.h
-            if [ "$TARGET_OS_VERS" -lt 28 ] ; then
+            if [ "$TARGET_ANDROID_API" -lt 28 ] ; then
                 LDFLAGS="$LDFLAGS -l:libglob.a"
             fi
         fi
@@ -5902,7 +5898,7 @@ EOF
         if [ "$DEPENDENT_PACKAGE_NAME" = liblanginfo ] ; then
             # https://pubs.opengroup.org/onlinepubs/9699919799/functions/nl_langinfo.html
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/langinfo.h
-            if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+            if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
                 LDFLAGS="$LDFLAGS -l:liblanginfo.a"
             fi
         fi
@@ -5911,7 +5907,7 @@ EOF
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#163
             # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/mblen.cpp
             # int mblen(const char* __s, size_t __n) __INTRODUCED_IN_NO_GUARD_FOR_NDK(26);
-            if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+            if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
                 CPPFLAGS="$CPPFLAGS -include $libmblen_INCLUDE_DIR/mblen.h"
                 LDFLAGS="$LDFLAGS -l:libmblen.a"
             fi
@@ -5921,7 +5917,7 @@ EOF
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/unistd.h#313
             # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getdomainname.cpp
             # int getdomainname(char* __buf, size_t __buf_size) __INTRODUCED_IN(26);
-            if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+            if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
                 CPPFLAGS="$CPPFLAGS -include $libgetdomainname_INCLUDE_DIR/getdomainname.h"
                 LDFLAGS="$LDFLAGS -l:libgetdomainname.a"
             fi
@@ -5930,7 +5926,7 @@ EOF
         if [ "$DEPENDENT_PACKAGE_NAME" = libstrchrnul ] ; then
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/string.h#68
             # char* strchrnul(char* __s, int __ch) __RENAME(strchrnul) __attribute_pure__ __INTRODUCED_IN(24);
-            if [ "$TARGET_OS_VERS" -lt 24 ] ; then
+            if [ "$TARGET_ANDROID_API" -lt 24 ] ; then
                 CPPFLAGS="$CPPFLAGS -include $libstrchrnul_INCLUDE_DIR/strchrnul.h"
                 LDFLAGS="$LDFLAGS -l:libstrchrnul.a"
             fi
@@ -6168,7 +6164,7 @@ EOF
         export RUST_BACKTRACE=1
 
         # this environment variable is not defined by Rust, but it is widely used by third-party project.
-        case $TARGET_OS_ARCH in
+        case $TARGET_ANDROID_ARCH in
             armv7a)  export RUST_TARGET='armv7-linux-androideabi' ;;
             aarch64) export RUST_TARGET='aarch64-linux-android'   ;;
             i686)    export RUST_TARGET='i686-linux-android'      ;;
@@ -6207,7 +6203,7 @@ EOF
         for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
         do
             if [ "$DEPENDENT_PACKAGE_NAME" = libgetloadavg ] ; then
-                if [ "$TARGET_OS_VERS" -lt 29 ] ; then
+                if [ "$TARGET_ANDROID_API" -lt 29 ] ; then
                     # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#157
                     # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getloadavg.cpp
                     # int getloadavg(double __averages[], int __n) __INTRODUCED_IN(29);
@@ -6219,7 +6215,7 @@ EOF
             if [ "$DEPENDENT_PACKAGE_NAME" = libglob ] ; then
                 # https://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/glob.h
-                if [ "$TARGET_OS_VERS" -lt 28 ] ; then
+                if [ "$TARGET_ANDROID_API" -lt 28 ] ; then
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libglob_LIBRARY_DIR/libglob.a"
                 fi
             fi
@@ -6227,7 +6223,7 @@ EOF
             if [ "$DEPENDENT_PACKAGE_NAME" = liblanginfo ] ; then
                 # https://pubs.opengroup.org/onlinepubs/9699919799/functions/nl_langinfo.html
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/langinfo.h
-                if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+                if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$liblanginfo_LIBRARY_DIR/liblanginfo.a"
                 fi
             fi
@@ -6236,7 +6232,7 @@ EOF
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#163
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/mblen.cpp
                 # int mblen(const char* __s, size_t __n) __INTRODUCED_IN_NO_GUARD_FOR_NDK(26);
-                if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+                if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
                     CPPFLAGS="$CPPFLAGS -include $libmblen_INCLUDE_DIR/mblen.h"
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libmblen_LIBRARY_DIR/libmblen.a"
                 fi
@@ -6246,7 +6242,7 @@ EOF
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/unistd.h#313
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getdomainname.cpp
                 # int getdomainname(char* __buf, size_t __buf_size) __INTRODUCED_IN(26);
-                if [ "$TARGET_OS_VERS" -lt 26 ] ; then
+                if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
                     # CPPFLAGS="$CPPFLAGS -include $libgetdomainname_INCLUDE_DIR/getdomainname.h"
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libgetdomainname_LIBRARY_DIR/libgetdomainname.a"
                 fi
@@ -6255,7 +6251,7 @@ EOF
             if [ "$DEPENDENT_PACKAGE_NAME" = libstrchrnul ] ; then
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/string.h#68
                 # char* strchrnul(char* __s, int __ch) __RENAME(strchrnul) __attribute_pure__ __INTRODUCED_IN(24);
-                if [ "$TARGET_OS_VERS" -lt 24 ] ; then
+                if [ "$TARGET_ANDROID_API" -lt 24 ] ; then
                     # CPPFLAGS="$CPPFLAGS -include $libstrchrnul_INCLUDE_DIR/strchrnul.h"
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libstrchrnul_LIBRARY_DIR/libstrchrnul.a"
                 fi
@@ -6324,8 +6320,8 @@ EOF
         export TARGET_CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/android.toolchain.cmake"
 
         cat > "$TARGET_CMAKE_TOOLCHAIN_FILE" <<EOF
-set(ANDROID_ABI "${TARGET_OS_ABI}")
-set(ANDROID_PLATFORM "android-${TARGET_OS_VERS}")
+set(TARGET_ANDROID_ABI "${TARGET_ANDROID_ABI}")
+set(ANDROID_PLATFORM "android-${TARGET_ANDROID_API}")
 include(${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake)
 EOF
     fi
@@ -6352,7 +6348,7 @@ EOF
         # https://golang.org/doc/install/source#environment
         export GOOS='android'
 
-        case $TARGET_OS_ARCH in
+        case $TARGET_ANDROID_ARCH in
             armv7a)  export GOARCH=arm   ;;
             aarch64) export GOARCH=arm64 ;;
             i686)    export GOARCH=386   ;;
@@ -6456,7 +6452,7 @@ EOF
 
     if [ "$ANDROID_NDK_VERSION_MAJOR" -ge 23 ] ; then
         # https://github.com/rust-windowing/android-ndk-rs/issues/149
-        if [ "$TARGET_OS_ARCH" = 'x86_64' ] ; then
+        if [ "$TARGET_ANDROID_ARCH" = 'x86_64' ] ; then
             LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
         else
             LIBCLANG_RT_BUILTINS_FILEPATH=
@@ -7008,7 +7004,7 @@ __adjust_elf_files_for_the_given_target() {
                 ELF_TYPE=
                 ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
 
-                case $TARGET_OS_ABI in
+                case $TARGET_ANDROID_ABI in
                     armeabi-v7a) FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}002800" ;;
                     arm64-v8a)   FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}00B700" ;;
                     x86)         FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}000300" ;;
@@ -7481,7 +7477,7 @@ configure() {
         export ac_cv_func_realloc_0_nonnull=yes
 
         # https://android.googlesource.com/platform/bionic/+/master/docs/32-bit-abi.md#is-32_bit-on-lp32-y2038
-        if [ "$TARGET_OS_NBIT" -eq 32 ] ; then
+        if [ "$TARGET_ANDROID_NBIT" -eq 32 ] ; then
             export ac_year2038_required=no
         fi
 
@@ -7711,7 +7707,7 @@ cmakew() {
             CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON  -DCMAKE_COLOR_MAKEFILE=ON"
         fi
 
-        case $TARGET_OS_ARCH in
+        case $TARGET_ANDROID_ARCH in
             armv7a)  CMAKE_SYSTEM_PROCESSOR=armv7-a ;;
             aarch64) CMAKE_SYSTEM_PROCESSOR=aarch64 ;;
             i686)    CMAKE_SYSTEM_PROCESSOR=i686    ;;
@@ -7753,10 +7749,10 @@ cmakew() {
         -DCMAKE_EXE_LINKER_FLAGS='$LDFLAGS'
         -DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS
         -DANDROID_TOOLCHAIN=clang
-        -DANDROID_ABI=$TARGET_OS_ABI
+        -DANDROID_ABI=$TARGET_ANDROID_ABI
         -DANDROID_ARM_NEON=TRUE
         -DANDROID_STL=c++_shared
-        -DANDROID_PLATFORM=$TARGET_OS_VERS"
+        -DANDROID_PLATFORM=$TARGET_ANDROID_API"
 
         if [ "$CCACHE_ENABLED" = yes ] ; then
             CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DNDK_CCACHE=$CCACHE"
@@ -7805,7 +7801,7 @@ xmakew() {
         run $XMAKE --jobs=$BUILD_NJOBS &&
         run $XMAKE install -o "$NATIVE_INSTALL_DIR"
     else
-        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_OS_ABI --ndk_sdkver=$TARGET_OS_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$PACKAGE_BCACHED_DIR --cc=$CC --cxx=$CXX --cflags='$CFLAGS' --cxxflags='$CXXFLAGS' --ldflags='$LDFLAGS' --shflags='$LDFLAGS'"
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_ANDROID_ABI --ndk_sdkver=$TARGET_ANDROID_API --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$PACKAGE_BCACHED_DIR --cc=$CC --cxx=$CXX --cflags='$CFLAGS' --cxxflags='$CXXFLAGS' --ldflags='$LDFLAGS' --shflags='$LDFLAGS'"
 
         run $XMAKE config $XMAKE_CONFIG_OPTIONS &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
@@ -7816,10 +7812,10 @@ xmakew() {
 # https://mesonbuild.com/Cross-compilation.html
 # run in a subshell
 mesonw() {
-    case $TARGET_OS_ARCH in
+    case $TARGET_ANDROID_ARCH in
         armv7*)
             HOST_MACHINE_CPU_FAMILY='arm'
-            HOST_MACHINE_CPU_NAME="$TARGET_OS_ARCH"
+            HOST_MACHINE_CPU_NAME="$TARGET_ANDROID_ARCH"
             ;;
         arm64*|aarch64)
             HOST_MACHINE_CPU_FAMILY='aarch64'
@@ -7827,11 +7823,11 @@ mesonw() {
             ;;
         i386|i686)
             HOST_MACHINE_CPU_FAMILY='x86'
-            HOST_MACHINE_CPU_NAME="$TARGET_OS_ARCH"
+            HOST_MACHINE_CPU_NAME="$TARGET_ANDROID_ARCH"
             ;;
         x86_64)
             HOST_MACHINE_CPU_FAMILY='x86_64'
-            HOST_MACHINE_CPU_NAME="$TARGET_OS_ARCH"
+            HOST_MACHINE_CPU_NAME="$TARGET_ANDROID_ARCH"
             ;;
     esac
 
@@ -7904,7 +7900,7 @@ ndk_build() {
         export NDK_CCACHE=$CCACHE
     fi
 
-    NDK_BUILD_ARGS="NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=Android.mk APP_PLATFORM=android-$TARGET_OS_VERS APP_STRIP_MODE=-S"
+    NDK_BUILD_ARGS="NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=Android.mk APP_PLATFORM=android-$TARGET_ANDROID_API APP_STRIP_MODE=-S"
 
     case $BUILD_TYPE in
         debug)   NDK_BUILD_ARGS="$NDK_BUILD_ARGS NDK_DEBUG=1" ;;
@@ -8106,11 +8102,11 @@ __setup() {
 
     ##################################################################################
 
-    SETUP_WORKING_DIR="$NDKPKG_HOME/run/$$"
+    WORKING_DIR="$NDKPKG_HOME/run/$$"
 
-    run rm -rf     "$SETUP_WORKING_DIR"
-    run install -d "$SETUP_WORKING_DIR"
-    run cd         "$SETUP_WORKING_DIR"
+    run rm -rf     "$WORKING_DIR"
+    run install -d "$WORKING_DIR"
+    run cd         "$WORKING_DIR"
 
     ##################################################################################
 
@@ -8142,10 +8138,10 @@ __setup() {
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$SETUP_WORKING_DIR"
+    wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$WORKING_DIR"
 
-    run install -d                         "$NDKPKG_CORE_DIR/etc/ssl/certs"
-    run cp "$SETUP_WORKING_DIR/cacert.pem" "$NDKPKG_CORE_DIR/etc/ssl/certs"
+    run install -d                   "$NDKPKG_CORE_DIR/etc/ssl/certs"
+    run cp "$WORKING_DIR/cacert.pem" "$NDKPKG_CORE_DIR/etc/ssl/certs"
 
     ##################################################################################
 
@@ -8239,14 +8235,12 @@ ${COLOR_GREEN}ndk-pkg sysinfo${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg ndkinfo [--ndk-home=<ANDROID-NDK-HOME>]${COLOR_OFF}
     show basic information about the specified location of Android NDK.
 
-    If --ndk-home=<ANDROID-NDK-HOME> option is not given, <ANDROID-NDK-HOME> will be calculated in following order:
-    1. ${COLOR_PURPLE}ANDROID_NDK_ROOT${COLOR_OFF} environment variable
-    2. ${COLOR_PURPLE}ANDROID_NDK_HOME${COLOR_OFF} environment variable
+    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string, a error will arise.
 
 ${COLOR_GREEN}ndk-pkg gen-url-transform-sample${COLOR_OFF}
     generate url-transform sample.
 
-${COLOR_GREEN}ndk-pkg integrate zsh   [--output-dir=<DIR>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg integrate zsh [--output-dir=<DIR>]${COLOR_OFF}
     download a zsh-completion script file to a approprivate location.
 
 ${COLOR_GREEN}ndk-pkg update${COLOR_OFF}
@@ -8272,10 +8266,10 @@ ${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg is-available <PACKAGE-NAME>${COLOR_OFF}
     check if the given package is available.
 
-${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-SPEC>${COLOR_OFF}
     check if the given package is installed.
 
-${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-NAME>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-SPEC>${COLOR_OFF}
     check if the given package is outdated.
 
 
@@ -8331,32 +8325,53 @@ ${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN>${COLOR_OFF}
 
 
 ${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
-    download formula resources of the given package to the local cache.
+    download all the resources of the given package to the local cache.
 
 ${COLOR_GREEN}ndk-pkg fetch @all${COLOR_OFF}
-    download formula resources of all the available packages to the local cache.
+    download all the resources of all the available packages to the local cache.
 
 
-${COLOR_GREEN}ndk-pkg install   <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg install <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
     install the given packages.
+
+    ${COLOR_RED}C and C++ compiler for native build should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
 
     INSTALL-OPTIONS:
         ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
+            If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
+
         ${COLOR_BLUE}--jobs=N${COLOR_OFF}
+            set the number of jobs you can run in parallel.
+
         ${COLOR_BLUE}-q${COLOR_OFF}
+            silent mode. no any messages will be output to terminal.
+
         ${COLOR_BLUE}-v${COLOR_OFF}
+            verbose mode. many messages will be output to terminal.
+
         ${COLOR_BLUE}-vv${COLOR_OFF}
+            very verbose mode. many many messages will be output to terminal.
+
         ${COLOR_BLUE}--build-type=<debug|release>${COLOR_OFF}
+            set build type.
+
         ${COLOR_BLUE}--link-type=<static-only|shared-only|static-prefered|shared-prefered>${COLOR_OFF}
+            link static or shared library.
+
         ${COLOR_BLUE}--install-lib=<static|shared|both>${COLOR_OFF}
+            [install static or shared library.
+
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
+            do not use ccache.
+
         ${COLOR_BLUE}--export-compile-commands-json${COLOR_OFF}
+            generates compile_commands.json
+
         ${COLOR_BLUE}--dry-run${COLOR_OFF}
+            do not actually install the package.
+
         ${COLOR_BLUE}--keep-working-dir${COLOR_OFF}
-
-    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
-
-    ${COLOR_RED}C and C++ compiler for native build should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
+            do not delete the working direcotory even if this package is successfully installed.
 
 ${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-SPEC>... [INSTALL-OPTIONS]${COLOR_OFF}
     reinstall the given packages.
@@ -8377,7 +8392,7 @@ ${COLOR_GREEN}ndk-pkg tree <PACKAGE-SPEC> [--dirsfirst | -L N]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg logs <PACKAGE-SPEC>${COLOR_OFF}
     show logs of the given installed package.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-packing-dir] [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-working-dir] [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     pack the given installed package.
 
     <OUTPUT-PATH> can be either the filepath or directory where the packed archive will be written to. If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
@@ -8467,7 +8482,7 @@ ${COLOR_GREEN}NDKPKG_XTRACE${COLOR_OFF}
     for debugging purposes. to enable set -x: ${COLOR_RED}export NDKPKG_XTRACE=1${COLOR_OFF}
 
 ${COLOR_GREEN}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF}
-    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <TARGET-ANDROID-SPEC>/<PACKAGE-NAME>, To simplify the usage, you are allowed to omit <TARGET-ANDROID-SPEC>/. If <TARGET-ANDROID-SPEC>/ is omitted, this environment variable will be used, if this environment variable is not set, then android-21/arm64-v8a will be used as the default.
+    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <PACKAGE-NAME>/<TARGET-ANDROID-SPEC>, To simplify the usage, you are allowed to omit /<TARGET-ANDROID-SPEC>. If /<TARGET-ANDROID-SPEC> is omitted, this environment variable will be used, if this environment variable is not set, then android-21/arm64-v8a will be used as the default.
 
     <TARGET-ANDROID-SPEC> has the form android-<MIN-SDK-API-LEVEL>/<ANDROID-ABI>
 
@@ -8519,7 +8534,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.3.4
+    NDKPKG_VERSION=0.4.0
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'

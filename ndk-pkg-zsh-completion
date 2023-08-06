@@ -1,6 +1,6 @@
 #compdef ndk-pkg
 
-_commands=(
+_ndk_pkg_actions=(
     '-h:show help of this command.'
     '--help:show help of this command.'
     '-V:show version of this.'
@@ -16,7 +16,7 @@ _commands=(
     'is-available:is the given package available.'
     'is-installed:is the given package installed.'
     'is-outdated:is the given package outdated.'
-    'search:search packages can be installed.'
+    'search:search all available packages whose name matches the given regular expression pattern.'
     'tree:list files of the given installed package in a tree-like format.'
     'info:show infomation of the given package or all available packages.'
     'formula-edit:edit formula of the given package.'
@@ -32,21 +32,18 @@ _commands=(
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
-    'cleanup:cleanup the unused cache.'
-    'update:update the formula repository.'
-    'upgrade:upgrade the outdated packages or this software.'
+    'cleanup:delete the unused cached files'
+    'update:update all available formula repositories.'
+    'upgrade:upgrade the outdated packages'
+    'upgrade-self:upgrade this software.'
     'fetch:download formula resources of the given package to the cache.'
     'depends:show the depends of the given package.'
     'pack:pack the given installed package.'
-    'deploy-maven-local:pack the given installed package as prefab aar and then deploy it to maven local repository.'
-    'deploy-maven-remote:pack the given installed package as prefab aar and then deploy it to maven remote repository.'
+    'prefab-create:create the google prefab aar for the given installed package.'
+    'prefab-deploy:create the google prefab aar for the given installed package then deploy it to maven local repository or Sonatype OSSRH.'
     'logs:show logs of the given installed package.'
     'gen-url-transform-sample:generate url-transform sample.'
 )
-
-function _ndk_pkg_commands() {
-    _describe 'command' _commands
-}
 
 function _ndk_pkg_available_packages() {
     local -a _available_packages
@@ -62,7 +59,7 @@ function _ndk_pkg_installed_packages() {
 
 function _ndk_pkg_installed_package_names() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null | cut -d/ -f3))
+    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null | cut -d/ -f1))
     _describe 'installed-packages' _installed_packages
 }
 
@@ -74,7 +71,7 @@ function _ndk_pkg_outdated_packages() {
 
 function _ndk_pkg_outdated_package_names() {
     local -a _outdated_packages
-    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null | cut -d/ -f3))
+    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null | cut -d/ -f1))
     _describe 'outdated-packages' _outdated_packages
 }
 
@@ -83,7 +80,7 @@ function _ndk_pkg() {
     typeset -A opt_args
 
     _arguments \
-        '1: :_ndk_pkg_commands' \
+        '1: :{_describe ndk_pkg_actions _ndk_pkg_actions}' \
         '*:: :->option'
 
     case $state in
@@ -145,7 +142,7 @@ function _ndk_pkg() {
                         '--path[show formula file path only]' \
                         '--yaml[show formula file content in yaml format]' \
                         '--json[show formula file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink)'
+                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min)'
                     ;;
                 receipt)
                     _arguments '1:package-name:_ndk_pkg_installed_packages' \
@@ -153,7 +150,7 @@ function _ndk_pkg() {
                         '--path[show receipt file path only]' \
                         '--yaml[show receipt file content in yaml format]' \
                         '--json[show receipt file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink signature timestamp)'
+                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min signature timestamp)'
                     ;;
                 info)
                     case $words[3] in
@@ -164,7 +161,7 @@ function _ndk_pkg() {
                             ;;
                         *)  _arguments \
                                 '1:package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
-                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install symlink installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version symlinked-files)'
+                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version)'
                     esac
                     ;;
                 fetch)
@@ -174,27 +171,36 @@ function _ndk_pkg() {
                     _arguments \
                         '1:package-name:_ndk_pkg_available_packages' \
                         '-t[set output format]:output-type:(dot box svg png)' \
-                        '-o[set output filepath or directory]:output-path:{_files}'
+                        '-o[set output filepath or directory]:output-path:_files'
                     ;;
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
                         '-t[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
-                        '-o[set output filepath or directory]:output-path:{_files}' \
-                        '--keep-packing-dir[do not delete packing dir even if packed success]'
+                        '-o[set output filepath or directory]:output-path:_files' \
+                        '--keep-working-dir[do not delete the working direcotory even if successfully packed]'
                     ;;
-                deploy-maven-local|deploy-maven-remote)
+                prefab-create)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_package_names' \
-                        '--api=-[specify which android api level to be deployed]:api-level:(21 22 23 24 25 26 27 28 29 30 31 32 33)' \
-                        '--abi=-[specify which android abi to be deployed]:abi:(armeabi-v7a arm64-v8a x86 x86_64)' \
-                        '--debug[debug the process of deployment]'
+                        '--keep-working-dir[do not delete the working direcotory even if successfully created]' \
+                        '--dry-run[do not actually copy the aar to destination]' \
+                        '-o[set output filepath or directory]:output-path:_files'
+                    ;;
+                prefab-deploy)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_package_names' \
+                        '--keep-working-dir[do not delete the working direcotory even if successfully deployed]' \
+                        '--dry-run[do not actually deploy the aar]' \
+                        '--remote[deploy to Sonatype OSSRH]' \
+                        '--debug[debug the process of deployment]' \
+                        '--groupId=-[set groupId]:groupId:(com. org.)'
                     ;;
                 tree)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
                         '-L[level]:level:(3)' \
-                        '--dirsfirst[show dirs first]'
+                        '--dirsfirst[show direcotories first]'
                     ;;
                 logs)
                     _arguments '1:package-name:_ndk_pkg_installed_packages'
@@ -202,10 +208,10 @@ function _ndk_pkg() {
                 install)
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
-                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:{_files -/}' \
+                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete installing direcotory even if this package is successfully installed]' \
+                        '--dry-run[do not actually install the package]' \
+                        '--keep-working-dir[do not delete the working direcotory even if this package is successfully installed]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--install-lib=-[install static or shared library]:install-lib:(static shared both)' \
@@ -219,10 +225,10 @@ function _ndk_pkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
-                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:{_files -/}' \
+                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete installing direcotory even if this package is successfully installed]' \
+                        '--keep-working-dir[do not delete the working direcotory even if this package is successfully installed]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
@@ -235,10 +241,10 @@ function _ndk_pkg() {
                 upgrade)
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
-                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:{_files -/}' \
+                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/' \
                         '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete installing direcotory even if this package is successfully installed]' \
+                        '--keep-working-dir[do not delete the working direcotory even if this package is successfully installed]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
@@ -260,11 +266,14 @@ function _ndk_pkg() {
                 is-outdated)
                     _arguments '1:package-name:_ndk_pkg_outdated_packages'
                     ;;
+                ls-installed)
+                    _arguments ':package-name:_ndk_pkg_installed_package_names'
+                    ;;
                 integrate)
                     _arguments '1:what:(zsh cmake)'
                     ;;
                 ndkinfo)
-                    _arguments '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:{_files -/}'
+                    _arguments '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/'
                     ;;
                 *)  ;;
             esac
