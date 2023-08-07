@@ -194,8 +194,8 @@ android {
 - If packages that have been published to `mavenCentral` doesn't meet your needs, you can install package then deploy it to `mavenLocal` via running following commands:
 
     ```bash
-    ndk-pkg install libpng
-    ndk-pkg deploy-maven-local libpng
+    ndk-pkg install libpng/android-21/arm64-v8a,armeabi-v7a
+    ndk-pkg deploy  libpng/android-21/arm64-v8a,armeabi-v7a
     ```
 
     enables `mavenLocal` repository in `build.gradle`
@@ -485,7 +485,8 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     ```bash
     ndk-pkg install curl
-    ndk-pkg install curl/android-33/arm64-v8a --link-type=static-only --install-lib=static
+    ndk-pkg install curl/android-33/arm64-v8a
+    ndk-pkg install curl/android-33/arm64-v8a,x86_64 --link-type=static-only --install-lib=static
     ```
 
 - **reinstall packages**
@@ -611,25 +612,25 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg pack curl/android-21/arm64-v8a -o a/x.zip
     ```
 
-- **create the google prefab aar for the given installed package**
+- **export the given installed package as the google prefab aar**
 
     ```bash
-    ndk-pkg prefab-create curl/android-21/arm64-v8a,x86_64 -o .
-    ndk-pkg prefab-create curl/android-21/arm64-v8a,x86_64 -o curl-8.1.2.aar
+    ndk-pkg export curl/android-21/arm64-v8a,x86_64 -o .
+    ndk-pkg export curl/android-21/arm64-v8a,x86_64 -o curl-8.1.2.aar
     ```
 
-- **create the google prefab aar for the given installed package then deploy it to Maven Local repository**
+- **export the given installed package as the google prefab aar then deploy it to Maven Local Repository**
 
     ```bash
-    ndk-pkg prefab-depoly curl/android-21/arm64-v8a,x86_64
-    ndk-pkg prefab-depoly curl/android-21/arm64-v8a,x86_64 --debug
+    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64
+    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --debug
     ```
 
-- **create the google prefab aar for the given installed package then deploy it to Sonatype OSSRH**
+- **export the given installed package as the google prefab aar then deploy it to Sonatype OSSRH**
 
     ```bash
-    ndk-pkg prefab-depoly curl/android-21/arm64-v8a,x86_64 --remote < ~/OSSRH-config
-    ndk-pkg prefab-depoly curl/android-21/arm64-v8a,x86_64 --remote <<EOF
+    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --remote < ~/OSSRH-config
+    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --remote <<EOF
     SERVER_ID=OSSRH
     SERVER_URL=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
     SERVER_USERNAME=leleliu008
