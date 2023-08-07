@@ -257,15 +257,17 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz
 │   └── c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4.tgz
 ├── installed
-│   └── android-21
-│       └── arm64-v8a
-│           ├── jansson
-│           ├── libiconv
-│           ├── libxml2
-│           ├── libyaml
-│           ├── pixman
-│           ├── uctags
-│           └── zlib
+│   └── zlib
+│       ├── android-21
+│       │   ├── arm64-v8a
+│       │   ├── armeabi-v7a
+│       │   ├── x86
+│       │   └── x86_64
+│       └── android-33
+│           ├── arm64-v8a
+│           ├── armeabi-v7a
+│           ├── x86
+│           └── x86_64
 ├── repos.d
 │   └── offical-core
 │       ├── formula

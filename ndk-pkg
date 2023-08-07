@@ -2519,10 +2519,7 @@ __fetch_resources_of_the_given_package() {
 
     PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
-    [ -d "$PACKAGE_INSTALLED_DIR/include" ] || {
-        error "no C/C++ header files in package $PACKAGE_SPEC"
-        return 1
-    }
+    [ -d "$PACKAGE_INSTALLED_DIR/include" ] || abort 10 "unable to be exported as google prefab, because there is no C/C++ header files in package $PACKAGE_SPEC"
 
     PACKAGE_INSTALLED_LIBS=
 
