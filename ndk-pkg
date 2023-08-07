@@ -2825,9 +2825,14 @@ EOF
     if [ -z "$OUTPUT_FILEPATH" ] ; then
         printf '%b\n' "
 ${COLOR_GREEN}Note:${COLOR_OFF}
-    ${COLOR_RED}CAN NOT proceed due to -o <OUTPUT-PATH> option is unspecified.${COLOR_OFF}
-    ${COLOR_YELLOW}I DO NOT known where the prefab aar file to be copied to.${COLOR_OFF}
-    ${COLOR_YELLOW}Maybe you want to go to the working directory '$WORKING_DIR' to look at the details.${COLOR_OFF}
+    ${COLOR_RED}NOT proceed due to -o <OUTPUT-PATH> option is unspecified.${COLOR_OFF}
+
+    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+
+    cd $WORKING_DIR
+    cp $AAR_FILENAME /somewhere
+    cd -
+    rm -rf $WORKING_DIR
         "
         return 0
     fi
@@ -2872,6 +2877,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     unset USER_SPECIFIED_ANDROID_NDK_HOME
 
     unset DEPLOYED_TO_SONATYPE_OSSRH
+    unset DEPLOYED_TO_SPECIFIED_LOCAL_PATH
 
     unset KEEP_WORKING_DIR
 
@@ -2892,6 +2898,9 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
                 ;;
             --remote)
                 DEPLOYED_TO_SONATYPE_OSSRH=yes
+                ;;
+            --local=*)
+                DEPLOYED_TO_SPECIFIED_LOCAL_PATH="${1#*=}"
                 ;;
             --dry-run)
                 DRYRUN=yes
@@ -2914,12 +2923,18 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     #########################################################################################
 
-    if [ -z "$DEPLOYED_TO_SONATYPE_OSSRH" ] ; then
+    if [ -z "$DEPLOYED_TO_SONATYPE_OSSRH" ] && [ -z "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
         if [ "$DRYRUN" = yes ] ; then
             printf '%b\n' "
 ${COLOR_GREEN}Note:${COLOR_OFF}
-    ${COLOR_RED}DO NOT proceed due to --dry-run option is specified.${COLOR_OFF}
-    ${COLOR_YELLOW}Maybe you want to go to the working directory '$WORKING_DIR' to look at the details.${COLOR_OFF}
+    ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
+
+    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+
+    cd $WORKING_DIR
+    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=true
+    cd -
+    rm -rf $WORKING_DIR
             "
             return 0
         fi
@@ -2927,9 +2942,8 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
         #uppm install maven
 
         # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
-        step "deploying the prefab aar to your Maven Local Repository"
-        run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=false -DlocalRepositoryPath="$NDKPKG_HOME/ndk-pkg-prefab-aar-maven-repository" -Dmaven.main.skip=true
-        #run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DlocalRepositoryPath="/home/leleliu008/.m2/repository"
+        step "deploying the prefab aar to Maven Local Repository"
+        run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=true
 
         if [ "$KEEP_WORKING_DIR" = yes ] ; then
             printf '\n'
@@ -2939,7 +2953,11 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
             run rm -rf "$WORKING_DIR"
         fi
 
-        return 0;
+        return 0
+    fi
+
+    if [ -n "$DEPLOYED_TO_SONATYPE_OSSRH" ] && [ -n "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
+        abort 1 '--remote and --local=<DIR> can not used as the same time.'
     fi
 
     #########################################################################################
@@ -2948,12 +2966,14 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     # https://central.sonatype.org/publish/requirements/
     # https://central.sonatype.org/publish/publish-manual/
 
-    if [ -z "$RECEIPT_PACKAGE_LICENSE" ] ; then
-        abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_LICENSE is empty."
-    fi
+    if [ -n "$DEPLOYED_TO_SONATYPE_OSSRH" ] ; then
+        if [ -z "$RECEIPT_PACKAGE_LICENSE" ] ; then
+            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_LICENSE is empty."
+        fi
 
-    if [ -z "$RECEIPT_PACKAGE_GIT_URL" ] && [ -z "$RECEIPT_PACKAGE_SVN_URL" ] ; then
-        abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_GIT_URL and RECEIPT_PACKAGE_SVN_URL is empty."
+        if [ -z "$RECEIPT_PACKAGE_GIT_URL" ] && [ -z "$RECEIPT_PACKAGE_SVN_URL" ] ; then
+            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_GIT_URL and RECEIPT_PACKAGE_SVN_URL is empty."
+        fi
     fi
 
     step "generating pom.xml"
@@ -3055,11 +3075,56 @@ EOF
 
     #########################################################################################
 
+    if [ -n "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
+        cd -
+        DEPLOYED_TO_SPECIFIED_LOCAL_PATH="$(realpath -s "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH")"
+        cd -
+
+        if [ "$DRYRUN" = yes ] ; then
+            printf '%b\n' "
+${COLOR_GREEN}Note:${COLOR_OFF}
+    ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
+
+    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+
+    cd $WORKING_DIR
+    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=false -DpomFile=$POM_FILE -DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH
+    cd -
+    rm -rf $WORKING_DIR
+            "
+            return 0
+        fi
+
+        #uppm install maven
+
+        # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
+        step "deploying the prefab aar to Maven Local Repository"
+        run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
+
+        if [ "$KEEP_WORKING_DIR" = yes ] ; then
+            printf '\n'
+            note "the working directory '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
+        else
+            step "delete the working directory"
+            run rm -rf "$WORKING_DIR"
+        fi
+
+        return 0
+    fi
+
+    #########################################################################################
+
     if [ "$DRYRUN" = yes ] ; then
         printf '%b\n' "
 ${COLOR_GREEN}Note:${COLOR_OFF}
-    ${COLOR_RED}DO NOT proceed due to --dry-run option is unspecified.${COLOR_OFF}
-    ${COLOR_YELLOW}Maybe you want to go to the working directory '$WORKING_DIR' to look at the details.${COLOR_OFF}
+    ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
+
+    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+
+    cd $WORKING_DIR
+    run mvn --settings settings.xml $MVN_OPTIONS gpg:sign-and-deploy-file -Dfile=$AAR_FILENAME -DgeneratePom=false -DpomFile=$POM_FILE -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 -DrepositoryId=$SERVER_ID -Durl=$SERVER_URL
+    cd -
+    rm -rf $WORKING_DIR
         "
         return 0
     fi
@@ -4329,7 +4394,7 @@ __install_the_given_package() {
     trap  __install_the_given_package_onexit EXIT
 
     # Error: The current work directory doesn't exist, cannot proceed.
-    # beacuse previous package's work direcotory is deleted.
+    # beacuse previous package's work directory is deleted.
     cd "$HOME"
 
     #########################################################################################
@@ -8324,7 +8389,7 @@ ${COLOR_GREEN}ndk-pkg install <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS
             do not actually install the package.
 
         ${COLOR_BLUE}--keep-working-dir${COLOR_OFF}
-            do not delete the working direcotory even if this package is successfully installed.
+            do not delete the working directory even if this package is successfully installed.
 
     USAGE-EXAMPLES:
         ndk-pkg install zlib/android-21/arm64-v8a
@@ -8380,7 +8445,7 @@ ${COLOR_GREEN}ndk-pkg export <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS>
 
     If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar
 
-${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-working-dir] [--dry-run] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-working-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
     export the given installed package as google prefab aar then deploy it to Maven Repository.
 
     For details about google prefab, please visit https://google.github.io/prefab/
@@ -8391,9 +8456,11 @@ ${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS>
 
     If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
 
-    If ${COLOR_RED}--remote${COLOR_OFF} is unspecified, the aar file would be deployed to your Maven Local Repository (usually under ~/.m2/repository/)
+    If ${COLOR_RED}--remote${COLOR_OFF} is specified, the aar file would be deployed to Sonatype OSSRH (https://s01.oss.sonatype.org/)
 
-    If ${COLOR_RED}--remote${COLOR_OFF} is   specified, the aar file would be deployed to Sonatype OSSRH (https://s01.oss.sonatype.org/)
+    If ${COLOR_RED}--local=<DIR>${COLOR_OFF} is specified, the aar file would be deployed to the specified location of Maven Local Repository.
+
+    If neither ${COLOR_RED}--local=<DIR>${COLOR_OFF} nor ${COLOR_RED}--remote${COLOR_OFF} is specified, the aar file would be deployed to your default Maven Local Repository (usually under ~/.m2/repository/ directory, depending on your settings.xml configuration)
 
     REMOTE-CONFIG-FILE contains following content:
 

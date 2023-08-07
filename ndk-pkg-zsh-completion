@@ -39,8 +39,8 @@ _ndk_pkg_actions=(
     'fetch:download formula resources of the given package to the cache.'
     'depends:show the depends of the given package.'
     'pack:pack the given installed package.'
-    'prefab-create:create the google prefab aar for the given installed package.'
-    'prefab-deploy:create the google prefab aar for the given installed package then deploy it to maven local repository or Sonatype OSSRH.'
+    'export:export the given installed package as the google prefab aar.'
+    'deploy:export the given installed package as the google prefab aar then deploy it to Maven Local Repository or Sonatype OSSRH.'
     'logs:show logs of the given installed package.'
     'gen-url-transform-sample:generate url-transform sample.'
 )
@@ -180,21 +180,21 @@ function _ndk_pkg() {
                         '-o[set output filepath or directory]:output-path:_files' \
                         '--keep-working-dir[do not delete the working direcotory even if successfully packed]'
                     ;;
-                prefab-create)
+                export)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_package_names' \
-                        '--keep-working-dir[do not delete the working direcotory even if successfully created]' \
-                        '--dry-run[do not actually copy the aar to destination]' \
                         '-o[set output filepath or directory]:output-path:_files'
                     ;;
-                prefab-deploy)
+                deploy)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_package_names' \
                         '--keep-working-dir[do not delete the working direcotory even if successfully deployed]' \
                         '--dry-run[do not actually deploy the aar]' \
-                        '--remote[deploy to Sonatype OSSRH]' \
                         '--debug[debug the process of deployment]' \
-                        '--groupId=-[set groupId]:groupId:(com. org.)'
+                        '--groupId=-[set groupId]:groupId:(com. org.)' \
+                        + '(where_to_deploy)' \
+                        '--remote[deploy to Sonatype OSSRH]' \
+                        '--local=-[specify the local reposotory path]:local-path:_path_files -/'
                     ;;
                 tree)
                     _arguments \
