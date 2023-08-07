@@ -626,6 +626,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ```bash
     ndk-pkg depoly curl/android-21/arm64-v8a,x86_64
     ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --debug
+    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --local=/somewhere
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Sonatype OSSRH**
@@ -635,9 +636,9 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --remote <<EOF
     SERVER_ID=OSSRH
     SERVER_URL=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
-    SERVER_USERNAME=leleliu008
-    SERVER_PASSWORD=xx
-    GPG_PASSPHRASE=yy
+    SERVER_USERNAME=your-sonatype-account-username
+    SERVER_PASSWORD=your-sonatype-account-password
+    GPG_PASSPHRASE=your-gpg-store-passphase
     EOF
     ```
 

@@ -3704,25 +3704,132 @@ __uninstall_the_given_packages() {
 __reinstall_the_given_packages() {
     inspect_install_arguments "$@"
 
-    [ -z "$USER_SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "package name or spec is unspecified."
+    [ -z "$USER_SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "no package is specified to be reinstalled."
 
-    for packageName in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    #########################################################################################
+
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
+
+    rm -rf     "$SESSION_DIR"
+    install -d "$SESSION_DIR"
+
+    #########################################################################################
+
+    # 1. check if has circle
+    # 2. backup formulas
+    # 3. cache variables
+
+    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        is_package_available "$1" || abort 1 "package '$1' is not available."
-        is_package_installed "$1" || abort 1 "package '$1' is not installed."
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+
+        while [ -n "$PACKAGE_NAME_STACK" ]
+        do
+            case $PACKAGE_NAME_STACK in
+                *\;*) PACKAGE_NAME="${PACKAGE_NAME_STACK##*;}" ; PACKAGE_NAME_STACK="${PACKAGE_NAME_STACK%;*}" ;;
+                *)    PACKAGE_NAME="${PACKAGE_NAME_STACK}"     ; PACKAGE_NAME_STACK=
+            esac
+
+            if [ -f "$SESSION_DIR/$PACKAGE_NAME.yml" ] ; then
+                continue
+            fi
+
+            __load_formula_of_the_given_package "$PACKAGE_NAME"
+
+            cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+
+            eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
+
+            for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+            do
+                if [ "$DEPENDENT_PACKAGE_NAME" = "$PACKAGE_NAME" ] ; then
+                    abort 1 "package '$PACKAGE_NAME' depends itself."
+                fi
+
+                if [ -z "$PACKAGE_NAME_STACK" ] ; then
+                    PACKAGE_NAME_STACK="$DEPENDENT_PACKAGE_NAME"
+                else
+                    PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$DEPENDENT_PACKAGE_NAME"
+                fi
+            done
+        done
     done
 
-    for PACKAGE_NAME in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    #########################################################################################
+
+    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        [ -d "$NDKPKG_BACKUP_DIR" ] || {
-            install -d "$NDKPKG_BACKUP_DIR" || return 1
-        }
+        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*/}"
 
-        mv "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME" "$NDKPKG_BACKUP_DIR/$PACKAGE_NAME" || return 1
+        TARGET_ANDROID_API=
+        TARGET_ANDROID_ABI=
 
-        (__install_the_given_package "$PACKAGE_NAME") || return 1
+        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+        TARGET_ANDROID_ABI="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f2)"
 
-        rm -rf "$NDKPKG_BACKUP_DIR/$PACKAGE_NAME" || return 1
+        ##################################################################
+
+        TO_BE_INSTALLED_PACKAGE_NAMES=
+
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+
+        while [ -n "$PACKAGE_NAME_STACK" ]
+        do
+            case $PACKAGE_NAME_STACK in
+                *\;*) PACKAGE_NAME="${PACKAGE_NAME_STACK##*;}" ; PACKAGE_NAME_STACK="${PACKAGE_NAME_STACK%;*}" ;;
+                *)    PACKAGE_NAME="${PACKAGE_NAME_STACK}"     ; PACKAGE_NAME_STACK=
+            esac
+
+            ##################################################################
+
+            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+
+            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            do
+                [ "$item" = "$PACKAGE_NAME" ] && continue
+                TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+            done
+
+            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+
+            ##################################################################
+
+            PACKAGE_NAME_UPPERCASE_UNDERSCORE="$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')"
+
+            for item in $(eval echo \$PACKAGE_DEP_PKG_"${PACKAGE_NAME_UPPERCASE_UNDERSCORE}")
+            do
+                if [ -z "$PACKAGE_NAME_STACK" ] ; then
+                    PACKAGE_NAME_STACK="$item"
+                else
+                    PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$item"
+                fi
+            done
+        done
+
+        ##################################################################
+
+        for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
+        do
+            PACKAGE_SPEC="$PACKAGE_NAME/$TARGET_ANDROID_SPEC"
+
+            if is_package_installed "$PACKAGE_SPEC" ; then
+                PACKAGE_XXXX=
+                PACKAGE_XXXX="$(printf '%s\n' "$PACKAGE_SPEC" | tr '/' '-')"
+
+                PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+                PACKAGE_BACKUP__DIR="$NDKPKG_BACKUP_DIR/$PACKAGE_XXXX"
+
+                install -d "$NDKPKG_BACKUP_DIR"
+
+                mv "$PACKAGE_INSTALLED_DIR" "$PACKAGE_BACKUP__DIR"
+
+                (__install_the_given_package "$PACKAGE_SPEC")
+
+                rm -rf "$PACKAGE_BACKUP__DIR"
+            else
+                (__install_the_given_package "$PACKAGE_SPEC")
+            fi
+        done
     done
 }
 
@@ -3737,23 +3844,130 @@ __upgrade_packages() {
         USER_SPECIFIED_PACKAGE_SPEC_LIST=$(__list__outdated_packages)
     fi
 
-    for packageName in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    #########################################################################################
+
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
+
+    rm -rf     "$SESSION_DIR"
+    install -d "$SESSION_DIR"
+
+    #########################################################################################
+
+    # 1. check if has circle
+    # 2. backup formulas
+    # 3. cache variables
+
+    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        is_package_available "$1" || abort 1 "package '$1' is not available."
-        is_package_installed "$1" || abort 1 "package '$1' is not installed."
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+
+        while [ -n "$PACKAGE_NAME_STACK" ]
+        do
+            case $PACKAGE_NAME_STACK in
+                *\;*) PACKAGE_NAME="${PACKAGE_NAME_STACK##*;}" ; PACKAGE_NAME_STACK="${PACKAGE_NAME_STACK%;*}" ;;
+                *)    PACKAGE_NAME="${PACKAGE_NAME_STACK}"     ; PACKAGE_NAME_STACK=
+            esac
+
+            if [ -f "$SESSION_DIR/$PACKAGE_NAME.yml" ] ; then
+                continue
+            fi
+
+            __load_formula_of_the_given_package "$PACKAGE_NAME"
+
+            cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+
+            eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
+
+            for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+            do
+                if [ "$DEPENDENT_PACKAGE_NAME" = "$PACKAGE_NAME" ] ; then
+                    abort 1 "package '$PACKAGE_NAME' depends itself."
+                fi
+
+                if [ -z "$PACKAGE_NAME_STACK" ] ; then
+                    PACKAGE_NAME_STACK="$DEPENDENT_PACKAGE_NAME"
+                else
+                    PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$DEPENDENT_PACKAGE_NAME"
+                fi
+            done
+        done
     done
 
-    for PACKAGE_NAME in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    #########################################################################################
+
+    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        [ -d "$NDKPKG_BACKUP_DIR" ] || {
-            install -d "$NDKPKG_BACKUP_DIR" || return 1
-        }
+        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*/}"
 
-        mv "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME" "$NDKPKG_BACKUP_DIR/$PACKAGE_NAME" || return 1
+        TARGET_ANDROID_API=
+        TARGET_ANDROID_ABI=
 
-        (__install_the_given_package "$PACKAGE_NAME") || return 1
+        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
+        TARGET_ANDROID_ABI="$( printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f2)"
 
-        rm -rf "$NDKPKG_BACKUP_DIR/$PACKAGE_NAME" || return 1
+        ##################################################################
+
+        TO_BE_INSTALLED_PACKAGE_NAMES=
+
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+
+        while [ -n "$PACKAGE_NAME_STACK" ]
+        do
+            case $PACKAGE_NAME_STACK in
+                *\;*) PACKAGE_NAME="${PACKAGE_NAME_STACK##*;}" ; PACKAGE_NAME_STACK="${PACKAGE_NAME_STACK%;*}" ;;
+                *)    PACKAGE_NAME="${PACKAGE_NAME_STACK}"     ; PACKAGE_NAME_STACK=
+            esac
+
+            ##################################################################
+
+            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+
+            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            do
+                [ "$item" = "$PACKAGE_NAME" ] && continue
+                TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+            done
+
+            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+
+            ##################################################################
+
+            PACKAGE_NAME_UPPERCASE_UNDERSCORE="$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')"
+
+            for item in $(eval echo \$PACKAGE_DEP_PKG_"${PACKAGE_NAME_UPPERCASE_UNDERSCORE}")
+            do
+                if [ -z "$PACKAGE_NAME_STACK" ] ; then
+                    PACKAGE_NAME_STACK="$item"
+                else
+                    PACKAGE_NAME_STACK="$PACKAGE_NAME_STACK;$item"
+                fi
+            done
+        done
+
+        ##################################################################
+
+        for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
+        do
+            PACKAGE_SPEC="$PACKAGE_NAME/$TARGET_ANDROID_SPEC"
+
+            if is_package__outdated "$PACKAGE_SPEC" ; then
+                PACKAGE_XXXX=
+                PACKAGE_XXXX="$(printf '%s\n' "$PACKAGE_SPEC" | tr '/' '-')"
+
+                PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+                PACKAGE_BACKUP__DIR="$NDKPKG_BACKUP_DIR/$PACKAGE_XXXX"
+
+                install -d "$NDKPKG_BACKUP_DIR"
+
+                mv "$PACKAGE_INSTALLED_DIR" "$PACKAGE_BACKUP__DIR"
+
+                (__install_the_given_package "$PACKAGE_SPEC")
+
+                rm -rf "$PACKAGE_BACKUP__DIR"
+            else
+                note "package '$PACKAGE_SPEC' is up-to-date."
+            fi
+        done
     done
 }
 
