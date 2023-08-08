@@ -4102,14 +4102,6 @@ inspect_install_arguments() {
             --export-compile-commands-json)
                 EXPORT_COMPILE_COMMANDS_JSON=yes
                 ;;
-            --install-lib=*)
-                INSTALL_LIB="${1#*=}"
-                case $INSTALL_LIB in
-                    static|shared|both|yes|no) ;;
-                    '') abort 1 "--install-lib=<VALUE>, VALUE must be non-empty." ;;
-                    *)  abort 1 "--install-lib=<VALUE>, VALUE must be one of static|shared|both|yes|no"
-                esac
-                ;;
             --build-type=*)
                 BUILD_TYPE="${1#*=}"
                 case $BUILD_TYPE in
@@ -5027,11 +5019,6 @@ EOF
         case $BUILD_TYPE in
             debug)   CMAKE_BUILD_TYPE=Debug   ;;
             release) CMAKE_BUILD_TYPE=Release ;;
-        esac
-
-        case $INSTALL_LIB in
-            static)  BUILD_SHARED_LIBS=OFF ;;
-            *)       BUILD_SHARED_LIBS=ON
         esac
 
         if [ "$LOG_LEVEL" -eq 0 ] ; then
@@ -6365,11 +6352,6 @@ EOF
         case $BUILD_TYPE in
             debug)   CMAKE_BUILD_TYPE=Debug   ;;
             release) CMAKE_BUILD_TYPE=Release ;;
-        esac
-
-        case $INSTALL_LIB in
-            static)  BUILD_SHARED_LIBS=OFF ;;
-            *)       BUILD_SHARED_LIBS=ON
         esac
 
         if [ "$LOG_LEVEL" -eq 0 ] ; then
@@ -7797,23 +7779,11 @@ configure() {
         fi
 
         if [ -z "$CONFIGURE_ARG_ENABLE_STATIC" ] ; then
-            case $INSTALL_LIB in
-                static) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static"  ;;
-                shared) CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static" ;;
-                both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static"  ;;
-                yes)    CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static"  ;;
-                no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-static" ;;
-            esac
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-static"
         fi
 
         if [ -z "$CONFIGURE_ARG_ENABLE_SHARED" ] ; then
-            case $INSTALL_LIB in
-                static) CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-shared" ;;
-                shared) CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"  ;;
-                both)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"  ;;
-                yes)    CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"  ;;
-                no)     CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-shared" ;;
-            esac
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"
         fi
 
         CONFIGURE_ENVS="$CONFIGURE_ENVS --with-pic
@@ -7934,12 +7904,6 @@ cmakew() {
         run $CMAKE --build   "$NATIVE_BCACHED_DIR" -- -j$BUILD_NJOBS &&
         run $CMAKE --install "$NATIVE_BCACHED_DIR"
     else
-        # CMAKE_HOST_SYSTEM_NAME = $(uname -s)
-        # CMAKE_HOST_SYSTEM_NAME on Cygwin and MSYS2 is not Windows
-        if [ "$NATIVE_OS_KIND" = 'windows' ] ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DANDROID_HOST_TAG=windows-x86_64"
-        fi
-
         case $BUILD_TYPE in
             debug)   CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_BUILD_TYPE=Debug"   ;;
             release) CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_BUILD_TYPE=Release" ;;
@@ -7956,11 +7920,6 @@ cmakew() {
             aarch64) CMAKE_SYSTEM_PROCESSOR=aarch64 ;;
             i686)    CMAKE_SYSTEM_PROCESSOR=i686    ;;
             x86_64)  CMAKE_SYSTEM_PROCESSOR=x86_64  ;;
-        esac
-
-        case $INSTALL_LIB in
-            static) BUILD_SHARED_LIBS=OFF ;;
-            *)      BUILD_SHARED_LIBS=ON
         esac
 
         # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
@@ -7991,7 +7950,7 @@ cmakew() {
         -DCMAKE_CXX_FLAGS='$CXXFLAGS $CPPFLAGS'
         -DCMAKE_SHARED_LINKER_FLAGS='$CMAKE_SHARED_LINKER_FLAGS'
         -DCMAKE_EXE_LINKER_FLAGS='$LDFLAGS'
-        -DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS
+        -DBUILD_SHARED_LIBS=ON
         -DANDROID_TOOLCHAIN=clang
         -DANDROID_ABI=$TARGET_ANDROID_ABI
         -DANDROID_ARM_NEON=TRUE
@@ -8101,9 +8060,7 @@ EOF
 
     MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$BUILD_TYPE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD --cross-file=$MESON_CROSS_FILE -Dlibdir=lib"
 
-    case $INSTALL_LIB in
-        static|shared|both) MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=$INSTALL_LIB"
-    esac
+    MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
 
     case $LINK_TYPE in
         static-only|static-prefered) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
@@ -8603,9 +8560,6 @@ ${COLOR_GREEN}ndk-pkg install <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS
 
         ${COLOR_BLUE}--link-type=<static-only|shared-only|static-prefered|shared-prefered>${COLOR_OFF}
             link static or shared library.
-
-        ${COLOR_BLUE}--install-lib=<static|shared|both>${COLOR_OFF}
-            [install static or shared library.
 
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
             do not use ccache.

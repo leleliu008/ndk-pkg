@@ -488,14 +488,14 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ```bash
     ndk-pkg install curl
     ndk-pkg install curl/android-33/arm64-v8a
-    ndk-pkg install curl/android-33/arm64-v8a,x86_64 --link-type=static-only --install-lib=static
+    ndk-pkg install curl/android-33/arm64-v8a,x86_64 --link-type=static-only
     ```
 
 - **reinstall packages**
 
     ```bash
     ndk-pkg reinstall curl
-    ndk-pkg reinstall curl/android-33/arm64-v8a --link-type=static-only --install-lib=static
+    ndk-pkg reinstall curl/android-33/arm64-v8a --link-type=static-only
     ```
 
 - **uninstall packages**
@@ -509,7 +509,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     ```bash
     ndk-pkg upgrade curl
-    ndk-pkg upgrade curl/android-33/arm64-v8a --link-type=static-only --install-lib=static
+    ndk-pkg upgrade curl/android-33/arm64-v8a --link-type=static-only
     ```
 
 - **upgrade this software**

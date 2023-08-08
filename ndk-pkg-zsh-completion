@@ -214,7 +214,6 @@ function _ndk_pkg() {
                         '--keep-working-dir[do not delete the working direcotory even if this package is successfully installed]' \
                         '--build-type=-[set build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
-                        '--install-lib=-[install static or shared library]:install-lib:(static shared both)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
