@@ -2458,7 +2458,7 @@ __fetch_resources_of_the_given_package() {
     run install -d "$WORKING_DIR"
     run cd         "$WORKING_DIR"
 
-    step "make link refer to installed package root dir"
+    step "make link refer to installed package root directory"
     run ln -s "$PACKAGE_INSTALLED_DIR" "$PACKED_DIR_NAME"
 
     step "packing"
@@ -2482,11 +2482,11 @@ __fetch_resources_of_the_given_package() {
     run "du -sh $OUTPUT_FILENAME | cut -f1"
 
     if [ ! -d "$OUTPUT_DIR" ] ; then
-        step "create output dir"
+        step "create output directory"
         run install -d "$OUTPUT_DIR"
     fi
 
-    step "copy packed file to output dir"
+    step "copy packed file to output directory"
     run cp "$OUTPUT_FILENAME" "$OUTPUT_DIR/"
 
     if [ "$KEEP_WORKING_DIR" = yes ] ; then
@@ -2577,12 +2577,23 @@ __fetch_resources_of_the_given_package() {
         } || abort 1 "version[$PREFAB_JSON_VERSION] not expected."
     fi
 
+    unset DEPENDENCIES
+
+    for DEPENDENT_PACKAGE_NAME in $RECEIPT_PACKAGE_DEP_PKG
+    do
+        if [ -z "$DEPENDENCIES" ] ; then
+            DEPENDENCIES="\"$DEPENDENT_PACKAGE_NAME\""
+        else
+            DEPENDENCIES="$DEPENDENCIES, \"$DEPENDENT_PACKAGE_NAME\""
+        fi
+    done
+
     cat > prefab/prefab.json <<EOF
 {
   "schema_version": 2,
   "name": "$PACKAGE_NAME",
   "version": "$PREFAB_JSON_VERSION",
-  "dependencies": []
+  "dependencies": [ $DEPENDENCIES ]
 }
 EOF
 
@@ -2607,11 +2618,12 @@ EOF
   }
 }
 EOF
+
+            run cp -r "$PACKAGE_INSTALLED_DIR/include" "$MODULE_DIR/"
+
             ABI_DIR="$MODULE_DIR/libs/android.$TARGET_ANDROID_ABI"
 
             run install -d "$ABI_DIR"
-
-            run cp -r "$PACKAGE_INSTALLED_DIR/include" "$ABI_DIR"
 
             LIBRARY_FILEPATH="$PACKAGE_INSTALLED_DIR/lib-for-apk/$LIBRARY_FILENAME"
 
@@ -2781,17 +2793,13 @@ EOF
     JAVA_PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_NAME" | tr '+-.' '_' | tr A-Z a-z)"
 
     step "create AndroidManifest.xml"
-    cat > AndroidManifest.xml <<EOF
+    tee AndroidManifest.xml <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fpliu.ndk.pkg.prefab.android$TARGET_ANDROID_API.$JAVA_PACKAGE_NAME"
-    android:versionCode="$TIMESTAMP_UNIX"
-    android:versionName="$RECEIPT_PACKAGE_VERSION" >
+    package="com.fpliu.ndk.pkg.prefab.android$TARGET_ANDROID_API.$JAVA_PACKAGE_NAME">
 
-    <uses-sdk
-        android:minSdkVersion="$TARGET_ANDROID_API"
-        android:targetSdkVersion="33" />
+    <uses-sdk android:minSdkVersion="$TARGET_ANDROID_API" />
 
 </manifest>
 EOF
@@ -2812,6 +2820,9 @@ EOF
 
     step "show size of the prefab aar file"
     run du -sh    "$AAR_FILENAME"
+
+    step "show working directory in tree-like format"
+    run tree --dirsfirst .
 
     ###########################################################################################
 
@@ -2949,6 +2960,12 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
             step "delete the working directory"
             run rm -rf "$WORKING_DIR"
         fi
+
+        printf '\n\n%s\n' "If you use Gradle Groovy DSL, please add following to your Android project's build.gradle file"
+        printf '%b\n\n' "${COLOR_GREEN}implementation '$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar'${COLOR_OFF}"
+
+        printf '%s\n'   "If you use Gradle Kotlin DSL, please add following to your Android project's build.gradle.kts file"
+        printf '%b\n\n' "${COLOR_GREEN}implementation(\"$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar\")${COLOR_OFF}"
 
         return 0
     fi
