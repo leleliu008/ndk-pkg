@@ -1485,15 +1485,9 @@ EOF
 
 # __load_receipt_of_the_given_package <PACKAGE-SPEC>
   __load_receipt_of_the_given_package() {
-    [ -z "$1" ] && {
-        error "__load_receipt_of_the_given_package <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified."
-        return 1
-    }
+    [ -z "$1" ] && abort 1 "__load_receipt_of_the_given_package <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified."
 
-    is_package_installed "$1" || {
-        error "package '$1' is not installed."
-        return 1
-    }
+    is_package_installed "$1" || abort 1 "package '$1' is not installed."
 
     unset RECEIPT_PACKAGE_SUMMARY
     unset RECEIPT_PACKAGE_VERSION
@@ -2500,50 +2494,103 @@ __fetch_resources_of_the_given_package() {
 
 # __create_google_prefab_for_the_given_installed_package <PACKAGE-SPEC>
   __create_google_prefab_for_the_given_installed_package() {
-    [ -z "$1" ] && {
-        error "__create_google_prefab_for_the_given_installed_package <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified."
-        return 1
-    }
-
     PACKAGE_SPEC=
     PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
     __load_receipt_of_the_given_package "$PACKAGE_SPEC"
-
-    RECEIPT_NDK_VERSION_MAJOR="${RECEIPT_NDK_VERSION%%.*}"
 
     PACKAGE_NAME="${PACKAGE_SPEC%%/*}"
 
     TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2 | cut -d- -f2)"
     TARGET_ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
 
-    PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+    PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALLED_DIR/include"
+    PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib-for-apk"
 
-    [ -d "$PACKAGE_INSTALLED_DIR/include" ] || abort 10 "unable to be exported as google prefab, because there is no C/C++ header files in package $PACKAGE_SPEC"
-
-    PACKAGE_INSTALLED_LIBS=
-
-    if [ -d "$PACKAGE_INSTALLED_DIR/lib-for-apk" ] ; then
-        for item in $(cd "$PACKAGE_INSTALLED_DIR/lib-for-apk" && ls)
-        do
-            [ -d "$item" ] && continue
-
-            case $item in
-                lib*.a|lib*.so) PACKAGE_INSTALLED_LIBS="$PACKAGE_INSTALLED_LIBS $item"
-            esac
-        done
-    fi
+    [ -d "$PACKAGE_INCLUDE_DIR" ] || abort 10 "unable to be exported as google prefab, because there is no C/C++ header files in package $PACKAGE_SPEC"
 
     #########################################################################################
 
     run install -d prefab
 
-    # https://google.github.io/prefab/#package-metadata
+    #########################################################################################
 
-    unset PREFAB_JSON_VERSION
+    unset PACKAGE_LIBRARY_FILENAMES
+
+    if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
+        PACKAGE_LIBRARY_FILENAMES="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f \( -name 'lib*.a' -o -name 'lib*.so' \) -printf '%P\n')"
+    fi
+
+    if [ -z "$PACKAGE_LIBRARY_FILENAMES" ] ; then
+        # headers only
+        MODULE_DIR="prefab/modules/$PACKAGE_NAME"
+        run install -d "$MODULE_DIR"
+        run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
+    else
+        for LIBRARY_FILENAME in $PACKAGE_LIBRARY_FILENAMES
+        do
+            case $LIBRARY_FILENAME in
+                *.a)  LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.a}"  ; IS_STATIC_LIBRARY=true  ;;
+                *.so) LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}" ; IS_STATIC_LIBRARY=false ;;
+            esac
+
+            MODULE_DIR="prefab/modules/$LIBRARY_FILENAME"
+
+            run install -d "$MODULE_DIR"
+
+            cat > "$MODULE_DIR/module.json" <<EOF
+{
+  "export_libraries": [],
+  "android": {
+    "library_name": "$LIBRARY_FILENAME_PREFIX",
+    "export_libraries": []
+  }
+}
+EOF
+
+            run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
+
+            ABI_DIR="$MODULE_DIR/libs/android.$TARGET_ANDROID_ABI"
+
+            run install -d "$ABI_DIR"
+
+            LIBRARY_FILEPATH="$PACKAGE_LIBRARY_DIR/$LIBRARY_FILENAME"
+
+            run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
+
+            STL=none
+
+            # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
+            if [ "$IS_STATIC_LIBRARY" = true ] ; then
+                if   "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                    abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+                elif "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
+                    STL=c++_shared
+                fi
+            else
+                if "$ANDROID_NDK_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
+                    STL=c++_shared
+                elif "$ANDROID_NDK_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                    # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
+                    # https://developer.android.com/ndk/guides/cpp-support
+                    abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+                fi
+            fi
+
+            printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${RECEIPT_NDK_VERSION%%.*}" "$TARGET_ANDROID_API" "$TARGET_ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
+        done
+    fi
+
+    #########################################################################################
+
+    # https://google.github.io/prefab/#package-metadata
+    #
+    # For compatibility with CMake, versions must be specified as major[.minor[.patch[.tweak]]] with all components being numeric.
+
+    unset VERSION
 
     if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
-        PREFAB_JSON_VERSION="$PACKAGE_RECEIPT_TIMESTAMP"
+        VERSION="$(format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y.%m.%d')"
     else
         unset SED_E
 
@@ -2567,14 +2614,14 @@ __fetch_resources_of_the_given_package() {
         # 3.0-11
         # 1.4g
         # 0.15.2e
-        PREFAB_JSON_VERSION="$(printf '%s\n' "$RECEIPT_PACKAGE_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
+        VERSION="$(printf '%s\n' "$RECEIPT_PACKAGE_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
 
-        printf '%s\n' "$PREFAB_JSON_VERSION" | {
+        printf '%s\n' "$VERSION" | {
             grep -q '[0-9]*' ||
             grep -q '[0-9]*\.[0-9]*' ||
             grep -q '[0-9]*\.[0-9]*\.[0-9]*' ||
             grep -q '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'
-        } || abort 1 "version[$PREFAB_JSON_VERSION] not expected."
+        } || abort 1 "version[$VERSION] not expected."
     fi
 
     unset DEPENDENCIES
@@ -2592,70 +2639,10 @@ __fetch_resources_of_the_given_package() {
 {
   "schema_version": 2,
   "name": "$PACKAGE_NAME",
-  "version": "$PREFAB_JSON_VERSION",
-  "dependencies": [ $DEPENDENCIES ]
+  "version": "$VERSION",
+  "dependencies": [ ]
 }
 EOF
-
-    if [ -n "$PACKAGE_INSTALLED_LIBS" ] ; then
-        for LIBRARY_FILENAME in $PACKAGE_INSTALLED_LIBS
-        do
-            case $LIBRARY_FILENAME in
-                *.a)  LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.a}"  ; IS_STATIC_LIBRARY=true  ;;
-                *.so) LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}" ; IS_STATIC_LIBRARY=false ;;
-            esac
-
-            MODULE_DIR="prefab/modules/$LIBRARY_FILENAME"
-
-            run install -d "$MODULE_DIR"
-
-            cat > "$MODULE_DIR/module.json" <<EOF
-{
-  "export_libraries": [],
-  "android": {
-    "library_name": "$LIBRARY_FILENAME_PREFIX",
-    "export_libraries": []
-  }
-}
-EOF
-
-            run cp -r "$PACKAGE_INSTALLED_DIR/include" "$MODULE_DIR/"
-
-            ABI_DIR="$MODULE_DIR/libs/android.$TARGET_ANDROID_ABI"
-
-            run install -d "$ABI_DIR"
-
-            LIBRARY_FILEPATH="$PACKAGE_INSTALLED_DIR/lib-for-apk/$LIBRARY_FILENAME"
-
-            run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
-
-            STL=none
-
-            # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
-            if [ "$IS_STATIC_LIBRARY" = true ] ; then
-                if   "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
-                    abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
-                elif "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
-                    STL=c++_shared
-                fi
-            else
-                if "$ANDROID_NDK_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
-                    STL=c++_shared
-                elif "$ANDROID_NDK_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
-                    # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
-                    # https://developer.android.com/ndk/guides/cpp-support
-                    abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
-                fi
-            fi
-
-            printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "$RECEIPT_NDK_VERSION_MAJOR" "$TARGET_ANDROID_API" "$TARGET_ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
-        done
-    else
-        # headers only
-        MODULE_DIR="prefab/modules/$PACKAGE_NAME"
-        run install -d "$MODULE_DIR"
-        run cp -r "$PACKAGE_INSTALLED_DIR/include" "$MODULE_DIR"
-    fi
 }
 
 # __export_google_prefab_aar_for_the_given_installed_packages <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]
@@ -7061,27 +7048,54 @@ $PACKAGE_DOBUILD_ACTIONS
 
         step "install no versioning libraries for ${COLOR_GREEN}$@${COLOR_OFF}"
 
-        TARGET_NOVERSIOING_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib-for-apk"
+        PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
 
-        run install -d "$TARGET_NOVERSIOING_LIBRARY_DIR/cmake/$PACKAGE_NAME"
+        PACKAGE_LIBRARY_DIR_NOVERSIOING="$PACKAGE_INSTALL_DIR/lib-for-apk"
 
-        find "$PACKAGE_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.a'  -exec cp -v {} "$TARGET_NOVERSIOING_LIBRARY_DIR" \;
-        find "$PACKAGE_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.so' -exec cp -v {} "$TARGET_NOVERSIOING_LIBRARY_DIR" \;
+        run install -d "$PACKAGE_LIBRARY_DIR_NOVERSIOING/cmake/$PACKAGE_NAME"
 
-        for SO_FILE_PATH_HAVE_VERSION in $(find "$PACKAGE_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 -name 'lib*.so.*')
+        find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.a'  -exec cp -v {} "$PACKAGE_LIBRARY_DIR_NOVERSIOING" \;
+        find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.so' -exec cp -v {} "$PACKAGE_LIBRARY_DIR_NOVERSIOING" \;
+
+        for SO_FILE_PATH_HAVE_VERSION in $(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name 'lib*.so.*')
         do
             SO_FILE_NAME_NO_VERSION=
             SO_FILE_NAME_NO_VERSION="$(basename "$SO_FILE_PATH_HAVE_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
 
-            if [ ! -f "$TARGET_NOVERSIOING_LIBRARY_DIR/$SO_FILE_NAME_NO_VERSION" ] ; then
-                run cp "$SO_FILE_PATH_HAVE_VERSION" "$TARGET_NOVERSIOING_LIBRARY_DIR/$SO_FILE_NAME_NO_VERSION"
+            if [ ! -f "$PACKAGE_LIBRARY_DIR_NOVERSIOING/$SO_FILE_NAME_NO_VERSION" ] ; then
+                run cp "$SO_FILE_PATH_HAVE_VERSION" "$PACKAGE_LIBRARY_DIR_NOVERSIOING/$SO_FILE_NAME_NO_VERSION"
             fi
         done
 
-        cd "$TARGET_NOVERSIOING_LIBRARY_DIR"
+        cd "$PACKAGE_LIBRARY_DIR_NOVERSIOING"
 
         step "adjust no versioning .so files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __adjust_no_versioning_so_files_for_the_given_target  "$@"
+
+        for sofile in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so' -printf '%P\n')
+        do
+            # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
+
+            DT_SONAME="$(patchelf --print-soname "$sofile")"
+
+            if [ -z "$DT_SONAME" ] ; then
+                abort 1 "unexpected so file: $sofile\n    DT_SONAME: not set"
+            fi
+
+            if [ "$DT_SONAME" != "$sofile" ] ; then
+                abort 1 "unexpected so file: $sofile\n    DT_SONAME: $DT_SONAME"
+            fi
+
+            DT_NEEDED_LIST="$(patchelf --print-needed "$sofile")"
+
+            for DT_NEEDED in $DT_NEEDED_LIST
+            do
+                case $DT_NEEDED in
+                    lib*.so)
+                        ;;
+                    *)  abort 1 "unexpected so file: $sofile\n    DT_NEEDED: $DT_NEEDED"
+                esac
+            done
+        done
 
         step "create cmake config files for ${COLOR_GREEN}$@${COLOR_OFF}"
         __create_cmake_config_files_for_the_given_target "$@"
@@ -7119,30 +7133,8 @@ $PACKAGE_DOBUILD_ACTIONS
     __tree_the_given_installed_package "$1" --dirsfirst -a
 }
 
-# http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
-__adjust_no_versioning_so_files_for_the_given_target() {
-    for sofile in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so' -printf '%P\n')
-    do
-        DT_SONAME="$(patchelf --print-soname "$sofile")"
-
-        case $DT_SONAME in
-            '') abort 1 "unexpected so file: $sofile\n    DT_SONAME: not set" ;;
-            lib*.so) ;;
-            *)  abort 1 "unexpected so file: $sofile\n    DT_SONAME: $DT_SONAME"
-        esac
-
-        for DT_NEEDED in $(patchelf --print-needed "$sofile")
-        do
-            case $DT_NEEDED in
-                lib*.so) ;;
-                *)  abort 1 "unexpected so file: $sofile\n    DT_NEEDED: $DT_NEEDED"
-            esac
-        done
-    done
-}
-
 __create_cmake_config_files_for_the_given_target() {
-    TARGET_CMAKE_CONFIG_FILEPATH="$TARGET_NOVERSIOING_LIBRARY_DIR/cmake/$PACKAGE_NAME/${PACKAGE_NAME}Config.cmake"
+    TARGET_CMAKE_CONFIG_FILEPATH="$PACKAGE_LIBRARY_DIR_NOVERSIOING/cmake/$PACKAGE_NAME/${PACKAGE_NAME}Config.cmake"
 
     cat > "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
 # generated by ndk-pkg $NDKPKG_VERSION
@@ -7189,7 +7181,7 @@ EOF
 set(${PACKAGE_NAME}_IMPORTED_TARGETS "$CMAKE_IMPORTED_TARGETS")
 EOF
 
-    cat > "$TARGET_NOVERSIOING_LIBRARY_DIR/cmake/$PACKAGE_NAME/${PACKAGE_NAME}ConfigVersion.cmake" << EOF
+    cat > "$PACKAGE_LIBRARY_DIR_NOVERSIOING/cmake/$PACKAGE_NAME/${PACKAGE_NAME}ConfigVersion.cmake" << EOF
 # generated by ndk-pkg $NDKPKG_VERSION
 #
 # https://cmake.org/cmake/help/latest/command/find_package.html#config-mode-version-selection
