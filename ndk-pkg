@@ -1693,20 +1693,11 @@ is_package_available() {
 
 # is_package_installed <PACKAGE-SPEC>
   is_package_installed() {
-    [ -z "$1" ] && abort 1 "is_package_installed <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified."
-
     (
-        PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$1"
+        PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$1"
 
-        [ -f "$PACKAGE_INSTALL_REF" ] || exit 11
-
-        PACKAGE_INSTALL_SHA="$(cat "$NDKPKG_REFS_DIR/$1")"
-
-        [ "${#PACKAGE_INSTALL_SHA}" -eq 64 ] || exit 12
-
-        PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
-
-        [ -d "$PACKAGE_INSTALL_DIR" ] || exit 13
+        [ -L "$PACKAGE_INSTALL_DIR" ] || exit 11
+        [ -d "$PACKAGE_INSTALL_DIR" ] || exit 12
         [ -f "$PACKAGE_INSTALL_DIR/.ndk-pkg/MANIFEST.txt" ] || exit 14
         [ -f "$PACKAGE_INSTALL_DIR/.ndk-pkg/METADATA.yml" ] || exit 15
     )
@@ -1762,9 +1753,9 @@ __list_available_packages() {
 # {{{ ndk-pkg ls-installed
 
 __list_installed_packages() {
-    if [ -d "$NDKPKG_REFS_DIR" ] ; then
-         cd "$NDKPKG_REFS_DIR" || return 1
-        find . -maxdepth 1 -mindepth 1 -type f -regex '\./[^:]*:android-[1-9][0-9]:\(armeabi-v7a\|arm64-v8a\|x86\|x86_64\)' -printf '%P\n'
+    if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT" ] ; then
+         cd "$NDKPKG_PACKAGE_INSTALLED_ROOT" || return 1
+        find . -maxdepth 1 -mindepth 1 -type l -regex '\./[^:]*:android-[1-9][0-9]:\(armeabi-v7a\|arm64-v8a\|x86\|x86_64\)' -printf '%P\n'
     else
         return 0
     fi
@@ -2742,6 +2733,12 @@ EOF
 
     #########################################################################################
 
+    PREFAB_MODULES="$(find prefab/modules -maxdepth 1 -mindepth 1 -type d -printf '%P ')"
+
+    PREFAB_MODULES="${PREFAB_MODULES% }"
+
+    #########################################################################################
+
     # https://developer.android.com/studio/projects/android-library#aar-contents
     step "create META-INF"
     run install -d META-INF
@@ -2773,11 +2770,7 @@ EOF
 
     #########################################################################################
 
-    if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
-        AAR_FILENAME="$PACKAGE_NAME-$PACKAGE_RECEIPT_TIMESTAMP.aar"
-    else
-        AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION.aar"
-    fi
+    AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION.aar"
 
     step "packing the prefab aar file"
     run zip -9 -r "$AAR_FILENAME" .
@@ -2928,12 +2921,62 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
             run rm -rf "$WORKING_DIR"
         fi
 
-        printf '\n\n%s\n' "If you use Gradle Groovy DSL, please add following to your Android project's build.gradle file"
-        printf '%b\n\n' "${COLOR_GREEN}implementation '$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar'${COLOR_OFF}"
+        printf '%b\n' "
+${COLOR_YELLOW}
+======================================================
+Use this artifact alongside with Android Gradle Plugin
+======================================================${COLOR_OFF}
 
-        printf '%s\n'   "If you use Gradle Kotlin DSL, please add following to your Android project's build.gradle.kts file"
-        printf '%b\n\n' "${COLOR_GREEN}implementation(\"$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar\")${COLOR_OFF}"
+${COLOR_GREEN}step1. enable prefab feature for Android Gradle Plugin${COLOR_OFF}
 
+android {
+    buildFeatures {
+        prefab true
+    }
+}
+
+${COLOR_GREEN}step2. enable mavenLocal repository for Gradle${COLOR_OFF}
+
+repositories {
+    mavenLocal()
+}
+
+${COLOR_GREEN}step3. configure dependencies${COLOR_OFF}
+
+${COLOR_PURPLE}For Gradle Groovy DSL:${COLOR_OFF}
+
+dependencies {
+    implementation '$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar'
+}
+
+${COLOR_PURPLE}For Gradle Kotlin DSL:${COLOR_OFF}
+
+dependencies {
+    implementation(\"$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar\")
+}
+
+${COLOR_GREEN}step4. find package and link libraries in your Android project's CMakeLists.txt${COLOR_OFF}
+
+${COLOR_PURPLE}This prefab package has $(list_size $PREFAB_MODULES) modules : $PREFAB_MODULES${COLOR_OFF}
+
+find_package($PACKAGE_NAME REQUIRED CONFIG)
+target_link_libraries(app $PACKAGE_NAME::${PREFAB_MODULES%% *})
+
+${COLOR_GREEN}step5. configure C++ standard and STL (optional)${COLOR_OFF}
+
+android {
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+                cppFlags "-std=c++17"
+            }
+        }
+    }
+}
+
+${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.so, then your Android app should use libc++_shared.so too.${COLOR_OFF}
+"
         return 0
     fi
 
@@ -3673,7 +3716,7 @@ __uninstall_the_given_packages() {
 
     for PACKAGE_SPEC in $PACKAGE_SPECS
     do
-        PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$PACKAGE_SPEC"
+        PACKAGE_INSTALL_REF="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
         [ -f "$PACKAGE_INSTALL_REF" ] || abort 1 "package '$PACKAGE_SPEC' is not installed."
 
@@ -3972,10 +4015,9 @@ __upgrade_packages() {
     PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
     if is_package_installed "$PACKAGE_SPEC" ; then
-        PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$PACKAGE_SPEC"
-        PACKAGE_INSTALL_SHA="$(cat "$PACKAGE_INSTALL_REF")"
-        PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
-        printf '%s\n' "$PACKAGE_INSTALL_DIR"
+        PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+        PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
+        printf '%s\n' "$PACKAGE_INSTALLED_REAL_DIR"
     else
         abort 1 "package '$PACKAGE_SPEC' is not installed."
     fi
@@ -5104,9 +5146,7 @@ EOF
     [ -n "$PACKAGE_DEP_PKG" ] && {
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            DEPENDENT_PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$DEPENDENT_PACKAGE_NAME:$TARGET_ANDROID_SPEC"
-            DEPENDENT_PACKAGE_INSTALL_SHA="$(cat "$DEPENDENT_PACKAGE_INSTALL_REF")"
-            DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_INSTALL_SHA"
+            DEPENDENT_PACKAGE_INSTALL_DIR="$(readlink -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME:$TARGET_ANDROID_SPEC")"
 
             if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
                 RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
@@ -6080,9 +6120,7 @@ EOF
     do
         DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
 
-        DEPENDENT_PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$DEPENDENT_PACKAGE_NAME:$TARGET_ANDROID_SPEC"
-        DEPENDENT_PACKAGE_INSTALL_SHA="$(cat "$DEPENDENT_PACKAGE_INSTALL_REF")"
-        DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_INSTALL_SHA"
+        DEPENDENT_PACKAGE_INSTALL_DIR="$(readlink -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME:$TARGET_ANDROID_SPEC")"
         DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
         DEPENDENT_PACKAGE_INCLUDE_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/include"
         DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
@@ -7134,9 +7172,7 @@ $PACKAGE_DOBUILD_ACTIONS
     step "generate METADATA.yml"
     __generate_receipt_of_the_given_package "$1"
 
-    step "generate ref: $PACKAGE_INSTALL_SHA for $PACKAGE_SPEC"
-    run install -d "$NDKPKG_REFS_DIR"
-    printf '%s\n' "$PACKAGE_INSTALL_SHA" > "$NDKPKG_REFS_DIR/$PACKAGE_SPEC"
+    run ln -sr "$PACKAGE_INSTALL_DIR" "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
     #########################################################################################
 
@@ -8792,8 +8828,6 @@ main() {
     NDKPKG_PACKAGE_SYMLINKED_ROOT="$NDKPKG_HOME/symlinked"
     NDKPKG_DOWNLOADS_DIR="$NDKPKG_HOME/downloads"
     NDKPKG_BACKUP_DIR="$NDKPKG_HOME/backup.d"
-
-    NDKPKG_REFS_DIR="$NDKPKG_HOME/refs"
 
     NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
     NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"

@@ -257,7 +257,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz
 │   └── c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4.tgz
 ├── installed
-│   ├── 2b4af6b8a3bdc21824eeae9215cb906b0df70db7c84c4278e3afae1e04494512
+│   ├── 356a9aa408c53bb93f85a768b1a8a2dd5cb4851992b9a59964bafeefca808881
 │   │   ├── .ndk-pkg
 │   │   │   ├── FAQ
 │   │   │   ├── LICENSE
@@ -283,7 +283,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │   │       └── man
 │   │           └── man3
 │   │               └── zlib.3
-│   ├── 2e9be3d16c43b6d28eb4bfbbc7b251afa56511a14905e39d5291b843d48668b9
+│   ├── 1f6e3471cc3fed6ac255d262c4b151fff1e73e178e266476eced394cd7a7a286
 │   │   ├── .ndk-pkg
 │   │   │   ├── FAQ
 │   │   │   ├── LICENSE
@@ -292,12 +292,13 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │   │   │   └── README
 │   │   └── ...
 │   │       └── ...
-│   ├── e04b8ca3c3d7b9266e159229ce725ee0b428ba5be783c79afb14f2a68cf3b482
-├── refs
-│   ├── zlib:android-21:arm64-v8a
-│   ├── zlib:android-21:armeabi-v7a
-│   ├── zlib:android-21:x86
-│   └── zlib:android-21:x86_64
+│   ├── f1dd85386c380267b40759f291da65ecfde1375f0c64ada692aebc3fbe1834d8
+│   │   └── ...
+│   │       └── ...
+│   ├── zlib:android-21:arm64-v8a -> 356a9aa408c53bb93f85a768b1a8a2dd5cb4851992b9a59964bafeefca808881
+│   ├── zlib:android-21:armeabi-v7a -> 1f6e3471cc3fed6ac255d262c4b151fff1e73e178e266476eced394cd7a7a286
+│   ├── zlib:android-21:x86 -> f1dd85386c380267b40759f291da65ecfde1375f0c64ada692aebc3fbe1834d8
+│   └── zlib:android-21:x86_64 -> fe901c866e12f2f6816c269b774f9ca48a83f5c269e515a320fae7a7bcc0d791
 └── run
     ├── 3409784
     ├── 3447656
