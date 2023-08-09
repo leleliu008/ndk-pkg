@@ -41,7 +41,7 @@ In this way, you don't need to care about other things than:
 |-|
 |<img src="1.png" width="311px" >|
 
-for details please refer to https://github.com/leleliu008/ndk-pkg-package-manually-build
+for details please refer to <https://github.com/leleliu008/ndk-pkg-package-manually-build>
 
 ## Install ndk-pkg via Docker
 
@@ -124,98 +124,6 @@ _instructions installing ndk-pkg on WSL is same as described in section [Install
 sudo install -o $(whoami) -d /mnt/d/ndk-pkg
 ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
 ```
-
-## Integrate with Android Gradle Plugin
-
-**step1. enables prefab feature in build.gradle**
-
-```gradle
-android {
-    buildFeatures {
-        prefab true
-    }
-}
-```
-
-**step2. enables mavenCentral repository in build.gradle**
-
-```gradle
-repositories {
-    mavenCentral()
-}
-```
-
-**step3. add dependencies in build.gradle**
-
-```gradle
-dependencies {
-    implementation 'com.fpliu.ndk.pkg.prefab.android.21:libpng:1.6.37'
-}
-```
-
-**step4. invoke [find_package(PACKAGE-NAME [REQUIRED] CONFIG)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
-
-```cmake
-find_package(libpng REQUIRED CONFIG)
-target_link_libraries(xx libpng::libpng.a)
-```
-
-or
-
-```cmake
-find_package(libpng CONFIG)
-if (libpng_FOUND)
-    target_link_libraries(xx libpng::libpng.a)
-endif()
-```
-
-**step5. configure C++ standard and STL in build.gradle**
-
-If you link a shared library that depends on `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
-
-```gradle
-android {
-    defaultConfig {
-        externalNativeBuild {
-            cmake {
-                arguments '-DANDROID_STL=c++_shared'
-                cppFlags "-std=c++17"
-            }
-        }
-    }
-}
-```
-
-**Note:**
-
-- you can look for packages that have been published to `mavenCentral` via visiting follwoing websites:
-  - <https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/>
-  - <https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab>
-- If packages that have been published to `mavenCentral` doesn't meet your needs, you can install package then deploy it to `mavenLocal` via running following commands:
-
-    ```bash
-    ndk-pkg install libpng:android-21:arm64-v8a,armeabi-v7a
-    ndk-pkg deploy  libpng:android-21:arm64-v8a,armeabi-v7a
-    ```
-
-    enables `mavenLocal` repository in `build.gradle`
-
-    ```gradle
-    repositories {
-        mavenLocal()
-    }
-    ```
-
-- Every package provides several cmake imported targets and each target has form: `${PACKAGE_NAME}::${LIBRARY_FILENAME}`
-
-**References:**
-
-- <https://github.com/google/prefab>
-- <https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies>
-
-**Examples:**
-
-- <https://github.com/leleliu008/android-calendar-for-the-aged>
 
 ## ~/.ndk-pkg
 
@@ -702,7 +610,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     this environment variable only affects POSIX-Shell-based implementation.
 
-    enables `set -x`:
+    enable `set -x`:
 
     ```bash
     export NDKPKG_XTRACE=1
@@ -789,3 +697,174 @@ ndk-pkg offical formula repository's url: <https://github.com/leleliu008/ndk-pkg
 ndk-pkg offical formula repository would be automatically fetched to local cache as name `offical-core` when you run `ndk-pkg update` command.
 
 **Note:** If you find that a package is not in ndk-pkg offical formula repository yet, PR is welcomed.
+
+## Using my published prefab aar alongside with Android Gradle Plugin
+
+Some commonly used packages have been packed as google prefab aar and published to `mavenCentral`. please visiting the follwoing websites to to get the full list of my published packages:
+
+- <https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/>
+- <https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab>
+
+Suppose you want to use [the libpng package](https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/libpng/), the following steps you would do:
+
+**step1. enable prefab feature for Android Gradle Plugin**
+
+```gradle
+android {
+    buildFeatures {
+        prefab true
+    }
+}
+```
+
+**step2. enable mavenCentral repository for Gradle**
+
+```gradle
+repositories {
+    mavenCentral()
+}
+```
+
+**step3. add dependencies in build.gradle**
+
+```gradle
+dependencies {
+    implementation 'com.fpliu.ndk.pkg.prefab.android.21:libpng:1.6.37'
+}
+```
+
+**step4. invoke [find_package(PACKAGE-NAME [REQUIRED] CONFIG)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
+
+```cmake
+find_package(libpng REQUIRED CONFIG)
+target_link_libraries(app libpng::libpng.a)
+```
+
+or
+
+```cmake
+find_package(libpng CONFIG)
+if (libpng_FOUND)
+    target_link_libraries(app libpng::libpng.a)
+endif()
+```
+
+**step5. configure C++ standard and STL in build.gradle**
+
+If you link a shared library that depends on `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
+
+```gradle
+android {
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+                cppFlags "-std=c++17"
+            }
+        }
+    }
+}
+```
+
+**Note:**
+
+- Every package provides several cmake imported targets and each target has form: `${PACKAGE_NAME}::${LIBRARY_FILENAME}`
+
+**References:**
+
+- <https://github.com/google/prefab>
+- <https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies>
+
+**Examples:**
+
+- <https://github.com/leleliu008/android-calendar-for-the-aged>
+
+## Create the google prefab aar then deploy it to Maven Local Reposotory and use it alongside with Android Gradle Plugin
+
+If packages that have been published to `mavenCentral` doesn't meet your needs, you can use this software to install packages then deploy them to `mavenLocal`.
+
+Suppose you want to build and install the `libpng` package, then deploy it to `mavenLocal`, the following steps you would do:
+
+**step1. build and install libpng**
+
+```bash
+ndk-pkg install libpng:android-21:arm64-v8a,armeabi-v7a
+```
+
+**step2. export the installed libpng package as the google prefab aar and deploy it to your Maven Local Reposotory**
+
+```bash
+ndk-pkg deploy  libpng:android-21:arm64-v8a,armeabi-v7a
+```
+
+**step3. enable prefab feature for Android Gradle Plugin**
+
+```gradle
+android {
+    buildFeatures {
+        prefab true
+    }
+}
+```
+
+**step4. enable mavenLocal repository for Gradle**
+
+```gradle
+repositories {
+    mavenLocal()
+}
+```
+
+**step5. add dependencies in build.gradle**
+
+```gradle
+dependencies {
+    implementation 'com.fpliu.ndk.pkg.prefab.android.21:libpng:1.6.37'
+}
+```
+
+**step6. invoke [find_package(PACKAGE-NAME [REQUIRED] CONFIG)](https://cmake.org/cmake/help/latest/command/find_package.html) command in your Android project's CMakeLists.txt**
+
+```cmake
+find_package(libpng REQUIRED CONFIG)
+target_link_libraries(app libpng::libpng.a)
+```
+
+or
+
+```cmake
+find_package(libpng CONFIG)
+if (libpng_FOUND)
+    target_link_libraries(app libpng::libpng.a)
+endif()
+```
+
+**step7. configure C++ standard and STL in build.gradle**
+
+If you link a shared library that depends on `libc++_shared.so`, then your Android app should use `libc++_shared.so` too.
+
+```gradle
+android {
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+                cppFlags "-std=c++17"
+            }
+        }
+    }
+}
+```
+
+**Note:**
+
+- Every package provides several cmake imported targets and each target has form: `${PACKAGE_NAME}::${LIBRARY_FILENAME}`
+
+**References:**
+
+- <https://github.com/google/prefab>
+- <https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies>
+
+**Examples:**
+
+- <https://github.com/leleliu008/android-calendar-for-the-aged>
