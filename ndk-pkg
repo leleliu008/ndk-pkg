@@ -3716,28 +3716,26 @@ __uninstall_the_given_packages() {
 
     for PACKAGE_SPEC in $PACKAGE_SPECS
     do
-        PACKAGE_INSTALL_REF="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+        PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
-        [ -f "$PACKAGE_INSTALL_REF" ] || abort 1 "package '$PACKAGE_SPEC' is not installed."
+        [ -e "$PACKAGE_INSTALLED_LINK_DIR" ] || abort 10 "package '$PACKAGE_SPEC' is not installed."
+        [ -L "$PACKAGE_INSTALLED_LINK_DIR" ] || abort 11 "$PACKAGE_INSTALLED_LINK_DIR was expected a symlink, but it was not."
+        [ -d "$PACKAGE_INSTALLED_LINK_DIR" ] || abort 12 "$PACKAGE_INSTALLED_LINK_DIR was expected a symlink refer to a directory, but it was not."
 
-        PACKAGE_INSTALL_SHA="$(cat "$PACKAGE_INSTALL_REF")"
+        PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
 
-        [ "${#PACKAGE_INSTALL_SHA}" -eq 64 ] || abort 11 "$PACKAGE_INSTALL_REF file content length was expected 64byte, but it was not."
+        [ -d "$PACKAGE_INSTALLED_REAL_DIR" ] || abort 13 "directory $PACKAGE_INSTALLED_REAL_DIR was expected exists, but it was not."
 
-        PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
-
-        [ -d "$PACKAGE_INSTALL_DIR" ] || abort 12 "ref: $PACKAGE_INSTALL_SHA recorded in $PACKAGE_INSTALL_SHA, but it point to directory $PACKAGE_INSTALL_DIR doesn't exist."
-
-        PACKAGE_MANIFEST_FILEPATH="$PACKAGE_INSTALL_DIR/.ndk-pkg/MANIFEST.txt"
+        PACKAGE_MANIFEST_FILEPATH="$PACKAGE_INSTALLED_REAL_DIR/.ndk-pkg/MANIFEST.txt"
 
         [ -f "$PACKAGE_MANIFEST_FILEPATH" ] || abort 13 "$PACKAGE_MANIFEST_FILEPATH file was expected exist, but it was not."
 
-        PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/.ndk-pkg/METADATA.yml"
+        PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALLED_REAL_DIR/.ndk-pkg/METADATA.yml"
 
         [ -f "$PACKAGE_METADATA_FILEPATH" ] || abort 14 "$PACKAGE_METADATA_FILEPATH file was expected exist, but it was not."
 
-        run rm  -f "$PACKAGE_INSTALL_REF"
-        run rm -rf "$PACKAGE_INSTALL_DIR"
+        run rm -ff "$PACKAGE_INSTALLED_LINK_DIR"
+        run rm -rf "$PACKAGE_INSTALLED_REAL_DIR"
     done
 }
 
