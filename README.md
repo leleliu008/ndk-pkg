@@ -71,7 +71,7 @@ docker exec -it ndk-pkg ndk-pkg update
 If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package:
 
 ```bash
-docker exec -it ndk-pkg ndk-pkg install curl/android-21/arm64-v8a
+docker exec -it ndk-pkg ndk-pkg install curl:android-21:arm64-v8a
 ```
 
 **Note:** you can use `podman` instead of `docker`
@@ -194,8 +194,8 @@ android {
 - If packages that have been published to `mavenCentral` doesn't meet your needs, you can install package then deploy it to `mavenLocal` via running following commands:
 
     ```bash
-    ndk-pkg install libpng/android-21/arm64-v8a,armeabi-v7a
-    ndk-pkg deploy  libpng/android-21/arm64-v8a,armeabi-v7a
+    ndk-pkg install libpng:android-21:arm64-v8a,armeabi-v7a
+    ndk-pkg deploy  libpng:android-21:arm64-v8a,armeabi-v7a
     ```
 
     enables `mavenLocal` repository in `build.gradle`
@@ -257,28 +257,47 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz
 │   └── c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4.tgz
 ├── installed
-│   └── zlib
-│       ├── android-21
-│       │   ├── arm64-v8a
-│       │   ├── armeabi-v7a
-│       │   ├── x86
-│       │   └── x86_64
-│       └── android-33
-│           ├── arm64-v8a
-│           ├── armeabi-v7a
-│           ├── x86
-│           └── x86_64
-├── repos.d
-│   └── offical-core
-│       ├── formula
-│       │   ├── jansson.yml
-│       │   ├── libiconv.yml
-│       │   ├── libxml2.yml
-│       │   ├── libyaml.yml
-│       │   ├── pixman.yml
-│       │   ├── uctags.yml
-│       │   └── zlib.yml
-│       └── .ndk-pkg-formula-repo.yml
+│   ├── 2b4af6b8a3bdc21824eeae9215cb906b0df70db7c84c4278e3afae1e04494512
+│   │   ├── .ndk-pkg
+│   │   │   ├── FAQ
+│   │   │   ├── LICENSE
+│   │   │   ├── MANIFEST.txt
+│   │   │   ├── METADATA.yml
+│   │   │   └── README
+│   │   ├── include
+│   │   │   ├── zconf.h
+│   │   │   └── zlib.h
+│   │   ├── lib
+│   │   │   ├── pkgconfig
+│   │   │   │   └── zlib.pc
+│   │   │   ├── libz.a
+│   │   │   └── libz.so
+│   │   ├── lib-for-apk
+│   │   │   ├── cmake
+│   │   │   │   └── zlib
+│   │   │   │       ├── zlibConfig.cmake
+│   │   │   │       └── zlibConfigVersion.cmake
+│   │   │   ├── libz.a
+│   │   │   └── libz.so
+│   │   └── share
+│   │       └── man
+│   │           └── man3
+│   │               └── zlib.3
+│   ├── 2e9be3d16c43b6d28eb4bfbbc7b251afa56511a14905e39d5291b843d48668b9
+│   │   ├── .ndk-pkg
+│   │   │   ├── FAQ
+│   │   │   ├── LICENSE
+│   │   │   ├── MANIFEST.txt
+│   │   │   ├── METADATA.yml
+│   │   │   └── README
+│   │   └── ...
+│   │       └── ...
+│   ├── e04b8ca3c3d7b9266e159229ce725ee0b428ba5be783c79afb14f2a68cf3b482
+├── refs
+│   ├── zlib:android-21:arm64-v8a
+│   ├── zlib:android-21:armeabi-v7a
+│   ├── zlib:android-21:x86
+│   └── zlib:android-21:x86_64
 └── run
     ├── 3409784
     ├── 3447656
@@ -437,19 +456,19 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     ```bash
     ndk-pkg receipt curl
-    ndk-pkg receipt curl/android-21/arm64-v8a
-    ndk-pkg receipt curl/android-21/arm64-v8a --yaml
-    ndk-pkg receipt curl/android-21/arm64-v8a --json
-    ndk-pkg receipt curl/android-21/arm64-v8a --path
-    ndk-pkg receipt curl/android-21/arm64-v8a version
-    ndk-pkg receipt curl/android-21/arm64-v8a license
-    ndk-pkg receipt curl/android-21/arm64-v8a summary
-    ndk-pkg receipt curl/android-21/arm64-v8a web-url
-    ndk-pkg receipt curl/android-21/arm64-v8a git-url
-    ndk-pkg receipt curl/android-21/arm64-v8a git-sha
-    ndk-pkg receipt curl/android-21/arm64-v8a git-ref
-    ndk-pkg receipt curl/android-21/arm64-v8a src-url
-    ndk-pkg receipt curl/android-21/arm64-v8a src-sha
+    ndk-pkg receipt curl:android-21:arm64-v8a
+    ndk-pkg receipt curl:android-21:arm64-v8a --yaml
+    ndk-pkg receipt curl:android-21:arm64-v8a --json
+    ndk-pkg receipt curl:android-21:arm64-v8a --path
+    ndk-pkg receipt curl:android-21:arm64-v8a version
+    ndk-pkg receipt curl:android-21:arm64-v8a license
+    ndk-pkg receipt curl:android-21:arm64-v8a summary
+    ndk-pkg receipt curl:android-21:arm64-v8a web-url
+    ndk-pkg receipt curl:android-21:arm64-v8a git-url
+    ndk-pkg receipt curl:android-21:arm64-v8a git-sha
+    ndk-pkg receipt curl:android-21:arm64-v8a git-ref
+    ndk-pkg receipt curl:android-21:arm64-v8a src-url
+    ndk-pkg receipt curl:android-21:arm64-v8a src-sha
     ```
 
 - **show packages that are depended by the given package**
@@ -487,29 +506,29 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     ```bash
     ndk-pkg install curl
-    ndk-pkg install curl/android-33/arm64-v8a
-    ndk-pkg install curl/android-33/arm64-v8a,x86_64 --link-type=static-only
+    ndk-pkg install curl:android-33:arm64-v8a
+    ndk-pkg install curl:android-33:arm64-v8a,x86_64 --link-type=static-only
     ```
 
 - **reinstall packages**
 
     ```bash
     ndk-pkg reinstall curl
-    ndk-pkg reinstall curl/android-33/arm64-v8a --link-type=static-only
+    ndk-pkg reinstall curl:android-33:arm64-v8a --link-type=static-only
     ```
 
 - **uninstall packages**
 
     ```bash
     ndk-pkg uninstall curl
-    ndk-pkg uninstall curl/android-33/arm64-v8a
+    ndk-pkg uninstall curl:android-33:arm64-v8a
     ```
 
 - **upgrade the outdated packages**
 
     ```bash
     ndk-pkg upgrade curl
-    ndk-pkg upgrade curl/android-33/arm64-v8a --link-type=static-only
+    ndk-pkg upgrade curl:android-33:arm64-v8a --link-type=static-only
     ```
 
 - **upgrade this software**
@@ -576,64 +595,64 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     ```bash
     ndk-pkg is-installed curl
-    ndk-pkg is-installed curl/android-21/arm64-v8a
+    ndk-pkg is-installed curl:android-21:arm64-v8a
     ```
 
 - **check if the given package is outdated**
 
     ```bash
     ndk-pkg is-outdated  curl
-    ndk-pkg is-outdated  curl/android-21/arm64-v8a
+    ndk-pkg is-outdated  curl:android-21:arm64-v8a
     ```
 
 - **list installed files of the given installed package in a tree-like format**
 
     ```bash
     ndk-pkg tree curl
-    ndk-pkg tree curl/android-21/arm64-v8a -L 3
+    ndk-pkg tree curl:android-21:arm64-v8a -L 3
     ```
 
 - **show logs of the given installed package**
 
     ```bash
     ndk-pkg logs curl
-    ndk-pkg logs curl curl/android-21/arm64-v8a
+    ndk-pkg logs curl curl:android-21:arm64-v8a
     ```
 
 - **pack the given installed package**
 
     ```bash
     ndk-pkg pack curl
-    ndk-pkg pack curl/android-21/arm64-v8a
-    ndk-pkg pack curl/android-21/arm64-v8a -t tar.xz
-    ndk-pkg pack curl/android-21/arm64-v8a -t tar.gz
-    ndk-pkg pack curl/android-21/arm64-v8a -t tar.lz
-    ndk-pkg pack curl/android-21/arm64-v8a -t tar.bz2
-    ndk-pkg pack curl/android-21/arm64-v8a -t zip
-    ndk-pkg pack curl/android-21/arm64-v8a -t zip -o a/
-    ndk-pkg pack curl/android-21/arm64-v8a -o a/x.zip
+    ndk-pkg pack curl:android-21:arm64-v8a
+    ndk-pkg pack curl:android-21:arm64-v8a -t tar.xz
+    ndk-pkg pack curl:android-21:arm64-v8a -t tar.gz
+    ndk-pkg pack curl:android-21:arm64-v8a -t tar.lz
+    ndk-pkg pack curl:android-21:arm64-v8a -t tar.bz2
+    ndk-pkg pack curl:android-21:arm64-v8a -t zip
+    ndk-pkg pack curl:android-21:arm64-v8a -t zip -o a/
+    ndk-pkg pack curl:android-21:arm64-v8a -o a/x.zip
     ```
 
 - **export the given installed package as the google prefab aar**
 
     ```bash
-    ndk-pkg export curl/android-21/arm64-v8a,x86_64 -o .
-    ndk-pkg export curl/android-21/arm64-v8a,x86_64 -o curl-8.1.2.aar
+    ndk-pkg export curl:android-21:arm64-v8a,x86_64 -o .
+    ndk-pkg export curl:android-21:arm64-v8a,x86_64 -o curl-8.1.2.aar
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Maven Local Repository**
 
     ```bash
-    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64
-    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --debug
-    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --local=/somewhere
+    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64
+    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64 --debug
+    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64 --local=/somewhere
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Sonatype OSSRH**
 
     ```bash
-    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --remote < ~/OSSRH-config
-    ndk-pkg depoly curl/android-21/arm64-v8a,x86_64 --remote <<EOF
+    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64 --remote < ~/OSSRH-config
+    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64 --remote <<EOF
     SERVER_ID=OSSRH
     SERVER_URL=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
     SERVER_USERNAME=your-sonatype-account-username
@@ -690,14 +709,14 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
 - **NDKPKG_DEFAULT_TARGET_ANDROID_SPEC**
 
-    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<PACKAGE-NAME>/<TARGET-ANDROID-SPEC>`, To simplify the usage, you are allowed to omit `/<TARGET-ANDROID-SPEC>`. If `/<TARGET-ANDROID-SPEC>` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21/arm64-v8a` will be used as the default.
+    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<PACKAGE-NAME>:<TARGET-ANDROID-SPEC>`, To simplify the usage, you are allowed to omit `:<TARGET-ANDROID-SPEC>`. If `:<TARGET-ANDROID-SPEC>` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21:arm64-v8a` will be used as the default.
 
-    `<TARGET-ANDROID-SPEC>` has the form `android-<MIN-SDK-API-LEVEL>/<ANDROID-ABI>`
+    `<TARGET-ANDROID-SPEC>` has the form `android-<MIN-SDK-API-LEVEL>:<ANDROID-ABI>`
 
     **Example**:
 
     ```bash
-    export NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21/arm64-v8a'
+    export NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21:arm64-v8a'
     ```
 
     **References**:

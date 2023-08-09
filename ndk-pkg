@@ -1485,9 +1485,9 @@ EOF
 
 # __load_receipt_of_the_given_package <PACKAGE-SPEC>
   __load_receipt_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__load_receipt_of_the_given_package <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified."
+    PACKAGE_INSTALLED_DIR="$(peel_installed_root_dir_for_the_given_package "$1")"
 
-    is_package_installed "$1" || abort 1 "package '$1' is not installed."
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ndk-pkg/METADATA.yml"
 
     unset RECEIPT_PACKAGE_SUMMARY
     unset RECEIPT_PACKAGE_VERSION
@@ -1527,9 +1527,6 @@ EOF
     unset RECEIPT_PACKAGE_DEVELOPER
 
     #######################################################################################################
-
-    PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$1"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ndk-pkg/METADATA.yml"
 
     unset PACKAGE_RECEIPT_SIGNATURE
     unset PACKAGE_RECEIPT_TIMESTAMP
@@ -1696,13 +1693,23 @@ is_package_available() {
 
 # is_package_installed <PACKAGE-SPEC>
   is_package_installed() {
-    [ -z "$1" ] && {
-        error "is_package_installed <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified."
-        return 1
-    }
+    [ -z "$1" ] && abort 1 "is_package_installed <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified."
 
-    [ -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/MANIFEST.txt" ] || return 13
-    [ -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$1/.ndk-pkg/METADATA.yml" ] || return 14
+    (
+        PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$1"
+
+        [ -f "$PACKAGE_INSTALL_REF" ] || exit 11
+
+        PACKAGE_INSTALL_SHA="$(cat "$NDKPKG_REFS_DIR/$1")"
+
+        [ "${#PACKAGE_INSTALL_SHA}" -eq 64 ] || exit 12
+
+        PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+
+        [ -d "$PACKAGE_INSTALL_DIR" ] || exit 13
+        [ -f "$PACKAGE_INSTALL_DIR/.ndk-pkg/MANIFEST.txt" ] || exit 14
+        [ -f "$PACKAGE_INSTALL_DIR/.ndk-pkg/METADATA.yml" ] || exit 15
+    )
 }
 
 # }}}
@@ -1711,9 +1718,8 @@ is_package_available() {
 
 # is_package__outdated <PACKAGE-SPEC>
   is_package__outdated() {
-    __load_formula_of_the_given_package "${1%%/*}"
     __load_receipt_of_the_given_package "$1"
-
+    __load_formula_of_the_given_package "${1%%:*}"
     version_match "$PACKAGE_VERSION" gt "$RECEIPT_PACKAGE_VERSION"
 }
 
@@ -1756,9 +1762,9 @@ __list_available_packages() {
 # {{{ ndk-pkg ls-installed
 
 __list_installed_packages() {
-    if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT" ] ; then
-         cd "$NDKPKG_PACKAGE_INSTALLED_ROOT" || return 1
-        find . -maxdepth 5 -mindepth 5 -type f -regex '\./[^/]*/android-[1-9][0-9]/\(armeabi-v7a\|arm64-v8a\|x86\|x86_64\)/\.ndk-pkg/METADATA\.yml' | cut -c3- | sed 's|/\.ndk-pkg/METADATA\.yml$||'
+    if [ -d "$NDKPKG_REFS_DIR" ] ; then
+         cd "$NDKPKG_REFS_DIR" || return 1
+        find . -maxdepth 1 -mindepth 1 -type f -regex '\./[^:]*:android-[1-9][0-9]:\(armeabi-v7a\|arm64-v8a\|x86\|x86_64\)' -printf '%P\n'
     else
         return 0
     fi
@@ -1771,10 +1777,9 @@ __list_installed_packages() {
 __list__outdated_packages() {
     for PACKAGE_SPEC in $(__list_installed_packages)
     do
-        PACKAGE_NAME="${PACKAGE_SPEC%%/*}"
-        is_package_available "$PACKAGE_NAME" || continue
-        is_package__outdated "$PACKAGE_SPEC" || continue
-        printf '%s\n' "$PACKAGE_SPEC"
+        if is_package__outdated "$PACKAGE_SPEC" ; then
+            printf '%s\n' "$PACKAGE_SPEC"
+        fi
     done
 }
 
@@ -2043,26 +2048,11 @@ EOF
             __show_information_as_json__of_the_given_package "$1"
             ;;
         installed-dir)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-            if is_package_installed "$PACKAGE_SPEC" ; then
-                printf '%s\n' "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-            else
-                error "package '$PACKAGE_SPEC' is not installed."
-                return 1
-            fi
+            peel_installed_root_dir_for_the_given_package "$1"
             ;;
         installed-files)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-            if is_package_installed "$PACKAGE_SPEC" ; then
-                cut -d '|' -f3 "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC/.ndk-pkg/MANIFEST.txt"
-            else
-                error "package '$PACKAGE_SPEC' is not installed."
-                return 1
-            fi
+            PACKAGE_INSTALL_DIR="$(peel_installed_root_dir_for_the_given_package "$1")"
+            cut -d '|' -f3 "$PACKAGE_INSTALL_DIR/.ndk-pkg/MANIFEST.txt"
             ;;
         installed-timestamp-unix)
             PACKAGE_SPEC=
@@ -2221,16 +2211,11 @@ __fetch_resources_of_the_given_package() {
 
 # __tree_the_given_installed_package <PACKAGE-SPEC>
   __tree_the_given_installed_package() {
-    [ -z "$1" ] && abort 1 "$_0 logs <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified."
-
-    PACKAGE_SPEC=
-    PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-    is_package_installed "$PACKAGE_SPEC" || abort 1 "package '$PACKAGE_SPEC' is not installed."
+    PACKAGE_INSTALL_DIR="$(peel_installed_root_dir_for_the_given_package "$1")"
 
     shift
 
-    run tree "$@" "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+    run tree "$@" "$PACKAGE_INSTALL_DIR"
 }
 
 # }}}
@@ -2239,15 +2224,10 @@ __fetch_resources_of_the_given_package() {
 
 # __logs_the_given_installed_package <PACKAGE-SPEC>
   __logs_the_given_installed_package() {
-    [ -z "$1" ] && abort 1 "$_0 logs <PACKAGE-SPEC>, <PACKAGE-SPEC> is unspecified."
-
-    PACKAGE_SPEC=
-    PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-    is_package_installed "$PACKAGE_SPEC" || abort 1 "package '$PACKAGE_SPEC' is not installed."
+    PACKAGE_INSTALL_DIR="$(peel_installed_root_dir_for_the_given_package "$1")"
 
     FILEPATHS=
-    FILEPATHS="$(find "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC/.ndk-pkg" -type f)"
+    FILEPATHS="$(find "$PACKAGE_INSTALL_DIR/.ndk-pkg" -type f)"
 
     for filepath in $FILEPATHS
     do
@@ -2278,10 +2258,10 @@ __fetch_resources_of_the_given_package() {
 
     __load_receipt_of_the_given_package "$PACKAGE_SPEC"
 
-    PACKAGE_NAME="${PACKAGE_SPEC%%/*}"
+    PACKAGE_NAME="${PACKAGE_SPEC%%:*}"
 
-    TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2 | cut -d- -f2)"
-    TARGET_ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
+    TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d: -f2 | cut -d- -f2)"
+    TARGET_ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d: -f3)"
 
     shift
 
@@ -2499,10 +2479,10 @@ __fetch_resources_of_the_given_package() {
 
     __load_receipt_of_the_given_package "$PACKAGE_SPEC"
 
-    PACKAGE_NAME="${PACKAGE_SPEC%%/*}"
+    PACKAGE_NAME="${PACKAGE_SPEC%%:*}"
 
-    TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f2 | cut -d- -f2)"
-    TARGET_ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d/ -f3)"
+    TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d: -f2 | cut -d- -f2)"
+    TARGET_ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d: -f3)"
 
     PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALLED_DIR/include"
     PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib-for-apk"
@@ -2653,29 +2633,29 @@ EOF
     unset TARGET_ANDROID_ABIS
 
     case $1 in
-        */android-[1-9][0-9]/*)
-            PACKAGE_NAME="${1%%/*}"
+        *:android-[1-9][0-9]:*)
+            PACKAGE_NAME="${1%%:*}"
 
             if [ -z "$PACKAGE_NAME" ] ; then
-                abort 1 "invalid argument: $1\npackage name is unspecifed."
+                abort 1 "invalid argument: $1\n    package name is unspecifed."
             elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                 :
             else
-                abort 1 "invalid argument: $1\npackage name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
+                abort 1 "invalid argument: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
             fi
 
-            TARGET_ANDROID_API="$(printf '%s\n' "$1" | cut -d/ -f2 | cut -d- -f2)"
-            TARGET_ANDROID_ABIS="$(printf '%s\n' "$1" | cut -d/ -f3 | tr ',' ' ')"
+            TARGET_ANDROID_API="$( printf '%s\n' "$1" | cut -d: -f2 | cut -d- -f2)"
+            TARGET_ANDROID_ABIS="$(printf '%s\n' "$1" | cut -d: -f3 | tr ',' ' ')"
 
             if [ -z "$TARGET_ANDROID_ABIS" ] ; then
-                abort 1 "invalid argument: $1\nandroid abis are unspecified."
+                abort 1 "invalid argument: $1\n    android abis are unspecified."
             fi
 
             for TARGET_ANDROID_ABI in $TARGET_ANDROID_ABIS
             do
                 case $TARGET_ANDROID_ABI in
                     armeabi-v7a|arm64-v8a|x86|x86_64) ;;
-                    *)  abort 1 "invalid argument: $1\nunrecognized android abi: $TARGET_ANDROID_ABI"
+                    *)  abort 1 "invalid argument: $1\n    unrecognized android abi: $TARGET_ANDROID_ABI"
                 esac
             done
             ;;
@@ -2755,7 +2735,7 @@ EOF
 
     for TARGET_ANDROID_ABI in $TARGET_ANDROID_ABIS
     do
-        PACKAGE_SPEC="$PACKAGE_NAME/android-$TARGET_ANDROID_API/$TARGET_ANDROID_ABI"
+        PACKAGE_SPEC="$PACKAGE_NAME:android-$TARGET_ANDROID_API:$TARGET_ANDROID_ABI"
         step "create prefab hierarchial structure for $PACKAGE_SPEC"
         __create_google_prefab_for_the_given_installed_package "$PACKAGE_SPEC"
     done
@@ -3693,11 +3673,28 @@ __uninstall_the_given_packages() {
 
     for PACKAGE_SPEC in $PACKAGE_SPECS
     do
-        if is_package_installed "$PACKAGE_SPEC" ; then
-            run rm -rf "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-        else
-            abort 1 "package '$1' is not installed."
-        fi
+        PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$PACKAGE_SPEC"
+
+        [ -f "$PACKAGE_INSTALL_REF" ] || abort 1 "package '$PACKAGE_SPEC' is not installed."
+
+        PACKAGE_INSTALL_SHA="$(cat "$PACKAGE_INSTALL_REF")"
+
+        [ "${#PACKAGE_INSTALL_SHA}" -eq 64 ] || abort 11 "$PACKAGE_INSTALL_REF file content length was expected 64byte, but it was not."
+
+        PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+
+        [ -d "$PACKAGE_INSTALL_DIR" ] || abort 12 "ref: $PACKAGE_INSTALL_SHA recorded in $PACKAGE_INSTALL_SHA, but it point to directory $PACKAGE_INSTALL_DIR doesn't exist."
+
+        PACKAGE_MANIFEST_FILEPATH="$PACKAGE_INSTALL_DIR/.ndk-pkg/MANIFEST.txt"
+
+        [ -f "$PACKAGE_MANIFEST_FILEPATH" ] || abort 13 "$PACKAGE_MANIFEST_FILEPATH file was expected exist, but it was not."
+
+        PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALL_DIR/.ndk-pkg/METADATA.yml"
+
+        [ -f "$PACKAGE_METADATA_FILEPATH" ] || abort 14 "$PACKAGE_METADATA_FILEPATH file was expected exist, but it was not."
+
+        run rm  -f "$PACKAGE_INSTALL_REF"
+        run rm -rf "$PACKAGE_INSTALL_DIR"
     done
 }
 
@@ -3725,7 +3722,7 @@ __reinstall_the_given_packages() {
 
     for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -3763,19 +3760,19 @@ __reinstall_the_given_packages() {
 
     for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*/}"
+        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*:}"
 
         TARGET_ANDROID_API=
         TARGET_ANDROID_ABI=
 
-        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-        TARGET_ANDROID_ABI="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f2)"
+        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f1 | cut -d- -f2)"
+        TARGET_ANDROID_ABI="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f2)"
 
         ##################################################################
 
         TO_BE_INSTALLED_PACKAGE_NAMES=
 
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -3814,18 +3811,15 @@ __reinstall_the_given_packages() {
 
         for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
         do
-            PACKAGE_SPEC="$PACKAGE_NAME/$TARGET_ANDROID_SPEC"
+            PACKAGE_SPEC="$PACKAGE_NAME:$TARGET_ANDROID_SPEC"
 
             if is_package_installed "$PACKAGE_SPEC" ; then
-                PACKAGE_XXXX=
-                PACKAGE_XXXX="$(printf '%s\n' "$PACKAGE_SPEC" | tr '/' '-')"
-
-                PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-                PACKAGE_BACKUP__DIR="$NDKPKG_BACKUP_DIR/$PACKAGE_XXXX"
+                PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+                PACKAGE_BACKUP__DIR="$NDKPKG_BACKUP_DIR/$PACKAGE_SPEC"
 
                 install -d "$NDKPKG_BACKUP_DIR"
 
-                mv "$PACKAGE_INSTALLED_DIR" "$PACKAGE_BACKUP__DIR"
+                mv "$PACKAGE_INSTALL_DIR" "$PACKAGE_BACKUP__DIR"
 
                 (__install_the_given_package "$PACKAGE_SPEC")
 
@@ -3863,7 +3857,7 @@ __upgrade_packages() {
 
     for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -3901,19 +3895,19 @@ __upgrade_packages() {
 
     for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*/}"
+        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*:}"
 
         TARGET_ANDROID_API=
         TARGET_ANDROID_ABI=
 
-        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-        TARGET_ANDROID_ABI="$( printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f2)"
+        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f1 | cut -d- -f2)"
+        TARGET_ANDROID_ABI="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f2)"
 
         ##################################################################
 
         TO_BE_INSTALLED_PACKAGE_NAMES=
 
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -3952,18 +3946,15 @@ __upgrade_packages() {
 
         for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
         do
-            PACKAGE_SPEC="$PACKAGE_NAME/$TARGET_ANDROID_SPEC"
+            PACKAGE_SPEC="$PACKAGE_NAME:$TARGET_ANDROID_SPEC"
 
             if is_package__outdated "$PACKAGE_SPEC" ; then
-                PACKAGE_XXXX=
-                PACKAGE_XXXX="$(printf '%s\n' "$PACKAGE_SPEC" | tr '/' '-')"
-
-                PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-                PACKAGE_BACKUP__DIR="$NDKPKG_BACKUP_DIR/$PACKAGE_XXXX"
+                PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+                PACKAGE_BACKUP__DIR="$NDKPKG_BACKUP_DIR/$PACKAGE_SPEC"
 
                 install -d "$NDKPKG_BACKUP_DIR"
 
-                mv "$PACKAGE_INSTALLED_DIR" "$PACKAGE_BACKUP__DIR"
+                mv "$PACKAGE_INSTALL_DIR" "$PACKAGE_BACKUP__DIR"
 
                 (__install_the_given_package "$PACKAGE_SPEC")
 
@@ -3975,6 +3966,21 @@ __upgrade_packages() {
     done
 }
 
+# peel_installed_root_dir_for_the_given_package <PACKAGE-NAME|PACKAGE-SPEC>
+  peel_installed_root_dir_for_the_given_package() {
+    PACKAGE_SPEC=
+    PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+    if is_package_installed "$PACKAGE_SPEC" ; then
+        PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$PACKAGE_SPEC"
+        PACKAGE_INSTALL_SHA="$(cat "$PACKAGE_INSTALL_REF")"
+        PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+        printf '%s\n' "$PACKAGE_INSTALL_DIR"
+    else
+        abort 1 "package '$PACKAGE_SPEC' is not installed."
+    fi
+}
+
 # }}}
 ##############################################################################
 # {{{ ndk-pkg install
@@ -3984,48 +3990,48 @@ __upgrade_packages() {
     case $1 in
         '') abort 1 "neither package-name nor package-spec is specified."
             ;;
-        */android-[1-9][0-9]/*/*)
+        *:android-[1-9][0-9]:*:*)
             abort 1 "invalid package spec: $1"
             ;;
-        */android-[1-9][0-9]/*)
-            PACKAGE_NAME="${1%%/*}"
+        *:android-[1-9][0-9]:*)
+            PACKAGE_NAME="${1%%:*}"
 
             if [ -z "$PACKAGE_NAME" ] ; then
-                abort 1 "invalid package spec: $1\npackage name is unspecifed."
+                abort 1 "invalid package spec: $1\n    package name is unspecifed."
             elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                 :
             else
-                abort 1 "invalid package spec: $1\npackage name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
+                abort 1 "invalid package spec: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
             fi
 
-            TARGET_ANDROID_API="$(printf '%s\n' "$1" | cut -d/ -f2 | cut -d- -f2)"
-            TARGET_ANDROID_ABI="$(printf '%s\n' "$1" | cut -d/ -f3)"
+            TARGET_ANDROID_API="$(printf '%s\n' "$1" | cut -d: -f2 | cut -d- -f2)"
+            TARGET_ANDROID_ABI="$(printf '%s\n' "$1" | cut -d: -f3)"
 
             case $TARGET_ANDROID_ABI in
                 armeabi-v7a|arm64-v8a|x86|x86_64) ;;
-                *)  abort 1 "invalid package spec. unrecognized android abi: $TARGET_ANDROID_ABI"
+                *)  abort 1 "invalid package spec: $1\n    unrecognized android abi: $TARGET_ANDROID_ABI"
             esac
 
             PACKAGE_SPEC="$1"
             ;;
-        */*)abort 1 "invalid package spec: $1"
+        *:*)abort 1 "invalid package spec: $1"
             ;;
         *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                 case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-                    '') NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21/arm64-v8a'
+                    '') NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21:arm64-v8a'
                         ;;
-                    android-[1-9][0-9]/armeabi-v7a)
+                    android-[1-9][0-9]:armeabi-v7a)
                         ;;
-                    android-[1-9][0-9]/arm64-v8a)
+                    android-[1-9][0-9]:arm64-v8a)
                         ;;
-                    android-[1-9][0-9]/x86)
+                    android-[1-9][0-9]:x86)
                         ;;
-                    android-[1-9][0-9]/x86_64)
+                    android-[1-9][0-9]:x86_64)
                         ;;
                     *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
                 esac
 
-                PACKAGE_SPEC="$1/$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC"
+                PACKAGE_SPEC="$1:$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC"
             else
                 abort 1 "invalid package name: $1"
             fi
@@ -4126,52 +4132,52 @@ inspect_install_arguments() {
     for PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
     do
         case $PACKAGE in
-            */android-[1-9][0-9]/*/*)
+            *:android-[1-9][0-9]:*:*)
                 abort 1 "invalid package spec: $PACKAGE"
                 ;;
-            */android-[1-9][0-9]/*)
-                PACKAGE_NAME="${PACKAGE%%/*}"
+            *:android-[1-9][0-9]:*)
+                PACKAGE_NAME="${PACKAGE%%:*}"
 
                 if [ -z "$PACKAGE_NAME" ] ; then
-                    abort 1 "invalid package spec: $PACKAGE\npackage name is unspecifed."
+                    abort 1 "invalid package spec: $PACKAGE\n    package name is unspecifed."
                 elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                     :
                 else
-                    abort 1 "invalid package spec: $1\npackage name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
+                    abort 1 "invalid package spec: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
                 fi
 
-                TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE" | cut -d/ -f2 | cut -d- -f2)"
-                TARGET_ANDROID_ABIS="$(printf '%s\n' "$PACKAGE" | cut -d/ -f3 | tr ',' ' ')"
+                TARGET_ANDROID_API="$( printf '%s\n' "$PACKAGE" | cut -d: -f2 | cut -d- -f2)"
+                TARGET_ANDROID_ABIS="$(printf '%s\n' "$PACKAGE" | cut -d: -f3 | tr ',' ' ')"
 
                 for TARGET_ANDROID_ABI in $TARGET_ANDROID_ABIS
                 do
                     case $TARGET_ANDROID_ABI in
                         armeabi-v7a|arm64-v8a|x86|x86_64)
-                            USER_SPECIFIED_PACKAGE_SPEC_LIST="$USER_SPECIFIED_PACKAGE_SPEC_LIST $PACKAGE_SPEC $PACKAGE_NAME/android-$TARGET_ANDROID_API/$TARGET_ANDROID_ABI"
+                            USER_SPECIFIED_PACKAGE_SPEC_LIST="$USER_SPECIFIED_PACKAGE_SPEC_LIST $PACKAGE_SPEC $PACKAGE_NAME:android-$TARGET_ANDROID_API:$TARGET_ANDROID_ABI"
                             ;;
-                        *)  abort 1 "invalid package spec. unrecognized android abi: $TARGET_ANDROID_ABI"
+                        *)  abort 1 "invalid package spec: $PACKAGE\n    unrecognized android abi: $TARGET_ANDROID_ABI"
                     esac
                 done
                 ;;
-            */*)
+            *:*)
                 abort 1 "invalid package spec: $PACKAGE"
                 ;;
             *)  if printf '%s\n' "$PACKAGE" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                     case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-                        '') NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21/arm64-v8a'
+                        '') NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21:arm64-v8a'
                             ;;
-                        android-[1-9][0-9]/armeabi-v7a)
+                        android-[1-9][0-9]:armeabi-v7a)
                             ;;
-                        android-[1-9][0-9]/arm64-v8a)
+                        android-[1-9][0-9]:arm64-v8a)
                             ;;
-                        android-[1-9][0-9]/x86)
+                        android-[1-9][0-9]:x86)
                             ;;
-                        android-[1-9][0-9]/x86_64)
+                        android-[1-9][0-9]:x86_64)
                             ;;
                         *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
                     esac
 
-                    USER_SPECIFIED_PACKAGE_SPEC_LIST="$USER_SPECIFIED_PACKAGE_SPEC_LIST $PACKAGE/$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC"
+                    USER_SPECIFIED_PACKAGE_SPEC_LIST="$USER_SPECIFIED_PACKAGE_SPEC_LIST $PACKAGE:$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC"
                 else
                     abort 1 "invalid package name: $PACKAGE"
                 fi
@@ -4243,7 +4249,7 @@ __install_the_given_packages() {
 
     for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -4281,19 +4287,19 @@ __install_the_given_packages() {
 
     for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*/}"
+        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*:}"
 
         TARGET_ANDROID_API=
         TARGET_ANDROID_ABI=
 
-        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f1 | cut -d- -f2)"
-        TARGET_ANDROID_ABI="$( printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d/ -f2)"
+        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f1 | cut -d- -f2)"
+        TARGET_ANDROID_ABI="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f2)"
 
         ##################################################################
 
         TO_BE_INSTALLED_PACKAGE_NAMES=
 
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%/*}"
+        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -4332,7 +4338,7 @@ __install_the_given_packages() {
 
         for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
         do
-            PACKAGE_SPEC="$PACKAGE_NAME/$TARGET_ANDROID_SPEC"
+            PACKAGE_SPEC="$PACKAGE_NAME:$TARGET_ANDROID_SPEC"
 
             if is_package_installed "$PACKAGE_SPEC" ; then
                 if [ "$LOG_LEVEL" -gt 0 ] ; then
@@ -4671,10 +4677,23 @@ EXPORT_COMPILE_COMMANDS_JSON = $EXPORT_COMPILE_COMMANDS_JSON
 
     #########################################################################################
 
+    PACKAGE_INSTALL_UTS=
+    PACKAGE_INSTALL_UTS="$(date +%s)"
+
+    PACKAGE_INSTALL_SHA=
+    PACKAGE_INSTALL_SHA="$(
+{
+    sha256sum <<EOF
+$PACKAGE_SPEC:$$:$PACKAGE_INSTALL_UTS
+EOF
+} | cut -d ' ' -f1)"
+
+    #########################################################################################
+
     step "create and change to working directory"
 
     PACKAGE_WORKING_DIR="$SESSION_DIR/$PACKAGE_NAME"
-    PACKAGE_INSTALL_DIR="$NDKPKG_HOME/installed/$PACKAGE_SPEC"
+    PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
 
     PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
     PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
@@ -5085,7 +5104,9 @@ EOF
     [ -n "$PACKAGE_DEP_PKG" ] && {
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/$TARGET_ANDROID_SPEC"
+            DEPENDENT_PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$DEPENDENT_PACKAGE_NAME:$TARGET_ANDROID_SPEC"
+            DEPENDENT_PACKAGE_INSTALL_SHA="$(cat "$DEPENDENT_PACKAGE_INSTALL_REF")"
+            DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_INSTALL_SHA"
 
             if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
                 RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
@@ -6059,7 +6080,9 @@ EOF
     do
         DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
 
-        DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/$TARGET_ANDROID_SPEC"
+        DEPENDENT_PACKAGE_INSTALL_REF="$NDKPKG_REFS_DIR/$DEPENDENT_PACKAGE_NAME:$TARGET_ANDROID_SPEC"
+        DEPENDENT_PACKAGE_INSTALL_SHA="$(cat "$DEPENDENT_PACKAGE_INSTALL_REF")"
+        DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_INSTALL_SHA"
         DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
         DEPENDENT_PACKAGE_INCLUDE_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/include"
         DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
@@ -7111,6 +7134,10 @@ $PACKAGE_DOBUILD_ACTIONS
     step "generate METADATA.yml"
     __generate_receipt_of_the_given_package "$1"
 
+    step "generate ref: $PACKAGE_INSTALL_SHA for $PACKAGE_SPEC"
+    run install -d "$NDKPKG_REFS_DIR"
+    printf '%s\n' "$PACKAGE_INSTALL_SHA" > "$NDKPKG_REFS_DIR/$PACKAGE_SPEC"
+
     #########################################################################################
 
     [ "$CCACHE_ENABLED" = yes ] && {
@@ -7130,7 +7157,7 @@ $PACKAGE_DOBUILD_ACTIONS
     success "$1 have been successfully installed."
 
     step "show installed files in tree-like format"
-    __tree_the_given_installed_package "$1" --dirsfirst -a
+    run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
 }
 
 __create_cmake_config_files_for_the_given_target() {
@@ -8700,13 +8727,13 @@ ${COLOR_GREEN}NDKPKG_XTRACE${COLOR_OFF}
     for debugging purposes. to enable set -x: ${COLOR_RED}export NDKPKG_XTRACE=1${COLOR_OFF}
 
 ${COLOR_GREEN}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF}
-    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <PACKAGE-NAME>/<TARGET-ANDROID-SPEC>, To simplify the usage, you are allowed to omit /<TARGET-ANDROID-SPEC>. If /<TARGET-ANDROID-SPEC> is omitted, this environment variable will be used, if this environment variable is not set, then android-21/arm64-v8a will be used as the default.
+    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <PACKAGE-NAME>:<TARGET-ANDROID-SPEC>, To simplify the usage, you are allowed to omit :<TARGET-ANDROID-SPEC>. If :<TARGET-ANDROID-SPEC> is omitted, this environment variable will be used, if this environment variable is not set, then android-21:arm64-v8a will be used as the default.
 
-    <TARGET-ANDROID-SPEC> has the form android-<MIN-SDK-API-LEVEL>/<ANDROID-ABI>
+    <TARGET-ANDROID-SPEC> has the form android-<MIN-SDK-API-LEVEL>:<ANDROID-ABI>
 
     Example:
 
-    ${COLOR_RED}export NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21/arm64-v8a'${COLOR_OFF}
+    ${COLOR_RED}export NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21:arm64-v8a'${COLOR_OFF}
 
     References:
 
@@ -8765,6 +8792,8 @@ main() {
     NDKPKG_PACKAGE_SYMLINKED_ROOT="$NDKPKG_HOME/symlinked"
     NDKPKG_DOWNLOADS_DIR="$NDKPKG_HOME/downloads"
     NDKPKG_BACKUP_DIR="$NDKPKG_HOME/backup.d"
+
+    NDKPKG_REFS_DIR="$NDKPKG_HOME/refs"
 
     NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
     NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"

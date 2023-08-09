@@ -53,25 +53,25 @@ function _ndk_pkg_available_packages() {
 
 function _ndk_pkg_installed_packages() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null))
+    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null | sed 's|:|\\:|g'))
     _describe 'installed-packages' _installed_packages
 }
 
 function _ndk_pkg_installed_package_names() {
     local -a _installed_packages
-    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null | cut -d/ -f1))
+    _installed_packages=($(ndk-pkg ls-installed 2>/dev/null | cut -d: -f1))
     _describe 'installed-packages' _installed_packages
 }
 
 function _ndk_pkg_outdated_packages() {
     local -a _outdated_packages
-    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null))
+    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null | sed 's|:|\\:|g'))
     _describe 'outdated-packages' _outdated_packages
 }
 
 function _ndk_pkg_outdated_package_names() {
     local -a _outdated_packages
-    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null | cut -d/ -f1))
+    _outdated_packages=($(ndk-pkg ls-outdated 2>/dev/null | cut -d: -f1))
     _describe 'outdated-packages' _outdated_packages
 }
 
