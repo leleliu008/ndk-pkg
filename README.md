@@ -454,7 +454,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg formula-edit curl --editor=/usr/local/bin/vim
     ```
 
-    **Note**: `ndk-pkg` do NOT save your changes, which means that your changes may be lost after the formula repository is updated!
+    **Caveats**: `ndk-pkg` does NOT save your changes, which means that your changes may be lost after the formula repository is updated!
 
 - **list all avaliable formula repositories**
 
@@ -700,7 +700,7 @@ ndk-pkg offical formula repository would be automatically fetched to local cache
 
 ## Using my published prefab aar alongside with Android Gradle Plugin
 
-Some commonly used packages have been packed as google prefab aar and published to `mavenCentral`. please visiting the follwoing websites to to get the full list of my published packages:
+Some commonly used packages have been packed as google prefab aar and published to `mavenCentral`. please visit the follwoing websites to to get the full list of my published packages:
 
 - <https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/>
 - <https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab>
@@ -781,7 +781,7 @@ android {
 
 ## Create the google prefab aar then deploy it to Maven Local Reposotory and use it alongside with Android Gradle Plugin
 
-If packages that have been published to `mavenCentral` doesn't meet your needs, you can use this software to install packages then deploy them to `mavenLocal`.
+If my published packages that have been published to `mavenCentral` doesn't meet your needs, you can use this software to install packages then deploy them to `mavenLocal`.
 
 Suppose you want to build and install the `libpng` package, then deploy it to `mavenLocal`, the following steps you would do:
 

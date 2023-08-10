@@ -1064,6 +1064,8 @@ filetype_from_url() {
 
     #########################################################################################
 
+    PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
     PACKAGE_BUILD0_ACTIONS=
     PACKAGE_BUILD0_ACTIONS="$(yq '.build0   | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1330,16 +1332,6 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for item in $PACKAGE_INSTALL
-    do
-        case $item in
-            exe) PACKAGE_INSTALL_EXE=yes ;;
-            pie) PACKAGE_INSTALL_PIE=yes ;;
-            dev) PACKAGE_INSTALL_DEV=yes ;;
-            lib) PACKAGE_INSTALL_LIB=yes ;;
-        esac
-    done
-
     PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
 
     PACKAGE_FORMULA_LOADED=yes
@@ -1483,73 +1475,68 @@ timestamp: $TIMESTAMP_UNIX
 EOF
 }
 
-# __load_receipt_of_the_given_package <PACKAGE-SPEC>
+# __load_receipt_of_the_given_package <PACKAGE-NAME|PACKAGE-SPEC>
   __load_receipt_of_the_given_package() {
-    PACKAGE_INSTALLED_DIR="$(peel_installed_root_dir_for_the_given_package "$1")"
+    PACKAGE_SPEC=
+    PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ndk-pkg/METADATA.yml"
+    is_package_installed "$PACKAGE_SPEC"
 
-    unset RECEIPT_PACKAGE_SUMMARY
-    unset RECEIPT_PACKAGE_VERSION
-    unset RECEIPT_PACKAGE_LICENSE
+    [ $? -eq 0 ] || return $?
 
-    unset RECEIPT_PACKAGE_WEB_URL
+    PACKAGE_INSTALLED_DIR="$(readlink -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC")"
 
-    unset RECEIPT_PACKAGE_GIT_URL
-    unset RECEIPT_PACKAGE_GIT_SHA
-    unset RECEIPT_PACKAGE_GIT_REF
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ndk-pkg/RECEIPT.yml"
 
-    unset RECEIPT_PACKAGE_SVN_URL
+    unset PACKAGE_RECEIPT_PKGNAME
+    unset PACKAGE_RECEIPT_SUMMARY
+    unset PACKAGE_RECEIPT_VERSION
+    unset PACKAGE_RECEIPT_LICENSE
 
-    unset RECEIPT_PACKAGE_SRC_URL
-    unset RECEIPT_PACKAGE_SRC_URI
-    unset RECEIPT_PACKAGE_SRC_SHA
+    unset PACKAGE_RECEIPT_WEB_URL
 
-    unset RECEIPT_PACKAGE_FIX_URL
-    unset RECEIPT_PACKAGE_FIX_SHA
+    unset PACKAGE_RECEIPT_GIT_URL
+    unset PACKAGE_RECEIPT_GIT_SHA
+    unset PACKAGE_RECEIPT_GIT_REF
 
-    unset RECEIPT_PACKAGE_RES_URL
-    unset RECEIPT_PACKAGE_RES_SHA
+    unset PACKAGE_RECEIPT_SVN_URL
 
-    unset RECEIPT_PACKAGE_DEP_PKG
-    unset RECEIPT_PACKAGE_DEP_UPP
-    unset RECEIPT_PACKAGE_DEP_PYM
-    unset RECEIPT_PACKAGE_DEP_PLM
+    unset PACKAGE_RECEIPT_SRC_URL
+    unset PACKAGE_RECEIPT_SRC_URI
+    unset PACKAGE_RECEIPT_SRC_SHA
 
-    unset RECEIPT_PACKAGE_BSYSTEM
-    unset RECEIPT_PACKAGE_BSCRIPT
-    unset RECEIPT_PACKAGE_DOPATCH
-    unset RECEIPT_PACKAGE_INSTALL
-    unset RECEIPT_PACKAGE_SYMLINK
+    unset PACKAGE_RECEIPT_FIX_URL
+    unset PACKAGE_RECEIPT_FIX_SHA
 
-    unset RECEIPT_PACKAGE_PARALLEL
+    unset PACKAGE_RECEIPT_RES_URL
+    unset PACKAGE_RECEIPT_RES_SHA
 
-    unset RECEIPT_PACKAGE_DEVELOPER
+    unset PACKAGE_RECEIPT_DEP_PKG
+    unset PACKAGE_RECEIPT_DEP_UPP
+    unset PACKAGE_RECEIPT_DEP_PYM
+    unset PACKAGE_RECEIPT_DEP_PLM
 
-    #######################################################################################################
+    unset PACKAGE_RECEIPT_API_MIN
+
+    unset PACKAGE_RECEIPT_BSYSTEM
+    unset PACKAGE_RECEIPT_BSCRIPT
+    unset PACKAGE_RECEIPT_DOPATCH
+    unset PACKAGE_RECEIPT_INSTALL
+    unset PACKAGE_RECEIPT_SYMLINK
+
+    unset PACKAGE_RECEIPT_PARALLEL
+
+    unset PACKAGE_RECEIPT_DEVELOPER
 
     unset PACKAGE_RECEIPT_SIGNATURE
     unset PACKAGE_RECEIPT_TIMESTAMP
 
-    PACKAGE_RECEIPT_SIGNATURE="$(yq .signature "$PACKAGE_RECEIPT_FILEPATH")"
-    PACKAGE_RECEIPT_TIMESTAMP="$(yq .timestamp "$PACKAGE_RECEIPT_FILEPATH")"
+    unset PACKAGE_RECEIPT_BUILT_FOR
+    unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID
+    unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API
+    unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI
 
-    if [ -z "$PACKAGE_RECEIPT_SIGNATURE" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_SIGNATURE must be non-empty."
-        return 1
-    fi
-
-    if [ -z "$PACKAGE_RECEIPT_TIMESTAMP" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_TIMESTAMP must be non-empty."
-        return 1
-    fi
-
-    RECEIPT_NDK_VERSION=
-    RECEIPT_NDK_VERSION="$(yq '.ndkvers | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-
-    #######################################################################################################
-
-    for key in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel developer
+    for key in pkgname summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm api-min license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel developer signature timestamp built-for
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -1558,24 +1545,60 @@ EOF
         __VALUE__="$(yq ".$key" "$PACKAGE_RECEIPT_FILEPATH")"
 
         if [ "$__VALUE__" = null ] ; then
-                __VALUE__=
+               __VALUE__=
         fi
 
-        eval "RECEIPT_PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
+        eval "PACKAGE_RECEIPT_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
     done
 
-    if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_VERSION must be non-empty."
+    if [ "${PACKAGE_SPEC%%:*}" != "$PACKAGE_RECEIPT_PKGNAME" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_PKGNAME does not identical with your request: ${PACKAGE_SPEC%%:*}"
         return 1
     fi
 
-    if [ -z "$RECEIPT_PACKAGE_SUMMARY" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_SUMMARY must be non-empty."
+    if [ "${PACKAGE_SPEC#*:}" != "$PACKAGE_RECEIPT_BUILT_FOR" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_BUILT_FOR does not identical with your request: ${PACKAGE_SPEC#*:}"
         return 1
     fi
 
-    if [ -z "$RECEIPT_PACKAGE_WEB_URL" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_WEB_URL must be non-empty."
+    PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI="${PACKAGE_RECEIPT_BUILT_FOR#*:}"
+    PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API="${PACKAGE_RECEIPT_BUILT_FOR%:*}"
+    PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API="${PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API#android-}"
+
+    case $PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API in
+        [1-9][0-9])
+            ;;
+        *)  abort 1 "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API must be an integer."
+    esac
+
+    case $PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI in
+        arm64-v8a|armeabi-v7a|x86_64|x86)
+            ;;
+        *)  abort 1 "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI must be any one of arm64-v8a|armeabi-v7a|x86_64|x86"
+    esac
+
+    if [ -z "$PACKAGE_RECEIPT_VERSION" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_VERSION must be non-empty."
+        return 1
+    fi
+
+    if [ -z "$PACKAGE_RECEIPT_SUMMARY" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_SUMMARY must be non-empty."
+        return 1
+    fi
+
+    if [ -z "$PACKAGE_RECEIPT_WEB_URL" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_WEB_URL must be non-empty."
+        return 1
+    fi
+
+    if [ -z "$PACKAGE_RECEIPT_SIGNATURE" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_SIGNATURE must be non-empty."
+        return 1
+    fi
+
+    if [ -z "$PACKAGE_RECEIPT_TIMESTAMP" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_TIMESTAMP must be non-empty."
         return 1
     fi
 
@@ -1591,12 +1614,7 @@ EOF
 
 # __show_receipt_of_the_given_package <PACKAGE-SPEC> [--json] [--yaml] [--path] [<KEY>]
   __show_receipt_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__show_receipt_of_the_given_package <PACKAGE-SPEC> [--json] [--yaml] [--path] [<KEY>], <PACKAGE-NAME> is unspecified."
-
-    PACKAGE_SPEC=
-    PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-    __load_receipt_of_the_given_package "$PACKAGE_SPEC"
+    __load_receipt_of_the_given_package "$1"
 
     case $2 in
         --yaml|'')
@@ -1699,7 +1717,7 @@ is_package_available() {
         [ -L "$PACKAGE_INSTALL_DIR" ] || exit 11
         [ -d "$PACKAGE_INSTALL_DIR" ] || exit 12
         [ -f "$PACKAGE_INSTALL_DIR/.ndk-pkg/MANIFEST.txt" ] || exit 14
-        [ -f "$PACKAGE_INSTALL_DIR/.ndk-pkg/METADATA.yml" ] || exit 15
+        [ -f "$PACKAGE_INSTALL_DIR/.ndk-pkg/RECEIPT.yml" ] || exit 15
     )
 }
 
@@ -1711,7 +1729,7 @@ is_package_available() {
   is_package__outdated() {
     __load_receipt_of_the_given_package "$1"
     __load_formula_of_the_given_package "${1%%:*}"
-    version_match "$PACKAGE_VERSION" gt "$RECEIPT_PACKAGE_VERSION"
+    version_match "$PACKAGE_VERSION" gt "$PACKAGE_RECEIPT_VERSION"
 }
 
 # }}}
@@ -2046,40 +2064,28 @@ EOF
             cut -d '|' -f3 "$PACKAGE_INSTALL_DIR/.ndk-pkg/MANIFEST.txt"
             ;;
         installed-timestamp-unix)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
+            __load_receipt_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_RECEIPT_TIMESTAMP"
             ;;
         installed-timestamp-rfc-3339)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
+            __load_receipt_of_the_given_package "$1"
             format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z'
             ;;
         installed-timestamp-iso-8601)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
+            __load_receipt_of_the_given_package "$1"
             format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%dT%H:%M:%S%:z'
             ;;
         installed-timestamp-rfc-3339-utc)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
+            __load_receipt_of_the_given_package "$1"
             format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z' -u
             ;;
         installed-timestamp-iso-8601-utc)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
+            __load_receipt_of_the_given_package "$1"
             format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%dT%H:%M:%SZ' -u
             ;;
         installed-version)
-            PACKAGE_SPEC=
-            PACKAGE_SPEC="$(inspect_package_spec "$1")"
-            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
-            printf '%s\n' "$RECEIPT_PACKAGE_VERSION"
+            __load_receipt_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_RECEIPT_VERSION"
             ;;
         dopatch)
             __load_formula_of_the_given_package "$1"
@@ -2088,6 +2094,10 @@ EOF
         install)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOBUILD_ACTIONS"
+            ;;
+        developer)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_DEVELOPER"
             ;;
         *)  __load_formula_of_the_given_package "$1"
             __PACKAGE_GET__KEY__="$(printf '%s\n' "$2" | tr '+-.' '_' | tr a-z A-Z)"
@@ -2244,19 +2254,9 @@ __fetch_resources_of_the_given_package() {
 # examples:
 # __pack_the_given_installed_package <PACKAGE-NAME|PACKAGE-SPEC> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-working-dir]
   __pack_the_given_installed_package() {
-    PACKAGE_SPEC=
-    PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-    __load_receipt_of_the_given_package "$PACKAGE_SPEC"
-
-    PACKAGE_NAME="${PACKAGE_SPEC%%:*}"
-
-    TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d: -f2 | cut -d- -f2)"
-    TARGET_ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d: -f3)"
+    __load_receipt_of_the_given_package "$1"
 
     shift
-
-    ###########################################################################################
 
     unset OUTPUT_DIR
     unset OUTPUT_FILETYPE
@@ -2341,7 +2341,7 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    case $TARGET_ANDROID_ABI in
+    case $PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI in
         armeabi-v7a) TARGET_ANDROID_ARCH='armv7a'  ;;
         arm64-v8a)   TARGET_ANDROID_ARCH='aarch64' ;;
         x86)         TARGET_ANDROID_ARCH='i686'    ;;
@@ -2349,9 +2349,9 @@ __fetch_resources_of_the_given_package() {
     esac
 
     if [ "$OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL" = yes ] ; then
-        PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android$TARGET_ANDROID_API-$TARGET_ANDROID_ARCH"
+        PACKED_DIR_NAME="$PACKAGE_RECEIPT_PKGNAME-$PACKAGE_RECEIPT_VERSION-android$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API-$TARGET_ANDROID_ARCH"
     else
-        PACKED_DIR_NAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$TARGET_ANDROID_ARCH"
+        PACKED_DIR_NAME="$PACKAGE_RECEIPT_PKGNAME-$PACKAGE_RECEIPT_VERSION-android-$TARGET_ANDROID_ARCH"
     fi
 
     ###########################################################################################
@@ -2465,15 +2465,12 @@ __fetch_resources_of_the_given_package() {
 
 # __create_google_prefab_for_the_given_installed_package <PACKAGE-SPEC>
   __create_google_prefab_for_the_given_installed_package() {
-    PACKAGE_SPEC=
-    PACKAGE_SPEC="$(inspect_package_spec "$1")"
+    __load_receipt_of_the_given_package "$1"
 
-    __load_receipt_of_the_given_package "$PACKAGE_SPEC"
+    PACKAGE_NAME="$PACKAGE_RECEIPT_PKGNAME"
 
-    PACKAGE_NAME="${PACKAGE_SPEC%%:*}"
-
-    TARGET_ANDROID_API="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d: -f2 | cut -d- -f2)"
-    TARGET_ANDROID_ABI="$(printf '%s\n' "$PACKAGE_SPEC" | cut -d: -f3)"
+    TARGET_ANDROID_API="$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API"
+    TARGET_ANDROID_ABI="$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI"
 
     PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALLED_DIR/include"
     PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib-for-apk"
@@ -2560,7 +2557,7 @@ EOF
 
     unset VERSION
 
-    if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
+    if [ -z "$PACKAGE_RECEIPT_VERSION" ] ; then
         VERSION="$(format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y.%m.%d')"
     else
         unset SED_E
@@ -2585,7 +2582,7 @@ EOF
         # 3.0-11
         # 1.4g
         # 0.15.2e
-        VERSION="$(printf '%s\n' "$RECEIPT_PACKAGE_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
+        VERSION="$(printf '%s\n' "$PACKAGE_RECEIPT_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
 
         printf '%s\n' "$VERSION" | {
             grep -q '[0-9]*' ||
@@ -2597,7 +2594,7 @@ EOF
 
     unset DEPENDENCIES
 
-    for DEPENDENT_PACKAGE_NAME in $RECEIPT_PACKAGE_DEP_PKG
+    for DEPENDENT_PACKAGE_NAME in $PACKAGE_RECEIPT_DEP_PKG
     do
         if [ -z "$DEPENDENCIES" ] ; then
             DEPENDENCIES="\"$DEPENDENT_PACKAGE_NAME\""
@@ -2770,7 +2767,7 @@ EOF
 
     #########################################################################################
 
-    AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION.aar"
+    AAR_FILENAME="$PACKAGE_NAME-$PACKAGE_RECEIPT_VERSION.aar"
 
     step "packing the prefab aar file"
     run zip -9 -r "$AAR_FILENAME" .
@@ -2900,7 +2897,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
     cd $WORKING_DIR
-    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=true
+    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$PACKAGE_RECEIPT_VERSION -Dpackaging=aar -DgeneratePom=true
     cd -
     rm -rf $WORKING_DIR
             "
@@ -2911,7 +2908,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
         # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
         step "deploying the prefab aar to Maven Local Repository"
-        run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=true
+        run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=true
 
         if [ "$KEEP_WORKING_DIR" = yes ] ; then
             printf '\n'
@@ -2946,13 +2943,13 @@ ${COLOR_GREEN}step3. configure dependencies${COLOR_OFF}
 ${COLOR_PURPLE}For Gradle Groovy DSL:${COLOR_OFF}
 
 dependencies {
-    implementation '$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar'
+    implementation '$GROUPID:$PACKAGE_NAME:$PACKAGE_RECEIPT_VERSION@aar'
 }
 
 ${COLOR_PURPLE}For Gradle Kotlin DSL:${COLOR_OFF}
 
 dependencies {
-    implementation(\"$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar\")
+    implementation(\"$GROUPID:$PACKAGE_NAME:$PACKAGE_RECEIPT_VERSION@aar\")
 }
 
 ${COLOR_GREEN}step4. find package and link libraries in your Android project's CMakeLists.txt${COLOR_OFF}
@@ -2991,12 +2988,12 @@ ${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.s
     # https://central.sonatype.org/publish/publish-manual/
 
     if [ -n "$DEPLOYED_TO_SONATYPE_OSSRH" ] ; then
-        if [ -z "$RECEIPT_PACKAGE_LICENSE" ] ; then
-            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_LICENSE is empty."
+        if [ -z "$PACKAGE_RECEIPT_LICENSE" ] ; then
+            abort 1 "can not be deployed to Sonatype OSSRH due to PACKAGE_RECEIPT_LICENSE is empty."
         fi
 
-        if [ -z "$RECEIPT_PACKAGE_GIT_URL" ] && [ -z "$RECEIPT_PACKAGE_SVN_URL" ] ; then
-            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_GIT_URL and RECEIPT_PACKAGE_SVN_URL is empty."
+        if [ -z "$PACKAGE_RECEIPT_GIT_URL" ] && [ -z "$PACKAGE_RECEIPT_SVN_URL" ] ; then
+            abort 1 "can not be deployed to Sonatype OSSRH due to PACKAGE_RECEIPT_GIT_URL and PACKAGE_RECEIPT_SVN_URL is empty."
         fi
     fi
 
@@ -3007,39 +3004,39 @@ ${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.s
 
     <groupId>$GROUPID</groupId>
     <artifactId>$PACKAGE_NAME</artifactId>
-    <version>$RECEIPT_PACKAGE_VERSION</version>
+    <version>$PACKAGE_RECEIPT_VERSION</version>
     <packaging>aar</packaging>
 
     <name>$PACKAGE_NAME</name>
-    <description>$RECEIPT_PACKAGE_SUMMARY</description>
-    <url>$RECEIPT_PACKAGE_WEB_URL</url>
+    <description>$PACKAGE_RECEIPT_SUMMARY</description>
+    <url>$PACKAGE_RECEIPT_WEB_URL</url>
 EOF
 
-    RECEIPT_PACKAGE_SCM_URL=
+    PACKAGE_RECEIPT_SCM_URL=
 
-    if [ -n "$RECEIPT_PACKAGE_GIT_URL" ] ; then
-        RECEIPT_PACKAGE_SCM_TYPE=git
-        RECEIPT_PACKAGE_SCM_URL="$RECEIPT_PACKAGE_GIT_URL"
+    if [ -n "$PACKAGE_RECEIPT_GIT_URL" ] ; then
+        PACKAGE_RECEIPT_SCM_TYPE=git
+        PACKAGE_RECEIPT_SCM_URL="$PACKAGE_RECEIPT_GIT_URL"
     fi
 
-    if [ -n "$RECEIPT_PACKAGE_SVN_URL" ] ; then
-        RECEIPT_PACKAGE_SCM_TYPE=svn
-        RECEIPT_PACKAGE_SCM_URL="$RECEIPT_PACKAGE_SVN_URL"
+    if [ -n "$PACKAGE_RECEIPT_SVN_URL" ] ; then
+        PACKAGE_RECEIPT_SCM_TYPE=svn
+        PACKAGE_RECEIPT_SCM_URL="$PACKAGE_RECEIPT_SVN_URL"
     fi
 
-    if [ -n "$RECEIPT_PACKAGE_SCM_URL" ] ; then
+    if [ -n "$PACKAGE_RECEIPT_SCM_URL" ] ; then
         cat >> pom.xml <<EOF
 
     <scm>
-        <connection>scm:$RECEIPT_PACKAGE_SCM_TYPE:$RECEIPT_PACKAGE_SCM_URL</connection>
-        <developerConnection>scm:$RECEIPT_PACKAGE_SCM_TYPE:$RECEIPT_PACKAGE_SCM_URL</developerConnection>
-        <url>$RECEIPT_PACKAGE_SCM_URL</url>
+        <connection>scm:$PACKAGE_RECEIPT_SCM_TYPE:$PACKAGE_RECEIPT_SCM_URL</connection>
+        <developerConnection>scm:$PACKAGE_RECEIPT_SCM_TYPE:$PACKAGE_RECEIPT_SCM_URL</developerConnection>
+        <url>$PACKAGE_RECEIPT_SCM_URL</url>
     </scm>
 EOF
     fi
 
-    if [ -z "$RECEIPT_PACKAGE_DEVELOPER" ] ; then
-        RECEIPT_PACKAGE_DEVELOPER="unknown <unknown>"
+    if [ -z "$PACKAGE_RECEIPT_DEVELOPER" ] ; then
+        PACKAGE_RECEIPT_DEVELOPER="unknown <unknown>"
     fi
 
     printf '\n    <developers>\n' >> pom.xml
@@ -3047,7 +3044,7 @@ EOF
     export IFS='
 '
 
-    for DEVELOPER in $RECEIPT_PACKAGE_DEVELOPER
+    for DEVELOPER in $PACKAGE_RECEIPT_DEVELOPER
     do
         DEVELOPER_NAME=
         DEVELOPER_EMAIL=
@@ -3070,10 +3067,10 @@ EOF
 
     printf '    </developers>\n' >> pom.xml
 
-    if [ -n "$RECEIPT_PACKAGE_LICENSE" ] ; then
+    if [ -n "$PACKAGE_RECEIPT_LICENSE" ] ; then
         printf '\n    <licenses>\n' >> pom.xml
 
-        for LICENSE_NAME in $RECEIPT_PACKAGE_LICENSE
+        for LICENSE_NAME in $PACKAGE_RECEIPT_LICENSE
         do
             cat >> pom.xml <<EOF
         <license>
@@ -3112,7 +3109,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
     cd $WORKING_DIR
-    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=false -DpomFile=$POM_FILE -DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH
+    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$PACKAGE_RECEIPT_VERSION -Dpackaging=aar -DgeneratePom=false -DpomFile=$POM_FILE -DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH
     cd -
     rm -rf $WORKING_DIR
             "
@@ -3123,7 +3120,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
         # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
         step "deploying the prefab aar to Maven Local Repository"
-        run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
+        run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
 
         if [ "$KEEP_WORKING_DIR" = yes ] ; then
             printf '\n'
@@ -3730,9 +3727,9 @@ __uninstall_the_given_packages() {
 
         [ -f "$PACKAGE_MANIFEST_FILEPATH" ] || abort 13 "$PACKAGE_MANIFEST_FILEPATH file was expected exist, but it was not."
 
-        PACKAGE_METADATA_FILEPATH="$PACKAGE_INSTALLED_REAL_DIR/.ndk-pkg/METADATA.yml"
+        PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_REAL_DIR/.ndk-pkg/RECEIPT.yml"
 
-        [ -f "$PACKAGE_METADATA_FILEPATH" ] || abort 14 "$PACKAGE_METADATA_FILEPATH file was expected exist, but it was not."
+        [ -f "$PACKAGE_RECEIPT_FILEPATH" ] || abort 14 "$PACKAGE_RECEIPT_FILEPATH file was expected exist, but it was not."
 
         run rm -ff "$PACKAGE_INSTALLED_LINK_DIR"
         run rm -rf "$PACKAGE_INSTALLED_REAL_DIR"
@@ -3855,16 +3852,14 @@ __reinstall_the_given_packages() {
             PACKAGE_SPEC="$PACKAGE_NAME:$TARGET_ANDROID_SPEC"
 
             if is_package_installed "$PACKAGE_SPEC" ; then
-                PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-                PACKAGE_BACKUP__DIR="$NDKPKG_BACKUP_DIR/$PACKAGE_SPEC"
+                PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+                PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
 
-                install -d "$NDKPKG_BACKUP_DIR"
-
-                mv "$PACKAGE_INSTALL_DIR" "$PACKAGE_BACKUP__DIR"
+                mv "$PACKAGE_INSTALLED_LINK_DIR" "$SESSION_DIR/"
 
                 (__install_the_given_package "$PACKAGE_SPEC")
 
-                rm -rf "$PACKAGE_BACKUP__DIR"
+                rm -rf "$PACKAGE_INSTALLED_REAL_DIR"
             else
                 (__install_the_given_package "$PACKAGE_SPEC")
             fi
@@ -3990,16 +3985,14 @@ __upgrade_packages() {
             PACKAGE_SPEC="$PACKAGE_NAME:$TARGET_ANDROID_SPEC"
 
             if is_package__outdated "$PACKAGE_SPEC" ; then
-                PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-                PACKAGE_BACKUP__DIR="$NDKPKG_BACKUP_DIR/$PACKAGE_SPEC"
+                PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+                PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
 
-                install -d "$NDKPKG_BACKUP_DIR"
-
-                mv "$PACKAGE_INSTALL_DIR" "$PACKAGE_BACKUP__DIR"
+                mv "$PACKAGE_INSTALLED_LINK_DIR" "$SESSION_DIR/"
 
                 (__install_the_given_package "$PACKAGE_SPEC")
 
-                rm -rf "$PACKAGE_BACKUP__DIR"
+                rm -rf "$PACKAGE_INSTALLED_REAL_DIR"
             else
                 note "package '$PACKAGE_SPEC' is up-to-date."
             fi
@@ -4104,8 +4097,6 @@ inspect_install_arguments() {
     BUILD_TYPE=release
 
     LINK_TYPE=static-prefered
-
-    INSTALL_LIB=static
 
     KEEP_WORKING_DIR=no
 
@@ -6884,7 +6875,7 @@ $PACKAGE_DOBUILD_ACTIONS
     PACKAGE_METAINF_DIR="$PACKAGE_INSTALL_DIR/.ndk-pkg"
 
     PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/MANIFEST.txt"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINF_DIR/METADATA.yml"
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINF_DIR/RECEIPT.yml"
 
     install -d "$PACKAGE_METAINF_DIR"
 
@@ -7167,7 +7158,7 @@ $PACKAGE_DOBUILD_ACTIONS
     step "generate MANIFEST.txt"
     __generate_manifest_of_the_given_package "$1"
 
-    step "generate METADATA.yml"
+    step "generate RECEIPT.yml"
     __generate_receipt_of_the_given_package "$1"
 
     run ln -sr "$PACKAGE_INSTALL_DIR" "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
@@ -8813,7 +8804,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.4.0
+    NDKPKG_VERSION=0.4.1
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
@@ -8825,7 +8816,6 @@ main() {
     NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
     NDKPKG_PACKAGE_SYMLINKED_ROOT="$NDKPKG_HOME/symlinked"
     NDKPKG_DOWNLOADS_DIR="$NDKPKG_HOME/downloads"
-    NDKPKG_BACKUP_DIR="$NDKPKG_HOME/backup.d"
 
     NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
     NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"
