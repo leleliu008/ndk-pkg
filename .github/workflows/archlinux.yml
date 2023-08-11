@@ -111,6 +111,11 @@ jobs:
       - run: ./ndk-pkg pack libzip -o .
       - run: ./ndk-pkg pack libzip -o xx.tar.xz
 
+      - run: ./ndk-pkg export libzip:android-21/arm64-v8a
+      - run: ./ndk-pkg export libzip:android-21/arm64-v8a -o .
+
+      - run: ./ndk-pkg deploy libzip:android-21/arm64-v8a
+      - run: ./ndk-pkg deploy libzip:android-21/arm64-v8a --local=xxxxx
 
       - run: ./ndk-pkg formula-repo-list
 

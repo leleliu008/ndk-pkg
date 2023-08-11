@@ -2904,11 +2904,27 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
             return 0
         fi
 
-        #uppm install maven
+        if command -v mvn > /dev/null ; then
+            MVN_COMMAND=mvn
+        else
+            step "install maven"
+            run uppm install maven
+
+            unset  JAVA_HOME
+            unset MAVEN_HOME
+
+            export JAVA_HOME="$(uppm info jdk17 installed-dir)"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
+
+            MAVEN_HOME="$(uppm info maven installed-dir)"
+
+            MVN_COMMAND="$MAVEN_HOME/bin/mvn"
+        fi
 
         # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
         step "deploying the prefab aar to Maven Local Repository"
-        run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=true
+        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=true
 
         if [ "$KEEP_WORKING_DIR" = yes ] ; then
             printf '\n'
@@ -3116,11 +3132,27 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
             return 0
         fi
 
-        #uppm install maven
+        if command -v mvn > /dev/null ; then
+            MVN_COMMAND=mvn
+        else
+            step "install maven"
+            run uppm install maven
+
+            unset  JAVA_HOME
+            unset MAVEN_HOME
+
+            export JAVA_HOME="$(uppm info jdk17 installed-dir)"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
+
+            MAVEN_HOME="$(uppm info maven installed-dir)"
+
+            MVN_COMMAND="$MAVEN_HOME/bin/mvn"
+        fi
 
         # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
         step "deploying the prefab aar to Maven Local Repository"
-        run mvn $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
+        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
 
         if [ "$KEEP_WORKING_DIR" = yes ] ; then
             printf '\n'
@@ -3208,7 +3240,25 @@ EOF
 
     #########################################################################################
 
-    #uppm install maven
+    if command -v mvn > /dev/null ; then
+        MVN_COMMAND=mvn
+    else
+        step "install maven"
+        run uppm install maven
+
+        unset  JAVA_HOME
+        unset MAVEN_HOME
+
+        export JAVA_HOME="$(uppm info jdk17 installed-dir)"
+        export PATH="$JAVA_HOME/bin:$PATH"
+        export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
+
+        MAVEN_HOME="$(uppm info maven installed-dir)"
+
+        MVN_COMMAND="$MAVEN_HOME/bin/mvn"
+    fi
+
+    #########################################################################################
 
     # There are two maven plugins maven-deploy-plugin and maven-gpg-plugin can be used
     # maven-gpg-plugin is prefered as it is automatically signed with gpg.
@@ -3218,7 +3268,7 @@ EOF
     # https://maven.apache.org/resolver/configuration.html
 
     step "deploying"
-    run mvn \
+    run "$MVN_COMMAND" \
         --settings settings.xml \
         $MVN_OPTIONS \
         gpg:sign-and-deploy-file \
@@ -8804,7 +8854,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.4.1
+    NDKPKG_VERSION=0.4.2
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
