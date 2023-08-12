@@ -1524,6 +1524,8 @@ EOF
     unset PACKAGE_RECEIPT_INSTALL
     unset PACKAGE_RECEIPT_SYMLINK
 
+    unset PACKAGE_RECEIPT_NDKVERS
+
     unset PACKAGE_RECEIPT_PARALLEL
 
     unset PACKAGE_RECEIPT_DEVELOPER
@@ -1536,7 +1538,7 @@ EOF
     unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API
     unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI
 
-    for key in pkgname summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm api-min license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel developer signature timestamp built-for
+    for key in pkgname summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm api-min license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel developer signature timestamp built-for ndkvers
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -2545,7 +2547,7 @@ EOF
                 fi
             fi
 
-            printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${RECEIPT_NDK_VERSION%%.*}" "$TARGET_ANDROID_API" "$TARGET_ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
+            printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${PACKAGE_RECEIPT_NDKVERS%%.*}" "$TARGET_ANDROID_API" "$TARGET_ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
         done
     fi
 
