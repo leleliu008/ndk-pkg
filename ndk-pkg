@@ -3052,7 +3052,7 @@ EOF
     fi
 
     if [ -z "$PACKAGE_RECEIPT_DEVELOPER" ] ; then
-        PACKAGE_RECEIPT_DEVELOPER="unknown <unknown>"
+        PACKAGE_RECEIPT_DEVELOPER="$PACKAGE_NAME developers <unknown>"
     fi
 
     printf '\n    <developers>\n' >> pom.xml
