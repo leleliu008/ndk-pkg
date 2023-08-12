@@ -2744,7 +2744,7 @@ packed by ndk-pkg-$NDKPKG_VERSION in $(format_unix_timestamp "$TIMESTAMP_UNIX" '
 
 For more details, please refer to https://github.com/leleliu008/ndk-pkg
 EOF
-    run cp "$PACKAGE_INSTALLED_DIR/.ndk-pkg"/* META-INF/
+    run cp -r "$PACKAGE_INSTALLED_DIR/.ndk-pkg"/* META-INF/
 
     #########################################################################################
 
@@ -8854,7 +8854,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.4.2
+    NDKPKG_VERSION=0.4.3
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
