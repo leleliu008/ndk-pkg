@@ -25,7 +25,7 @@ Please read these caveats carefully before starting to use this software.
 [Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||tested with `Github Actions`|
 [macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||tested with `Github Actions`|
 
-## Manually build ndk-pkg packages via GitHub Actions
+## Using ndk-pkg via GitHub Actions
 
 This is the recommended way of using this software.
 
@@ -41,9 +41,9 @@ In this way, you don't need to care about other things than:
 |-|
 |<img src="1.png" width="311px" >|
 
-for details please refer to <https://github.com/leleliu008/ndk-pkg-package-manually-build>
+For details please refer to <https://github.com/leleliu008/ndk-pkg-package-manually-build>
 
-## Install ndk-pkg via Docker
+## Using ndk-pkg via Docker
 
 **step1. create the ndk-pkg docker container**
 
@@ -666,7 +666,7 @@ a ndk-pkg formula's filename suffix must be `.yml`
 
 a ndk-pkg formula'a filename prefix would be treated as the package name.
 
-a ndk-pkg formula'a filename prefix must match regular expression pattern `^[A-Za-z0-9+-._@]{1,50}$`
+a ndk-pkg formula'a filename prefix must match the regular expression pattern `^[A-Za-z0-9+-._@]{1,50}$`
 
 a ndk-pkg formula's file content must follow [the ndk-pkg formula scheme](https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core)
 
@@ -674,7 +674,7 @@ a ndk-pkg formula's file content must follow [the ndk-pkg formula scheme](https:
 
 a ndk-pkg formula repository is a git repository.
 
-a ndk-pkg formula repository's root dir should have a `formula` named sub dir, this repository's formulas all should be located in this dir.
+a ndk-pkg formula repository's root directory should have a `formula` named sub directory, this repository's formulas all should be located in this directory.
 
 a ndk-pkg formula repository's local path is `~/.ndk-pkg/repos.d/${ndk-pkgFormulaRepoName}`
 
@@ -684,7 +684,7 @@ ndk-pkg supports multiple formula repositories.
 
 After a ndk-pkg formula repository is successfully fetched from server to local, a config file for this repository would be created at `~/.ndk-pkg/repos.d/${ndk-pkgFormulaRepoName}/.ndk-pkg-formula-repo.yml`
 
-a typical ndk-pkg formula repository's config as following:
+a typical ndk-pkg formula repository's config is as follows:
 
 ```yaml
 url: https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core
@@ -701,7 +701,7 @@ If a ndk-pkg formula repository is `disabled`, which means ndk-pkg would not sea
 
 ## ndk-pkg offical formula repository
 
-ndk-pkg offical formula repository's url: <https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core>
+ndk-pkg offical formula repository is hosted at <https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core>
 
 ndk-pkg offical formula repository would be automatically fetched to local cache as name `offical-core` when you run `ndk-pkg update` command.
 
@@ -722,7 +722,7 @@ To get the full list of my published packages, please visit the follwoing websit
 
 In the next two sections, I will show you how to configure with `Android Gradle Plugin` in `Kotlin DSL` and `Groovy DSL` respectively.
 
-### configure with Android Gradle Plugin Kotlin DSL
+## configure with Android Gradle Plugin Kotlin DSL
 
 **step1. enable prefab feature for Android Gradle Plugin**
 
@@ -923,7 +923,7 @@ If my published packages don't meet your needs, you can use this software to ins
 
 In the next two sections, I will show you how to configure with `Android Gradle Plugin` in `Kotlin DSL` and `Groovy DSL` respectively.
 
-### configure with Android Gradle Plugin Kotlin DSL
+## configure with Android Gradle Plugin Kotlin DSL
 
 **step1. build and install libpng**
 
