@@ -2477,38 +2477,38 @@ __fetch_resources_of_the_given_package() {
     PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALLED_DIR/include"
     PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib-for-apk"
 
+    #########################################################################################
+
     [ -d "$PACKAGE_INCLUDE_DIR" ] || abort 10 "unable to be exported as google prefab, because there is no C/C++ header files in package $PACKAGE_SPEC"
 
+    MODULE_DIR="prefab/modules/$PACKAGE_NAME"
+    run install -d "$MODULE_DIR"
+    run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
+
     #########################################################################################
 
-    run install -d prefab
-
-    #########################################################################################
-
-    unset PACKAGE_LIBRARY_FILENAMES
+    unset PACKAGE_STATIC_LIBRARY_FILENAMES
+    unset PACKAGE_SHARED_LIBRARY_FILENAMES
 
     if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
-        PACKAGE_LIBRARY_FILENAMES="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f \( -name 'lib*.a' -o -name 'lib*.so' \) -printf '%P\n')"
+        PACKAGE_STATIC_LIBRARY_FILENAMES="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.a'  -printf '%P\n')"
+        PACKAGE_SHARED_LIBRARY_FILENAMES="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.so' -printf '%P\n')"
     fi
 
-    if [ -z "$PACKAGE_LIBRARY_FILENAMES" ] ; then
-        # headers only
-        MODULE_DIR="prefab/modules/$PACKAGE_NAME"
+    PACKAGE_LIBRARY_FILENAMES="$PACKAGE_STATIC_LIBRARY_FILENAMES $PACKAGE_SHARED_LIBRARY_FILENAMES"
+
+    for LIBRARY_FILENAME in $PACKAGE_LIBRARY_FILENAMES
+    do
+        case $LIBRARY_FILENAME in
+            *.a)  LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.a}"  ; IS_STATIC_LIBRARY=true  ;;
+            *.so) LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}" ; IS_STATIC_LIBRARY=false ;;
+        esac
+
+        MODULE_DIR="prefab/modules/$LIBRARY_FILENAME"
+
         run install -d "$MODULE_DIR"
-        run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
-    else
-        for LIBRARY_FILENAME in $PACKAGE_LIBRARY_FILENAMES
-        do
-            case $LIBRARY_FILENAME in
-                *.a)  LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.a}"  ; IS_STATIC_LIBRARY=true  ;;
-                *.so) LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}" ; IS_STATIC_LIBRARY=false ;;
-            esac
 
-            MODULE_DIR="prefab/modules/$LIBRARY_FILENAME"
-
-            run install -d "$MODULE_DIR"
-
-            cat > "$MODULE_DIR/module.json" <<EOF
+        cat > "$MODULE_DIR/module.json" <<EOF
 {
   "export_libraries": [],
   "android": {
@@ -2518,38 +2518,37 @@ __fetch_resources_of_the_given_package() {
 }
 EOF
 
-            run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
+        run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
 
-            ABI_DIR="$MODULE_DIR/libs/android.$TARGET_ANDROID_ABI"
+        ABI_DIR="$MODULE_DIR/libs/android.$TARGET_ANDROID_ABI"
 
-            run install -d "$ABI_DIR"
+        run install -d "$ABI_DIR"
 
-            LIBRARY_FILEPATH="$PACKAGE_LIBRARY_DIR/$LIBRARY_FILENAME"
+        LIBRARY_FILEPATH="$PACKAGE_LIBRARY_DIR/$LIBRARY_FILENAME"
 
-            run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
+        run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
 
-            STL=none
+        STL=none
 
-            # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
-            if [ "$IS_STATIC_LIBRARY" = true ] ; then
-                if   "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
-                    abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
-                elif "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
-                    STL=c++_shared
-                fi
-            else
-                if "$ANDROID_NDK_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
-                    STL=c++_shared
-                elif "$ANDROID_NDK_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
-                    # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
-                    # https://developer.android.com/ndk/guides/cpp-support
-                    abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
-                fi
+        # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
+        if [ "$IS_STATIC_LIBRARY" = true ] ; then
+            if   "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+            elif "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
+                STL=c++_shared
             fi
+        else
+            if "$ANDROID_NDK_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
+                STL=c++_shared
+            elif "$ANDROID_NDK_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
+                # https://developer.android.com/ndk/guides/cpp-support
+                abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+            fi
+        fi
 
-            printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${PACKAGE_RECEIPT_NDKVERS%%.*}" "$TARGET_ANDROID_API" "$TARGET_ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
-        done
-    fi
+        printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${PACKAGE_RECEIPT_NDKVERS%%.*}" "$TARGET_ANDROID_API" "$TARGET_ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
+    done
 
     #########################################################################################
 
@@ -2984,7 +2983,7 @@ android {
         externalNativeBuild {
             cmake {
                 arguments '-DANDROID_STL=c++_shared'
-                cppFlags "-std=c++17"
+                cppFlags  '-std=c++17'
             }
         }
     }
@@ -8856,7 +8855,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.4.4
+    NDKPKG_VERSION=0.4.5
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
