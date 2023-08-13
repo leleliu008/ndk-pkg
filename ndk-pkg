@@ -2481,9 +2481,8 @@ __fetch_resources_of_the_given_package() {
 
     [ -d "$PACKAGE_INCLUDE_DIR" ] || abort 10 "unable to be exported as google prefab, because there is no C/C++ header files in package $PACKAGE_SPEC"
 
-    MODULE_DIR="prefab/modules/$PACKAGE_NAME"
-    run install -d "$MODULE_DIR"
-    run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
+    run install -d prefab/modules/headers
+    run cp -r "$PACKAGE_INCLUDE_DIR" prefab/modules/headers/
 
     #########################################################################################
 
