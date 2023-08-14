@@ -32,7 +32,7 @@ This is the recommended way of using this software.
 In this way, you don't need to care about other things than:
 
 - what package would you like to build?
-- which minimum Android SDK API level would you like support?
+- which minimum Android SDK API level would you like to support?
 - which Android ABI would you like to build for?
 - which build type would you like to use?
 - which link type would you like to use?
@@ -911,6 +911,7 @@ android {
 **References:**
 
 - <https://google.github.io/prefab/>
+- <https://developer.android.com/studio/projects/android-library#aar-contents>
 - <https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies>
 
 **Examples:**
@@ -1116,6 +1117,7 @@ android {
 **References:**
 
 - <https://github.com/google/prefab>
+- <https://developer.android.com/studio/projects/android-library#aar-contents>
 - <https://developer.android.com/studio/build/dependencies?agpversion=4.1#using-native-dependencies>
 
 **Examples:**
