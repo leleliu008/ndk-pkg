@@ -8460,7 +8460,7 @@ __setup() {
     do
         run core/bin/uppm install "$item"
 
-        UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
+        UPPM_PACKAGE_INSTALLED_DIR="$(core/bin/uppm info "$item" installed-dir)"
 
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
             UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$UPPM_PACKAGE_INSTALLED_DIR/bin"
