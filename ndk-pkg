@@ -8439,7 +8439,7 @@ __setup() {
 
     wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-name="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
 
-    run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
+    run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner -C core
 
     ##################################################################################
 
