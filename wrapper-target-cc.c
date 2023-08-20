@@ -36,31 +36,17 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-#ifdef USED_AS_CXX
-    char * const compiler = getenv("ANDROID_NDK_CXX");
+    char * const cc = getenv("ANDROID_NDK_CC");
 
-    if (compiler == NULL) {
-        fprintf(stderr, "ANDROID_NDK_CXX environment variable is not set.\n");
-        return 1;
-    }
-
-    if (compiler[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_CXX environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-#else
-    char * const compiler = getenv("ANDROID_NDK_CC");
-
-    if (compiler == NULL) {
+    if (cc == NULL) {
         fprintf(stderr, "ANDROID_NDK_CC environment variable is not set.\n");
         return 1;
     }
 
-    if (compiler[0] == '\0') {
+    if (cc[0] == '\0') {
         fprintf(stderr, "ANDROID_NDK_CC environment variable value should be a non-empty string.\n");
         return 2;
     }
-#endif
 
     /////////////////////////////////////////////////////////////////
 
@@ -104,7 +90,7 @@ int main(int argc, char * argv[]) {
 
     char * argv2[argc + 4];
 
-    argv2[0] = compiler;
+    argv2[0] = cc;
     argv2[1] = targetArg;
     argv2[2] = sysrootArg;
 
@@ -214,7 +200,7 @@ int main(int argc, char * argv[]) {
         argv2[argc + 3] = NULL;
     }
 
-    execv (compiler, argv2);
-    perror(compiler);
-    return -1;
+    execv (cc, argv2);
+    perror(cc);
+    return 255;
 }

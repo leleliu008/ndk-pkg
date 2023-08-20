@@ -142,7 +142,7 @@ function _ndk_pkg() {
                         '--path[show formula file path only]' \
                         '--yaml[show formula file content in yaml format]' \
                         '--json[show formula file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min)'
+                        ':key:(summary version license web-url git-url git-sha git-ref git-dep src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min)'
                     ;;
                 receipt)
                     _arguments '1:package-name:_ndk_pkg_installed_packages' \
@@ -150,7 +150,7 @@ function _ndk_pkg() {
                         '--path[show receipt file path only]' \
                         '--yaml[show receipt file content in yaml format]' \
                         '--json[show receipt file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min signature timestamp)'
+                        ':key:(summary version license web-url git-url git-sha git-ref git-dep src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min signature timestamp)'
                     ;;
                 info)
                     case $words[3] in
@@ -161,7 +161,7 @@ function _ndk_pkg() {
                             ;;
                         *)  _arguments \
                                 '1:package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
-                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version)'
+                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-dep src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version)'
                     esac
                     ;;
                 fetch)

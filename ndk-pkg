@@ -132,10 +132,10 @@ sed_in_place() {
 }
 
 git() {
-    if [ -f "$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-        command git -c http.sslCAInfo="$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem" "$@"
-    else
+    if [ -z "$SSL_CERT_FILE" ] ; then
         command git "$@"
+    else
+        command git -c http.sslCAInfo="$SSL_CERT_FILE" "$@"
     fi
 }
 
@@ -360,8 +360,8 @@ wfetch() {
                         FETCH_TOOL_CURL_OPTIONS='--no-progress-meter'
                     fi
 
-                    if [ -f "$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-                        FETCH_TOOL_CURL_OPTIONS="--cacert $NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
+                    if [ -n "$SSL_CERT_FILE" ] ; then
+                        FETCH_TOOL_CURL_OPTIONS="--cacert $SSL_CERT_FILE"
                     fi
 
                     run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
@@ -958,12 +958,14 @@ filetype_from_url() {
     unset PACKAGE_SRC_FILEPATH
 
     unset PACKAGE_FIX_URL
+    unset PACKAGE_FIX_URI
     unset PACKAGE_FIX_SHA
     unset PACKAGE_FIX_FILENAME
     unset PACKAGE_FIX_FILETYPE
     unset PACKAGE_FIX_FILEPATH
 
     unset PACKAGE_RES_URL
+    unset PACKAGE_RES_URI
     unset PACKAGE_RES_SHA
     unset PACKAGE_RES_FILENAME
     unset PACKAGE_RES_FILETYPE
@@ -980,8 +982,6 @@ filetype_from_url() {
     unset PACKAGE_LICENSE
 
     unset PACKAGE_BSYSTEM
-
-    unset PACKAGE_SYMLINK
 
     unset PACKAGE_BUILD_SYSTEM
     unset PACKAGE_BUILD_SYSTEM_GO
@@ -1099,8 +1099,8 @@ filetype_from_url() {
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
-    if [ -z "$PACKAGE_SYMLINK" ] ; then
-        PACKAGE_SYMLINK=yes
+    if [ -z "$PACKAGE_SHALLOW" ] ; then
+        PACKAGE_SHALLOW=yes
     fi
 
     if [ -z "$PACKAGE_BINBSTD" ] ; then
@@ -1116,8 +1116,6 @@ filetype_from_url() {
     else
         PACKAGE_BUILD_IN_PARALLEL="$PACKAGE_PARALLEL"
     fi
-
-    [ -z "$PACKAGE_SYMLINK" ] && PACKAGE_SYMLINK=yes
 
     [ -z "$PACKAGE_SUMMARY" ] && abort 1 "summary mapping not found in $PACKAGE_FORMULA_FILEPATH"
 
@@ -1883,10 +1881,13 @@ __show_information_as_shell_of_all_available_packages() {
         --arg git_sha "$PACKAGE_GIT_SHA" \
         --arg git_ref "$PACKAGE_GIT_REF" \
         --arg src_url "$PACKAGE_SRC_URL" \
+        --arg src_uri "$PACKAGE_SRC_URI" \
         --arg src_sha "$PACKAGE_SRC_SHA" \
         --arg fix_url "$PACKAGE_FIX_URL" \
+        --arg fix_uri "$PACKAGE_FIX_URI" \
         --arg fix_sha "$PACKAGE_FIX_SHA" \
         --arg res_url "$PACKAGE_RES_URL" \
+        --arg res_uri "$PACKAGE_RES_URI" \
         --arg res_sha "$PACKAGE_RES_SHA" \
         --arg dep_pkg "$PACKAGE_DEP_PKG" \
         --arg dep_upp "$PACKAGE_DEP_UPP" \
@@ -1900,7 +1901,7 @@ __show_information_as_shell_of_all_available_packages() {
         --arg xxflags "$PACKAGE_XXFLAGS" \
         --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
-        --arg api-min "$PACKAGE_API_MIN" \
+        --arg api_min "$PACKAGE_API_MIN" \
         --arg parallel $PACKAGE_BUILD_IN_PARALLEL \
 '{
     "pkgname":$pkgname,
@@ -1912,15 +1913,19 @@ __show_information_as_shell_of_all_available_packages() {
     "git-sha":$git_sha,
     "git-ref":$git_ref,
     "src-url":$src_url,
+    "src-uri":$src_uri,
     "src-sha":$src_sha,
     "fix-url":$fix_url,
+    "fix-uri":$fix_uri,
     "fix-sha":$fix_sha,
     "res-url":$res_url,
+    "res-uri":$res_uri,
     "res-sha":$res_sha,
     "dep-pkg":$dep_pkg,
     "dep-upp":$dep_upp,
     "dep-pym":$dep_pym,
     "dep-plm":$dep_plm,
+    "api-min":$api_min,
     "bsystem":$bsystem,
     "binbstd":$binbstd,
     "ccflags":$ccflags,
@@ -1952,22 +1957,25 @@ git-url: $PACKAGE_GIT_URL
 git-sha: $PACKAGE_GIT_SHA
 git-ref: $PACKAGE_GIT_REF
 src-url: $PACKAGE_SRC_URL
+src-uri: $PACKAGE_SRC_URI
 src-sha: $PACKAGE_SRC_SHA
 fix-url: $PACKAGE_FIX_URL
+fix-uri: $PACKAGE_FIX_URI
 fix-sha: $PACKAGE_FIX_SHA
 res-url: $PACKAGE_RES_URL
+res-uri: $PACKAGE_RES_URI
 res-sha: $PACKAGE_RES_SHA
 dep-pkg: $PACKAGE_DEP_PKG
 dep-upp: $PACKAGE_DEP_UPP
 dep-pym: $PACKAGE_DEP_PYM
 dep-plm: $PACKAGE_DEP_PLM
+api-min: $PACKAGE_API_MIN
 bsystem: $PACKAGE_BSYSTEM
 binbstd: $PACKAGE_BINBSTD
 ppflags: $PACKAGE_PPFLAGS
 ccflags: $PACKAGE_CCFLAGS
 xxflags: $PACKAGE_XXFLAGS
 ldflags: $PACKAGE_LDFLAGS
-api-min: $PACKAGE_API_MIN
 parallel: $PACKAGE_BUILD_IN_PARALLEL
 EOF
     } | yq eval '. | with_entries(select(.value != null))'
@@ -1995,15 +2003,23 @@ PACKAGE_GIT_SHA
 PACKAGE_GIT_REF
 PACKAGE_SVN_URL
 PACKAGE_SRC_URL
+PACKAGE_SRC_URI
 PACKAGE_SRC_SHA
 PACKAGE_SRC_FILETYPE
 PACKAGE_SRC_FILENAME
 PACKAGE_SRC_FILEPATH
 PACKAGE_FIX_URL
+PACKAGE_FIX_URI
 PACKAGE_FIX_SHA
 PACKAGE_FIX_FILETYPE
 PACKAGE_FIX_FILENAME
 PACKAGE_FIX_FILEPATH
+PACKAGE_RES_URL
+PACKAGE_RES_URI
+PACKAGE_RES_SHA
+PACKAGE_RES_FILETYPE
+PACKAGE_RES_FILENAME
+PACKAGE_RES_FILEPATH
 PACKAGE_VERSION
 PACKAGE_VERSION_MAJOR
 PACKAGE_VERSION_MINOR
@@ -2029,11 +2045,14 @@ PACKAGE_BUILD_SYSTEM_CONFIGURE
 PACKAGE_BUILD_IN_BSCRIPT_DIR
 PACKAGE_BUILD_IN_PARALLEL
 PACKAGE_DEP_PKG
+PACKAGE_DEP_UPP
+PACKAGE_DEP_PYM
+PACKAGE_DEP_PLM
+PACKAGE_API_MIN
 PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
 PACKAGE_PPFLAGS
 PACKAGE_LDFLAGS
-PACKAGE_API_MIN
 PACKAGE_FORMULA_FILEPATH
 EOF
 }
@@ -8359,14 +8378,6 @@ ndkinfo() {
 # {{{ ndk-pkg setup
 
 __setup() {
-    if [ -d    "$NDKPKG_CORE_BIN_DIR" ] ; then
-        rm -rf "$NDKPKG_CORE_BIN_DIR"
-    fi
-
-    install -d "$NDKPKG_CORE_BIN_DIR"
-
-    #################################################################################
-
     NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
     NATIVE_OS_ARCH="$(uname -m)"
 
@@ -8400,7 +8411,7 @@ __setup() {
     WORKING_DIR="$NDKPKG_HOME/run/$$"
 
     run rm -rf     "$WORKING_DIR"
-    run install -d "$WORKING_DIR"
+    run install -d "$WORKING_DIR/core"
     run cd         "$WORKING_DIR"
 
     ##################################################################################
@@ -8428,31 +8439,27 @@ __setup() {
 
     wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-name="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
 
-    run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner -C "$NDKPKG_CORE_DIR"
+    run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
 
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' --output-dir="$WORKING_DIR"
-
-    run install -d                   "$NDKPKG_CORE_DIR/etc/ssl/certs"
-    run cp "$WORKING_DIR/cacert.pem" "$NDKPKG_CORE_DIR/etc/ssl/certs"
+    wfetch 'https://curl.se/ca/cacert.pem' --output-dir=core/etc/ssl/certs
 
     ##################################################################################
 
-    export SSL_CERT_FILE="$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
+    export SSL_CERT_FILE="$PWD/core/etc/ssl/certs/cacert.pem"
 
-    run "$UPPM" env
-    run "$UPPM" update
+    run core/bin/uppm env
+    run core/bin/uppm update
 
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
     for item in bash coreutils findutils easyutils gawk gsed grep gtar gzip lzip unzip zip xz bzip2 jq yq git curl tree patchelf
     do
-        run "$UPPM" install "$item"
+        run core/bin/uppm install "$item"
 
-        unset UPPM_PACKAGE_INSTALLED_DIR
         UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
 
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
@@ -8471,7 +8478,7 @@ __setup() {
     UPPM_PACKAGE_EXEFIND_PATH="${UPPM_PACKAGE_EXEFIND_PATH#':'}"
     UPPM_PACKAGE_ACLOCAL_PATH="${UPPM_PACKAGE_ACLOCAL_PATH#':'}"
 
-    cat > "$NDKPKG_CORE_DIR/env" <<EOF
+    cat > core/env <<EOF
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
@@ -8481,6 +8488,14 @@ if [ -d "\$HOME/.uppm/installed/git/libexec/git-core" ] ; then
     export GIT_TEMPLATE_DIR="\$HOME/.uppm/installed/git/share/git-core/templates"
 fi
 EOF
+
+    #################################################################################
+
+    if [ -d    "$NDKPKG_CORE_DIR" ] ; then
+        rm -rf "$NDKPKG_CORE_DIR"
+    fi
+
+    mv core "$NDKPKG_HOME/"
 
     #################################################################################
 
@@ -8854,7 +8869,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.5.0
+    NDKPKG_VERSION=0.6.0
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
@@ -8864,19 +8879,23 @@ main() {
 
     NDKPKG_FORMULA_REPO_ROOT="$NDKPKG_HOME/repos.d"
     NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
-    NDKPKG_PACKAGE_SYMLINKED_ROOT="$NDKPKG_HOME/symlinked"
     NDKPKG_DOWNLOADS_DIR="$NDKPKG_HOME/downloads"
 
     NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
     NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"
 
-    UPPM="$NDKPKG_CORE_BIN_DIR/uppm"
-
-    TIMESTAMP_UNIX="$(date +%s)"
+    # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
+    if [ -f "$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
+        export SSL_CERT_FILE="$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
+    fi
 
     if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
         export UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
     fi
+
+    UPPM="$NDKPKG_CORE_BIN_DIR/uppm"
+
+    TIMESTAMP_UNIX="$(date +%s)"
 
     #########################################################################################
 
@@ -8941,11 +8960,6 @@ EOF
         export ACLOCAL_PATH="$NDKPKG_CORE_DIR/share/aclocal"
     else
         export ACLOCAL_PATH="$NDKPKG_CORE_DIR/share/aclocal:$ACLOCAL_PATH"
-    fi
-
-    # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-    if [ -f "$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-        export SSL_CERT_FILE="$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
     fi
 
     bppend_to_PATH "$NDKPKG_CORE_BIN_DIR"
