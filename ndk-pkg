@@ -5444,7 +5444,6 @@ $DOT_CONTENT
             fi
 
             if [ "$item" = 'XML::Parser' ] ; then
-                __install_native_package expat
                 __install_native_package perl-XML-Parser
             else
                 # Would you like to configure as much as possible automatically? [yes]
@@ -8140,8 +8139,6 @@ __setup() {
     wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-filename="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
 
     run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
-
-    cp ~/github.com/uppm/build.d/uppm bin/
 
     ##################################################################################
 
