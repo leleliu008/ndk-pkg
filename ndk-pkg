@@ -4637,10 +4637,20 @@ EOF
     export PKG_CONFIG_LIBDIR="$NATIVE_PACKAGE_WORKING_DIR/lib/pkgconfig"
     export PKG_CONFIG_PATH="$NATIVE_PACKAGE_WORKING_DIR/lib/pkgconfig"
     export ACLOCAL_PATH="$NATIVE_PACKAGE_WORKING_DIR/share/aclocal"
+    export CPPFLAGS="-I$NATIVE_PACKAGE_WORKING_DIR/include"
+    export LDFLAGS="-L$NATIVE_PACKAGE_WORKING_DIR/lib"
 
     for DEPENDENT_NATIVE_PACKAGE_NAME in $NATIVE_PACKAGE_DEPENDENCIES
     do
         DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_NATIVE_PACKAGE_NAME"
+
+        if [ -d  "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
+            CPPFLAGS="$CPPFLAGS -I$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/include"
+        fi
+
+        if [ -d  "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
+            LDFLAGS="$LDFLAGS -L$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/lib"
+        fi
 
         if [ -d  "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
             PATH="$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
@@ -4736,24 +4746,30 @@ EOF
             run "$CMAKE" --install build.d
             ;;
         configure)
-            case $1 in
-                openssl)
-                    # https://github.com/openssl/openssl/blob/master/INSTALL.md
-                    run ./config no-tests no-docs no-ssl3 no-ssl3-method no-zlib --prefix=$NATIVE_PACKAGE_INSTALL_DIR --libdir=$NATIVE_PACKAGE_INSTALL_DIR/lib --openssldir=$NATIVE_PACKAGE_INSTALL_DIR/etc/ssl
-                    ;;
-                perl)
-                    run ./Configure "-Dprefix=$NATIVE_PACKAGE_INSTALL_DIR" "-Dman1dir=$NATIVE_PACKAGE_INSTALL_DIR/share/man/man1" "-Dman3dir=$NATIVE_PACKAGE_INSTALL_DIR/share/man/man3" -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
-                    ;;
-                perl-XML-Parser)
-                    run perl Makefile.PL EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/lib" EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/include"
-                    ;;
-                *)  run ./configure "--prefix=$NATIVE_PACKAGE_INSTALL_DIR" "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS"
-            esac
+            if [ "$1" = openssl ] ; then
+                # https://github.com/openssl/openssl/blob/master/INSTALL.md
+                run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix="$NATIVE_PACKAGE_INSTALL_DIR" --libdir=lib --openssldir=etc/ssl
 
-            GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
+                GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
 
-            run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-            run "$GMAKE" install
+                run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                run "$GMAKE" install_sw
+            else
+                case $1 in
+                    perl)
+                        run ./Configure "-Dprefix=$NATIVE_PACKAGE_INSTALL_DIR" -Dman1dir=none -Dman3dir=none -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
+                        ;;
+                    perl-XML-Parser)
+                        run perl Makefile.PL EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/lib" EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/include"
+                        ;;
+                    *)  run ./configure "--prefix=$NATIVE_PACKAGE_INSTALL_DIR" "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS"
+                esac
+
+                GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
+
+                run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
+                run "$GMAKE" install
+            fi
             ;;
     esac
 
@@ -5773,7 +5789,7 @@ $PACKAGE_BUILD0_ACTIONS
                     ACLOCAL_PATH="$NATIVE_INSTALL_DIR/share/aclocal:$ACLOCAL_PATH"
                 fi
 
-                run ln -s -r -f -T "$PACKAGE_INSTALL_DIR" "$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
+                run ln -s -r -f -T "$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA" "$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
             }
         fi
     fi
