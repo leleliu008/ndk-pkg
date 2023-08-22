@@ -200,20 +200,26 @@ lolcat_awk() {
 ##############################################################################
 # {{{ wfetch
 
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-path=PATH>
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-filepath=PATH>
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> <--output-filename=NAME>
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> [--output-filename=NAME]
+# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] <--output-filename=NAME>
 
 # influential environment variable:
 # NDKPKG_URL_TRANSFORM
 wfetch() {
     unset FETCH_URL
     unset FETCH_URI
-    unset FETCH_SHA256
+
+    unset FETCH_SHA256_EXPECTED
+
+    unset FETCH_BUFFER_DIR
+    unset FETCH_BUFFER_FILEPATH
+
     unset FETCH_OUTPUT_DIR
-    unset FETCH_OUTPUT_NAME
-    unset FETCH_OUTPUT_PATH
+    unset FETCH_OUTPUT_FILENAME
+    unset FETCH_OUTPUT_FILEPATH
+
     unset FETCH_SILENT
 
     [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
@@ -234,7 +240,7 @@ wfetch() {
                 RUN_SILENT=yes
                 ;;
             --sha256=*)
-                FETCH_SHA256="${1#*=}"
+                FETCH_SHA256_EXPECTED="${1#*=}"
                 ;;
             --uri=*)
                 FETCH_URI="${1#*=}"
@@ -245,32 +251,38 @@ wfetch() {
                     FETCH_URI="$("$NDKPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
                 fi
                 ;;
+            --buffer-dir=*)
+                FETCH_BUFFER_DIR="${1#*=}"
+                if [ -z "$FETCH_BUFFER_DIR" ] ; then
+                    abort 1 "wfetch <URL> --buffer-dir=<DIR> , <DIR> must be non-empty."
+                fi
+                ;;
             --output-dir=*)
                 FETCH_OUTPUT_DIR="${1#*=}"
                 if [ -z "$FETCH_OUTPUT_DIR" ] ; then
                     abort 1 "wfetch <URL> --output-dir=<DIR> , <DIR> must be non-empty."
                 fi
                 ;;
-            --output-name=*)
-                FETCH_OUTPUT_NAME="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                    abort 1 "wfetch <URL> --output-name=<NAME> , <NAME> must be non-empty."
+            --output-filename=*)
+                FETCH_OUTPUT_FILENAME="${1#*=}"
+                if [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
+                    abort 1 "wfetch <URL> --output-filename=<NAME> , <NAME> must be non-empty."
                 fi
                 ;;
-            --output-path=*)
-                FETCH_OUTPUT_PATH="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-                    abort 1 "wfetch <URL> --output-path=<FILEPATH> , <FILEPATH> must be non-empty."
+            --output-filepath=*)
+                FETCH_OUTPUT_FILEPATH="${1#*=}"
+                if [ -z "$FETCH_OUTPUT_FILEPATH" ] ; then
+                    abort 1 "wfetch <URL> --output-filepath=<FILEPATH> , <FILEPATH> must be non-empty."
                 fi
                 ;;
             *)  abort 1 "wfetch <URL> [OPTION]..., unrecognized option: $1
 
     wfetch command usage:
 
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-path=PATH>
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> <--output-name=NAME>
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] <--output-dir=DIR> [--output-name=NAME]
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--output-dir=DIR] <--output-name=NAME>"
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-filepath=PATH>
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> <--output-filename=NAME>
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> [--output-filename=NAME]
+    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] <--output-filename=NAME>"
         esac
         shift
     done
@@ -279,126 +291,123 @@ wfetch() {
         FETCH_URI="$FETCH_URL"
     fi
 
-    if [ -z "$FETCH_OUTPUT_PATH" ] ; then
-        if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_NAME" ] ; then
-            FETCH_OUTPUT_PATH='-'
+    if [ -z "$FETCH_OUTPUT_FILEPATH" ] ; then
+        if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
+            FETCH_BUFFER_FILEPATH='-'
+            FETCH_OUTPUT_FILEPATH='-'
         else
             if [ -z "$FETCH_OUTPUT_DIR" ] ; then
                 FETCH_OUTPUT_DIR="$PWD"
             fi
 
-            if [ -z "$FETCH_OUTPUT_NAME" ] ; then
-                FETCH_OUTPUT_NAME=$(basename "$FETCH_URL")
+            if [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
+                FETCH_OUTPUT_FILENAME=$(basename "$FETCH_URL")
             fi
 
-            FETCH_OUTPUT_PATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_NAME"
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_FILENAME"
+        fi
+    elif [ "$FETCH_OUTPUT_FILEPATH" = '-' ] ; then
+        unset FETCH_OUTPUT_DIR
+        unset FETCH_OUTPUT_FILENAME
+    else
+        FETCH_OUTPUT_DIR="$(dirname "$FETCH_OUTPUT_FILEPATH")"
+        FETCH_OUTPUT_FILENAME="$(basename "$FETCH_OUTPUT_FILEPATH")"
+    fi
 
-            if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
-                run install -d "$FETCH_OUTPUT_DIR" || return 1
+    if [ "$FETCH_OUTPUT_FILEPATH" != '-' ] ; then
+        if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
+            if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
+                if [ "$(sha256sum "$FETCH_OUTPUT_FILEPATH" | cut -d ' ' -f1)" = "$FETCH_SHA256_EXPECTED" ] ; then
+                    success "$FETCH_OUTPUT_FILEPATH already have been fetched."
+                    return 0
+                fi
             fi
         fi
-    elif [ "$FETCH_OUTPUT_PATH" = '-' ] ; then
-        unset FETCH_OUTPUT_DIR
-        unset FETCH_OUTPUT_NAME
-    else
-        FETCH_OUTPUT_DIR="$(dirname "$FETCH_OUTPUT_PATH")"
-        FETCH_OUTPUT_NAME="$(basename "$FETCH_OUTPUT_PATH")"
-        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
-            run install -d "$FETCH_OUTPUT_DIR" || return 1
+
+        if [ -z "$FETCH_BUFFER_DIR" ] ; then
+            FETCH_BUFFER_DIR="$FETCH_OUTPUT_DIR"
+        fi
+
+        if [ -z "$FETCH_BUFFER_FILEPATH" ] ; then
+            FETCH_BUFFER_FILEPATH="$FETCH_BUFFER_DIR/$FETCH_OUTPUT_FILENAME"
         fi
     fi
 
-    case $FETCH_URL in
-        *.git)
-            if [    -d "$FETCH_OUTPUT_PATH" ] ; then
-                run cd "$FETCH_OUTPUT_PATH" || return 1
-                if      git rev-parse HEAD > /dev/null 2>&1 ; then
-                    run git pull || return 1
-                    run git submodule update --recursive || return 1
-                else
-                    run cd .. || return 1
-                    run rm -rf "$FETCH_OUTPUT_NAME" || return 1
-                    run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME" || return 1
-                fi
-            else
-                if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
-                    run install -d "$FETCH_OUTPUT_DIR" || return 1
-                fi
-                run cd "$FETCH_OUTPUT_DIR" || return 1
-                run git clone --recursive "$FETCH_URL" "$FETCH_OUTPUT_NAME" || return 1
+    for FETCH_TOOL in curl wget http lynx aria2c axel
+    do
+        if command -v "$FETCH_TOOL" > /dev/null ; then
+            break
+        else
+            unset FETCH_TOOL
+        fi
+    done
+
+    if [ -z "$FETCH_TOOL" ] ; then
+        abort 1 "no fetch tool found, please install one of curl wget http lynx aria2c axel, then try again."
+    fi
+
+    if [ !          -d "$FETCH_BUFFER_DIR" ] ; then
+        run install -d "$FETCH_BUFFER_DIR" || return 1
+    fi
+
+    case $FETCH_TOOL in
+        curl)
+            unset CURL_OPTIONS
+
+            if [ "$FETCH_SILENT" = yes ] ; then
+                CURL_OPTIONS='--no-progress-meter'
             fi
+
+            if [ -n "$SSL_CERT_FILE" ] ; then
+                CURL_OPTIONS="--cacert $SSL_CERT_FILE"
+            fi
+
+            run "curl $CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
+            run "curl $CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
             ;;
-        *)
-            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -f "$FETCH_OUTPUT_PATH" ] ; then
-                if [ -n "$FETCH_SHA256" ] ; then
-                    if [ "$(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)" = "$FETCH_SHA256" ] ; then
-                        success "$FETCH_OUTPUT_PATH already have been fetched."
-                        return 0
-                    fi
-                fi
-                rm -f "$FETCH_OUTPUT_PATH" || return 1
-            fi
-
-            for FETCH_TOOL in curl wget http lynx aria2c axel
-            do
-                if command -v "$FETCH_TOOL" > /dev/null ; then
-                    break
-                else
-                    unset FETCH_TOOL
-                fi
-            done
-
-            if [ -z "$FETCH_TOOL" ] ; then
-                abort 1 "no fetch tool found, please install one of curl wget http lynx aria2c axel, then try again."
-            fi
-
-            case $FETCH_TOOL in
-                curl)
-                    unset FETCH_TOOL_CURL_EXTRA_OPTIONS
-
-                    if [ "$FETCH_SILENT" = yes ] ; then
-                        FETCH_TOOL_CURL_OPTIONS='--no-progress-meter'
-                    fi
-
-                    if [ -n "$SSL_CERT_FILE" ] ; then
-                        FETCH_TOOL_CURL_OPTIONS="--cacert $SSL_CERT_FILE"
-                    fi
-
-                    run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
-                    run "curl $FETCH_TOOL_CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
-                    ;;
-                wget)
-                    run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
-                    run "wget --timeout=60 -O '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
-                    ;;
-                http)
-                    run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
-                    run "http --timeout=60 -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
-                    ;;
-                lynx)
-                    run "lynx -source '$FETCH_URL' > '$FETCH_OUTPUT_PATH'" ||
-                    run "lynx -source '$FETCH_URI' > '$FETCH_OUTPUT_PATH'"
-                    ;;
-                aria2c)
-                    run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URL'" ||
-                    run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_NAME' '$FETCH_URI'"
-                    ;;
-                axel)
-                    run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URL'" ||
-                    run "axel -o '$FETCH_OUTPUT_PATH' '$FETCH_URI'"
-                    ;;
-                *)  abort 1 "wfetch() unimplementation: $FETCH_TOOL"
-                    ;;
-            esac
-
-            [ $? -eq 0 ] || return 1
-
-            if [ "$FETCH_OUTPUT_PATH" != '-' ] && [ -n "$FETCH_SHA256" ] ; then
-                [ "$(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)" = "$FETCH_SHA256" ] || {
-                    abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256\n    actual : $(sha256sum "$FETCH_OUTPUT_PATH" | cut -d ' ' -f1)"
-                }
-            fi
+        wget)
+            run "wget --timeout=60 -O '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
+            run "wget --timeout=60 -O '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            ;;
+        http)
+            run "http --timeout=60 -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
+            run "http --timeout=60 -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            ;;
+        lynx)
+            run "lynx -source '$FETCH_URL' > '$FETCH_BUFFER_FILEPATH'" ||
+            run "lynx -source '$FETCH_URI' > '$FETCH_BUFFER_FILEPATH'"
+            ;;
+        aria2c)
+            run "aria2c -d '$FETCH_BUFFER_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URL'" ||
+            run "aria2c -d '$FETCH_BUFFER_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URI'"
+            ;;
+        axel)
+            run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
+            run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            ;;
+        *)  abort 1 "wfetch() unimplementation: $FETCH_TOOL"
+            ;;
     esac
+
+    [ $? -eq 0 ] || return 1
+
+    if [ "$FETCH_OUTPUT_FILEPATH" != '-' ] ; then
+        if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
+            FETCH_SHA256_ACTUAL="$(sha256sum "$FETCH_BUFFER_FILEPATH" | cut -d ' ' -f1)"
+
+            if [ "$FETCH_SHA256_ACTUAL" != "$FETCH_SHA256_EXPECTED" ] ; then
+                abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256_EXPECTED\n    actual : $FETCH_SHA256_ACTUAL\n"
+            fi
+        fi
+
+        if [ "$FETCH_BUFFER_DIR" != "$FETCH_OUTPUT_DIR" ] ; then
+            if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+                run install -d "$FETCH_OUTPUT_DIR" || return 1
+            fi
+
+            run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_DIR/"
+        fi
+    fi
 }
 
 # }}}
@@ -575,21 +584,17 @@ version_match() {
 
     NDKPKG_FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$NDKPKG_FORMULA_REPO_NAME"
 
-    [ -d "$NDKPKG_FORMULA_REPO_PATH" ] && abort 1 "$NDKPKG_FORMULA_REPO_NAME named formula repository already exists."
+    if [ -d "$NDKPKG_FORMULA_REPO_PATH" ] ; then
+        abort 1 "$NDKPKG_FORMULA_REPO_NAME named formula repository already exists."
+    fi
 
     printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}$NDKPKG_FORMULA_REPO_NAME${COLOR_OFF}"
 
-    run install -d "$NDKPKG_FORMULA_REPO_PATH"
+    WORKING_DIR="$NDKPKG_HOME/run/$$/$NDKPKG_FORMULA_REPO_NAME"
 
-    __create_a_formula_repository_then_sync_it_onexit() {
-        if [ ! -f  "$NDKPKG_FORMULA_REPO_PATH/.ndk-pkg-formula-repo.yml" ] ; then
-            rm -rf "$NDKPKG_FORMULA_REPO_PATH/"
-        fi
-    }
-
-    trap __create_a_formula_repository_then_sync_it_onexit EXIT
-
-    run cd "$NDKPKG_FORMULA_REPO_PATH"
+    run rm -rf     "$WORKING_DIR"
+    run install -d "$WORKING_DIR"
+    run cd         "$WORKING_DIR"
 
     run git -c init.defaultBranch=master init
     run git remote add origin "$GIT_FETCH_URL"
@@ -603,6 +608,9 @@ pinned: $NDKPKG_FORMULA_REPO_PINNED
 enabled: $NDKPKG_FORMULA_REPO_ENABLED
 timestamp-created: $TIMESTAMP_UNIX
 EOF
+
+    run install -d        "$NDKPKG_FORMULA_REPO_ROOT"
+    run mv "$WORKING_DIR" "$NDKPKG_FORMULA_REPO_ROOT/"
 }
 
 # }}}
@@ -657,13 +665,17 @@ EOF
 
     NDKPKG_FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$NDKPKG_FORMULA_REPO_NAME"
 
-    [ -d "$NDKPKG_FORMULA_REPO_PATH" ] && abort 1 "$NDKPKG_FORMULA_REPO_NAME named formula repository already exists."
+    if [ -d "$NDKPKG_FORMULA_REPO_PATH" ] ; then
+        abort 1 "$NDKPKG_FORMULA_REPO_NAME named formula repository already exists."
+    fi
 
     printf '%b\n' "${COLOR_PURPLE}==> Creating formula repository${COLOR_OFF} ${COLOR_GREEN}$NDKPKG_FORMULA_REPO_NAME${COLOR_OFF}"
 
-    run install -d "$NDKPKG_FORMULA_REPO_PATH"
+    WORKING_DIR="$NDKPKG_HOME/run/$$/$NDKPKG_FORMULA_REPO_NAME"
 
-    run cd "$NDKPKG_FORMULA_REPO_PATH"
+    run rm -rf     "$WORKING_DIR"
+    run install -d "$WORKING_DIR"
+    run cd         "$WORKING_DIR"
 
     run git -c init.defaultBranch=master init
     run git remote add origin "$NDKPKG_FORMULA_REPO_URL"
@@ -675,6 +687,9 @@ pinned: $NDKPKG_FORMULA_REPO_PINNED
 enabled: $NDKPKG_FORMULA_REPO_ENABLED
 timestamp-created: $TIMESTAMP_UNIX
 EOF
+
+    run install -d        "$NDKPKG_FORMULA_REPO_ROOT"
+    run mv "$WORKING_DIR" "$NDKPKG_FORMULA_REPO_ROOT/"
 }
 
 # }}}
@@ -2189,19 +2204,19 @@ __fetch_sources_of_the_given_package() {
             run git -C "$PACKAGE_SRC_FILEPATH" submodule update --init || return 1
             ;;
         *)  if [ -z    "$PACKAGE_SRC_URI" ] ; then
-                wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_FILEPATH"
+                wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH"
             else
-                wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --output-path="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
+                wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
             fi
     esac
 }
 
 __fetch_patches_of_the_given_package() {
     if [ -n    "$PACKAGE_FIX_URL" ] ; then
-        wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --output-path="$PACKAGE_FIX_FILEPATH"
+        wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_FIX_FILEPATH"
     fi
     if [ -n    "$PACKAGE_RES_URL" ] ; then
-        wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --output-path="$PACKAGE_RES_FILEPATH"
+        wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_RES_FILEPATH"
     fi
 }
 
@@ -2221,6 +2236,7 @@ __fetch_resources_of_the_given_package() {
             done
             ;;
         *)
+            PACKAGE_WORKING_DIR="$NDKPKG_HOME/run/$$"
              __load_formula_of_the_given_package "$1"
             __fetch_sources_of_the_given_package "$@"
             __fetch_patches_of_the_given_package "$@"
@@ -2472,8 +2488,8 @@ __fetch_resources_of_the_given_package() {
         run install -d "$OUTPUT_DIR"
     fi
 
-    step "copy packed file to output directory"
-    run cp "$OUTPUT_FILENAME" "$OUTPUT_DIR/"
+    step "move packed file to output directory"
+    run mv "$OUTPUT_FILENAME" "$OUTPUT_DIR/"
 
     if [ "$KEEP_WORKING_DIR" = yes ] ; then
         printf '\n'
@@ -2814,7 +2830,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
     cd $WORKING_DIR
-    cp $AAR_FILENAME /somewhere
+    mv $AAR_FILENAME /somewhere
     cd -
     rm -rf $WORKING_DIR
         "
@@ -2843,8 +2859,8 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
         run install -d "$OUTPUT_DIR"
     fi
 
-    step "copy prefab aar file to destination"
-    run cp "$AAR_FILENAME" "$OUTPUT_FILEPATH"
+    step "move prefab aar file to destination"
+    run mv "$AAR_FILENAME" "$OUTPUT_FILEPATH"
 
     step "delete the working directory"
     run rm -rf "$WORKING_DIR"
@@ -3347,7 +3363,7 @@ __cleanup() {
     run install -d "$WORKING_DIR"
     run cd         "$WORKING_DIR"
 
-    wfetch "$1" --output-path="$WORKING_DIR/self"
+    wfetch "$1" --output-filename=self
 
     __upgrade_self_exit() {
         if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
@@ -3423,7 +3439,7 @@ __cleanup() {
     run install -d "$WORKING_DIR"
     run cd         "$WORKING_DIR"
 
-    wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-path="$WORKING_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-filename="$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
@@ -3698,7 +3714,7 @@ $DOT_CONTENT
             if [ -z "$OUTPUT_FILEPATH" ] ; then
                 CURL_OPTS=
             else
-                CURL_OPTS="-o $OUTPUT_FILEPATH"
+                CURL_OPTS="-o dependencies.box"
             fi
 
             # https://github.com/ggerganov/dot-to-ascii
@@ -3708,61 +3724,42 @@ $DOT_CONTENT
                 --data-urlencode "boxart=1" \
                 --data-urlencode "src=$DOT_CONTENT" \
                 "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php"
+
+            if [ -n "$OUTPUT_FILEPATH" ] ; then
+                run mv dependencies.box "$OUTPUT_FILEPATH"
+            fi
             ;;
         svg)
-            command -v dot > /dev/null || "$CURRENT_SCRIPT_FILEPATH" install graphviz || return 1
+            WORKING_DIR="$NDKPKG_HOME/run/$$"
 
-            if command -v fc-match > /dev/null ; then
-                # Error: fontconfig: Couldn't find font.
-                if [ -z "$(fc-match)" ] ; then
-                    wfetch 'https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/Meslo/M/Regular/complete/Meslo%20LG%20M%20Regular%20Nerd%20Font%20Complete%20Mono%20Windows%20Compatible.ttf?raw=true' --output-dir="$HOME/.fonts" --output-name='Meslo LG M DZ Regular Nerd Font Complete Mono.ttf' || return 1
-                fi
-            fi
+            rm -rf     "$WORKING_DIR"
+            install -d "$WORKING_DIR"
+            cd         "$WORKING_DIR"
 
-            TMP_DIR="$NDKPKG_HOME/run/$$"
-
-            rm -rf     "$TMP_DIR"
-            install -d "$TMP_DIR"
-
-            DOT_CONTENT_FILEPATH="$TMP_DIR/dependencies.dot"
-
-            printf '%s\n' "$DOT_CONTENT" > "$DOT_CONTENT_FILEPATH"
+            printf '%s\n' "$DOT_CONTENT" > dependencies.dot
 
             if [ -z "$OUTPUT_FILEPATH" ] ; then
-                DOT_OPTS="-Tsvg"
+                run dot -Tsvg dependencies.dot
             else
-                DOT_OPTS="-Tsvg -o $OUTPUT_FILEPATH"
+                run dot -Tsvg -o dependencies.svg dependencies.dot
+                run mv dependencies.svg "$OUTPUT_FILEPATH"
             fi
-
-            run dot "$DOT_OPTS" "$DOT_CONTENT_FILEPATH"
             ;;
         png)
-            command -v dot > /dev/null || "$CURRENT_SCRIPT_FILEPATH" install graphviz || return 1
+            WORKING_DIR="$NDKPKG_HOME/run/$$"
 
-            if command -v fc-match > /dev/null ; then
-                # Error: fontconfig: Couldn't find font.
-                if [ -z "$(fc-match)" ] ; then
-                    wfetch 'https://github.com/ryanoasis/nerd-fonts/blob/master/patched-fonts/Meslo/M/Regular/complete/Meslo%20LG%20M%20Regular%20Nerd%20Font%20Complete%20Mono%20Windows%20Compatible.ttf?raw=true' --output-dir="$HOME/.fonts" --output-name='Meslo LG M DZ Regular Nerd Font Complete Mono.ttf' || return 1
-                fi
-            fi
+            rm -rf     "$WORKING_DIR"
+            install -d "$WORKING_DIR"
+            cd         "$WORKING_DIR"
 
-            TMP_DIR="$NDKPKG_HOME/run/$$"
-
-            rm -rf     "$TMP_DIR"
-            install -d "$TMP_DIR"
-
-            DOT_CONTENT_FILEPATH="$TMP_DIR/dependencies.dot"
-
-            printf '%s\n' "$DOT_CONTENT" > "$DOT_CONTENT_FILEPATH"
+            printf '%s\n' "$DOT_CONTENT" > dependencies.dot
 
             if [ -z "$OUTPUT_FILEPATH" ] ; then
-                DOT_OPTS="-Tpng"
+                run dot -Tpng dependencies.dot
             else
-                DOT_OPTS="-Tpng -o $OUTPUT_FILEPATH"
+                run dot -Tpng -o dependencies.png dependencies.dot
+                run mv dependencies.png "$OUTPUT_FILEPATH"
             fi
-
-            run dot "$DOT_OPTS" "$DOT_CONTENT_FILEPATH"
-            ;;
     esac
 }
 
@@ -4451,171 +4448,260 @@ __install_the_given_packages() {
     done
 }
 
-# __install_native_package_to_core_dir <PACKAGE-NAME>
-  __install_native_package_to_core_dir() {
+# this function must run in subshell
+# __install_native_package <PACKAGE-NAME>
+  __install_native_package() {
     case $1 in
-        '') abort 1 "__install_native_package_to_core_dir_via_cmake <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
+        '') abort 1 "__install_native_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
             ;;
         expat)
-            SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-            SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-
-            BUILD_SYSTEM_NAME='cmake'
-            BUILD_CONFIG_ARGS='-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
+            NATIVE_PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='cmake'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
             ;;
         zlib)
-            SRC_URL='https://zlib.net/zlib-1.2.13.tar.gz'
-            SRC_SHA='b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30'
-
-            BUILD_SYSTEM_NAME='cmake'
-            BUILD_CONFIG_ARGS=
+            NATIVE_PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='ff0ba4c292013dbc27530b3a81e1f9a813cd39de01ca5e0f8bf355702efa593e'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='cmake'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         libbz2)
-            SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
-            SRC_SHA='0100da0b55f552134d732acdd0325e84a0ef731a305c15f6a2ea24308de09759'
-
-            BUILD_SYSTEM_NAME='cmake'
-            BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON'
+            NATIVE_PACKAGE_SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='0100da0b55f552134d732acdd0325e84a0ef731a305c15f6a2ea24308de09759'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='cmake'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON'
             ;;
         perl)
-            SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
-            SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS=
+            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         openssl)
-            SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
-            SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS=
+            NATIVE_PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
+            NATIVE_PACKAGE_DEPENDENCIES='perl'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         texinfo)
-            SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.tar.xz'
-            SRC_SHA='20744b82531ce7a04d8cee34b07143ad59777612c3695d5855f29fba40fbe3e0'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS='--with-included-regex --enable-threads=posix'
+            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='20744b82531ce7a04d8cee34b07143ad59777612c3695d5855f29fba40fbe3e0'
+            NATIVE_PACKAGE_DEPENDENCIES='perl'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--with-included-regex --enable-threads=posix'
             ;;
         help2man)
-            SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
-            SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS=
+            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
+            NATIVE_PACKAGE_DEPENDENCIES='perl'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         intltool)
-            SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
-            SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS=
+            NATIVE_PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
+            NATIVE_PACKAGE_DEPENDENCIES='perl-XML-Parser'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         libtool)
-            SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-            SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS='--enable-ltdl-install'
+            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--enable-ltdl-install'
             ;;
         autoconf)
-            SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
-            SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS=
+            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
+            NATIVE_PACKAGE_DEPENDENCIES='perl'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         automake)
-            SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
-            SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS=
+            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
+            NATIVE_PACKAGE_DEPENDENCIES='autoconf'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         liblzma)
-            SRC_URL='https://github.com/xz-mirror/xz/releases/download/v5.4.0/xz-5.4.0.tar.xz'
-            SRC_SHA='5f260e3b43f75cf43ca43d107dd18209f7d516782956a74ddd53288e02a83a31'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
+            NATIVE_PACKAGE_SRC_URL='https://github.com/xz-mirror/xz/releases/download/v5.4.0/xz-5.4.0.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='5f260e3b43f75cf43ca43d107dd18209f7d516782956a74ddd53288e02a83a31'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
             ;;
         gdbm)
-            SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
-            SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
+            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
             ;;
         sqlite3)
-            SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3410100.tar.gz'
-            SRC_SHA='4dadfbeab9f8e16c695d4fbbc51c16b2f77fb97ff4c1c3d139919dfc038c9e33'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
+            NATIVE_PACKAGE_SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3410100.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='4dadfbeab9f8e16c695d4fbbc51c16b2f77fb97ff4c1c3d139919dfc038c9e33'
+            NATIVE_PACKAGE_DEPENDENCIES='zlib'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
             ;;
         libffi)
-            SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
-            SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers'
+            NATIVE_PACKAGE_SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers'
             ;;
         libyaml)
-            SRC_URL='https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz'
-            SRC_SHA='c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile'
+            NATIVE_PACKAGE_SRC_URL='https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile'
             ;;
         ruby)
-            SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
-            SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --enable-shared --disable-docs'
+            NATIVE_PACKAGE_SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
+            NATIVE_PACKAGE_DEPENDENCIES='zlib libyaml libffi'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --enable-shared --disable-docs'
             ;;
         python3)
-            SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
-            SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS="--with-system-expat --with-system-ffi --with-openssl=$NDKPKG_CORE_DIR --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
+            NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
+            NATIVE_PACKAGE_SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
+            NATIVE_PACKAGE_DEPENDENCIES='zlib libbz2 liblzma gdbm expat sqlite3 libffi openssl'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS="--with-system-expat --with-system-ffi --with-openssl=$NATIVE_PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
             ;;
         perl-XML-Parser)
-            SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz'
-            SRC_SHA='d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d'
-
-            BUILD_SYSTEM_NAME='configure'
-            BUILD_CONFIG_ARGS=
+            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d'
+            NATIVE_PACKAGE_DEPENDENCIES='expat'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         *)  abort 1 "unknown native package name: $1"
     esac
 
     #########################################################################################
 
-    step "install native package $1 to $NDKPKG_CORE_DIR"
+    for NATIVE_PACKAGE_DEPENDENCY in $NATIVE_PACKAGE_DEPENDENCIES
+    do
+        (__install_native_package "$NATIVE_PACKAGE_DEPENDENCY")
+    done
 
-    RECEIPT_FILEPATH="$NDKPKG_CORE_DIR/.$1"
+    #########################################################################################
 
-    if [ -f "$RECEIPT_FILEPATH" ] && [ "$(cat "$RECEIPT_FILEPATH")" = "$SRC_SHA" ] ; then
+    step "install native package : $1"
+
+    NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$1"
+
+    if [ -f "$NATIVE_PACKAGE_INSTALLED_DIR/receipt.txt" ] && [ "$(cat "$NATIVE_PACKAGE_INSTALLED_DIR/receipt.txt")" = "$NATIVE_PACKAGE_SRC_SHA" ] ; then
         note "native package '$1' already has been installed, skipped."
         return 0
     fi
 
-    SRC_FILETYPE="$(filetype_from_url "$SRC_URL")"
-    SRC_FILENAME="$SRC_SHA$SRC_FILETYPE"
+    #########################################################################################
 
-    wfetch "$SRC_URL" --sha256="$SRC_SHA" --output-path="$NDKPKG_DOWNLOADS_DIR/$SRC_FILENAME"
+    NATIVE_PACKAGE_INSTALL_UTS=
+    NATIVE_PACKAGE_INSTALL_UTS="$(date +%s)"
 
-    SRC_DIR="$PACKAGE_WORKING_DIR/$TIMESTAMP_UNIX/$1"
-
-    run install -d "$SRC_DIR"
-    run cd         "$SRC_DIR"
-
-    run tar vxf "$FETCH_OUTPUT_PATH" --strip-components=1 --no-same-owner
+    NATIVE_PACKAGE_INSTALL_SHA=
+    NATIVE_PACKAGE_INSTALL_SHA="$(
+{
+    sha256sum <<EOF
+$1:$NATIVE_PACKAGE_SRC_URL:$$:$NATIVE_PACKAGE_INSTALL_UTS
+EOF
+} | cut -d ' ' -f1)"
 
     #########################################################################################
+
+    NATIVE_PACKAGE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_INSTALL_SHA"
+
+    NATIVE_PACKAGE_SRC_FILETYPE="$(filetype_from_url "$NATIVE_PACKAGE_SRC_URL")"
+    NATIVE_PACKAGE_SRC_FILENAME="$NATIVE_PACKAGE_SRC_SHA$NATIVE_PACKAGE_SRC_FILETYPE"
+
+    NATIVE_PACKAGE_WORKING_DIR="$PACKAGE_WORKING_DIR/native/$1"
+
+    #########################################################################################
+
+    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
+    # because we only want to use our own
+    export PKG_CONFIG_LIBDIR="$NATIVE_PACKAGE_WORKING_DIR/lib/pkgconfig"
+    export PKG_CONFIG_PATH="$NATIVE_PACKAGE_WORKING_DIR/lib/pkgconfig"
+    export ACLOCAL_PATH="$NATIVE_PACKAGE_WORKING_DIR/share/aclocal"
+
+    for DEPENDENT_NATIVE_PACKAGE_NAME in $NATIVE_PACKAGE_DEPENDENCIES
+    do
+        DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_NATIVE_PACKAGE_NAME"
+
+        if [ -d  "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
+            PATH="$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
+        fi
+
+        if [ -d  "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+            PATH="$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        fi
+
+        if [ -d          "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+            ACLOCAL_PATH="$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        fi
+
+        for d in lib share
+        do
+            DEPENDENT_NATIVE_PACKAGE_PKGCONF_DIR="$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
+
+            if [ -d "$DEPENDENT_NATIVE_PACKAGE_PKGCONF_DIR" ] ; then
+                PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEPENDENT_NATIVE_PACKAGE_PKGCONF_DIR"
+            fi
+        done
+    done
+
+    #########################################################################################
+
+    cat <<EOF
+PKG_CONFIG_LIBDIR=$PKG_CONFIG_LIBDIR
+
+PKG_CONFIG_PATH=$PKG_CONFIG_PATH
+
+ACLOCAL_PATH=$ACLOCAL_PATH
+
+PATH=$PATH
+
+NATIVE_PACKAGE_SRC_URL      = $NATIVE_PACKAGE_SRC_URL
+NATIVE_PACKAGE_SRC_SHA      = $NATIVE_PACKAGE_SRC_SHA
+NATIVE_PACKAGE_SRC_FILENAME = $NATIVE_PACKAGE_SRC_FILENAME
+NATIVE_PACKAGE_SRC_FILETYPE = $NATIVE_PACKAGE_SRC_FILETYPE
+
+NATIVE_PACKAGE_DEPENDENCIES = $NATIVE_PACKAGE_DEPENDENCIES
+
+NATIVE_PACKAGE_BUILD_SYSTEM_NAME = $NATIVE_PACKAGE_BUILD_SYSTEM_NAME
+NATIVE_PACKAGE_BUILD_CONFIG_ARGS = $NATIVE_PACKAGE_BUILD_CONFIG_ARGS
+
+NATIVE_PACKAGE_WORKING_DIR = $NATIVE_PACKAGE_WORKING_DIR
+NATIVE_PACKAGE_INSTALL_UTS = $NATIVE_PACKAGE_INSTALL_UTS
+NATIVE_PACKAGE_INSTALL_SHA = $NATIVE_PACKAGE_INSTALL_SHA
+NATIVE_PACKAGE_INSTALL_DIR = $NATIVE_PACKAGE_INSTALL_DIR
+
+EOF
+
+    #########################################################################################
+
+    run install -d "$NATIVE_PACKAGE_WORKING_DIR/src"
+    run cd         "$NATIVE_PACKAGE_WORKING_DIR"
+
+    wfetch "$NATIVE_PACKAGE_SRC_URL" --sha256="$NATIVE_PACKAGE_SRC_SHA" --buffer-dir="$NATIVE_PACKAGE_WORKING_DIR" --output-dir="$NDKPKG_DOWNLOADS_DIR" --output-filename="$NATIVE_PACKAGE_SRC_FILENAME"
+
+    run tar vxf "$NDKPKG_DOWNLOADS_DIR/$NATIVE_PACKAGE_SRC_FILENAME" --strip-components=1 --no-same-owner -C src
+
+    run cd src
 
     if   [ "$1" = 'zlib' ] ; then
         sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
@@ -4623,44 +4709,45 @@ __install_the_given_packages() {
         unset PYTHONHOME
         unset PYTHONPATH
 
-        export ZLIB_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-        export ZLIB_LIBS="-L$NDKPKG_CORE_DIR/lib -lz"
+        export ZLIB_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/zlib/include"
+        export ZLIB_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/zlib/lib -lz"
 
-        export BZIP2_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-        export BZIP2_LIBS="-L$NDKPKG_CORE_DIR/lib -lbz2"
+        export BZIP2_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/include"
+        export BZIP2_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/lib -lbz2"
 
-        export LIBLZMA_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-        export LIBLZMA_LIBS="-L$NDKPKG_CORE_DIR/lib -llzma"
+        export LIBLZMA_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/liblzma/include"
+        export LIBLZMA_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/liblzma/lib -llzma"
 
-        export LIBSQLITE3_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-        export LIBSQLITE3_LIBS="-L$NDKPKG_CORE_DIR/lib -lsqlite3"
+        export LIBSQLITE3_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/sqlite3/include"
+        export LIBSQLITE3_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/sqlite3/lib -lsqlite3"
 
-        export GDBM_CFLAGS="-I$NDKPKG_CORE_DIR/include"
-        export GDBM_LIBS="-L$NDKPKG_CORE_DIR/lib -lgdbm -lgdbm_compat"
+        export GDBM_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/gdbm/include"
+        export GDBM_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/gdbm/lib -lgdbm -lgdbm_compat"
     fi
 
     #########################################################################################
 
-    case $BUILD_SYSTEM_NAME in
+    case $NATIVE_PACKAGE_BUILD_SYSTEM_NAME in
         cmake)
             CMAKE="$(command -v cmake)" || abort 1 "command not found: cmake"
 
-            run "$CMAKE" -S . -B build.d -DCMAKE_INSTALL_PREFIX=$NDKPKG_CORE_DIR -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$BUILD_CONFIG_ARGS"
+            run "$CMAKE" -S . -B build.d -DCMAKE_INSTALL_PREFIX=$NATIVE_PACKAGE_INSTALL_DIR -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS"
             run "$CMAKE" --build   build.d -- -j$BUILD_NJOBS
             run "$CMAKE" --install build.d
             ;;
         configure)
             case $1 in
                 openssl)
-                    run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix=$NDKPKG_CORE_DIR --libdir=$NDKPKG_CORE_DIR/lib --openssldir=$NDKPKG_CORE_DIR/etc/ssl
+                    # https://github.com/openssl/openssl/blob/master/INSTALL.md
+                    run ./config no-tests no-docs no-ssl3 no-ssl3-method no-zlib --prefix=$NATIVE_PACKAGE_INSTALL_DIR --libdir=$NATIVE_PACKAGE_INSTALL_DIR/lib --openssldir=$NATIVE_PACKAGE_INSTALL_DIR/etc/ssl
                     ;;
                 perl)
-                    run ./Configure "-Dprefix=$NDKPKG_CORE_DIR" "-Dman1dir=$NDKPKG_CORE_DIR/share/man/man1" "-Dman3dir=$NDKPKG_CORE_DIR/share/man/man3" -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
+                    run ./Configure "-Dprefix=$NATIVE_PACKAGE_INSTALL_DIR" "-Dman1dir=$NATIVE_PACKAGE_INSTALL_DIR/share/man/man1" "-Dman3dir=$NATIVE_PACKAGE_INSTALL_DIR/share/man/man3" -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
                     ;;
                 perl-XML-Parser)
-                    run perl Makefile.PL EXPATLIBPATH="$NDKPKG_CORE_DIR/lib" EXPATINCPATH="$NDKPKG_CORE_DIR/include"
+                    run perl Makefile.PL EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/lib" EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/include"
                     ;;
-                *)  run ./configure "--prefix=$NDKPKG_CORE_DIR" "$BUILD_CONFIG_ARGS"
+                *)  run ./configure "--prefix=$NATIVE_PACKAGE_INSTALL_DIR" "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS"
             esac
 
             GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
@@ -4670,7 +4757,9 @@ __install_the_given_packages() {
             ;;
     esac
 
-    printf '%s\n' "$SRC_SHA" > "$RECEIPT_FILEPATH"
+    printf '%s\n' "$NATIVE_PACKAGE_SRC_SHA" > "$NATIVE_PACKAGE_INSTALL_DIR/receipt.txt"
+
+    run ln -s -r -f -T "$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_INSTALL_SHA" "$NATIVE_PACKAGE_INSTALLED_ROOT/$1"
 }
 
 
@@ -4755,9 +4844,9 @@ EOF
      NATIVE_OS_EUID = $NATIVE_OS_EUID
      NATIVE_OS_EGID = $NATIVE_OS_EGID
 
-     TARGET_ANDROID_API = $TARGET_ANDROID_API
-     TARGET_ANDROID_ARCH = $TARGET_ANDROID_ARCH
-     TARGET_ANDROID_ABI  = $TARGET_ANDROID_ABI
+TARGET_ANDROID_ARCH = $TARGET_ANDROID_ARCH
+TARGET_ANDROID_ABI  = $TARGET_ANDROID_ABI
+TARGET_ANDROID_API  = $TARGET_ANDROID_API
 
 NDKPKG_VERSION      = $NDKPKG_VERSION
 NDKPKG_HOME         = $NDKPKG_HOME
@@ -4813,8 +4902,6 @@ EOF
     install -d "$PACKAGE_INSTALLING_INC_DIR"
     install -d "$PACKAGE_INSTALLING_LIB_DIR"
     install -d "$PACKAGE_BCACHED_DIR"
-
-    install -d "$NDKPKG_CORE_DIR/libexec"
 
     cat <<EOF
 PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
@@ -4880,110 +4967,24 @@ EOF
         READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
     fi
 
+    export PROXIED_CC_FOR_BUILD="$CC_FOR_BUILD"
+    export PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
+
+    cat <<EOF
+PROXIED_CC_FOR_BUILD  = $PROXIED_CC_FOR_BUILD
+PROXIED_CXX_FOR_BUILD = $PROXIED_CXX_FOR_BUILD
+
+EOF
+
+     CC_FOR_BUILD="$NDKPKG_CORE_DIR/libexec/wrapper-native-cc"
+    CXX_FOR_BUILD="$NDKPKG_CORE_DIR/libexec/wrapper-native-c++"
     CPP_FOR_BUILD="$CC_FOR_BUILD -E"
 
-    for TOOL in CC OBJC CXX AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT
+    for TOOL in CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT
     do
         export "${TOOL}_FOR_BUILD"
         printf "%17s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$"${TOOL}_FOR_BUILD")"
     done
-
-    ##################################################################################
-
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-        # If -mmacosx-version-min is unspecified, the default deployment target is read from MACOSX_DEPLOYMENT_TARGET environment variable. This option only affects Darwin targets.
-        # https://clang.llvm.org/docs/CommandGuide/clang.html#envvar-MACOSX_DEPLOYMENT_TARGET
-        # https://clang.llvm.org/docs/CommandGuide/clang.html#cmdoption-mmacosx-version-min
-
-        NATIVE_OS_VERS_MAJOR="$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f1)"
-        NATIVE_OS_VERS_MINOR="$(printf '%s\n' "$NATIVE_OS_VERS" | cut -d. -f2)"
-
-        export MACOSX_DEPLOYMENT_TARGET="$NATIVE_OS_VERS_MAJOR.$NATIVE_OS_VERS_MINOR"
-
-        ##################################################################################
-
-        step "create wrapper for C Compiler for native build"
-
-        cat > wrapper-native-cc.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-int main(int argc, char * argv[]) {
-    char* argv2[argc + 2];
-
-    argv2[0] = (char*)"$CC_FOR_BUILD";
-    argv2[1] = (char*)"-isysroot";
-    argv2[2] = (char*)"$SYSROOT_FOR_BUILD";
-
-    for (int i = 1; i < argc; i++) {
-        argv2[i + 2] = argv[i];
-    }
-
-    argv2[argc + 2] = NULL;
-
-    execv (argv2[0], argv2);
-    perror(argv2[0]);
-    return 255;
-}
-EOF
-
-        WRAPPER_CC_FOR_BUILD="$NDKPKG_CORE_DIR/libexec/wrapper-native-cc"
-
-        run "$CC_FOR_BUILD" -std=c99 -isysroot "$SYSROOT_FOR_BUILD" -o "$WRAPPER_CC_FOR_BUILD" wrapper-native-cc.c
-
-        ##################################################################################
-
-        step "create wrapper for C++ Compiler for native build"
-
-        cat > wrapper-native-c++.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-int main(int argc, char * argv[]) {
-    char* argv2[argc + 2];
-
-    argv2[0] = (char*)"$CXX_FOR_BUILD";
-    argv2[1] = (char*)"-isysroot";
-    argv2[2] = (char*)"$SYSROOT_FOR_BUILD";
-
-    for (int i = 1; i < argc; i++) {
-        argv2[i + 2] = argv[i];
-    }
-
-    argv2[argc + 2] = NULL;
-
-    execv (argv2[0], argv2);
-    perror(argv2[0]);
-    return 255;
-}
-EOF
-
-        WRAPPER_CXX_FOR_BUILD="$NDKPKG_CORE_DIR/libexec/wrapper-native-c++"
-
-        run "$CC_FOR_BUILD" -std=c99 -isysroot "$SYSROOT_FOR_BUILD" -o "$WRAPPER_CXX_FOR_BUILD" wrapper-native-c++.c
-
-        ##################################################################################
-
-        export PROXIED_CC_FOR_BUILD="$CC_FOR_BUILD"
-        export PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
-
-        export CC_FOR_BUILD="$WRAPPER_CC_FOR_BUILD"
-        export CXX_FOR_BUILD="$WRAPPER_CXX_FOR_BUILD"
-        export CPP_FOR_BUILD="$CC_FOR_BUILD -E"
-
-        cat <<EOF
-PROXIED_CC_FOR_BUILD  = $PROXIED_CC_FOR_BUILD
-PROXIED_CXX_FOR_BUILD = $PROXIED_CXX_FOR_BUILD
-
-        CC_FOR_BUILD  = $CC_FOR_BUILD
-        CPP_FOR_BUILD = $CPP_FOR_BUILD
-        CXX_FOR_BUILD = $CXX_FOR_BUILD
-EOF
-    fi
 
     #########################################################################################
 
@@ -5317,125 +5318,100 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
+    # these native packages would be installed by uppm
+    PACKAGE_DEP_UPP_T1='pkg-config patchelf tree'
 
-    PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP pkg-config"
+    # these native packages are not relocatable, we should build them from source locally at build time.
+    PACKAGE_DEP_UPP_T2=
 
-    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
-        PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL bear"
-    fi
-
-    if [ "$CCACHE_ENABLED" = yes ] ; then
-        PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL ccache"
-    fi
-
-    PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL patchelf tree"
+    for item in $PACKAGE_DEP_UPP
+    do
+        case $item in
+            perl)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            help2man) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
+        esac
+    done
 
     #########################################################################################
 
-    step "install needed packages via uppm"
+    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
+        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 bear"
+    fi
 
-    run "$UPPM" env
-    run "$UPPM" update
+    if [ "$CCACHE_ENABLED" = yes ] ; then
+        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 ccache"
+    fi
 
-    # these packages are not relocatable, we should build them from source locally.
-    PACKAGE_USE_RUBY=no
-    PACKAGE_USE_PERL=no
-    PACKAGE_USE_OPENSSL=no
-    PACKAGE_USE_TEXINFO=no
-    PACKAGE_USE_HELP2MAN=no
-    PACKAGE_USE_INTLTOOL=no
-    PACKAGE_USE_PYTHON3=no
-    PACKAGE_USE_LIBTOOL=no
-    PACKAGE_USE_AUTOMAKE=no
-    PACKAGE_USE_AUTOCONF=no
+    PACKAGE_DEP_UPP_T1="${PACKAGE_DEP_UPP_T1#' '}"
 
-    for item in $PACKAGE_DEP_UPP_ALL
-    do
-        case $item in
-            perl)     PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ;;
-            openssl)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_OPENSSL=yes  ;;
-            texinfo)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_TEXINFO=yes  ;;
-            help2man) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake"       ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_HELP2MAN=yes ;;
-            intltool) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_INTLTOOL=yes ;;
-            python3)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_PYTHON3=yes  ; PACKAGE_USE_OPENSSL=yes ;;
-            ruby)     PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake cmake" ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_RUBY=yes     ; PACKAGE_USE_OPENSSL=yes ;;
-            libtool)  PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ;                        PACKAGE_USE_LIBTOOL=yes  ;;
-            autoconf) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ;;
-            automake) PACKAGE_DEP_UPP_ALL="$PACKAGE_DEP_UPP_ALL gmake gm4"   ; PACKAGE_USE_PERL=yes ; PACKAGE_USE_AUTOCONF=yes ; PACKAGE_USE_AUTOMAKE=yes ;;
-        esac
-    done
+    #########################################################################################
 
-    for item in $PACKAGE_DEP_UPP_ALL
-    do
-        case $item in
-            python3|perl|ruby|texinfo|help2man|intltool|libtool|autoconf|automake) continue
-        esac
+    [ -n "$PACKAGE_DEP_UPP_T1" ] && {
+        PACKAGE_DEP_UPP_T1="$(printf '%s\n' $PACKAGE_DEP_UPP_T1 | sort | uniq)"
 
-        run "$UPPM" install "$item"
+        step "install needed packages via uppm"
 
-        UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$item" installed-dir)"
+        run "$UPPM" env
+        run "$UPPM" update
 
-        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-            PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
-        fi
+        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP_T1
+        do
+            run "$UPPM" install "$UPPM_PACKAGE_NAME"
 
-        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-            PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-        fi
+            UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info "$UPPM_PACKAGE_NAME" installed-dir)"
 
-        if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-            ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-        fi
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
 
-        if [ "$item" = 'docbook-xsl' ] ; then
-            # http://xmlsoft.org/xslt/xsltproc.html
-            export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
-            printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
-        fi
-    done
+            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
 
-    (
-        export PKG_CONFIG_PATH="$NDKPKG_CORE_DIR/lib/pkgconfig"
+            if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+                ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+            fi
 
+            if [ "$UPPM_PACKAGE_NAME" = 'docbook-xsl' ] ; then
+                # http://xmlsoft.org/xslt/xsltproc.html
+                export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
+                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+            fi
+        done
+    }
 
-        [ "$PACKAGE_USE_PERL"     = yes ] && __install_native_package_to_core_dir perl
-        [ "$PACKAGE_USE_OPENSSL"  = yes ] && __install_native_package_to_core_dir openssl
-        [ "$PACKAGE_USE_TEXINFO"  = yes ] && __install_native_package_to_core_dir texinfo
-        [ "$PACKAGE_USE_HELP2MAN" = yes ] && __install_native_package_to_core_dir help2man
-        [ "$PACKAGE_USE_LIBTOOL"  = yes ] && __install_native_package_to_core_dir libtool
-        [ "$PACKAGE_USE_AUTOCONF" = yes ] && __install_native_package_to_core_dir autoconf
-        [ "$PACKAGE_USE_AUTOMAKE" = yes ] && __install_native_package_to_core_dir automake
+    [ -n "$PACKAGE_DEP_UPP_T2" ] && {
+        PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq)"
 
-        [ "$PACKAGE_USE_INTLTOOL" = yes ] && {
-            __install_native_package_to_core_dir expat
-            __install_native_package_to_core_dir perl-XML-Parser
-            __install_native_package_to_core_dir intltool
-        }
+        for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_UPP_T2
+        do
 
-        [ "$PACKAGE_USE_PYTHON3" = yes ] && {
-            __install_native_package_to_core_dir zlib
-            __install_native_package_to_core_dir libbz2
-            __install_native_package_to_core_dir liblzma
-            __install_native_package_to_core_dir gdbm
-            __install_native_package_to_core_dir expat
-            __install_native_package_to_core_dir sqlite3
-            __install_native_package_to_core_dir libffi
-            __install_native_package_to_core_dir python3
-        }
+            (__install_native_package "$NATIVE_PACKAGE_NAME")
 
-        [ "$PACKAGE_USE_RUBY" = yes ] && {
-            __install_native_package_to_core_dir zlib
-            __install_native_package_to_core_dir libyaml
-            __install_native_package_to_core_dir libffi
-            __install_native_package_to_core_dir ruby
-        }
+            NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
 
-        :
-    )
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
 
-    PATH="$(printf '%s\n' "$PATH" | sed "s|:$NDKPKG_CORE_BIN_DIR||g")"
-    PATH="$NDKPKG_CORE_BIN_DIR:$PATH"
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+
+            if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+                ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+            fi
+        done
+    }
 
     #########################################################################################
 
@@ -5468,8 +5444,8 @@ $DOT_CONTENT
             fi
 
             if [ "$item" = 'XML::Parser' ] ; then
-                __install_native_package_to_core_dir expat
-                __install_native_package_to_core_dir perl-XML-Parser
+                __install_native_package expat
+                __install_native_package perl-XML-Parser
             else
                 # Would you like to configure as much as possible automatically? [yes]
                 # https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
@@ -5491,11 +5467,9 @@ $DOT_CONTENT
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
 
-            RUST_INIT_SH_FILEPATH="$PACKAGE_WORKING_DIR/rustup-init.sh"
+            wfetch 'https://sh.rustup.rs' --output-filename=rustup-init.sh
 
-            wfetch 'https://sh.rustup.rs' --output-path="$RUST_INIT_SH_FILEPATH"
-
-            run bash "$RUST_INIT_SH_FILEPATH" -y
+            run bash rustup-init.sh -y
 
             export CARGO_HOME="$HOME/.cargo"
             export PATH="$CARGO_HOME/bin:$PATH"
@@ -5727,17 +5701,15 @@ $DOT_CONTENT
     } && {
         for FILENAME in config.sub config.guess
         do
-            FILEPATH="$PACKAGE_WORKING_DIR/$FILENAME"
+            wfetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$FILENAME;hb=HEAD" --output-filename="$FILENAME"
 
-            wfetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$FILENAME;hb=HEAD" --output-path="$FILEPATH"
-
-            run chmod a+x "$FILEPATH"
+            run chmod a+x "$FILENAME"
 
             if [ "$FILENAME" = 'config.sub' ] ; then
-                sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+                sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$FILENAME"
             fi
 
-            find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
+            find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILENAME" {} \;
         done
     }
 
@@ -5749,7 +5721,7 @@ $DOT_CONTENT
         note "build0 mapping was not found in formula, skipped."
     else
         NATIVE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/-"
-        NATIVE_INSTALL_DIR="$NDKPKG_HOME/native/$PACKAGE_NAME"
+        NATIVE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
 
         cat <<EOF
 NATIVE_BCACHED_DIR = $NATIVE_BCACHED_DIR
@@ -5761,16 +5733,20 @@ build0() {
 $PACKAGE_BUILD0_ACTIONS
 }"
 
-        if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
-            if [ "$(cat "$NATIVE_INSTALL_DIR/version.txt")" != "$PACKAGE_VERSION" ] ; then
-                note "build for native already have been done, but not same version. I will remove it then rebuild it."
-                run rm -rf "$NATIVE_INSTALL_DIR"
+        NATIVE_INSTALL_NEEDED=yes
+
+        NATIVE_INSTALLED_VERSION_TXT_FILEPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME/version.txt"
+
+        if [ -f "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH" ] ; then
+            if [ "$(cat "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH")" == "$PACKAGE_VERSION" ] ; then
+                NATIVE_INSTALL_NEEDED=no
+                note "build for native already have been done, skipped."
+            else
+                note "build for native already have been done, but not the same version, rebuild it."
             fi
         fi
 
-        if [ -f "$NATIVE_INSTALL_DIR/version.txt" ] ; then
-            note "build for native already have been done, skipped."
-        else
+        if [ "$NATIVE_INSTALL_NEEDED" = yes ] ; then
             run install -d "$NATIVE_BCACHED_DIR"
 
             if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
@@ -5797,6 +5773,8 @@ $PACKAGE_BUILD0_ACTIONS
                 if [ -d          "$NATIVE_INSTALL_DIR/share/aclocal" ] ; then
                     ACLOCAL_PATH="$NATIVE_INSTALL_DIR/share/aclocal:$ACLOCAL_PATH"
                 fi
+
+                run ln -s -r -f -T "$PACKAGE_INSTALL_DIR" "$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
             }
         fi
     fi
@@ -5818,8 +5796,8 @@ $PACKAGE_BUILD0_ACTIONS
 
     step "locate C/C++ toolchain for target build"
 
-    export      CC="${ANDROID_NDK_TOOLCHAIN_BIND}/${TARGET_TRIPLE}${TARGET_ANDROID_API}-clang"
-    export     CXX="${ANDROID_NDK_TOOLCHAIN_BIND}/${TARGET_TRIPLE}${TARGET_ANDROID_API}-clang++"
+    export      CC="$NDKPKG_CORE_DIR/libexec/wrapper-target-cc"
+    export     CXX="$NDKPKG_CORE_DIR/libexec/wrapper-target-c++"
     export     CPP="$CC -E"
     export      LD="$ANDROID_NDK_LD"
     export      AS="$ANDROID_NDK_AS"
@@ -5834,260 +5812,22 @@ $PACKAGE_BUILD0_ACTIONS
     export READELF="$ANDROID_NDK_READELF"
     export SYSROOT="$ANDROID_NDK_SYSROOT"
 
-    for TOOL in CC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT
-    do
-        printf "%7s = %s\n" "${TOOL}" "$(eval echo \$"${TOOL}")"
-    done
-
-    ##################################################################################
-
-    step "create wrapper for C Compiler for target build"
-
-    cat > wrapper-target-cc.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <regex.h>
-
-#define ACTION_COMPILE 1
-#define ACTION_CREATE_SHARED_LIBRARY 2
-#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE 3
-#define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
-
-int main(int argc, char * argv[]) {
-    const char * options[6] = { "-shared", "-static", "--static", "-pie", "-c", "-o" };
-          int    indexes[6] = {    -1,         -1,        -1,       -1,    -1,   -1  };
-
-    for (int i = 1; i < argc; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (strcmp(argv[i], options[j]) == 0) {
-                indexes[j] = i;
-                break;
-            }
-        }
-    }
-
-    int action = 0;
-
-    if (indexes[0] > 0) {
-        // if -shared option is specified, then remove -static , --static , -pie options if they also are specified
-        action = ACTION_CREATE_SHARED_LIBRARY;
-    } else if ((indexes[1] > 0) || (indexes[2] > 0)) {
-        // if -shared option is not specified, but -static or --static option is specified, then remove -pie , -Wl,-Bdynamic option if it also is specified
-        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-    } else if (indexes[3] > 0) {
-        action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-#ifdef USED_AS_CXX
-    char * const compiler = getenv("ANDROID_NDK_CXX");
-
-    if (compiler == NULL) {
-        fprintf(stderr, "ANDROID_NDK_CXX environment variable is not set.\n");
-        return 1;
-    }
-
-    if (compiler[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_CXX environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-#else
-    char * const compiler = getenv("ANDROID_NDK_CC");
-
-    if (compiler == NULL) {
-        fprintf(stderr, "ANDROID_NDK_CC environment variable is not set.\n");
-        return 1;
-    }
-
-    if (compiler[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_CC environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-#endif
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * const TARGET = getenv("ANDROID_TARGET");
-
-    if (TARGET == NULL) {
-        fprintf(stderr, "ANDROID_TARGET environment variable is not set.\n");
-        return 1;
-    }
-
-    if (TARGET[0] == '\0') {
-        fprintf(stderr, "ANDROID_TARGET environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-
-    size_t   targetArgLength = strlen(TARGET) + 10U;
-    char     targetArg[targetArgLength];
-    snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * const SYSROOT = getenv("ANDROID_NDK_SYSROOT");
-
-    if (SYSROOT == NULL) {
-        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable is not set.\n");
-        return 1;
-    }
-
-    if (SYSROOT[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-
-    size_t   sysrootArgLength = strlen(SYSROOT) + 11U;
-    char     sysrootArg[sysrootArgLength];
-    snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
-
-    /////////////////////////////////////////////////////////////////
-
-    char   sonameArg[100] = {0};
-
-    char * argv2[argc + 4];
-
-    argv2[0] = compiler;
-    argv2[1] = targetArg;
-    argv2[2] = sysrootArg;
-
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-static") == 0) {
-                argv2[i + 2] = (char*)"--shared";
-            } else if (strcmp(argv[i], "--static") == 0) {
-                argv2[i + 2] = (char*)"--shared";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i + 2] = (char*)"--shared";
-            } else {
-                argv2[i + 2] = argv[i];
-            }
-        }
-
-        char * filepath = NULL;
-        char * filename = NULL;
-
-        if (indexes[5] == -1) {
-            // It's rare to see. like -o/a/b/libxx.so.1
-            for (int i = 1; i < argc; i++) {
-                if (strncmp(argv[i], "-o", 2) == 0) {
-                    indexes[5] = i;
-                    filepath = &argv[i][2];
-                    break;
-                }
-            }
-        } else {
-            // if -o <FILE> option is specified.
-            int i = indexes[5] + 1;
-
-            if (i < argc) {
-                filepath = argv[i];
-            }
-        }
-
-        if (filepath != NULL) {
-            int len = 0;
-
-            for (;;) {
-                if (filepath[len] == '\0') {
-                    break;
-                } else {
-                    len++;
-                }
-            }
-
-            for (int i = len - 1; i > 0; i--) {
-                if (filepath[i] == '/') {
-                    filename = filepath + i + 1;
-                    break;
-                }
-            }
-
-            if (filename == NULL) {
-                filename = filepath;
-            }
-
-            regex_t regex;
-
-            if (regcomp(&regex, "^lib.*\\\\.so", 0) != 0) {
-                perror(NULL);
-                regfree(&regex);
-                return 1;
-            }
-
-            regmatch_t regmatch[2];
-
-            if (regexec(&regex, filename, 2, regmatch, 0) == 0) {
-                //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
-                //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
-
-                if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
-                    int n = regmatch[0].rm_eo - regmatch[0].rm_so;
-                    const char * str = &filename[regmatch[0].rm_so];
-                    snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
-                }
-            }
-
-            regfree(&regex);
-        }
-    } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-rdynamic") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i + 2] = (char*)"-static";
-            } else {
-                argv2[i + 2] = argv[i];
-            }
-        }
-    } else {
-        for (int i = 1; i < argc; i++) {
-            argv2[i + 2] = argv[i];
-        }
-    }
-
-    if (sonameArg[0] == '\0') {
-        argv2[argc + 2] = NULL;
-    } else {
-        argv2[argc + 2] = sonameArg;
-        argv2[argc + 3] = NULL;
-    }
-
-    execv (compiler, argv2);
-    perror(compiler);
-    return -1;
-}
-EOF
-
-    WRAPPER_CC="$NDKPKG_CORE_DIR/libexec/wrapper-target-cc"
-
-    run "$CC_FOR_BUILD" -UUSED_AS_CXX -std=c99 -o "$WRAPPER_CC" wrapper-target-cc.c
-
-    ##################################################################################
-
-    step "create wrapper for C++ Compiler for target build"
-
-    WRAPPER_CXX="$NDKPKG_CORE_DIR/libexec/wrapper-target-c++"
-
-    run "$CC_FOR_BUILD" -DUSED_AS_CXX -std=c99 -o "$WRAPPER_CXX" wrapper-target-cc.c
-
-    #########################################################################################
-
-    export CC="$WRAPPER_CC"
-    export CXX="$WRAPPER_CXX"
-    export CPP="$CC -E"
-
-cat <<EOF
-    CC  = $CC
-    CPP = $CPP
-    CXX = $CXX
+    cat <<EOF
+     CC="$CC"
+    CXX="$CXX"
+    CPP="$CPP"
+     LD="$LD"
+     AS="$AS"
+     AR="$AR"
+     NM="$NM"
+   SIZE="$SIZE"
+  STRIP="$STRIP"
+ RANLIB="$RANLIB"
+STRINGS="$STRINGS"
+OBJDUMP="$OBJDUMP"
+OBJCOPY="$OBJCOPY"
+READELF="$READELF"
+SYSROOT="$SYSROOT"
 EOF
 
     #########################################################################################
@@ -6738,42 +6478,6 @@ EOF
 
     #########################################################################################
 
-    if false ; then
-    #if [ -n "$PACKAGE_LICENSE" ] ; then
-        step "copy or fetch licenses"
-
-        I=0
-
-        for item in $PACKAGE_LICENSE
-        do
-            unset LICENSE_PATH
-            unset LICENSE_URL_
-
-            I=$(expr "$I" + 1)
-
-            case $item in
-                *\|*)
-                    LICENSE_PATH="$(printf '%s\n' "$item" | cut -d '|' -f2)"
-                    LICENSE_URL_="$(printf '%s\n' "$item" | cut -d '|' -f3)"
-                    ;;
-                *)  LICENSE_URL_="https://raw.githubusercontent.com/spdx/license-list-data/master/text/$item.txt"
-            esac
-
-            # https://github.com/spdx/license-list-data
-
-            if [ -z "$LICENSE_PATH" ] ; then
-                wfetch "$LICENSE_URL_"  --output-dir="$PACKAGE_WORKING_DIR" --output-name="LICENSE$I"
-            else
-                cp "$PACKAGE_INSTALLING_SRC_DIR/$LICENSE_PATH" "$PACKAGE_WORKING_DIR/LICENSE$I"
-            fi
-        done
-
-        unset LICENSE_PATH
-        unset LICENSE_URL_
-    fi
-
-    #########################################################################################
-
     step "create linker script"
 
     # https://developer.android.com/ndk/guides/stable_apis#c_library
@@ -6817,11 +6521,7 @@ EOF
 
             for f in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -printf '%P\n')
             do
-                #if [ -e "$PACKAGE_WORKING_DIR/lib/$f" ] ; then
-                #    continue
-                #else
-                    cp -v "$DEPENDENT_PACKAGE_LIBRARY_DIR/$f" "$PACKAGE_WORKING_DIR/lib/$f"
-                #fi
+                cp -v "$DEPENDENT_PACKAGE_LIBRARY_DIR/$f" "$PACKAGE_WORKING_DIR/lib/$f"
             done
         done
 
@@ -7230,7 +6930,7 @@ $PACKAGE_DOBUILD_ACTIONS
     step "generate RECEIPT.yml"
     __generate_receipt_of_the_given_package "$1"
 
-    run ln -sr "$PACKAGE_INSTALL_DIR" "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+    run ln -s -r -f -T "$PACKAGE_INSTALL_DIR" "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
     #########################################################################################
 
@@ -8408,15 +8108,15 @@ __setup() {
 
     ##################################################################################
 
-    WORKING_DIR="$NDKPKG_HOME/run/$$"
+    WORKING_DIR="$NDKPKG_HOME/run/$$/core"
 
     run rm -rf     "$WORKING_DIR"
-    run install -d "$WORKING_DIR/core"
+    run install -d "$WORKING_DIR"
     run cd         "$WORKING_DIR"
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' --output-name=uppm-latest-release
+    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' --output-filename=uppm-latest-release
 
     ##################################################################################
 
@@ -8437,30 +8137,32 @@ __setup() {
         UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
     fi
 
-    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-name="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
+    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-filename="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
 
-    run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner -C core
+    run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
+
+    cp ~/github.com/uppm/build.d/uppm bin/
 
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' --output-dir=core/etc/ssl/certs
+    wfetch 'https://curl.se/ca/cacert.pem' --output-dir=etc/ssl/certs
 
     ##################################################################################
 
-    export SSL_CERT_FILE="$PWD/core/etc/ssl/certs/cacert.pem"
+    export SSL_CERT_FILE="$PWD/etc/ssl/certs/cacert.pem"
 
-    run core/bin/uppm env
-    run core/bin/uppm update
+    run bin/uppm env
+    run bin/uppm update
 
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
     for item in bash coreutils findutils easyutils gawk gsed grep gtar gzip lzip unzip zip xz bzip2 jq yq git curl tree patchelf
     do
-        run core/bin/uppm install "$item"
+        run bin/uppm install "$item"
 
-        UPPM_PACKAGE_INSTALLED_DIR="$(core/bin/uppm info "$item" installed-dir)"
+        UPPM_PACKAGE_INSTALLED_DIR="$(bin/uppm info "$item" installed-dir)"
 
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
             UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$UPPM_PACKAGE_INSTALLED_DIR/bin"
@@ -8478,7 +8180,7 @@ __setup() {
     UPPM_PACKAGE_EXEFIND_PATH="${UPPM_PACKAGE_EXEFIND_PATH#':'}"
     UPPM_PACKAGE_ACLOCAL_PATH="${UPPM_PACKAGE_ACLOCAL_PATH#':'}"
 
-    cat > core/env <<EOF
+    cat > env <<EOF
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
@@ -8489,13 +8191,344 @@ if [ -d "\$HOME/.uppm/installed/git/libexec/git-core" ] ; then
 fi
 EOF
 
+    ##################################################################################
+
+    cat > wrapper-native-cc.c <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+int main(int argc, char * argv[]) {
+    char * const cc = getenv("PROXIED_CC_FOR_BUILD");
+
+    if (cc == NULL) {
+        fprintf(stderr, "PROXIED_CC_FOR_BUILD environment variable is not set.\n");
+        return 1;
+    }
+
+    if (cc[0] == '\0') {
+        fprintf(stderr, "PROXIED_CC_FOR_BUILD environment variable value should be a non-empty string.\n");
+        return 2;
+    }
+
+    char* argv2[argc + 2];
+
+    argv2[0] = cc;
+
+    char * const sysroot = getenv("WRAPPER_NATIVE_SYSROOT");
+
+    if (sysroot == NULL || sysroot[0] == '\0') {
+        for (int i = 1; i < argc; i++) {
+            argv2[i] = argv[i];
+        }
+
+        argv2[argc] = NULL;
+    } else {
+        argv2[1] = (char*)"-isysroot";
+        argv2[2] = sysroot;
+
+        for (int i = 1; i < argc; i++) {
+            argv2[i + 2] = argv[i];
+        }
+
+        argv2[argc + 2] = NULL;
+    }
+
+    execv (cc, argv2);
+    perror(cc);
+    return 255;
+}
+EOF
+
+    cat > wrapper-native-c++.c <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+int main(int argc, char * argv[]) {
+    char * const cxxc = getenv("PROXIED_CXX_FOR_BUILD");
+
+    if (cxxc == NULL) {
+        fprintf(stderr, "PROXIED_CXX_FOR_BUILD environment variable is not set.\n");
+        return 1;
+    }
+
+    if (cxxc[0] == '\0') {
+        fprintf(stderr, "PROXIED_CXX_FOR_BUILD environment variable value should be a non-empty string.\n");
+        return 2;
+    }
+
+    char* argv2[argc + 2];
+
+    argv2[0] = cxxc;
+
+    char * const sysroot = getenv("WRAPPER_NATIVE_SYSROOT");
+
+    if (sysroot == NULL || sysroot[0] == '\0') {
+        for (int i = 1; i < argc; i++) {
+            argv2[i] = argv[i];
+        }
+
+        argv2[argc] = NULL;
+    } else {
+        argv2[1] = (char*)"-isysroot";
+        argv2[2] = sysroot;
+
+        for (int i = 1; i < argc; i++) {
+            argv2[i + 2] = argv[i];
+        }
+
+        argv2[argc + 2] = NULL;
+    }
+
+    execv (cxxc, argv2);
+    perror(cxxc);
+    return 255;
+}
+EOF
+
+    cat > wrapper-target-cc.c <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <regex.h>
+
+#define ACTION_COMPILE 1
+#define ACTION_CREATE_SHARED_LIBRARY 2
+#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE 3
+#define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
+
+int main(int argc, char * argv[]) {
+    const char * options[6] = { "-shared", "-static", "--static", "-pie", "-c", "-o" };
+          int    indexes[6] = {    -1,         -1,        -1,       -1,    -1,   -1  };
+
+    for (int i = 1; i < argc; i++) {
+        for (int j = 0; j < 6; j++) {
+            if (strcmp(argv[i], options[j]) == 0) {
+                indexes[j] = i;
+                break;
+            }
+        }
+    }
+
+    int action = 0;
+
+    if (indexes[0] > 0) {
+        // if -shared option is specified, then remove -static , --static , -pie options if they also are specified
+        action = ACTION_CREATE_SHARED_LIBRARY;
+    } else if ((indexes[1] > 0) || (indexes[2] > 0)) {
+        // if -shared option is not specified, but -static or --static option is specified, then remove -pie , -Wl,-Bdynamic option if it also is specified
+        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
+    } else if (indexes[3] > 0) {
+        action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
+    }
+
+    /////////////////////////////////////////////////////////////////
+
+#ifdef USED_AS_CXX
+    char * const compiler = getenv("ANDROID_NDK_CXX");
+
+    if (compiler == NULL) {
+        fprintf(stderr, "ANDROID_NDK_CXX environment variable is not set.\n");
+        return 1;
+    }
+
+    if (compiler[0] == '\0') {
+        fprintf(stderr, "ANDROID_NDK_CXX environment variable value should be a non-empty string.\n");
+        return 2;
+    }
+#else
+    char * const compiler = getenv("ANDROID_NDK_CC");
+
+    if (compiler == NULL) {
+        fprintf(stderr, "ANDROID_NDK_CC environment variable is not set.\n");
+        return 1;
+    }
+
+    if (compiler[0] == '\0') {
+        fprintf(stderr, "ANDROID_NDK_CC environment variable value should be a non-empty string.\n");
+        return 2;
+    }
+#endif
+
+    /////////////////////////////////////////////////////////////////
+
+    const char * const TARGET = getenv("ANDROID_TARGET");
+
+    if (TARGET == NULL) {
+        fprintf(stderr, "ANDROID_TARGET environment variable is not set.\n");
+        return 1;
+    }
+
+    if (TARGET[0] == '\0') {
+        fprintf(stderr, "ANDROID_TARGET environment variable value should be a non-empty string.\n");
+        return 2;
+    }
+
+    size_t   targetArgLength = strlen(TARGET) + 10U;
+    char     targetArg[targetArgLength];
+    snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
+
+    /////////////////////////////////////////////////////////////////
+
+    const char * const SYSROOT = getenv("ANDROID_NDK_SYSROOT");
+
+    if (SYSROOT == NULL) {
+        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable is not set.\n");
+        return 1;
+    }
+
+    if (SYSROOT[0] == '\0') {
+        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable value should be a non-empty string.\n");
+        return 2;
+    }
+
+    size_t   sysrootArgLength = strlen(SYSROOT) + 11U;
+    char     sysrootArg[sysrootArgLength];
+    snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
+
+    /////////////////////////////////////////////////////////////////
+
+    char   sonameArg[100] = {0};
+
+    char * argv2[argc + 4];
+
+    argv2[0] = compiler;
+    argv2[1] = targetArg;
+    argv2[2] = sysrootArg;
+
+    if (action == ACTION_CREATE_SHARED_LIBRARY) {
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "-static") == 0) {
+                argv2[i + 2] = (char*)"--shared";
+            } else if (strcmp(argv[i], "--static") == 0) {
+                argv2[i + 2] = (char*)"--shared";
+            } else if (strcmp(argv[i], "-pie") == 0) {
+                argv2[i + 2] = (char*)"--shared";
+            } else {
+                argv2[i + 2] = argv[i];
+            }
+        }
+
+        char * filepath = NULL;
+        char * filename = NULL;
+
+        if (indexes[5] == -1) {
+            // It's rare to see. like -o/a/b/libxx.so.1
+            for (int i = 1; i < argc; i++) {
+                if (strncmp(argv[i], "-o", 2) == 0) {
+                    indexes[5] = i;
+                    filepath = &argv[i][2];
+                    break;
+                }
+            }
+        } else {
+            // if -o <FILE> option is specified.
+            int i = indexes[5] + 1;
+
+            if (i < argc) {
+                filepath = argv[i];
+            }
+        }
+
+        if (filepath != NULL) {
+            int len = 0;
+
+            for (;;) {
+                if (filepath[len] == '\0') {
+                    break;
+                } else {
+                    len++;
+                }
+            }
+
+            for (int i = len - 1; i > 0; i--) {
+                if (filepath[i] == '/') {
+                    filename = filepath + i + 1;
+                    break;
+                }
+            }
+
+            if (filename == NULL) {
+                filename = filepath;
+            }
+
+            regex_t regex;
+
+            if (regcomp(&regex, "^lib.*\\\\.so", 0) != 0) {
+                perror(NULL);
+                regfree(&regex);
+                return 1;
+            }
+
+            regmatch_t regmatch[2];
+
+            if (regexec(&regex, filename, 2, regmatch, 0) == 0) {
+                //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
+                //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
+
+                if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
+                    int n = regmatch[0].rm_eo - regmatch[0].rm_so;
+                    const char * str = &filename[regmatch[0].rm_so];
+                    snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
+                }
+            }
+
+            regfree(&regex);
+        }
+    } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "-rdynamic") == 0) {
+                argv2[i + 2] = (char*)"-static";
+            } else if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
+                argv2[i + 2] = (char*)"-static";
+            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
+                argv2[i + 2] = (char*)"-static";
+            } else if (strcmp(argv[i], "-pie") == 0) {
+                argv2[i + 2] = (char*)"-static";
+            } else {
+                argv2[i + 2] = argv[i];
+            }
+        }
+    } else {
+        for (int i = 1; i < argc; i++) {
+            argv2[i + 2] = argv[i];
+        }
+    }
+
+    if (sonameArg[0] == '\0') {
+        argv2[argc + 2] = NULL;
+    } else {
+        argv2[argc + 2] = sonameArg;
+        argv2[argc + 3] = NULL;
+    }
+
+    execv (compiler, argv2);
+    perror(compiler);
+    return -1;
+}
+EOF
+
+    ##################################################################################
+
+    run install -d libexec
+
+    run cc -std=c99 -o libexec/wrapper-native-cc  wrapper-native-cc.c
+    run cc -std=c99 -o libexec/wrapper-native-c++ wrapper-native-c++.c
+
+    run cc -std=c99 -o libexec/wrapper-target-cc  wrapper-target-cc.c -UUSED_AS_CXX
+    run cc -std=c99 -o libexec/wrapper-target-c++ wrapper-target-cc.c -DUSED_AS_CXX
+
     #################################################################################
 
     if [ -d    "$NDKPKG_CORE_DIR" ] ; then
-        rm -rf "$NDKPKG_CORE_DIR"
+        run rm -rf "$NDKPKG_CORE_DIR"
     fi
 
-    mv core "$NDKPKG_HOME/"
+    run mv "$WORKING_DIR" "$NDKPKG_HOME/"
 
     #################################################################################
 
@@ -8897,6 +8930,10 @@ main() {
 
     TIMESTAMP_UNIX="$(date +%s)"
 
+    # DO NOT use this environment variable
+    # https://cmake.org/cmake/help/latest/envvar/MACOSX_DEPLOYMENT_TARGET.html
+    unset MACOSX_DEPLOYMENT_TARGET
+
     #########################################################################################
 
     NDKPKG_ACTION="$1"
@@ -8980,6 +9017,8 @@ EOF
     if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
         sudo=sudo
     fi
+
+    NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
 
     #########################################################################################
 

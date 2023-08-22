@@ -4,15 +4,15 @@
 #include <unistd.h>
 
 int main(int argc, char * argv[]) {
-    char * const cc = getenv("CC_FOR_BUILD");
+    char * const cc = getenv("PROXIED_CC_FOR_BUILD");
 
     if (cc == NULL) {
-        fprintf(stderr, "CC_FOR_BUILD environment variable is not set.\n");
+        fprintf(stderr, "PROXIED_CC_FOR_BUILD environment variable is not set.\n");
         return 1;
     }
 
     if (cc[0] == '\0') {
-        fprintf(stderr, "CC_FOR_BUILD environment variable value should be a non-empty string.\n");
+        fprintf(stderr, "PROXIED_CC_FOR_BUILD environment variable value should be a non-empty string.\n");
         return 2;
     }
 
