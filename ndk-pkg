@@ -4637,8 +4637,8 @@ EOF
     export PKG_CONFIG_LIBDIR="$NATIVE_PACKAGE_WORKING_DIR/lib/pkgconfig"
     export PKG_CONFIG_PATH="$NATIVE_PACKAGE_WORKING_DIR/lib/pkgconfig"
     export ACLOCAL_PATH="$NATIVE_PACKAGE_WORKING_DIR/share/aclocal"
-    export CPPFLAGS="-I$NATIVE_PACKAGE_WORKING_DIR/include"
-    export LDFLAGS="-L$NATIVE_PACKAGE_WORKING_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALL_DIR/lib"
+    export CPPFLAGS="-I$NATIVE_PACKAGE_WORKING_DIR/include $CPPFLAGS"
+    export LDFLAGS="-L$NATIVE_PACKAGE_WORKING_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALL_DIR/lib $LDFLAGS"
 
     for DEPENDENT_NATIVE_PACKAGE_NAME in $NATIVE_PACKAGE_DEPENDENCIES
     do
@@ -4743,7 +4743,7 @@ EOF
         cmake)
             CMAKE="$(command -v cmake)" || abort 1 "command not found: cmake"
 
-            run "$CMAKE" -S . -B build.d -DCMAKE_INSTALL_PREFIX=$NATIVE_PACKAGE_INSTALL_DIR -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS"
+            run "$CMAKE" -DCMAKE_INSTALL_PREFIX="$NATIVE_PACKAGE_INSTALL_DIR" -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS -G 'Unix Makefiles'" -S . -B build.d
             run "$CMAKE" --build   build.d -- -j$BUILD_NJOBS
             run "$CMAKE" --install build.d
             ;;
@@ -4994,8 +4994,8 @@ PROXIED_CXX_FOR_BUILD = $PROXIED_CXX_FOR_BUILD
 
 EOF
 
-     CC_FOR_BUILD="$NDKPKG_CORE_DIR/libexec/wrapper-native-cc"
-    CXX_FOR_BUILD="$NDKPKG_CORE_DIR/libexec/wrapper-native-c++"
+     CC_FOR_BUILD="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-native-cc"
+    CXX_FOR_BUILD="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-native-c++"
     CPP_FOR_BUILD="$CC_FOR_BUILD -E"
 
     for TOOL in CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT
@@ -5022,9 +5022,6 @@ EOF
         # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
          LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
-
-        CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NDKPKG_CORE_DIR/include"
-         LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD  -L$NDKPKG_CORE_DIR/lib -Wl,-rpath,$NDKPKG_CORE_DIR/lib"
 
     if [ "$LOG_LEVEL" -ge 3 ] ; then
           CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -v"
@@ -5813,8 +5810,8 @@ $PACKAGE_BUILD0_ACTIONS
 
     step "locate C/C++ toolchain for target build"
 
-    export      CC="$NDKPKG_CORE_DIR/libexec/wrapper-target-cc"
-    export     CXX="$NDKPKG_CORE_DIR/libexec/wrapper-target-c++"
+    export      CC="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-target-cc"
+    export     CXX="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-target-c++"
     export     CPP="$CC -E"
     export      LD="$ANDROID_NDK_LD"
     export      AS="$ANDROID_NDK_AS"
@@ -8917,7 +8914,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.1
+    NDKPKG_VERSION=0.6.2
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
@@ -8931,6 +8928,8 @@ main() {
 
     NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
     NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"
+
+    NDKPKG_CORE_LIBEXEC_DIR="$NDKPKG_CORE_DIR/libexec"
 
     # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
     if [ -f "$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
