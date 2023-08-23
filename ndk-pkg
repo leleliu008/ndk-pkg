@@ -4506,7 +4506,7 @@ __install_the_given_packages() {
         intltool)
             NATIVE_PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
             NATIVE_PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
-            NATIVE_PACKAGE_DEPENDENCIES='perl-XML-Parser'
+            NATIVE_PACKAGE_DEPENDENCIES='perl expat perl-XML-Parser'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
@@ -4527,7 +4527,7 @@ __install_the_given_packages() {
         automake)
             NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
             NATIVE_PACKAGE_SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
-            NATIVE_PACKAGE_DEPENDENCIES='autoconf'
+            NATIVE_PACKAGE_DEPENDENCIES='perl autoconf'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
@@ -4576,14 +4576,14 @@ __install_the_given_packages() {
         python3)
             NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
             NATIVE_PACKAGE_SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
-            NATIVE_PACKAGE_DEPENDENCIES='zlib libbz2 liblzma gdbm expat sqlite3 libffi openssl'
+            NATIVE_PACKAGE_DEPENDENCIES='zlib libbz2 liblzma gdbm expat sqlite3 libffi openssl perl'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS="--with-system-expat --with-system-ffi --with-openssl=$NATIVE_PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
             ;;
         perl-XML-Parser)
             NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz'
             NATIVE_PACKAGE_SRC_SHA='d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d'
-            NATIVE_PACKAGE_DEPENDENCIES='expat'
+            NATIVE_PACKAGE_DEPENDENCIES='perl expat'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
@@ -8915,7 +8915,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.0
+    NDKPKG_VERSION=0.6.1
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
