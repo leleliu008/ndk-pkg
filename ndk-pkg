@@ -4733,6 +4733,8 @@ EOF
 
         export GDBM_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/gdbm/include"
         export GDBM_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/gdbm/lib -lgdbm -lgdbm_compat"
+
+        export LIBS='-lm'
     fi
 
     #########################################################################################
