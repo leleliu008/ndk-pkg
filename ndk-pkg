@@ -4763,6 +4763,7 @@ EOF
                         ;;
                     perl-XML-Parser)
                         run perl Makefile.PL EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/lib" EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/include"
+                        run install -d "$NATIVE_PACKAGE_INSTALL_DIR"
                         ;;
                     *)  run ./configure "--prefix=$NATIVE_PACKAGE_INSTALL_DIR" "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS"
                 esac
