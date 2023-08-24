@@ -961,7 +961,7 @@ filetype_from_url() {
     unset PACKAGE_GIT_URL
     unset PACKAGE_GIT_SHA
     unset PACKAGE_GIT_REF
-    unset PACKAGE_SHALLOW
+    unset PACKAGE_GIT_NTH
 
     unset PACKAGE_SVN_URL
 
@@ -1062,7 +1062,7 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for key in summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel api-min
+    for key in summary web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel api-min
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -1114,8 +1114,14 @@ filetype_from_url() {
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
-    if [ -z "$PACKAGE_SHALLOW" ] ; then
-        PACKAGE_SHALLOW=yes
+    if [ -z "$PACKAGE_GIT_NTH" ] ; then
+        PACKAGE_GIT_NTH=1
+    else
+        is_integer "$PACKAGE_GIT_NTH" || abort "the value of git-nth mapping should be an integer."
+    fi
+
+    if [ -n "$PACKAGE_API_MIN" ] ; then
+        is_integer "$PACKAGE_API_MIN" || abort "the value of api-min mapping should be an integer."
     fi
 
     if [ -z "$PACKAGE_BINBSTD" ] ; then
@@ -1551,7 +1557,7 @@ EOF
     unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API
     unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI
 
-    for key in pkgname summary web-url git-url git-sha git-ref shallow src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm api-min license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel developer signature timestamp built-for ndkvers
+    for key in pkgname summary web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm api-min license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel developer signature timestamp built-for ndkvers
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -2171,14 +2177,14 @@ __fetch_sources_of_the_given_package() {
                 GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
             fi
 
-            if [ "$PACKAGE_SHALLOW" = yes ] ; then
-                GIT_FETCH_EXTRA_OPTIONS='--depth=1'
-            else
+            if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
                 if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
                     GIT_FETCH_EXTRA_OPTIONS='--unshallow'
                 else
                     GIT_FETCH_EXTRA_OPTIONS=
                 fi
+            else
+                GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
             fi
 
             if [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
@@ -2221,9 +2227,9 @@ __fetch_patches_of_the_given_package() {
 }
 
 __fetch_resources_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
-
     case $1 in
+        '') abort 1 "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
+            ;;
         @all)
             shift
             unset STEP_NUM
@@ -8915,7 +8921,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.3
+    NDKPKG_VERSION=0.6.4
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
