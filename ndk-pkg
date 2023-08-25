@@ -5979,7 +5979,7 @@ EOF
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/execinfo.h
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/execinfo.cpp
                 CPPFLAGS="$CPPFLAGS -include $libexecinfo_INCLUDE_DIR/execinfo.h"
-                LDFLAGS="$LDFLAGS -l:libexecinfo.a"
+                LDFLAGS="$LDFLAGS -l:libexecinfo.a -lm"
             fi
         fi
 
@@ -8929,7 +8929,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.5
+    NDKPKG_VERSION=0.6.6
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
