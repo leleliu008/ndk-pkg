@@ -2235,10 +2235,8 @@ __fetch_resources_of_the_given_package() {
             unset STEP_NUM
             for PKG in $(__list_available_packages)
             do
-                step "$PKG"
-                 __load_formula_of_the_given_package "$PKG"
-                __fetch_sources_of_the_given_package "$PKG" "$@"
-                __fetch_patches_of_the_given_package "$PKG" "$@"
+                step "fetching resources for package : $PKG"
+                __fetch_resources_of_the_given_package "$PKG"
             done
             ;;
         *)
@@ -8929,7 +8927,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.6
+    NDKPKG_VERSION=0.6.7
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
