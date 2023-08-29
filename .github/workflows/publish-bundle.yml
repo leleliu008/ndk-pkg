@@ -34,55 +34,55 @@ jobs:
       - run: ./xcpkg setup
       - run: ./xcpkg update
 
-      - run: ./xcpkg install uppm      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install bash      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install coreutils --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install findutils --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install easyutils --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install gawk      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install gsed      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install grep      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install gtar      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install gzip      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install lzip      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install unzip     --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install zip       --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install xz        --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install bzip2     --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install jq        --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install yq        --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install git       --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install curl      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install tree      --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install patchelf  --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install figlet    --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install lolcat    --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      uppm:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      bash:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install coreutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install findutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install easyutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      gawk:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      gsed:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      grep:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      gtar:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      gzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      lzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install     unzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install       zip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install        xz:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install     bzip2:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install        jq:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install        yq:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install       git:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      curl:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      tree:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install  patchelf:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install    figlet:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install    lolcat:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
 
       - run: install -d out/libexec
 
-      - run: cp -r -v ~/.xcpkg/installed/uppm/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/bash/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/coreutils/* out/
-      - run: cp -r -v ~/.xcpkg/installed/findutils/* out/
-      - run: cp -r -v ~/.xcpkg/installed/easyutils/* out/
-      - run: cp -r -v ~/.xcpkg/installed/gawk/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/gsed/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/grep/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/gtar/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/gzip/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/lzip/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/unzip/*     out/
-      - run: cp -r -v ~/.xcpkg/installed/zip/*       out/
-      - run: cp -r -v ~/.xcpkg/installed/xz/*        out/
-      - run: cp -r -v ~/.xcpkg/installed/bzip2/*     out/
-      - run: cp -r -v ~/.xcpkg/installed/jq/*        out/
-      - run: cp -r -v ~/.xcpkg/installed/yq/*        out/
-      - run: cp -r -v ~/.xcpkg/installed/git/*       out/
-      - run: cp -r -v ~/.xcpkg/installed/curl/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/tree/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/patchelf/*  out/
-      - run: cp -r -v ~/.xcpkg/installed/figlet/*    out/
-      - run: cp -r -v ~/.xcpkg/installed/lolcat/*    out/
+      - run: cp -r -v ~/.xcpkg/installed/uppm:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/bash:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/coreutils:*/* out/
+      - run: cp -r -v ~/.xcpkg/installed/findutils:*/* out/
+      - run: cp -r -v ~/.xcpkg/installed/easyutils:*/* out/
+      - run: cp -r -v ~/.xcpkg/installed/gawk:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/gsed:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/grep:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/gtar:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/gzip:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/lzip:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/unzip:*/*     out/
+      - run: cp -r -v ~/.xcpkg/installed/zip:*/*       out/
+      - run: cp -r -v ~/.xcpkg/installed/xz:*/*        out/
+      - run: cp -r -v ~/.xcpkg/installed/bzip2:*/*     out/
+      - run: cp -r -v ~/.xcpkg/installed/jq:*/*        out/
+      - run: cp -r -v ~/.xcpkg/installed/yq:*/*        out/
+      - run: cp -r -v ~/.xcpkg/installed/git:*/*       out/
+      - run: cp -r -v ~/.xcpkg/installed/curl:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/tree:*/*      out/
+      - run: cp -r -v ~/.xcpkg/installed/patchelf:*/*  out/
+      - run: cp -r -v ~/.xcpkg/installed/figlet:*/*    out/
+      - run: cp -r -v ~/.xcpkg/installed/lolcat:*/*    out/
 
       - run: cc -o out/libexec/wrapper-native-cc  wrapper-native-cc.c
       - run: cc -o out/libexec/wrapper-native-c++ wrapper-native-c++.c

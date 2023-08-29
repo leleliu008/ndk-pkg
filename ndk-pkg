@@ -288,7 +288,10 @@ wfetch() {
     done
 
     if [ -z "$FETCH_URI" ] ; then
-        FETCH_URI="$FETCH_URL"
+        # remove query params
+        FETCH_URL__="${FETCH_URL%%'?'*}"
+
+        FETCH_URI="https://fossies.org/linux/misc/${FETCH_URL__##*/}"
     fi
 
     if [ -z "$FETCH_OUTPUT_FILEPATH" ] ; then
@@ -3369,17 +3372,15 @@ __cleanup() {
 
     wfetch "$1" --output-filename=self
 
-    __upgrade_self_exit() {
-        if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
-            run      install -m 755 self "$CURRENT_SCRIPT_REALPATH"
-        else
-            run sudo install -m 755 self "$CURRENT_SCRIPT_REALPATH"
-        fi
+    run chmod 755 self
 
-        run rm -rf "$WORKING_DIR"
-    }
+    if [ -w "$CURRENT_SCRIPT_REALPATH" ] ; then
+        run      mv self "$CURRENT_SCRIPT_REALPATH"
+    else
+        run sudo mv self "$CURRENT_SCRIPT_REALPATH"
+    fi
 
-    trap __upgrade_self_exit EXIT
+    run rm -rf "$WORKING_DIR"
 }
 
 # }}}
@@ -8927,7 +8928,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.8
+    NDKPKG_VERSION=0.6.9
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
