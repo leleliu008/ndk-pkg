@@ -244,9 +244,6 @@ wfetch() {
                 ;;
             --uri=*)
                 FETCH_URI="${1#*=}"
-                if [ -z "$FETCH_URI" ] ; then
-                    abort 1 "wfetch <URL> --uri=<URL-MIRROR> , <URL-MIRROR> must be non-empty."
-                fi
                 if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
                     FETCH_URI="$("$NDKPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
                 fi
@@ -593,11 +590,11 @@ version_match() {
 
     printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}$NDKPKG_FORMULA_REPO_NAME${COLOR_OFF}"
 
-    WORKING_DIR="$NDKPKG_HOME/run/$$/$NDKPKG_FORMULA_REPO_NAME"
+    SESSION_DIR="$NDKPKG_HOME/run/$$/$NDKPKG_FORMULA_REPO_NAME"
 
-    run rm -rf     "$WORKING_DIR"
-    run install -d "$WORKING_DIR"
-    run cd         "$WORKING_DIR"
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
 
     run git -c init.defaultBranch=master init
     run git remote add origin "$GIT_FETCH_URL"
@@ -613,7 +610,7 @@ timestamp-created: $TIMESTAMP_UNIX
 EOF
 
     run install -d        "$NDKPKG_FORMULA_REPO_ROOT"
-    run mv "$WORKING_DIR" "$NDKPKG_FORMULA_REPO_ROOT/"
+    run mv "$SESSION_DIR" "$NDKPKG_FORMULA_REPO_ROOT/"
 }
 
 # }}}
@@ -674,11 +671,11 @@ EOF
 
     printf '%b\n' "${COLOR_PURPLE}==> Creating formula repository${COLOR_OFF} ${COLOR_GREEN}$NDKPKG_FORMULA_REPO_NAME${COLOR_OFF}"
 
-    WORKING_DIR="$NDKPKG_HOME/run/$$/$NDKPKG_FORMULA_REPO_NAME"
+    SESSION_DIR="$NDKPKG_HOME/run/$$/$NDKPKG_FORMULA_REPO_NAME"
 
-    run rm -rf     "$WORKING_DIR"
-    run install -d "$WORKING_DIR"
-    run cd         "$WORKING_DIR"
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
 
     run git -c init.defaultBranch=master init
     run git remote add origin "$NDKPKG_FORMULA_REPO_URL"
@@ -692,7 +689,7 @@ timestamp-created: $TIMESTAMP_UNIX
 EOF
 
     run install -d        "$NDKPKG_FORMULA_REPO_ROOT"
-    run mv "$WORKING_DIR" "$NDKPKG_FORMULA_REPO_ROOT/"
+    run mv "$SESSION_DIR" "$NDKPKG_FORMULA_REPO_ROOT/"
 }
 
 # }}}
@@ -2154,11 +2151,36 @@ EOF
 ##############################################################################
 # {{{ ndk-pkg fetch
 
-# fetch source code if needed
-__fetch_sources_of_the_given_package() {
-    case $PACKAGE_SRC_FILETYPE in
-        .dir) note "$PACKAGE_SRC_URL is local path, no need to fetch." ;;
-        .git)
+__fetch_resources_of_the_given_package() {
+    if [ -z "$1" ] ; then
+        abort 1 "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
+    fi
+
+    if [ "$1" = '@all' ] ; then
+        shift
+
+        unset STEP_NUM
+
+        for PKG in $(__list_available_packages)
+        do
+            step "fetching resources for package : $PKG"
+            __fetch_resources_of_the_given_package "$PKG"
+        done
+    else
+        __load_formula_of_the_given_package "$1"
+
+        if [ "$PACKAGE_SRC_FILETYPE" = '.dir' ] ; then
+            note "$PACKAGE_SRC_URL is local path, no need to fetch."
+            return 0
+        fi
+
+        SESSION_DIR="$NDKPKG_HOME/run/$$/$1"
+
+        run rm -rf     "$SESSION_DIR"
+        run install -d "$SESSION_DIR"
+        run cd         "$SESSION_DIR"
+
+        if [ -z "$PACKAGE_SRC_URL" ] ; then
             unset GIT_FETCH_URL
 
             if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
@@ -2190,64 +2212,25 @@ __fetch_sources_of_the_given_package() {
                 GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
             fi
 
-            if [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
-                if git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD > /dev/null 2>&1 ; then
-                    if [ -n "$PACKAGE_GIT_SHA" ] && [ "$PACKAGE_GIT_SHA" = "$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD)" ] ; then
-                        success "$PACKAGE_SRC_FILEPATH already have been fetched."
-                        return 0
-                    fi
-                else
-                    run rm -rf     "$PACKAGE_SRC_FILEPATH" || return 1
-                    run install -d "$PACKAGE_SRC_FILEPATH" || return 1
-                    run git -C     "$PACKAGE_SRC_FILEPATH" -c init.defaultBranch=master init || return 1
-                    run git -C     "$PACKAGE_SRC_FILEPATH" remote add origin "$GIT_FETCH_URL" || return 1
-                fi
-            else
-                run install -d "$PACKAGE_SRC_FILEPATH" || return 1
-                run git -C     "$PACKAGE_SRC_FILEPATH" -c init.defaultBranch=master init || return 1
-                run git -C     "$PACKAGE_SRC_FILEPATH" remote add origin "$GIT_FETCH_URL" || return 1
-            fi
+            run git -c init.defaultBranch=master init
+            run git remote add origin "$GIT_FETCH_URL"
+            run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
+            run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
+            run git submodule update --init
+        else
+            wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir=. --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
+        fi
 
-            run git -C "$PACKAGE_SRC_FILEPATH" -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC" || return 1
-            run git -C "$PACKAGE_SRC_FILEPATH" checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME" || return 1
-            run git -C "$PACKAGE_SRC_FILEPATH" submodule update --init || return 1
-            ;;
-        *)  if [ -z    "$PACKAGE_SRC_URI" ] ; then
-                wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH"
-            else
-                wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
-            fi
-    esac
-}
+        if [ -n    "$PACKAGE_FIX_URL" ] ; then
+            wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir=. --output-filepath="$PACKAGE_FIX_FILEPATH" --uri="$PACKAGE_FIX_URI"
+        fi
 
-__fetch_patches_of_the_given_package() {
-    if [ -n    "$PACKAGE_FIX_URL" ] ; then
-        wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_FIX_FILEPATH"
+        if [ -n    "$PACKAGE_RES_URL" ] ; then
+            wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir=. --output-filepath="$PACKAGE_RES_FILEPATH" --uri="$PACKAGE_RES_URI"
+        fi
+
+        run rm -rf "$SESSION_DIR"
     fi
-    if [ -n    "$PACKAGE_RES_URL" ] ; then
-        wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_RES_FILEPATH"
-    fi
-}
-
-__fetch_resources_of_the_given_package() {
-    case $1 in
-        '') abort 1 "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
-            ;;
-        @all)
-            shift
-            unset STEP_NUM
-            for PKG in $(__list_available_packages)
-            do
-                step "fetching resources for package : $PKG"
-                __fetch_resources_of_the_given_package "$PKG"
-            done
-            ;;
-        *)
-            PACKAGE_WORKING_DIR="$NDKPKG_HOME/run/$$"
-             __load_formula_of_the_given_package "$1"
-            __fetch_sources_of_the_given_package "$@"
-            __fetch_patches_of_the_given_package "$@"
-    esac
 }
 
 # }}}
@@ -2296,7 +2279,7 @@ __fetch_resources_of_the_given_package() {
 # {{{ ndk-pkg pack
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME|PACKAGE-SPEC> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-working-dir]
+# __pack_the_given_installed_package <PACKAGE-NAME|PACKAGE-SPEC> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-session-dir]
   __pack_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
@@ -2306,13 +2289,13 @@ __fetch_resources_of_the_given_package() {
     unset OUTPUT_FILETYPE
     unset OUTPUT_FILEPATH
 
-    unset KEEP_WORKING_DIR
+    unset KEEP_SESSION_DIR
 
     while [ -n "$1" ]
     do
         case $1 in
-            --keep-working-dir)
-                KEEP_WORKING_DIR=yes
+            --keep-session-dir)
+                KEEP_SESSION_DIR=yes
                 ;;
             -t) shift
 
@@ -2334,7 +2317,7 @@ __fetch_resources_of_the_given_package() {
                     OUTPUT_FILEPATH="$1"
                 fi
                 ;;
-            *)  abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-working-dir], unrecognized option: $1"
+            *)  abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
         esac
         shift
     done
@@ -2460,12 +2443,12 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    WORKING_DIR="$NDKPKG_HOME/run/$$"
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-    step "create the working directory and change to it"
-    run rm -rf     "$WORKING_DIR"
-    run install -d "$WORKING_DIR"
-    run cd         "$WORKING_DIR"
+    step "create the session directory and change to it"
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
 
     step "make link refer to installed package root directory"
     run ln -s "$PACKAGE_INSTALLED_DIR" "$PACKED_DIR_NAME"
@@ -2498,12 +2481,12 @@ __fetch_resources_of_the_given_package() {
     step "move packed file to output directory"
     run mv "$OUTPUT_FILENAME" "$OUTPUT_DIR/"
 
-    if [ "$KEEP_WORKING_DIR" = yes ] ; then
+    if [ "$KEEP_SESSION_DIR" = yes ] ; then
         printf '\n'
-        note "the working directory '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
+        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
     else
-        step "delete the working directory"
-        run rm -rf "$WORKING_DIR"
+        step "delete the session directory"
+        run rm -rf "$SESSION_DIR"
     fi
 }
 
@@ -2754,12 +2737,12 @@ EOF
 
     #########################################################################################
 
-    WORKING_DIR="$NDKPKG_HOME/run/$$"
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-    step "create the working directory and change to it"
-    run rm -rf     "$WORKING_DIR"
-    run install -d "$WORKING_DIR"
-    run cd         "$WORKING_DIR"
+    step "create the session directory and change to it"
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
 
     #########################################################################################
 
@@ -2820,7 +2803,7 @@ EOF
     step "show size of the prefab aar file"
     run du -sh    "$AAR_FILENAME"
 
-    step "show working directory in tree-like format"
+    step "show session directory in tree-like format"
     run tree --dirsfirst .
 
     ###########################################################################################
@@ -2836,10 +2819,10 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
-    cd $WORKING_DIR
+    cd $SESSION_DIR
     mv $AAR_FILENAME /somewhere
     cd -
-    rm -rf $WORKING_DIR
+    rm -rf $SESSION_DIR
         "
         return 0
     fi
@@ -2869,11 +2852,11 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     step "move prefab aar file to destination"
     run mv "$AAR_FILENAME" "$OUTPUT_FILEPATH"
 
-    step "delete the working directory"
-    run rm -rf "$WORKING_DIR"
+    step "delete the session directory"
+    run rm -rf "$SESSION_DIR"
 }
 
-# __deploy_google_prefab_aar_for_the_given_installed_packages <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [--keep-working-dir] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
+# __deploy_google_prefab_aar_for_the_given_installed_packages <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [--keep-session-dir] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
   __deploy_google_prefab_aar_for_the_given_installed_packages() {
     __export_google_prefab_aar_for_the_given_installed_packages "$@"
 
@@ -2886,7 +2869,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     unset DEPLOYED_TO_SONATYPE_OSSRH
     unset DEPLOYED_TO_SPECIFIED_LOCAL_PATH
 
-    unset KEEP_WORKING_DIR
+    unset KEEP_SESSION_DIR
 
     unset MVN_OPTIONS
 
@@ -2912,8 +2895,8 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
             --dry-run)
                 DRYRUN=yes
                 ;;
-            --keep-working-dir)
-                KEEP_WORKING_DIR=yes
+            --keep-session-dir)
+                KEEP_SESSION_DIR=yes
                 ;;
             --groupId=*)
                 GROUPID="${1#*=}"
@@ -2938,10 +2921,10 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
-    cd $WORKING_DIR
+    cd $SESSION_DIR
     mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$PACKAGE_RECEIPT_VERSION -Dpackaging=aar -DgeneratePom=true
     cd -
-    rm -rf $WORKING_DIR
+    rm -rf $SESSION_DIR
             "
             return 0
         fi
@@ -2968,12 +2951,12 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
         step "deploying the prefab aar to Maven Local Repository"
         run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=true
 
-        if [ "$KEEP_WORKING_DIR" = yes ] ; then
+        if [ "$KEEP_SESSION_DIR" = yes ] ; then
             printf '\n'
-            note "the working directory '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
+            note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
         else
-            step "delete the working directory"
-            run rm -rf "$WORKING_DIR"
+            step "delete the session directory"
+            run rm -rf "$SESSION_DIR"
         fi
 
         printf '%b\n' "
@@ -3166,10 +3149,10 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
-    cd $WORKING_DIR
+    cd $SESSION_DIR
     mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$PACKAGE_RECEIPT_VERSION -Dpackaging=aar -DgeneratePom=false -DpomFile=$POM_FILE -DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH
     cd -
-    rm -rf $WORKING_DIR
+    rm -rf $SESSION_DIR
             "
             return 0
         fi
@@ -3196,12 +3179,12 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
         step "deploying the prefab aar to Maven Local Repository"
         run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
 
-        if [ "$KEEP_WORKING_DIR" = yes ] ; then
+        if [ "$KEEP_SESSION_DIR" = yes ] ; then
             printf '\n'
-            note "the working directory '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
+            note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
         else
-            step "delete the working directory"
-            run rm -rf "$WORKING_DIR"
+            step "delete the session directory"
+            run rm -rf "$SESSION_DIR"
         fi
 
         return 0
@@ -3216,10 +3199,10 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
-    cd $WORKING_DIR
+    cd $SESSION_DIR
     run mvn --settings settings.xml $MVN_OPTIONS gpg:sign-and-deploy-file -Dfile=$AAR_FILENAME -DgeneratePom=false -DpomFile=$POM_FILE -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 -DrepositoryId=$SERVER_ID -Durl=$SERVER_URL
     cd -
-    rm -rf $WORKING_DIR
+    rm -rf $SESSION_DIR
         "
         return 0
     fi
@@ -3323,12 +3306,12 @@ EOF
 
     #########################################################################################
 
-    if [ "$KEEP_WORKING_DIR" = yes ] ; then
+    if [ "$KEEP_SESSION_DIR" = yes ] ; then
         printf '\n'
-        note "the working dir '$WORKING_DIR' is not deleted as --keep-working-dir option is given."
+        note "the session dir '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
     else
-        step "delete the working directory"
-        run rm -rf "$WORKING_DIR"
+        step "delete the session directory"
+        run rm -rf "$SESSION_DIR"
     fi
 }
 
@@ -3364,11 +3347,11 @@ __cleanup() {
         CURRENT_SCRIPT_REALPATH="$CURRENT_SCRIPT_FILEPATH"
     fi
 
-    WORKING_DIR="$NDKPKG_HOME/run/$$"
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-    run rm -rf     "$WORKING_DIR"
-    run install -d "$WORKING_DIR"
-    run cd         "$WORKING_DIR"
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
 
     wfetch "$1" --output-filename=self
 
@@ -3380,7 +3363,7 @@ __cleanup() {
         run sudo mv self "$CURRENT_SCRIPT_REALPATH"
     fi
 
-    run rm -rf "$WORKING_DIR"
+    run rm -rf "$SESSION_DIR"
 }
 
 # }}}
@@ -3438,19 +3421,21 @@ __cleanup() {
         fi
     fi
 
-    WORKING_DIR="$NDKPKG_HOME/run/$$"
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-    run rm -rf     "$WORKING_DIR"
-    run install -d "$WORKING_DIR"
-    run cd         "$WORKING_DIR"
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
 
     wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-filename="$ZSH_COMPLETIONS_SCRIPT_FILENAME"
 
+    run chmod 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
-            run      install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+            run      mv "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
         else
-            run sudo install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+            run sudo mv "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
         fi
     else
         ZSH_COMPLETIONS_SCRIPT_OUT_DIR="$(dirname "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH")"
@@ -3458,13 +3443,13 @@ __cleanup() {
             run install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" || run sudo install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR"
         fi
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
-            run      install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+            run      mv "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
         else
-            run sudo install -m 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+            run sudo mv "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
         fi
     fi
 
-    run rm -rf "$WORKING_DIR"
+    run rm -rf "$SESSION_DIR"
 
     printf '\n'
     note "${COLOR_YELLOW}you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
@@ -3536,7 +3521,7 @@ __show_packages_depended_by_the_given_package() {
                     OUTPUT_FILEPATH="$1"
                 fi
                 ;;
-            *)  abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-working-dir], unrecognized option: $1"
+            *)  abort 1 "$_0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
         esac
         shift
     done
@@ -3735,11 +3720,11 @@ $DOT_CONTENT
             fi
             ;;
         svg)
-            WORKING_DIR="$NDKPKG_HOME/run/$$"
+            SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-            rm -rf     "$WORKING_DIR"
-            install -d "$WORKING_DIR"
-            cd         "$WORKING_DIR"
+            rm -rf     "$SESSION_DIR"
+            install -d "$SESSION_DIR"
+            cd         "$SESSION_DIR"
 
             printf '%s\n' "$DOT_CONTENT" > dependencies.dot
 
@@ -3751,11 +3736,11 @@ $DOT_CONTENT
             fi
             ;;
         png)
-            WORKING_DIR="$NDKPKG_HOME/run/$$"
+            SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-            rm -rf     "$WORKING_DIR"
-            install -d "$WORKING_DIR"
-            cd         "$WORKING_DIR"
+            rm -rf     "$SESSION_DIR"
+            install -d "$SESSION_DIR"
+            cd         "$SESSION_DIR"
 
             printf '%s\n' "$DOT_CONTENT" > dependencies.dot
 
@@ -3936,6 +3921,12 @@ __reinstall_the_given_packages() {
             fi
         done
     done
+
+    #########################################################################################
+
+    if [ "$KEEP_SESSION_DIR" != yes ] ; then
+        rm -rf "$SESSION_DIR"
+    fi
 }
 
 # }}}
@@ -4069,6 +4060,12 @@ __upgrade_packages() {
             fi
         done
     done
+
+    #########################################################################################
+
+    if [ "$KEEP_SESSION_DIR" != yes ] ; then
+        rm -rf "$SESSION_DIR"
+    fi
 }
 
 # peel_installed_root_dir_for_the_given_package <PACKAGE-NAME|PACKAGE-SPEC>
@@ -4169,7 +4166,7 @@ inspect_install_arguments() {
 
     LINK_TYPE=static-prefered
 
-    KEEP_WORKING_DIR=no
+    KEEP_SESSION_DIR=no
 
     EXPORT_COMPILE_COMMANDS_JSON=no
 
@@ -4191,8 +4188,8 @@ inspect_install_arguments() {
             --dry-run)
                 DRYRUN=yes
                 ;;
-            --keep-working-dir)
-                KEEP_WORKING_DIR=yes
+            --keep-session-dir)
+                KEEP_SESSION_DIR=yes
                 ;;
             --export-compile-commands-json)
                 EXPORT_COMPILE_COMMANDS_JSON=yes
@@ -4451,6 +4448,12 @@ __install_the_given_packages() {
             fi
         done
     done
+
+    #########################################################################################
+
+    if [ "$KEEP_SESSION_DIR" != yes ] ; then
+        rm -rf "$SESSION_DIR"
+    fi
 }
 
 # this function must run in subshell
@@ -4884,7 +4887,7 @@ NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
 
              DRYRUN = $DRYRUN
      CCACHE_ENABLED = $CCACHE_ENABLED
-   KEEP_WORKING_DIR = $KEEP_WORKING_DIR
+   KEEP_SESSION_DIR = $KEEP_SESSION_DIR
 EXPORT_COMPILE_COMMANDS_JSON = $EXPORT_COMPILE_COMMANDS_JSON
     "
 
@@ -4903,7 +4906,7 @@ EOF
 
     #########################################################################################
 
-    step "create and change to working directory"
+    step "create and change to the working directory"
 
     PACKAGE_WORKING_DIR="$SESSION_DIR/$PACKAGE_NAME"
     PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
@@ -5624,8 +5627,58 @@ $DOT_CONTENT
     #########################################################################################
 
     step "fetch source/patches/resources from server"
-    __fetch_sources_of_the_given_package
-    __fetch_patches_of_the_given_package
+
+    if [ "$PACKAGE_SRC_FILETYPE" = '.dir' ] ; then
+        note "$PACKAGE_SRC_URL is local path, no need to fetch."
+    elif [ -z "$PACKAGE_SRC_URL" ] ; then
+        unset GIT_FETCH_URL
+
+        if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
+            GIT_FETCH_URL="$PACKAGE_GIT_URL"
+        else
+            GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
+        fi
+
+        if [ -z "$PACKAGE_GIT_SHA" ] ; then
+            if [ -z "$PACKAGE_GIT_REF" ] ; then
+                GIT_BRANCH_NAME=master
+                GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+            else
+                GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
+                GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+            fi
+        else
+            GIT_BRANCH_NAME=master
+            GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
+        fi
+
+        if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
+            if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
+                GIT_FETCH_EXTRA_OPTIONS='--unshallow'
+            else
+                GIT_FETCH_EXTRA_OPTIONS=
+            fi
+        else
+            GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
+        fi
+
+        run cd "$PACKAGE_INSTALLING_SRC_DIR"
+        run git -c init.defaultBranch=master init
+        run git remote add origin "$GIT_FETCH_URL"
+        run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
+        run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
+        run git submodule update --init
+    else
+        wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
+    fi
+
+    if [ -n    "$PACKAGE_FIX_URL" ] ; then
+        wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_FIX_FILEPATH" --uri="$PACKAGE_FIX_URI"
+    fi
+
+    if [ -n    "$PACKAGE_RES_URL" ] ; then
+        wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_RES_FILEPATH" --uri="$PACKAGE_RES_URI"
+    fi
 
     #########################################################################################
 
@@ -5645,10 +5698,8 @@ $DOT_CONTENT
             ;;
         .git)
             if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                PACKAGE_GIT_SHA=$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD || true)
+                PACKAGE_GIT_SHA="$(git rev-parse HEAD)"
             fi
-            step "copy source files to the installing src directory"
-            run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
             ;;
         .zip)
             step "uncompressed source file to the installing src directory"
@@ -6678,208 +6729,47 @@ $PACKAGE_DOBUILD_ACTIONS
 
     #########################################################################################
 
-    step "install COPYING"
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'FAQ*'     -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'TODO*'    -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'NEWS*'    -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'THANKS*'  -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'README*'  -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'COPYING*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'LICENSE*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'AUTHORS*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGES*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGELOG*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTORS*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTING*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
 
-    COPYING_FOUND=0
-
-    for item in $(find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -name "COPYING*")
-    do
-        if [ -f "$item" ] ; then
-            COPYING_FOUND=1
-            install -v -m 644 "$item" "$PACKAGE_METAINF_DIR/"
-        fi
-    done
-
-    if [ "$COPYING_FOUND" = 0 ] ; then
-        note "'COPYING' named file was not found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install LICENSE"
-
-    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/LICENSE" ] ; then
-        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/LICENSE" "$PACKAGE_METAINF_DIR/"
-    else
-        note "'LICENSE' named file was not found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install AUTHORS"
-
-    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/AUTHORS" ] ; then
-        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/AUTHORS" "$PACKAGE_METAINF_DIR/"
-    else
-        note "'AUTHORS' named file was not found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install CONTRIBUTORS"
-
-    CONTRIBUTORS_FOUND=0
-
-    for item in CONTRIBUTORS CONTRIBUTORS.md CONTRIBUTORS.rst
-    do
-        if [ -f "$PACKAGE_INSTALLING_SRC_DIR/$item" ] ; then
-            CONTRIBUTORS_FOUND=1
-            install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/$item" "$PACKAGE_METAINF_DIR/"
-        fi
-    done
-
-    if [ "$CONTRIBUTORS_FOUND" = 0 ] ; then
-        note "none of 'CONTRIBUTORS' 'CONTRIBUTORS.md' 'CONTRIBUTORS.rst' named files was found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install README"
-
-    README_FOUND=0
-
-    for item in README README.md README.rst
-    do
-        if [ -f "$PACKAGE_INSTALLING_SRC_DIR/$item" ] ; then
-            README_FOUND=1
-            install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/$item" "$PACKAGE_METAINF_DIR/"
-        fi
-    done
-
-    if [ "$README_FOUND" = 0 ] ; then
-        note "none of 'README' 'README.md' 'README.rst' named files was found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install CONTRIBUTING"
-
-    CONTRIBUTING_FOUND=0
-
-    for item in CONTRIBUTING CONTRIBUTING.md CONTRIBUTING.rst
-    do
-        if [ -f "$PACKAGE_INSTALLING_SRC_DIR/$item" ] ; then
-            CONTRIBUTING_FOUND=1
-            install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/$item" "$PACKAGE_METAINF_DIR/"
-        fi
-    done
-
-    if [ "$CONTRIBUTING_FOUND" = 0 ] ; then
-        note "none of 'CONTRIBUTING' 'CONTRIBUTING.md' 'CONTRIBUTING.rst' named files was found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install CHANGELOG"
-
-    CHANGELOG_FOUND=0
-
-    for item in CHANGELOG CHANGELOG.md CHANGES
-    do
-        if [ -f "$PACKAGE_INSTALLING_SRC_DIR/$item" ] ; then
-            install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/$item" "$PACKAGE_METAINF_DIR/"
-            CHANGELOG_FOUND=1
-            break;
-        fi
-    done
-
-    if [ "$CHANGELOG_FOUND" = 0 ] ; then
-        note "none of 'CHANGELOG' 'CHANGELOG.md' 'CHANGES' named files was found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install NEWS"
-
-    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/NEWS" ] ; then
-        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/NEWS" "$PACKAGE_METAINF_DIR/"
-    else
-        note "'NEWS' named file was not found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install TODO"
-
-    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/TODO" ] ; then
-        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/TODO" "$PACKAGE_METAINF_DIR/"
-    else
-        note "'TODO' named file was not found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install FAQ"
-
-    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/FAQ" ] ; then
-        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/FAQ" "$PACKAGE_METAINF_DIR/"
-    else
-        note "'FAQ' named file was not found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install THANKS"
-
-    if [ -f "$PACKAGE_INSTALLING_SRC_DIR/THANKS" ] ; then
-        install -v -m 644 "$PACKAGE_INSTALLING_SRC_DIR/THANKS" "$PACKAGE_METAINF_DIR/"
-    else
-        note "'THANKS' named file was not found, skipped."
-    fi
-
-    #########################################################################################
-
-    step "install config.log"
+    find "$PACKAGE_WORKING_DIR"        -mindepth 1 -maxdepth 1 -name 'dependencies.*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
 
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/config.log" ] ; then
-            install -v -m 644 "$dir/config.log" "$PACKAGE_METAINF_DIR"
+            mv  "$dir/config.log" "$PACKAGE_METAINF_DIR"
         fi
     done
-
-    #########################################################################################
-
-    step "install compile_commands.json"
 
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/compile_commands.json" ] ; then
-            install -v -m 644 "$dir/compile_commands.json" "$PACKAGE_METAINF_DIR"
+            mv  "$dir/compile_commands.json" "$PACKAGE_METAINF_DIR"
         fi
     done
-
-    #########################################################################################
-
-    step "install dependency graph files"
-
-    find "$PACKAGE_WORKING_DIR" -mindepth 1 -maxdepth 1 \( -name dependencies.dot -o -name dependencies.box -o -name dependencies.svg -o -name dependencies.png \) -exec install -v -m 644 {} "$PACKAGE_METAINF_DIR" \;
 
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PKG" ] && {
         step "install dependency formulas"
 
-        install -v -d "$PACKAGE_METAINF_DIR/formula"
+        install -d "$PACKAGE_METAINF_DIR/formula"
 
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            install -v -m 644 "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINF_DIR/formula"
+            mv "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINF_DIR/formula/"
         done
     }
-
-    #########################################################################################
-
-    step "install LICENSEs"
-    if [        -f "$PACKAGE_WORKING_DIR/LICENSE1" ] ; then
-        if [    -f "$PACKAGE_WORKING_DIR/LICENSE2" ] ; then
-            run mv "$PACKAGE_WORKING_DIR/LICENSE[1-9]" "$PACKAGE_METAINF_DIR"
-        else
-            run mv "$PACKAGE_WORKING_DIR/LICENSE1"     "$PACKAGE_METAINF_DIR/LICENSE"
-        fi
-    else
-        warn "no LICENSEs, skipped."
-    fi
 
     #########################################################################################
 
@@ -6958,6 +6848,7 @@ $PACKAGE_DOBUILD_ACTIONS
     step "generate RECEIPT.yml"
     __generate_receipt_of_the_given_package "$1"
 
+    step "generate index"
     run ln -s -r -f -T "$PACKAGE_INSTALL_DIR" "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
 
     #########################################################################################
@@ -6970,13 +6861,10 @@ $PACKAGE_DOBUILD_ACTIONS
         run  ccache -s
     }
 
-    [ "$KEEP_WORKING_DIR" != yes ] && {
-        step "delete the installing directory"
+    [ "$KEEP_SESSION_DIR" != yes ] && {
+        step "delete the working directory"
         run rm -rf "$PACKAGE_WORKING_DIR"
     }
-
-    printf '\n'
-    success "$1 have been successfully installed."
 
     step "show installed files in tree-like format"
     run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
@@ -8136,11 +8024,11 @@ __setup() {
 
     ##################################################################################
 
-    WORKING_DIR="$NDKPKG_HOME/run/$$/core"
+    SESSION_DIR="$NDKPKG_HOME/run/$$/core"
 
-    run rm -rf     "$WORKING_DIR"
-    run install -d "$WORKING_DIR"
-    run cd         "$WORKING_DIR"
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
 
     ##################################################################################
 
@@ -8554,7 +8442,7 @@ EOF
         run rm -rf "$NDKPKG_CORE_DIR"
     fi
 
-    run mv "$WORKING_DIR" "$NDKPKG_HOME/"
+    run mv "$SESSION_DIR" "$NDKPKG_HOME/"
 
     #################################################################################
 
@@ -8738,8 +8626,8 @@ ${COLOR_GREEN}ndk-pkg install <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS
         ${COLOR_BLUE}--dry-run${COLOR_OFF}
             do not actually install the package.
 
-        ${COLOR_BLUE}--keep-working-dir${COLOR_OFF}
-            do not delete the working directory even if this package is successfully installed.
+        ${COLOR_BLUE}--keep-session-dir${COLOR_OFF}
+            do not delete the session directory even if this package is successfully installed.
 
     USAGE-EXAMPLES:
         ndk-pkg install zlib/android-21/arm64-v8a
@@ -8766,7 +8654,7 @@ ${COLOR_GREEN}ndk-pkg tree <PACKAGE-SPEC> [--dirsfirst | -L N]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg logs <PACKAGE-SPEC>${COLOR_OFF}
     show logs of the given installed package.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-working-dir] [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     pack the given installed package.
 
     <OUTPUT-PATH> can be either the filepath or directory where the packed archive will be written to. If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
@@ -8795,7 +8683,7 @@ ${COLOR_GREEN}ndk-pkg export <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS>
 
     If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar
 
-${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-working-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-session-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
     export the given installed package as google prefab aar then deploy it to Maven Repository.
 
     For details about google prefab, please visit https://google.github.io/prefab/
@@ -8928,7 +8816,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.9
+    NDKPKG_VERSION=0.6.10
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'

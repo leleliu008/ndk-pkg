@@ -95,7 +95,7 @@ function _ndk_pkg() {
                     _arguments \
                         '1:formula-repo-name:(name)' \
                         '2:formula-repo-url:(https://)' \
-                        '--branch=-[set the formula repo branch]' \
+                        '--branch=-[specify the formula repo branch]' \
                         + '(pin)' \
                         '--pin[set pinned to 1]' \
                         '--unpin[set pinned to 0]' \
@@ -107,7 +107,7 @@ function _ndk_pkg() {
                     _arguments \
                         '1:formula-repo-name:(name)' \
                         '2:formula-repo-url:(https://)' \
-                        '--branch=-[set the formula repo branch]' \
+                        '--branch=-[specify the formula repo branch]' \
                         + '(pin)' \
                         '--pin[set pinned to 1]' \
                         '--unpin[set pinned to 0]' \
@@ -121,11 +121,11 @@ function _ndk_pkg() {
                         '--url=-[change the formula repo url]' \
                         '--branch=-[change the formula repo branch]' \
                         + '(pin)' \
-                        '--pin[set pinned to yes]' \
-                        '--unpin[set pinned to no]' \
+                        '--pin[set pinned to 1]' \
+                        '--unpin[set pinned to 0]' \
                         + '(enable)' \
-                        '--enable[set enabled to yes]' \
-                        '--disable[set enabled to no]'
+                        '--enable[set enabled to 1]' \
+                        '--disable[set enabled to 0]'
                     ;;
                 formula-repo-del)
                     _arguments '1:formula-repo-name:($(ndk-pkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
@@ -170,28 +170,28 @@ function _ndk_pkg() {
                 depends)
                     _arguments \
                         '1:package-name:_ndk_pkg_available_packages' \
-                        '-t[set output format]:output-type:(dot box svg png)' \
-                        '-o[set output filepath or directory]:output-path:_files'
+                        '-t[specify output format]:output-type:(dot box svg png)' \
+                        '-o[specify output filepath or directory]:output-path:_files'
                     ;;
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '-t[set output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
-                        '-o[set output filepath or directory]:output-path:_files' \
-                        '--keep-working-dir[do not delete the working direcotory even if successfully packed]'
+                        '-t[specify output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
+                        '-o[specify output filepath or directory]:output-path:_files' \
+                        '--keep-session-dir[do not delete the session direcotory even if successfully packed]'
                     ;;
                 export)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_package_names' \
-                        '-o[set output filepath or directory]:output-path:_files'
+                        '-o[specify output filepath or directory]:output-path:_files'
                     ;;
                 deploy)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_package_names' \
-                        '--keep-working-dir[do not delete the working direcotory even if successfully deployed]' \
+                        '--keep-session-dir[do not delete the session direcotory even if successfully deployed]' \
                         '--dry-run[do not actually deploy the aar]' \
                         '--debug[debug the process of deployment]' \
-                        '--groupId=-[set groupId]:groupId:(com. org.)' \
+                        '--groupId=-[specify groupId]:groupId:(com. org.)' \
                         + '(where_to_deploy)' \
                         '--remote[deploy to Sonatype OSSRH]' \
                         '--local=-[specify the local reposotory path]:local-path:_path_files -/'
@@ -209,10 +209,10 @@ function _ndk_pkg() {
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
                         '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/' \
-                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[do not actually install the package]' \
-                        '--keep-working-dir[do not delete the working direcotory even if this package is successfully installed]' \
-                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--keep-session-dir[do not delete the session direcotory even if this package is successfully installed]' \
+                        '--build-type=-[specify build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
@@ -225,10 +225,10 @@ function _ndk_pkg() {
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
                         '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/' \
-                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete the working direcotory even if this package is successfully installed]' \
-                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--keep-session-dir[do not delete the session direcotory even if this package is successfully installed]' \
+                        '--build-type=-[specify build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
@@ -241,10 +241,10 @@ function _ndk_pkg() {
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
                         '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/' \
-                        '--jobs=-[set the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-working-dir[do not delete the working direcotory even if this package is successfully installed]' \
-                        '--build-type=-[set build type]:build-type:(debug release)' \
+                        '--keep-session-dir[do not delete the session direcotory even if this package is successfully installed]' \
+                        '--build-type=-[specify build type]:build-type:(debug release)' \
                         '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
