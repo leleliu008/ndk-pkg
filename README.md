@@ -142,31 +142,23 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 ~/.ndk-pkg
 ├── core
 │   ├── bin
-│   │   ├── autoconf
-│   │   ├── automake
-│   │   ├── perl
-│   │   ├── python3
 │   │   └── uppm
 │   ├── env
 │   ├── etc
 │   │   └── ssl
 │   │       └── certs
 │   │           └── cacert.pem
-│   ├── include
-│   │   ├── lzma.h
-│   │   └── zlib.h
-│   ├── lib
-│   │   ├── cmake
-│   │   ├── pkgconfig
-│   │   └── libz.a
 │   ├── libexec
 │   │   ├── wrapper-native-c++
 │   │   ├── wrapper-native-cc
 │   │   ├── wrapper-target-c++
 │   │   └── wrapper-target-cc
-│   └── share
-│       ├── aclocal
-│       └── man
+│   ├── share
+│   │   └── zsh
+│   │       └── site-functions
+│   │           └── _uppm
+│   ├── wrapper-native-cc.c
+│   └── wrapper-target-cc.c
 ├── downloads
 │   ├── 8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313.tgz
 │   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz
@@ -214,6 +206,25 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │   ├── zlib:android-21:armeabi-v7a -> 1f6e3471cc3fed6ac255d262c4b151fff1e73e178e266476eced394cd7a7a286
 │   ├── zlib:android-21:x86 -> f1dd85386c380267b40759f291da65ecfde1375f0c64ada692aebc3fbe1834d8
 │   └── zlib:android-21:x86_64 -> fe901c866e12f2f6816c269b774f9ca48a83f5c269e515a320fae7a7bcc0d791
+├── native
+│   └── linux-x86_64
+│       ├── 30b5043e2c5513343152506e5b1e14436ddbb654f7edf69167df05f117fcdb16
+│       │   ├── bin
+│       │   │   ├── aclocal
+│       │   │   ├── aclocal-1.16
+│       │   │   ├── automake
+│       │   │   └── automake-1.16
+│       │   ├── share
+│       │   └── receipt.txt
+│       └── automake -> 30b5043e2c5513343152506e5b1e14436ddbb654f7edf69167df05f117fcdb16
+├── repos.d
+│   └── offical-core
+│       ├── formula
+│       │   ├── zlib.yml
+│       │   ├── libbz2.yml
+│       │   ├── liblzma.yml
+│       │   └── libzstd.yml
+│       └── README.md
 └── run
     ├── 3409784
     ├── 3447656
