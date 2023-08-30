@@ -244,7 +244,7 @@ wfetch() {
                 ;;
             --uri=*)
                 FETCH_URI="${1#*=}"
-                if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
+                if [ -n "$FETCH_URI" ] && [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
                     FETCH_URI="$("$NDKPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
                 fi
                 ;;
@@ -2176,10 +2176,6 @@ __fetch_resources_of_the_given_package() {
 
         SESSION_DIR="$NDKPKG_HOME/run/$$/$1"
 
-        run rm -rf     "$SESSION_DIR"
-        run install -d "$SESSION_DIR"
-        run cd         "$SESSION_DIR"
-
         if [ -z "$PACKAGE_SRC_URL" ] ; then
             unset GIT_FETCH_URL
 
@@ -2212,24 +2208,29 @@ __fetch_resources_of_the_given_package() {
                 GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
             fi
 
+            run rm -rf     "$SESSION_DIR"
+            run install -d "$SESSION_DIR"
+            run cd         "$SESSION_DIR"
             run git -c init.defaultBranch=master init
             run git remote add origin "$GIT_FETCH_URL"
             run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
             run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
             run git submodule update --init
         else
-            wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir=. --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
+            wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$SESSION_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
         fi
 
         if [ -n    "$PACKAGE_FIX_URL" ] ; then
-            wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir=. --output-filepath="$PACKAGE_FIX_FILEPATH" --uri="$PACKAGE_FIX_URI"
+            wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir="$SESSION_DIR" --output-filepath="$PACKAGE_FIX_FILEPATH" --uri="$PACKAGE_FIX_URI"
         fi
 
         if [ -n    "$PACKAGE_RES_URL" ] ; then
-            wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir=. --output-filepath="$PACKAGE_RES_FILEPATH" --uri="$PACKAGE_RES_URI"
+            wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir="$SESSION_DIR" --output-filepath="$PACKAGE_RES_FILEPATH" --uri="$PACKAGE_RES_URI"
         fi
 
-        run rm -rf "$SESSION_DIR"
+        if [    -d "$SESSION_DIR" ] ; then
+            rm -rf "$SESSION_DIR"
+        fi
     fi
 }
 
@@ -8816,7 +8817,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.10
+    NDKPKG_VERSION=0.6.11
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
