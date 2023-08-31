@@ -963,8 +963,6 @@ filetype_from_url() {
     unset PACKAGE_GIT_REF
     unset PACKAGE_GIT_NTH
 
-    unset PACKAGE_SVN_URL
-
     unset PACKAGE_SRC_URL
     unset PACKAGE_SRC_URI
     unset PACKAGE_SRC_SHA
@@ -1043,10 +1041,9 @@ filetype_from_url() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
-    unset PACKAGE_FORMULA_FILEPATH
-
-    unset -f dopatch
-    unset -f dobuild
+    unset PACKAGE_DONATIVE_ACTIONS
+    unset PACKAGE_DOPATCH_ACTIONS
+    unset PACKAGE_DOBUILD_ACTIONS
 
     #########################################################################################
 
@@ -1062,32 +1059,51 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for key in summary web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel api-min
-    do
-        unset __KEY_UPPERCASE_UNDERSCORE__
-        unset __VALUE__
+    PACKAGE_API_MIN="$(yq '.api-min | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-        __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
-        __VALUE__="$(yq ".$key" "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-        if [ "$__VALUE__" = null ] ; then
-               __VALUE__=
-        fi
+    PACKAGE_WEB_URL="$(yq '.web-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-        eval "PACKAGE_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
-    done
+    PACKAGE_GIT_URL="$(yq '.git-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_GIT_SHA="$(yq '.git-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_GIT_REF="$(yq '.git-ref | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_GIT_NTH="$(yq '.git-nth | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    #########################################################################################
+    PACKAGE_SRC_URL="$(yq '.src-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_SRC_URI="$(yq '.src-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_SRC_SHA="$(yq '.src-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    PACKAGE_FIX_URL="$(yq '.fix-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_FIX_URI="$(yq '.fix-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_FIX_SHA="$(yq '.fix-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    PACKAGE_RES_URL="$(yq '.res-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_RES_URI="$(yq '.res-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_RES_SHA="$(yq '.res-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DEP_UPP="$(yq '.dep-upp | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DEP_PYM="$(yq '.dep-pym | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DEP_PLM="$(yq '.dep-plm | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    PACKAGE_BSYSTEM="$(yq '.bsystem | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_BSCRIPT="$(yq '.bscript | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_BINBSTD="$(yq '.binbstd | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    PACKAGE_CCFLAGS="$(yq '.ccflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_XXFLAGS="$(yq '.xxflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_BUILD0_ACTIONS=
-    PACKAGE_BUILD0_ACTIONS="$(yq '.build0   | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-
-    PACKAGE_DOPATCH_ACTIONS=
+    PACKAGE_DONATIVE_ACTIONS="$(yq '.build0 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOPATCH_ACTIONS="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-
-    PACKAGE_DOBUILD_ACTIONS=
     PACKAGE_DOBUILD_ACTIONS="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     #########################################################################################
@@ -1517,8 +1533,6 @@ EOF
     unset PACKAGE_RECEIPT_GIT_URL
     unset PACKAGE_RECEIPT_GIT_SHA
     unset PACKAGE_RECEIPT_GIT_REF
-
-    unset PACKAGE_RECEIPT_SVN_URL
 
     unset PACKAGE_RECEIPT_SRC_URL
     unset PACKAGE_RECEIPT_SRC_URI
@@ -2022,7 +2036,6 @@ PACKAGE_WEB_URL
 PACKAGE_GIT_URL
 PACKAGE_GIT_SHA
 PACKAGE_GIT_REF
-PACKAGE_SVN_URL
 PACKAGE_SRC_URL
 PACKAGE_SRC_URI
 PACKAGE_SRC_SHA
@@ -3034,8 +3047,8 @@ ${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.s
             abort 1 "can not be deployed to Sonatype OSSRH due to PACKAGE_RECEIPT_LICENSE is empty."
         fi
 
-        if [ -z "$PACKAGE_RECEIPT_GIT_URL" ] && [ -z "$PACKAGE_RECEIPT_SVN_URL" ] ; then
-            abort 1 "can not be deployed to Sonatype OSSRH due to PACKAGE_RECEIPT_GIT_URL and PACKAGE_RECEIPT_SVN_URL is empty."
+        if [ -z "$PACKAGE_RECEIPT_GIT_URL" ] ; then
+            abort 1 "can not be deployed to Sonatype OSSRH due to PACKAGE_RECEIPT_GIT_URL is empty."
         fi
     fi
 
@@ -3059,11 +3072,6 @@ EOF
     if [ -n "$PACKAGE_RECEIPT_GIT_URL" ] ; then
         PACKAGE_RECEIPT_SCM_TYPE=git
         PACKAGE_RECEIPT_SCM_URL="$PACKAGE_RECEIPT_GIT_URL"
-    fi
-
-    if [ -n "$PACKAGE_RECEIPT_SVN_URL" ] ; then
-        PACKAGE_RECEIPT_SCM_TYPE=svn
-        PACKAGE_RECEIPT_SCM_URL="$PACKAGE_RECEIPT_SVN_URL"
     fi
 
     if [ -n "$PACKAGE_RECEIPT_SCM_URL" ] ; then
@@ -5781,15 +5789,17 @@ $DOT_CONTENT
     } && {
         for FILENAME in config.sub config.guess
         do
-            wfetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$FILENAME;hb=HEAD" --output-filename="$FILENAME"
+            FILEPATH="$SESSION_DIR/$FILENAME"
 
-            run chmod a+x "$FILENAME"
+            wfetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$FILENAME;hb=HEAD" --output-filepath="$FILEPATH"
+
+            run chmod a+x "$FILEPATH"
 
             if [ "$FILENAME" = 'config.sub' ] ; then
-                sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$FILENAME"
+                sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
             fi
 
-            find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILENAME" {} \;
+            find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
         done
     }
 
@@ -5797,7 +5807,7 @@ $DOT_CONTENT
 
     step "build for native"
 
-    if [ -z "$PACKAGE_BUILD0_ACTIONS" ] ; then
+    if [ -z "$PACKAGE_DONATIVE_ACTIONS" ] ; then
         note "build0 mapping was not found in formula, skipped."
     else
         NATIVE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/-"
@@ -5809,8 +5819,8 @@ NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
 EOF
 
         eval "
-build0() {
-$PACKAGE_BUILD0_ACTIONS
+do_build_for_native() {
+$PACKAGE_DONATIVE_ACTIONS
 }"
 
         NATIVE_INSTALL_NEEDED=yes
@@ -5818,7 +5828,7 @@ $PACKAGE_BUILD0_ACTIONS
         NATIVE_INSTALLED_VERSION_TXT_FILEPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME/version.txt"
 
         if [ -f "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH" ] ; then
-            if [ "$(cat "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH")" == "$PACKAGE_VERSION" ] ; then
+            if [ "$(cat "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH")" = "$PACKAGE_VERSION" ] ; then
                 NATIVE_INSTALL_NEEDED=no
                 note "build for native already have been done, skipped."
             else
@@ -5837,7 +5847,7 @@ $PACKAGE_BUILD0_ACTIONS
                     run cd "$NATIVE_BCACHED_DIR"
             fi
 
-            run build0
+            run do_build_for_native
 
             [ -d "$NATIVE_INSTALL_DIR" ] && {
                 printf '%s\n' "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
@@ -8817,7 +8827,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.11
+    NDKPKG_VERSION=0.6.12
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
