@@ -1533,15 +1533,18 @@ EOF
     unset PACKAGE_RECEIPT_GIT_URL
     unset PACKAGE_RECEIPT_GIT_SHA
     unset PACKAGE_RECEIPT_GIT_REF
+    unset PACKAGE_RECEIPT_GIT_NTH
 
     unset PACKAGE_RECEIPT_SRC_URL
     unset PACKAGE_RECEIPT_SRC_URI
     unset PACKAGE_RECEIPT_SRC_SHA
 
     unset PACKAGE_RECEIPT_FIX_URL
+    unset PACKAGE_RECEIPT_FIX_URI
     unset PACKAGE_RECEIPT_FIX_SHA
 
     unset PACKAGE_RECEIPT_RES_URL
+    unset PACKAGE_RECEIPT_RES_URI
     unset PACKAGE_RECEIPT_RES_SHA
 
     unset PACKAGE_RECEIPT_DEP_PKG
@@ -1549,13 +1552,13 @@ EOF
     unset PACKAGE_RECEIPT_DEP_PYM
     unset PACKAGE_RECEIPT_DEP_PLM
 
-    unset PACKAGE_RECEIPT_API_MIN
-
     unset PACKAGE_RECEIPT_BSYSTEM
     unset PACKAGE_RECEIPT_BSCRIPT
     unset PACKAGE_RECEIPT_DOPATCH
     unset PACKAGE_RECEIPT_INSTALL
     unset PACKAGE_RECEIPT_SYMLINK
+
+    unset PACKAGE_RECEIPT_API_MIN
 
     unset PACKAGE_RECEIPT_NDKVERS
 
@@ -1571,7 +1574,7 @@ EOF
     unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API
     unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI
 
-    for key in pkgname summary web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm api-min license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel developer signature timestamp built-for ndkvers
+    for key in pkgname summary web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm api-min license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel developer signature timestamp built-for ndkvers
     do
         unset __KEY_UPPERCASE_UNDERSCORE__
         unset __VALUE__
@@ -3448,9 +3451,11 @@ __cleanup() {
         fi
     else
         ZSH_COMPLETIONS_SCRIPT_OUT_DIR="$(dirname "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH")"
+
         if [ ! -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
             run install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" || run sudo install -d "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR"
         fi
+
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
             run      mv "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
         else
@@ -3469,11 +3474,13 @@ __cleanup() {
 # {{{ ndk-pkg gen-url-transform-sample
 
 __gen_url_transform_sample() {
-    install -d "$NDKPKG_HOME"
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-    FILEPATH="$NDKPKG_HOME/url-transform.sample"
+    rm -rf     "$SESSION_DIR"
+    install -d "$SESSION_DIR"
+    cd         "$SESSION_DIR"
 
-    cat > "$FILEPATH" <<EOF
+    cat > url-transform.sample <<EOF
 #!/bin/sh
 
 # https://ghproxy.com/
@@ -3489,7 +3496,13 @@ case \$1 in
 esac
 EOF
 
-    chmod +x "$FILEPATH"
+    chmod +x url-transform.sample
+
+    install -d "$NDKPKG_HOME"
+
+    mv url-transform.sample "$NDKPKG_HOME/"
+
+    rm -rf "$SESSION_DIR"
 
     success "url-transform sample has been written into $NDKPKG_HOME/url-transform.sample"
     note "You can rename url-transform.sample to url-transform then edit it to meet your needs. To apply this, you should run 'export NDKPKG_URL_TRANSFORM=$NDKPKG_HOME/url-transform' in your terminal."
@@ -3706,26 +3719,47 @@ $DOT_CONTENT
             if [ -z "$OUTPUT_FILEPATH" ] ; then
                 printf '%s\n' "$DOT_CONTENT"
             else
-                printf '%s\n' "$DOT_CONTENT" > "$OUTPUT_FILEPATH"
+                SESSION_DIR="$NDKPKG_HOME/run/$$"
+
+                rm -rf     "$SESSION_DIR"
+                install -d "$SESSION_DIR"
+                cd         "$SESSION_DIR"
+
+                printf '%s\n' "$DOT_CONTENT" > dependencies.dot
+
+                mv dependencies.dot "$OUTPUT_FILEPATH"
+
+                rm -rf "$SESSION_DIR"
             fi
             ;;
         box)
             if [ -z "$OUTPUT_FILEPATH" ] ; then
-                CURL_OPTS=
+                # https://github.com/ggerganov/dot-to-ascii
+                curl \
+                    -s \
+                    -G \
+                    --data-urlencode "boxart=1" \
+                    --data-urlencode "src=$DOT_CONTENT" \
+                    'https://dot-to-ascii.ggerganov.com/dot-to-ascii.php'
             else
-                CURL_OPTS="-o dependencies.box"
-            fi
+                SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-            # https://github.com/ggerganov/dot-to-ascii
-            curl $CURL_OPTS \
-                -s \
-                -G \
-                --data-urlencode "boxart=1" \
-                --data-urlencode "src=$DOT_CONTENT" \
-                "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php"
+                rm -rf     "$SESSION_DIR"
+                install -d "$SESSION_DIR"
+                cd         "$SESSION_DIR"
 
-            if [ -n "$OUTPUT_FILEPATH" ] ; then
-                run mv dependencies.box "$OUTPUT_FILEPATH"
+                # https://github.com/ggerganov/dot-to-ascii
+                curl \
+                    -s \
+                    -G \
+                    -o dependencies.box \
+                    --data-urlencode "boxart=1" \
+                    --data-urlencode "src=$DOT_CONTENT" \
+                    'https://dot-to-ascii.ggerganov.com/dot-to-ascii.php'
+
+                mv dependencies.box "$OUTPUT_FILEPATH"
+
+                rm -rf "$SESSION_DIR"
             fi
             ;;
         svg)
@@ -3738,11 +3772,13 @@ $DOT_CONTENT
             printf '%s\n' "$DOT_CONTENT" > dependencies.dot
 
             if [ -z "$OUTPUT_FILEPATH" ] ; then
-                run dot -Tsvg dependencies.dot
+                dot -Tsvg dependencies.dot
             else
-                run dot -Tsvg -o dependencies.svg dependencies.dot
-                run mv dependencies.svg "$OUTPUT_FILEPATH"
+                dot -Tsvg -o dependencies.svg dependencies.dot
+                mv dependencies.svg "$OUTPUT_FILEPATH"
             fi
+
+            rm -rf "$SESSION_DIR"
             ;;
         png)
             SESSION_DIR="$NDKPKG_HOME/run/$$"
@@ -3754,11 +3790,13 @@ $DOT_CONTENT
             printf '%s\n' "$DOT_CONTENT" > dependencies.dot
 
             if [ -z "$OUTPUT_FILEPATH" ] ; then
-                run dot -Tpng dependencies.dot
+                dot -Tpng dependencies.dot
             else
-                run dot -Tpng -o dependencies.png dependencies.dot
-                run mv dependencies.png "$OUTPUT_FILEPATH"
+                dot -Tpng -o dependencies.png dependencies.dot
+                mv dependencies.png "$OUTPUT_FILEPATH"
             fi
+
+            rm -rf "$SESSION_DIR"
     esac
 }
 
@@ -6731,41 +6769,41 @@ $PACKAGE_DOBUILD_ACTIONS
 
     #########################################################################################
 
-    PACKAGE_METAINF_DIR="$PACKAGE_INSTALL_DIR/.ndk-pkg"
+    PACKAGE_METAINFO_DIR="$PACKAGE_INSTALL_DIR/.ndk-pkg"
 
-    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINF_DIR/MANIFEST.txt"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINF_DIR/RECEIPT.yml"
+    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINFO_DIR/MANIFEST.txt"
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINFO_DIR/RECEIPT.yml"
 
-    install -d "$PACKAGE_METAINF_DIR"
+    install -d "$PACKAGE_METAINFO_DIR"
 
     #########################################################################################
 
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'FAQ*'     -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'TODO*'    -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'NEWS*'    -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'THANKS*'  -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'README*'  -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'COPYING*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'LICENSE*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'AUTHORS*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGES*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGELOG*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTORS*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTING*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'FAQ*'     -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'TODO*'    -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'NEWS*'    -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'THANKS*'  -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'README*'  -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'COPYING*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'LICENSE*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'AUTHORS*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGES*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGELOG*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTORS*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTING*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
 
-    find "$PACKAGE_WORKING_DIR"        -mindepth 1 -maxdepth 1 -name 'dependencies.*' -exec mv {} "$PACKAGE_METAINF_DIR/" \;
+    find "$PACKAGE_WORKING_DIR"        -mindepth 1 -maxdepth 1 -name 'dependencies.*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
 
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/config.log" ] ; then
-            mv  "$dir/config.log" "$PACKAGE_METAINF_DIR"
+            mv  "$dir/config.log" "$PACKAGE_METAINFO_DIR"
         fi
     done
 
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/compile_commands.json" ] ; then
-            mv  "$dir/compile_commands.json" "$PACKAGE_METAINF_DIR"
+            mv  "$dir/compile_commands.json" "$PACKAGE_METAINFO_DIR"
         fi
     done
 
@@ -6774,11 +6812,11 @@ $PACKAGE_DOBUILD_ACTIONS
     [ -n "$PACKAGE_DEP_PKG" ] && {
         step "install dependency formulas"
 
-        install -d "$PACKAGE_METAINF_DIR/formula"
+        install -d "$PACKAGE_METAINFO_DIR/formula"
 
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            cp "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINF_DIR/formula/"
+            cp "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINFO_DIR/formula/"
         done
     }
 
@@ -8827,7 +8865,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.12
+    NDKPKG_VERSION=0.6.13
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
