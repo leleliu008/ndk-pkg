@@ -143,22 +143,20 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 ├── core
 │   ├── bin
 │   │   └── uppm
-│   ├── env
 │   ├── etc
-│   │   └── ssl
-│   │       └── certs
-│   │           └── cacert.pem
+│   │   ├── cacert.pem
+│   │   └── profile
 │   ├── libexec
 │   │   ├── wrapper-native-c++
 │   │   ├── wrapper-native-cc
+│   │   ├── wrapper-native-objc
 │   │   ├── wrapper-target-c++
 │   │   └── wrapper-target-cc
 │   ├── share
 │   │   └── zsh
 │   │       └── site-functions
 │   │           └── _uppm
-│   ├── wrapper-native-cc.c
-│   └── wrapper-target-cc.c
+│   └── xxxx
 ├── downloads
 │   ├── 8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313.tgz
 │   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz

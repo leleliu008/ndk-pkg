@@ -1130,9 +1130,7 @@ filetype_from_url() {
 
     PACKAGE_BUILD_SYSTEM=$PACKAGE_BSYSTEM
 
-    if [ -z "$PACKAGE_GIT_NTH" ] ; then
-        PACKAGE_GIT_NTH=1
-    else
+    if [ -n "$PACKAGE_GIT_NTH" ] ; then
         is_integer "$PACKAGE_GIT_NTH" || abort "the value of git-nth mapping should be an integer."
     fi
 
@@ -2212,6 +2210,10 @@ __fetch_resources_of_the_given_package() {
             else
                 GIT_BRANCH_NAME=master
                 GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
+            fi
+
+            if [ -z "$PACKAGE_GIT_NTH" ] ; then
+                PACKAGE_GIT_NTH=1
             fi
 
             if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
@@ -3439,15 +3441,15 @@ __cleanup() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-filename="$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-filename=_ndk-pkg
 
-    run chmod 644 "$ZSH_COMPLETIONS_SCRIPT_FILENAME"
+    run chmod 644 _ndk-pkg
 
     if [ -f "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH" ] ; then
-            run      mv "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+            run      mv _ndk-pkg "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
         else
-            run sudo mv "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+            run sudo mv _ndk-pkg "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
         fi
     else
         ZSH_COMPLETIONS_SCRIPT_OUT_DIR="$(dirname "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH")"
@@ -3457,16 +3459,16 @@ __cleanup() {
         fi
 
         if [ -w "$ZSH_COMPLETIONS_SCRIPT_OUT_DIR" ] ; then
-            run      mv "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+            run      mv _ndk-pkg "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
         else
-            run sudo mv "$ZSH_COMPLETIONS_SCRIPT_FILENAME" "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
+            run sudo mv _ndk-pkg "$ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH"
         fi
     fi
 
     run rm -rf "$SESSION_DIR"
 
     printf '\n'
-    note "${COLOR_YELLOW}you need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
+    note "${COLOR_YELLOW}you may need to run command${COLOR_RED} ${COLOR_GREEN}autoload -U compinit && compinit${COLOR_OFF} ${COLOR_YELLOW}in zsh to make it work.${COLOR_OFF}"
 }
 
 # }}}
@@ -3483,7 +3485,6 @@ __gen_url_transform_sample() {
     cat > url-transform.sample <<EOF
 #!/bin/sh
 
-# https://ghproxy.com/
 case \$1 in
     *githubusercontent.com/*)
         printf 'https://ghproxy.com/%s\n' "\$1"
@@ -3491,7 +3492,7 @@ case \$1 in
     https://github.com/*)
         printf 'https://ghproxy.com/%s\n' "\$1"
         ;;
-    '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ;;
+    '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ; exit 1 ;;
     *)  printf '%s\n' "\$1"
 esac
 EOF
@@ -3958,8 +3959,6 @@ __reinstall_the_given_packages() {
                 PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
                 PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
 
-                mv "$PACKAGE_INSTALLED_LINK_DIR" "$SESSION_DIR/"
-
                 (__install_the_given_package "$PACKAGE_SPEC")
 
                 rm -rf "$PACKAGE_INSTALLED_REAL_DIR"
@@ -4096,8 +4095,6 @@ __upgrade_packages() {
             if is_package__outdated "$PACKAGE_SPEC" ; then
                 PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
                 PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
-
-                mv "$PACKAGE_INSTALLED_LINK_DIR" "$SESSION_DIR/"
 
                 (__install_the_given_package "$PACKAGE_SPEC")
 
@@ -4836,16 +4833,25 @@ EOF
     run ln -s -r -f -T "$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_INSTALL_SHA" "$NATIVE_PACKAGE_INSTALLED_ROOT/$1"
 }
 
-
 __install_the_given_package_onexit() {
     if [ "$DRYRUN" != yes ] ; then
-        is_package_installed "$PACKAGE_SPEC" || abort 1 "package installation failure: $PACKAGE_SPEC"
+        is_package_installed "$PACKAGE_SPEC" || {
+            abort 1 "package installation failure: $PACKAGE_SPEC\n"
+
+            if [ -n "$PACKAGE_WORKING_DIR"] ; then
+                printf '%b\n' "${COLOR_RED}you would probably want to figure out want had happeded, please change to the working directory: $PACKAGE_WORKING_DIR${COLOR_OFF}"
+            fi
+        }
     fi
 }
 
 # Note: this function must run in a subshell
 __install_the_given_package() {
     printf '%b\n' "${COLOR_PURPLE}=============== Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} ===============${COLOR_OFF}"
+
+    unset PACKAGE_WORKING_DIR
+
+    trap  __install_the_given_package_onexit EXIT
 
     case $TARGET_ANDROID_ABI in
         armeabi-v7a) TARGET_ANDROID_ARCH='armv7a'  ;;
@@ -4864,14 +4870,6 @@ __install_the_given_package() {
             ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker64'
             ;;
     esac
-
-    #########################################################################################
-
-    trap  __install_the_given_package_onexit EXIT
-
-    # Error: The current work directory doesn't exist, cannot proceed.
-    # beacuse previous package's work directory is deleted.
-    cd "$HOME"
 
     #########################################################################################
 
@@ -4904,7 +4902,7 @@ EOF
 
     #########################################################################################
 
-    printf '%s\n' "
+    cat <<EOF
      TIMESTAMP_UNIX = $TIMESTAMP_UNIX
 
      NATIVE_OS_KIND = $NATIVE_OS_KIND
@@ -4936,7 +4934,31 @@ NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
      CCACHE_ENABLED = $CCACHE_ENABLED
    KEEP_SESSION_DIR = $KEEP_SESSION_DIR
 EXPORT_COMPILE_COMMANDS_JSON = $EXPORT_COMPILE_COMMANDS_JSON
-    "
+EOF
+
+    #########################################################################################
+
+    step "create and change to the working directory"
+
+    PACKAGE_WORKING_DIR="$SESSION_DIR/$PACKAGE_NAME"
+    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/_"
+
+    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
+    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
+    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
+    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
+    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
+    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
+
+    install -d "$PACKAGE_INSTALLING_SRC_DIR"
+    install -d "$PACKAGE_INSTALLING_FIX_DIR"
+    install -d "$PACKAGE_INSTALLING_RES_DIR"
+    install -d "$PACKAGE_INSTALLING_BIN_DIR"
+    install -d "$PACKAGE_INSTALLING_INC_DIR"
+    install -d "$PACKAGE_INSTALLING_LIB_DIR"
+    install -d "$PACKAGE_BCACHED_DIR"
+
+    run cd "$PACKAGE_WORKING_DIR"
 
     #########################################################################################
 
@@ -4951,39 +4973,15 @@ $PACKAGE_SPEC:$$:$PACKAGE_INSTALL_UTS
 EOF
 } | cut -d ' ' -f1)"
 
-    #########################################################################################
-
-    step "create and change to the working directory"
-
-    PACKAGE_WORKING_DIR="$SESSION_DIR/$PACKAGE_NAME"
     PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
 
-    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
-    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
-    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
-    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
-    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
-
-    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/_"
-
-    rm -rf     "$PACKAGE_WORKING_DIR"
-
-    install -d "$PACKAGE_INSTALLING_SRC_DIR"
-    install -d "$PACKAGE_INSTALLING_FIX_DIR"
-    install -d "$PACKAGE_INSTALLING_RES_DIR"
-    install -d "$PACKAGE_INSTALLING_BIN_DIR"
-    install -d "$PACKAGE_INSTALLING_INC_DIR"
-    install -d "$PACKAGE_INSTALLING_LIB_DIR"
-    install -d "$PACKAGE_BCACHED_DIR"
+    #########################################################################################
 
     cat <<EOF
 PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
 PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
 PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
 EOF
-
-    run cd "$PACKAGE_WORKING_DIR"
 
     #########################################################################################
 
@@ -5041,23 +5039,19 @@ EOF
         READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
     fi
 
-    export PROXIED_CC_FOR_BUILD="$CC_FOR_BUILD"
-    export PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
-
-    cat <<EOF
-PROXIED_CC_FOR_BUILD  = $PROXIED_CC_FOR_BUILD
-PROXIED_CXX_FOR_BUILD = $PROXIED_CXX_FOR_BUILD
-
-EOF
+    PROXIED_CC_FOR_BUILD="$CC_FOR_BUILD"
+    PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
+    PROXIED_OBJC_FOR_BUILD="$OBJC_FOR_BUILD"
 
      CC_FOR_BUILD="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-native-cc"
+   OBJC_FOR_BUILD="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-native-objc"
     CXX_FOR_BUILD="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-native-c++"
     CPP_FOR_BUILD="$CC_FOR_BUILD -E"
 
-    for TOOL in CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT
+    for TOOL in PROXIED_CC PROXIED_CXX PROXIED_OBJC CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT
     do
         export "${TOOL}_FOR_BUILD"
-        printf "%17s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$"${TOOL}_FOR_BUILD")"
+        printf "%21s = %s\n" "${TOOL}_FOR_BUILD" "$(eval echo \$"${TOOL}_FOR_BUILD")"
     done
 
     #########################################################################################
@@ -5697,6 +5691,10 @@ $DOT_CONTENT
         else
             GIT_BRANCH_NAME=master
             GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
+        fi
+
+        if [ -z "$PACKAGE_GIT_NTH" ] ; then
+            PACKAGE_GIT_NTH=1
         fi
 
         if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
@@ -6675,18 +6673,15 @@ EOF
 
     step "dopatch for target"
 
-    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-        run cd "$PACKAGE_BSCRIPT_DIR"
-    fi
-
-    if [ -n "$PACKAGE_DOPATCH_ACTIONS" ] ; then
+    if [ -z "$PACKAGE_DOPATCH_ACTIONS" ] ; then
+        note "dopatch mapping was not found in formula, skipped."
+    else
         eval "
 dopatch() {
 $PACKAGE_DOPATCH_ACTIONS
 }"
-        dopatch "$1"
-    else
-        note "dopatch mapping was not found in formula, skipped."
+        run cd "$PACKAGE_BSCRIPT_DIR"
+        dopatch
     fi
 
     #########################################################################################
@@ -6725,11 +6720,9 @@ $PACKAGE_DOPATCH_ACTIONS
     step "install for target"
 
     if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
-        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR"
-        fi
+        run cd "$PACKAGE_BSCRIPT_DIR"
     else
-            run cd "$PACKAGE_BCACHED_DIR"
+        run cd "$PACKAGE_BCACHED_DIR"
     fi
 
     if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
@@ -6741,7 +6734,7 @@ dobuild() {
 $PACKAGE_DOBUILD_ACTIONS
 }"
 
-    dobuild "$1"
+    dobuild
 
     #########################################################################################
 
@@ -8109,11 +8102,11 @@ __setup() {
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' --output-dir=etc/ssl/certs
+    wfetch 'https://curl.se/ca/cacert.pem' --output-dir=etc
 
     ##################################################################################
 
-    export SSL_CERT_FILE="$PWD/etc/ssl/certs/cacert.pem"
+    export SSL_CERT_FILE="$PWD/etc/cacert.pem"
 
     run bin/uppm env
     run bin/uppm update
@@ -8143,7 +8136,7 @@ __setup() {
     UPPM_PACKAGE_EXEFIND_PATH="${UPPM_PACKAGE_EXEFIND_PATH#':'}"
     UPPM_PACKAGE_ACLOCAL_PATH="${UPPM_PACKAGE_ACLOCAL_PATH#':'}"
 
-    cat > env <<EOF
+    cat > etc/profile <<EOF
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
@@ -8248,6 +8241,54 @@ int main(int argc, char * argv[]) {
 
     execv (cxxc, argv2);
     perror(cxxc);
+    return 255;
+}
+EOF
+
+    cat > wrapper-native-objc.c <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+int main(int argc, char * argv[]) {
+    char * const objc = getenv("PROXIED_OBJC_FOR_BUILD");
+
+    if (objc == NULL) {
+        fprintf(stderr, "PROXIED_OBJC_FOR_BUILD environment variable is not set.\n");
+        return 1;
+    }
+
+    if (objc[0] == '\0') {
+        fprintf(stderr, "PROXIED_OBJC_FOR_BUILD environment variable value should be a non-empty string.\n");
+        return 2;
+    }
+
+    char* argv2[argc + 2];
+
+    argv2[0] = objc;
+
+    char * const sysroot = getenv("SYSROOT_FOR_BUILD");
+
+    if (sysroot == NULL || sysroot[0] == '\0') {
+        for (int i = 1; i < argc; i++) {
+            argv2[i] = argv[i];
+        }
+
+        argv2[argc] = NULL;
+    } else {
+        argv2[1] = (char*)"-isysroot";
+        argv2[2] = sysroot;
+
+        for (int i = 1; i < argc; i++) {
+            argv2[i + 2] = argv[i];
+        }
+
+        argv2[argc + 2] = NULL;
+    }
+
+    execv (objc, argv2);
+    perror(objc);
     return 255;
 }
 EOF
@@ -8479,15 +8520,16 @@ EOF
 
     run install -d libexec
 
-    run cc -std=c99 -o libexec/wrapper-native-cc  wrapper-native-cc.c
-    run cc -std=c99 -o libexec/wrapper-native-c++ wrapper-native-c++.c
+    run cc -std=c99 -o libexec/wrapper-native-cc   wrapper-native-cc.c
+    run cc -std=c99 -o libexec/wrapper-native-c++  wrapper-native-c++.c
+    run cc -std=c99 -o libexec/wrapper-native-objc wrapper-native-objc.c
 
-    run cc -std=c99 -o libexec/wrapper-target-cc  wrapper-target-cc.c -UUSED_AS_CXX
-    run cc -std=c99 -o libexec/wrapper-target-c++ wrapper-target-cc.c -DUSED_AS_CXX
+    run cc -std=c99 -o libexec/wrapper-target-cc   wrapper-target-cc.c -UUSED_AS_CXX
+    run cc -std=c99 -o libexec/wrapper-target-c++  wrapper-target-cc.c -DUSED_AS_CXX
 
     #################################################################################
 
-    if [ -d    "$NDKPKG_CORE_DIR" ] ; then
+    if [ -d        "$NDKPKG_CORE_DIR" ] ; then
         run rm -rf "$NDKPKG_CORE_DIR"
     fi
 
@@ -8865,7 +8907,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.13
+    NDKPKG_VERSION=0.6.14
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
@@ -8883,8 +8925,8 @@ main() {
     NDKPKG_CORE_LIBEXEC_DIR="$NDKPKG_CORE_DIR/libexec"
 
     # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-    if [ -f "$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem" ] ; then
-        export SSL_CERT_FILE="$NDKPKG_CORE_DIR/etc/ssl/certs/cacert.pem"
+    if [ -f "$NDKPKG_CORE_DIR/etc/cacert.pem" ] ; then
+        export SSL_CERT_FILE="$NDKPKG_CORE_DIR/etc/cacert.pem"
     fi
 
     if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
@@ -8949,8 +8991,8 @@ EOF
 
     #########################################################################################
 
-    if [ -f "$NDKPKG_CORE_DIR/env" ] ; then
-        .   "$NDKPKG_CORE_DIR/env"
+    if [ -f "$NDKPKG_CORE_DIR/etc/profile" ] ; then
+        .   "$NDKPKG_CORE_DIR/etc/profile"
     else
         abort 1 "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
     fi
