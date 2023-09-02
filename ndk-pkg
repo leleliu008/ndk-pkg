@@ -5813,16 +5813,16 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
-    # https://git.savannah.gnu.org/cgit/config.git/tree/
-
-    step "replace config.sub and config.guess with the lastest version"
-
     {
         [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = yes ] ||
         [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = yes ] ||
         [ "$PACKAGE_BUILD_SYSTEM_CONFIGURE" = yes ]
     } && {
+        # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
+        # https://git.savannah.gnu.org/cgit/config.git/tree/
+
+        step "replace config.sub and config.guess with the lastest version"
+
         for FILENAME in config.sub config.guess
         do
             FILEPATH="$SESSION_DIR/$FILENAME"
@@ -6685,6 +6685,8 @@ $PACKAGE_DOPATCH_ACTIONS
     fi
 
     #########################################################################################
+
+    run cd "$PACKAGE_BSCRIPT_DIR"
 
     case $PACKAGE_BUILD_SYSTEM in
         autogen)
@@ -8907,7 +8909,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.14
+    NDKPKG_VERSION=0.6.15
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
