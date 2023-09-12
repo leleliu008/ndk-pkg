@@ -43,6 +43,7 @@ _ndk_pkg_actions=(
     'deploy:export the given installed package as the google prefab aar then deploy it to Maven Local Repository or Sonatype OSSRH.'
     'logs:show logs of the given installed package.'
     'gen-url-transform-sample:generate url-transform sample.'
+    'android-versions:show android plaform version, android API level, android version code map.'
 )
 
 function _ndk_pkg_available_packages() {
