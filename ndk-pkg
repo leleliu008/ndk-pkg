@@ -5712,7 +5712,25 @@ $DOT_CONTENT
         run git remote add origin "$GIT_FETCH_URL"
         run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
         run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-        run git submodule update --init
+
+        GIT_SUBMODULE_PATH_LIST="$(find . -name .gitmodules)"
+
+        if [ -n "$GIT_SUBMODULE_PATH_LIST" ] ; then
+            if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
+                for GIT_SUBMODULE_PATH in $GIT_SUBMODULE_PATH_LIST
+                do
+                    GIT_SUBMODULE_URLS="$(grep 'url = ' "$GIT_SUBMODULE_PATH" | sed 's|[[:space:]]||g' | cut -c5-)"
+
+                    for GIT_SUBMODULE_URL in $GIT_SUBMODULE_URLS
+                    do
+                        GIT_SUBMODULE_URI="$("$NDKPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
+                        sed_in_place "s|$GIT_SUBMODULE_URL|$GIT_SUBMODULE_URI|" "$GIT_SUBMODULE_PATH"
+                    done
+                done
+            fi
+
+            run git submodule update --init
+        fi
     else
         wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
     fi
@@ -8909,7 +8927,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.15
+    NDKPKG_VERSION=0.6.16
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
