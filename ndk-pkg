@@ -4584,8 +4584,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         liblzma)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/xz-mirror/xz/releases/download/v5.4.0/xz-5.4.0.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='5f260e3b43f75cf43ca43d107dd18209f7d516782956a74ddd53288e02a83a31'
+            NATIVE_PACKAGE_SRC_URL='https://github.com/tukaani-project/xz/releases/download/v5.4.4/xz-5.4.4.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='aae39544e254cfd27e942d35a048d592959bd7a79f9a624afb0498bb5613bdf8'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
@@ -5864,33 +5864,28 @@ $DOT_CONTENT
     if [ -z "$PACKAGE_DONATIVE_ACTIONS" ] ; then
         note "build0 mapping was not found in formula, skipped."
     else
-        NATIVE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/-"
-        NATIVE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
-
-        cat <<EOF
-NATIVE_BCACHED_DIR = $NATIVE_BCACHED_DIR
-NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
-EOF
-
-        eval "
-do_build_for_native() {
-$PACKAGE_DONATIVE_ACTIONS
-}"
-
         NATIVE_INSTALL_NEEDED=yes
 
         NATIVE_INSTALLED_VERSION_TXT_FILEPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME/version.txt"
 
-        if [ -f "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH" ] ; then
+        [ -f "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH" ] && {
             if [ "$(cat "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH")" = "$PACKAGE_VERSION" ] ; then
                 NATIVE_INSTALL_NEEDED=no
                 note "build for native already have been done, skipped."
             else
                 note "build for native already have been done, but not the same version, rebuild it."
             fi
-        fi
+        }
 
         if [ "$NATIVE_INSTALL_NEEDED" = yes ] ; then
+            NATIVE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/-"
+            NATIVE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+
+            cat <<EOF
+NATIVE_BCACHED_DIR = $NATIVE_BCACHED_DIR
+NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
+EOF
+
             run install -d "$NATIVE_BCACHED_DIR"
 
             if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
@@ -5901,26 +5896,34 @@ $PACKAGE_DONATIVE_ACTIONS
                     run cd "$NATIVE_BCACHED_DIR"
             fi
 
-            run do_build_for_native
+            eval "
+do_build_for_native() {
+$PACKAGE_DONATIVE_ACTIONS
+}"
+
+            do_build_for_native
 
             [ -d "$NATIVE_INSTALL_DIR" ] && {
                 printf '%s\n' "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
-
-                if [ -d  "$NATIVE_INSTALL_DIR/bin" ] ; then
-                    PATH="$NATIVE_INSTALL_DIR/bin:$PATH"
-                fi
-
-                if [ -d  "$NATIVE_INSTALL_DIR/sbin" ] ; then
-                    PATH="$NATIVE_INSTALL_DIR/sbin:$PATH"
-                fi
-
-                if [ -d          "$NATIVE_INSTALL_DIR/share/aclocal" ] ; then
-                    ACLOCAL_PATH="$NATIVE_INSTALL_DIR/share/aclocal:$ACLOCAL_PATH"
-                fi
-
-                run ln -s -r -f -T "$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA" "$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
+                run ln -s -r -f -T "$NATIVE_INSTALL_DIR" "$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
             }
+        else
+            NATIVE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME"
         fi
+
+        [ -d "$NATIVE_INSTALL_DIR" ] && {
+            if [ -d  "$NATIVE_INSTALL_DIR/bin" ] ; then
+                PATH="$NATIVE_INSTALL_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$NATIVE_INSTALL_DIR/sbin" ] ; then
+                PATH="$NATIVE_INSTALL_DIR/sbin:$PATH"
+            fi
+
+            if [ -d          "$NATIVE_INSTALL_DIR/share/aclocal" ] ; then
+                ACLOCAL_PATH="$NATIVE_INSTALL_DIR/share/aclocal:$ACLOCAL_PATH"
+            fi
+        }
     fi
 
     #########################################################################################
@@ -8927,7 +8930,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.16
+    NDKPKG_VERSION=0.6.17
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
