@@ -927,7 +927,9 @@ filetype_from_url() {
     # remove query params
     URL="${1%%'?'*}"
 
-    case $URL in
+    FNAME="${URL##*/}"
+
+    case $FNAME in
         *.tar.gz|*.tgz)
             printf '%s\n' '.tgz'
             ;;
@@ -940,7 +942,7 @@ filetype_from_url() {
         *.tar.bz2|*.tbz2)
             printf '%s\n' '.tbz2'
             ;;
-        *)  printf '%s\n' ".${URL##*.}"
+        *.*)printf '%s\n' ".${FNAME##*.}"
     esac
 }
 
@@ -5491,14 +5493,12 @@ $DOT_CONTENT
     [ -n "$PACKAGE_DEP_PYM" ] && {
         step "install needed python packages via pip3"
 
-        run pip3 --version
-        run pip3 install --upgrade pip setuptools wheel
-        run pip3 --version
+        PIP3="$(command -v pip3)" || abort 1 "command not found: pip3"
 
-        for item in $PACKAGE_DEP_PYM
-        do
-            run pip3 install "$item" --upgrade
-        done
+        run "$PIP3" --version
+        run "$PIP3" install --upgrade pip setuptools wheel
+        run "$PIP3" --version
+        run "$PIP3" install --upgrade "$PACKAGE_DEP_PYM"
     }
 
     #########################################################################################
@@ -5509,22 +5509,32 @@ $DOT_CONTENT
     [ -n "$PACKAGE_DEP_PLM" ] && {
         step "install needed perl modules via cpan"
 
+        unset PACKAGE_DEP_PLM_T1
+        unset PACKAGE_DEP_PLM_T2
+
         for item in $PACKAGE_DEP_PLM
         do
-            if perl -M"$item" -le 'print "installed"' > /dev/null 2>&1 ; then
-                note "perl module $item has been already installed."
-                continue
-            fi
-
             if [ "$item" = 'XML::Parser' ] ; then
-                __install_native_package perl-XML-Parser
+                PACKAGE_DEP_PLM_T1='XML::Parser'
             else
-                # Would you like to configure as much as possible automatically? [yes]
-                # https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
-                export PERL_MM_USE_DEFAULT=1
-                run cpan "$item"
+                PACKAGE_DEP_PLM_T2="$PACKAGE_DEP_PLM_T2 $item"
             fi
         done
+
+        if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
+            __install_native_package perl-XML-Parser
+        fi
+
+        if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
+            PACKAGE_DEP_PLM_T2="${PACKAGE_DEP_PLM_T2# }"
+        fi
+
+        if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
+            # Would you like to configure as much as possible automatically? [yes]
+            # https://perldoc.perl.org/cpan#PERL_MM_USE_DEFAULT
+            export PERL_MM_USE_DEFAULT=1
+            run cpan "$PACKAGE_DEP_PLM_T2"
+        fi
 
         if [ -d "$HOME/perl5/bin" ] ; then
             # cpan install to default local location
@@ -5776,7 +5786,7 @@ $DOT_CONTENT
             run cp     "$PACKAGE_SRC_FILEPATH"    "$PACKAGE_INSTALLING_SRC_DIR"
     esac
 
-    if [ -n "$PACKAGE_FIX_FILETYPE" ] ; then
+    if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
         case $PACKAGE_FIX_FILETYPE in
             .zip)
                 step "uncompressed patch file to the installing fix directory"
@@ -5791,7 +5801,7 @@ $DOT_CONTENT
         esac
     fi
 
-    if [ -n "$PACKAGE_RES_FILETYPE" ] ; then
+    if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
         case $PACKAGE_RES_FILETYPE in
             .zip)
                 step "uncompressed res file to the installing res directory"
@@ -8930,7 +8940,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.17
+    NDKPKG_VERSION=0.6.18
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
