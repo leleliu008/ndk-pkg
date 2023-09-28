@@ -4564,7 +4564,7 @@ __install_the_given_packages() {
             ;;
         libbz2)
             NATIVE_PACKAGE_SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='0100da0b55f552134d732acdd0325e84a0ef731a305c15f6a2ea24308de09759'
+            NATIVE_PACKAGE_SRC_SHA='96a2e42fbde6f59fce10bcbcda62aa90b9514bd9295914f7470e98c54eac38f2'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='cmake'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON'
