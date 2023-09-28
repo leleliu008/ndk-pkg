@@ -348,6 +348,8 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg info curl git-ref
     ndk-pkg info curl src-url
     ndk-pkg info curl src-sha
+    ndk-pkg info curl src-ft
+    ndk-pkg info curl src-fp
 
     ndk-pkg info curl installed-dir
     ndk-pkg info curl installed-files
@@ -377,6 +379,8 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg formula curl git-ref
     ndk-pkg formula curl src-url
     ndk-pkg formula curl src-sha
+    ndk-pkg formula curl src-ft
+    ndk-pkg formula curl src-fp
     ```
 
 - **show receipt of the given installed package**

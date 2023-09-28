@@ -1918,6 +1918,7 @@ __show_information_as_shell_of_all_available_packages() {
         --arg git_url "$PACKAGE_GIT_URL" \
         --arg git_sha "$PACKAGE_GIT_SHA" \
         --arg git_ref "$PACKAGE_GIT_REF" \
+        --arg git_nth "$PACKAGE_GIT_NTH" \
         --arg src_url "$PACKAGE_SRC_URL" \
         --arg src_uri "$PACKAGE_SRC_URI" \
         --arg src_sha "$PACKAGE_SRC_SHA" \
@@ -1950,6 +1951,7 @@ __show_information_as_shell_of_all_available_packages() {
     "git-url":$git_url,
     "git-sha":$git_sha,
     "git-ref":$git_ref,
+    "git-nth":$git_nth,
     "src-url":$src_url,
     "src-uri":$src_uri,
     "src-sha":$src_sha,
@@ -1994,6 +1996,7 @@ web-url: $PACKAGE_WEB_URL
 git-url: $PACKAGE_GIT_URL
 git-sha: $PACKAGE_GIT_SHA
 git-ref: $PACKAGE_GIT_REF
+git-nth: $PACKAGE_GIT_NTH
 src-url: $PACKAGE_SRC_URL
 src-uri: $PACKAGE_SRC_URI
 src-sha: $PACKAGE_SRC_SHA
@@ -2039,6 +2042,7 @@ PACKAGE_WEB_URL
 PACKAGE_GIT_URL
 PACKAGE_GIT_SHA
 PACKAGE_GIT_REF
+PACKAGE_GIT_NTH
 PACKAGE_SRC_URL
 PACKAGE_SRC_URI
 PACKAGE_SRC_SHA
@@ -2156,6 +2160,42 @@ EOF
         developer)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DEVELOPER"
+            ;;
+        src-ft)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_SRC_FILETYPE" ] ; then
+                printf '%s\n' "$PACKAGE_SRC_FILETYPE"
+            fi
+            ;;
+        src-fp)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
+                printf '%s\n' "$PACKAGE_SRC_FILEPATH"
+            fi
+            ;;
+        fix-ft)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_FIX_FILETYPE" ] ; then
+                printf '%s\n' "$PACKAGE_FIX_FILETYPE"
+            fi
+            ;;
+        fix-fp)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
+                printf '%s\n' "$PACKAGE_FIX_FILEPATH"
+            fi
+            ;;
+        res-ft)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_RES_FILETYPE" ] ; then
+                printf '%s\n' "$PACKAGE_RES_FILETYPE"
+            fi
+            ;;
+        res-fp)
+            __load_formula_of_the_given_package "$1"
+            if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
+                printf '%s\n' "$PACKAGE_RES_FILEPATH"
+            fi
             ;;
         *)  __load_formula_of_the_given_package "$1"
             __PACKAGE_GET__KEY__="$(printf '%s\n' "$2" | tr '+-.' '_' | tr a-z A-Z)"
@@ -8940,7 +8980,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.18
+    NDKPKG_VERSION=0.6.19
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
