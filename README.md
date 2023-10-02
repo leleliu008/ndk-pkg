@@ -1,6 +1,6 @@
 # ndk-pkg
 
-a package manager for [Android NDK](https://developer.android.google.cn/ndk) to build projects that are written in C/C++/Rust/Golang.
+A package manager for [Android NDK](https://developer.android.google.cn/ndk) to build projects that are written in C/C++/Rust/Golang.
 
 ## Caveats
 
