@@ -608,6 +608,21 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     This environment variable already have been set on the most operating systems, if not set or set a empty string, you will receive an error message.
 
+- **SSL_CERT_FILE**
+
+    ```bash
+    curl -LO https://curl.se/ca/cacert.pem
+    export SSL_CERT_FILE="$PWD/cacert.pem"
+    ```
+
+    In general, you don't need to set this environment variable, but, if you encounter the reporting `the SSL certificate is invalid`, trying to run above commands in your terminal will do the trick.
+
+- **GOPROXY**
+
+    ```bash
+    export GOPROXY='https://goproxy.cn'
+    ```
+
 - **ANDROID_NDK_ROOT and ANDROID_NDK_HOME**
 
     If `--ndk-home=<ANDROID-NDK-HOME>` option is not given when installing a package, then value of `ANDROID_NDK_ROOT` and `ANDROID_NDK_HOME` environment variable would be checked in order. If they both are not set or set a empty string or are invalid android ndk home directory, a specific version of `Android NDK` will be automatically installed via [uppm](https://github.com/leleliu008/uppm).
@@ -629,8 +644,6 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 - **NDKPKG_XTRACE**
 
     for debugging purposes.
-
-    this environment variable only affects POSIX-Shell-based implementation.
 
     enable `set -x`:
 
@@ -655,21 +668,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
   - <https://developer.android.com/tools/releases/platforms>
   - <https://developer.android.com/ndk/guides/abis>
 
-- **other relevant environment variables**
-
-    |utility|reference|
-    |-|-|
-    |[cmake](https://cmake.org/)|[reference](https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html)|
-    |[cargo](https://doc.rust-lang.org/cargo/)|[reference](https://doc.rust-lang.org/cargo/reference/environment-variables.html)|
-    |[go](https://golang.org/)|[reference](https://golang.org/doc/install/source#environment)|
-    |[pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)|[reference](https://www.linuxhowtos.org/manpages/1/pkg-config.htm#lbAF)|
-    |[aclocal](https://www.gnu.org/software/automake/manual/html_node/configure.html)|[reference](https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html)|
-
-    **Example**:
-
-    ```bash
-    export GOPROXY='https://goproxy.cn'
-    ```
+**Note:** some commonly used environment variables are override by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
 
 ## ndk-pkg formula
 

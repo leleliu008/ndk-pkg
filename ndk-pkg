@@ -5185,7 +5185,13 @@ EOF
 
         # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
 
+        unset CMAKE_APPBUNDLE_PATH
+        unset CMAKE_FRAMEWORK_PATH
+        unset CMAKE_PROGRAM_PATH
+        unset CMAKE_INCLUDE_PATH
+        unset CMAKE_LIBRARY_PATH
         unset CMAKE_PREFIX_PATH
+        unset CMAKE_MAXIMUM_RECURSION_DEPTH
         unset CMAKE_APPLE_SILICON_PROCESSOR
         unset CMAKE_BUILD_PARALLEL_LEVEL
         unset CMAKE_BUILD_TYPE
@@ -5206,6 +5212,7 @@ EOF
         unset CMAKE_OSX_ARCHITECTURES
         unset CMAKE_TOOLCHAIN_FILE
         unset DESTDIR
+        unset VERBOSE
         unset CTEST_INTERACTIVE_DEBUG_MODE
         unset CTEST_OUTPUT_ON_FAILURE
         unset CTEST_PARALLEL_LEVEL
@@ -5895,7 +5902,7 @@ $DOT_CONTENT
         do
             FILEPATH="$SESSION_DIR/$FILENAME"
 
-            wfetch "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$FILENAME;hb=HEAD" --output-filepath="$FILEPATH"
+            wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" --output-filepath="$FILEPATH"
 
             run chmod a+x "$FILEPATH"
 
@@ -6411,8 +6418,6 @@ EOF
         else
             CMAKE_FIND_DEBUG_MODE=OFF
         fi
-
-        CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/toolchain.cmake"
 
         # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
         unset CMAKE_FIND_ROOT_PATH
@@ -7794,7 +7799,6 @@ cmakew() {
         -DCMAKE_CXX_FLAGS='$CXXFLAGS $CPPFLAGS'
         -DCMAKE_SHARED_LINKER_FLAGS='$CMAKE_SHARED_LINKER_FLAGS'
         -DCMAKE_EXE_LINKER_FLAGS='$LDFLAGS'
-        -DBUILD_SHARED_LIBS=ON
         -DANDROID_TOOLCHAIN=clang
         -DANDROID_ABI=$TARGET_ANDROID_ABI
         -DANDROID_ARM_NEON=TRUE
@@ -8647,6 +8651,9 @@ ${COLOR_GREEN}ndk-pkg --version${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
     show version of this command.
 
+${COLOR_GREEN}ndk-pkg setup${COLOR_OFF}
+    install essential tools (e.g. uppm, bash, coreutils, findutils, sed, grep, git, curl, gtar, gzip, tree, jq, yq, etc) used by this shell script.
+
 ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
     show basic information about this software.
 
@@ -8752,7 +8759,7 @@ ${COLOR_GREEN}ndk-pkg fetch @all${COLOR_OFF}
     download all the resources of all the available packages to the local cache.
 
 
-${COLOR_GREEN}ndk-pkg install <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg install <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS>... [INSTALL-OPTIONS]${COLOR_OFF}
     install the given packages.
 
     ${COLOR_RED}C and C++ compiler for native build should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
@@ -8794,15 +8801,15 @@ ${COLOR_GREEN}ndk-pkg install <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS
             do not delete the session directory even if this package is successfully installed.
 
     USAGE-EXAMPLES:
-        ndk-pkg install zlib/android-21/arm64-v8a
-        ndk-pkg install zlib/android-21/arm64-v8a,armeabi-v7a
-        ndk-pkg install zlib/android-21/arm64-v8a,armeabi-v7a,x86_64
-        ndk-pkg install zlib/android-21/arm64-v8a,armeabi-v7a,x86_64,x86
+        ndk-pkg install zlib:android-21:arm64-v8a
+        ndk-pkg install zlib:android-21:arm64-v8a,armeabi-v7a
+        ndk-pkg install zlib:android-21:arm64-v8a,armeabi-v7a,x86_64
+        ndk-pkg install zlib:android-21:arm64-v8a,armeabi-v7a,x86_64,x86
 
-${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS>... [INSTALL-OPTIONS]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ndk-pkg upgrade   <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg upgrade   <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS>... [INSTALL-OPTIONS]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
 ${COLOR_GREEN}ndk-pkg uninstall <PACKAGE_SPEC>...${COLOR_OFF}
@@ -8830,7 +8837,7 @@ ${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <zip|tar.gz|t
     If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPUT-TYPE> will be .tar.xz, OUTPUT-PATH will be \$NDKPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$TARGET_PLATFORM_NAME-\$TARGET_PLATFORM_ARCH.tar.xz
 
 
-${COLOR_GREEN}ndk-pkg export <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg export <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     export the given installed package as google prefab aar.
 
     For details about google prefab, please visit https://google.github.io/prefab/
@@ -8847,7 +8854,7 @@ ${COLOR_GREEN}ndk-pkg export <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS>
 
     If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar
 
-${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-session-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-session-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
     export the given installed package as google prefab aar then deploy it to Maven Repository.
 
     For details about google prefab, please visit https://google.github.io/prefab/
@@ -8878,7 +8885,7 @@ Naming explanation
 ==================
 
 ${COLOR_GREEN}PACKAGE-SPEC${COLOR_OFF}
-    a formatted string that has form: <ANDROID-SPEC>/<PACKAGE-NAME>
+    a formatted string that has form: <PACKAGE-NAME>:<ANDROID-SPEC>
 
 ${COLOR_GREEN}PACKAGE-NAME${COLOR_OFF}
     must match regular expression pattern ^[A-Za-z0-9+-_.@]{1,50}$
@@ -8910,8 +8917,18 @@ ${COLOR_GREEN}PATH${COLOR_OFF}
 ${COLOR_GREEN}ANDROID_NDK_ROOT and ANDROID_NDK_HOME${COLOR_OFF}
     If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
 
-${COLOR_GREEN}NDKPKG_URL_TRANSFORM${COLOR_OFF}
+${COLOR_GREEN}SSL_CERT_FILE${COLOR_OFF}
+    In general, you don't need to set this environment variable, but, if you encounter the reporting ${COLOR_RED}the SSL certificate is invalid${COLOR_OFF}, trying to run below commands in your terminal will do the trick.
 
+    ${COLOR_RED}curl -LO https://curl.se/ca/cacert.pem
+    export SSL_CERT_FILE="$PWD/cacert.pem"${COLOR_OFF}
+
+${COLOR_GREEN}GOPROXY${COLOR_OFF}
+    exmaple:
+
+    ${COLOR_RED}export GOPROXY='https://goproxy.cn'${COLOR_OFF}
+
+${COLOR_GREEN}NDKPKG_URL_TRANSFORM${COLOR_OFF}
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
     exmaple:
@@ -8940,9 +8957,6 @@ ${COLOR_GREEN}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF}
 
     https://developer.android.com/tools/releases/platforms
     https://developer.android.com/ndk/guides/abis
-
-${COLOR_GREEN}GOPROXY${COLOR_OFF}
-    Example: ${COLOR_RED}export GOPROXY='https://goproxy.cn'${COLOR_OFF}
 
 
 =======
@@ -8980,7 +8994,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.21
+    NDKPKG_VERSION=0.6.22
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
