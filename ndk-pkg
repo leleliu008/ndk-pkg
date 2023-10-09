@@ -1162,64 +1162,57 @@ filetype_from_url() {
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_SRC_URL" ] ; then
-        if [ -z "$PACKAGE_GIT_URL" ] ; then
-            abort 1 "neither src-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
-        else
-            PACKAGE_SRC_FILETYPE=.git
-            PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git"
-        fi
-    else
-        case $PACKAGE_SRC_URL in
-            dir://*)
-                PACKAGE_SRC_FILETYPE=.dir ;;
-            *)  PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
-
-                case $PACKAGE_SRC_FILETYPE in
-                    .zip)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
-                    .txz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
-                    .tgz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
-                    .tlz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
-                    .tbz2)    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
-                    *)        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl"        ;;
-                esac
-        esac
-    fi
+    unset PACKAGE_NEED_CURL
+    unset PACKAGE_NEED_BTAR
 
     #########################################################################################
 
-    case $PACKAGE_SRC_FILETYPE in
-        .dir)
-            PACKAGE_SRC_FILEPATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c7-)
+    if [ -z "$PACKAGE_SRC_URL" ] ; then
+        if [ -z "$PACKAGE_GIT_URL" ] ; then
+            abort 1 "neither src-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
+        fi
 
-            if [ -z "$PACKAGE_VERSION" ] ; then
-                PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
-            fi
-            ;;
-        .git)
-            PACKAGE_SRC_FILENAME="$PACKAGE_NAME.git"
-            PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
+        PACKAGE_SRC_FILETYPE=.git
 
-            if [ -z "$PACKAGE_VERSION" ] ; then
-                PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
-            fi
-            ;;
-        *)
-            if [ -z "$PACKAGE_SRC_SHA" ] ; then
-                abort 1 "src-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
-            fi
+        if [ -z "$PACKAGE_VERSION" ] ; then
+            PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+        fi
 
-            if [ -z "$PACKAGE_VERSION" ] ; then
-                PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' | awk -F- '{print $NF}')"
-                case $PACKAGE_VERSION in
-                    '') abort 1 "version mapping not found in $PACKAGE_FORMULA_FILEPATH" ;;
-                    v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git"
+    else
+        case $PACKAGE_SRC_URL in
+            dir://*)
+                PACKAGE_SRC_FILETYPE=.dir
+                PACKAGE_SRC_FILEPATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c7-)
+
+                if [ -z "$PACKAGE_VERSION" ] ; then
+                    PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+                fi
+                ;;
+            *)  PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
+                PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
+                PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
+
+                if [ -z "$PACKAGE_SRC_SHA" ] ; then
+                    abort 1 "src-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
+                fi
+
+                if [ -z "$PACKAGE_VERSION" ] ; then
+                    PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' | awk -F- '{print $NF}')"
+                    case $PACKAGE_VERSION in
+                        '') abort 1 "version mapping not found in $PACKAGE_FORMULA_FILEPATH" ;;
+                        v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
+                    esac
+                fi
+
+                PACKAGE_NEED_CURL=1
+
+                case $PACKAGE_SRC_FILETYPE in
+                    .zip|.txz|.tgz|.tlz|.tbz2)
+                        PACKAGE_NEED_BTAR=1
                 esac
-            fi
-
-            PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
-            PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
-    esac
+        esac
+    fi
 
     #########################################################################################
 
@@ -1227,19 +1220,15 @@ filetype_from_url() {
         [ -z "$PACKAGE_FIX_SHA" ] && abort 1 "fix-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
 
         PACKAGE_FIX_FILETYPE="$(filetype_from_url "$PACKAGE_FIX_URL")"
-
-        case $PACKAGE_FIX_FILETYPE in
-            .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"        ;;
-            .patch) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"        ;;
-            .zip)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-            .txz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-            .tgz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-            .tlz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-            .tbz2)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-        esac
-
         PACKAGE_FIX_FILENAME="$PACKAGE_FIX_SHA$PACKAGE_FIX_FILETYPE"
         PACKAGE_FIX_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$PACKAGE_FIX_FILENAME"
+
+        PACKAGE_NEED_CURL=1
+
+        case $PACKAGE_SRC_FILETYPE in
+            .zip|.txz|.tgz|.tlz|.tbz2)
+                PACKAGE_NEED_BTAR=1
+        esac
     }
 
     #########################################################################################
@@ -1248,20 +1237,21 @@ filetype_from_url() {
         [ -z "$PACKAGE_RES_SHA" ] && abort 1 "res-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
 
         PACKAGE_RES_FILETYPE="$(filetype_from_url "$PACKAGE_RES_URL")"
-
-        case $PACKAGE_RES_FILETYPE in
-            .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"        ;;
-            .patch) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"        ;;
-            .zip)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-            .txz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-            .tgz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-            .tlz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-            .tbz2)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
-        esac
-
         PACKAGE_RES_FILENAME="$PACKAGE_RES_SHA$PACKAGE_RES_FILETYPE"
         PACKAGE_RES_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$PACKAGE_RES_FILENAME"
+
+        PACKAGE_NEED_CURL=1
+
+        case $PACKAGE_SRC_FILETYPE in
+            .zip|.txz|.tgz|.tlz|.tbz2)
+                PACKAGE_NEED_BTAR=1
+        esac
     }
+
+    #########################################################################################
+
+    [ "$PACKAGE_NEED_CURL" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl"
+    [ "$PACKAGE_NEED_BTAR" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bsdtar"
 
     #########################################################################################
 
@@ -1332,7 +1322,6 @@ filetype_from_url() {
     }
 
     #########################################################################################
-
 
     [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] && {
         PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
