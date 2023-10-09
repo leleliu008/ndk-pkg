@@ -1176,12 +1176,12 @@ filetype_from_url() {
             *)  PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
 
                 case $PACKAGE_SRC_FILETYPE in
-                    .zip)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl unzip"      ;;
-                    .txz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar xz"    ;;
-                    .tgz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar gzip"  ;;
-                    .tlz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar lzip"  ;;
-                    .tbz2)    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl gtar bzip2" ;;
-                    *)        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl"            ;;
+                    .zip)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
+                    .txz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
+                    .tgz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
+                    .tlz)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
+                    .tbz2)    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl bsdtar" ;;
+                    *)        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP curl"        ;;
                 esac
         esac
     fi
@@ -1229,13 +1229,13 @@ filetype_from_url() {
         PACKAGE_FIX_FILETYPE="$(filetype_from_url "$PACKAGE_FIX_URL")"
 
         case $PACKAGE_FIX_FILETYPE in
-            .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
-            .patch) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
-            .zip)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"      ;;
-            .txz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
-            .tgz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
-            .tlz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
-            .tbz2)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
+            .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"        ;;
+            .patch) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"        ;;
+            .zip)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
+            .txz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
+            .tgz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
+            .tlz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
+            .tbz2)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
         esac
 
         PACKAGE_FIX_FILENAME="$PACKAGE_FIX_SHA$PACKAGE_FIX_FILETYPE"
@@ -1250,13 +1250,13 @@ filetype_from_url() {
         PACKAGE_RES_FILETYPE="$(filetype_from_url "$PACKAGE_RES_URL")"
 
         case $PACKAGE_RES_FILETYPE in
-            .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
-            .patch) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"            ;;
-            .zip)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch unzip"      ;;
-            .txz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar xz"    ;;
-            .tgz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar gzip"  ;;
-            .tlz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar lzip"  ;;
-            .tbz2)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch gtar bzip2" ;;
+            .diff)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"        ;;
+            .patch) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"        ;;
+            .zip)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
+            .txz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
+            .tgz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
+            .tlz)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
+            .tbz2)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch bsdtar" ;;
         esac
 
         PACKAGE_RES_FILENAME="$PACKAGE_RES_SHA$PACKAGE_RES_FILETYPE"
@@ -2340,7 +2340,7 @@ __fetch_resources_of_the_given_package() {
 # {{{ ndk-pkg pack
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME|PACKAGE-SPEC> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-session-dir]
+# __pack_the_given_installed_package <PACKAGE-NAME|PACKAGE-SPEC> [-t <zip|7z|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-session-dir]
   __pack_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
@@ -2367,8 +2367,8 @@ __fetch_resources_of_the_given_package() {
                 fi
 
                 case $OUTPUT_FILETYPE in
-                    zip|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
-                    *) abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_FILETYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
+                    zip|7z|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
+                    *) abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_FILETYPE, <OUTPU-TYPE> should be one of zip|7z|tar.gz|tar.xz|tar.lz|tar.bz2"
                 esac
                 ;;
             -o) shift
@@ -2515,21 +2515,7 @@ __fetch_resources_of_the_given_package() {
     run ln -s "$PACKAGE_INSTALLED_DIR" "$PACKED_DIR_NAME"
 
     step "packing"
-    case $OUTPUT_FILETYPE in
-        zip) run zip -9 -r             "$OUTPUT_FILENAME" "$PACKED_DIR_NAME" ;;
-        7z)  run 7za a -t7z -r         "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg" ;;
-        tar.xz)  run tar cv --xz    -f "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg" ;;
-        tar.gz)  run tar cv --gzip  -f "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg" ;;
-        tar.lz)  run tar cv --lzip  -f "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg" ;;
-        tar.bz2) run tar cv --bzip2 -f "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg" ;;
-    esac
-
-    step "check integrity of packed file"
-    case $OUTPUT_FILETYPE in
-        7z)    run 7za t -t7z "$OUTPUT_FILENAME" ;;
-        zip)   run unzip -t   "$OUTPUT_FILENAME" ;;
-        tar.*) run tar   -tf  "$OUTPUT_FILENAME" ;;
-    esac
+    run bsdtar cvaf "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg"
 
     step "show size of packed file"
     run "du -sh $OUTPUT_FILENAME | cut -f1"
@@ -2857,9 +2843,6 @@ EOF
 
     step "packing the prefab aar file"
     run zip -9 -r "$AAR_FILENAME" .
-
-    step "check integrity of the prefab aar file"
-    run unzip -t  "$AAR_FILENAME"
 
     step "show size of the prefab aar file"
     run du -sh    "$AAR_FILENAME"
@@ -4803,7 +4786,7 @@ EOF
 
     wfetch "$NATIVE_PACKAGE_SRC_URL" --sha256="$NATIVE_PACKAGE_SRC_SHA" --buffer-dir="$NATIVE_PACKAGE_WORKING_DIR" --output-dir="$NDKPKG_DOWNLOADS_DIR" --output-filename="$NATIVE_PACKAGE_SRC_FILENAME"
 
-    run tar vxf "$NDKPKG_DOWNLOADS_DIR/$NATIVE_PACKAGE_SRC_FILENAME" --strip-components=1 --no-same-owner -C src
+    run bsdtar xvf "$NDKPKG_DOWNLOADS_DIR/$NATIVE_PACKAGE_SRC_FILENAME" --strip-components=1 --no-same-owner -C src
 
     run cd src
 
@@ -5821,45 +5804,33 @@ $DOT_CONTENT
                 PACKAGE_GIT_SHA="$(git rev-parse HEAD)"
             fi
             ;;
-        .zip)
+        .zip|.txz|.tgz|.tlz|.tbz2)
             step "uncompressed source file to the installing src directory"
-            run unzip  "$PACKAGE_SRC_FILEPATH" -d "$PACKAGE_INSTALLING_SRC_DIR"
-            ;;
-        .txz|.tgz|.tlz|.tbz2)
-            step "uncompressed source file to the installing src directory"
-            run tar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
+            run bsdtar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
             ;;
         *)  step "copy source files to the installing src directory"
-            run cp     "$PACKAGE_SRC_FILEPATH"    "$PACKAGE_INSTALLING_SRC_DIR"
+            run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
     esac
 
     if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
         case $PACKAGE_FIX_FILETYPE in
-            .zip)
+            .zip|.txz|.tgz|.tlz|.tbz2)
                 step "uncompressed patch file to the installing fix directory"
-                run unzip  "$PACKAGE_FIX_FILEPATH" -d "$PACKAGE_INSTALLING_FIX_DIR"
-                ;;
-            .txz|.tgz|.tlz|.tbz2)
-                step "uncompressed patch file to the installing fix directory"
-                run tar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
+                run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                 ;;
             *)  step "copy patch file to the installing fix directory"
-                run cp     "$PACKAGE_FIX_FILEPATH"    "$PACKAGE_INSTALLING_FIX_DIR"
+                run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
         esac
     fi
 
     if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
         case $PACKAGE_RES_FILETYPE in
-            .zip)
+            .zip|.txz|.tgz|.tlz|.tbz2)
                 step "uncompressed res file to the installing res directory"
-                run unzip "$PACKAGE_RES_FILEPATH" -d "$PACKAGE_INSTALLING_RES_DIR"
-                ;;
-            .txz|.tgz|.tlz|.tbz2)
-                step "uncompressed res file to the installing res directory"
-                run tar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
+                run bsdtar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
                 ;;
             *)  step "copy res file to the installing res directory"
-                run cp    "$PACKAGE_RES_FILEPATH"   "$PACKAGE_INSTALLING_RES_DIR"
+                run cp "$PACKAGE_RES_FILEPATH" "$PACKAGE_INSTALLING_RES_DIR/"
         esac
     fi
 
@@ -8174,7 +8145,7 @@ __setup() {
 
     wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-filename="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
 
-    run tar vxf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
+    run tar xvf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
 
     ##################################################################################
 
@@ -8191,7 +8162,7 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for item in bash coreutils findutils easyutils gawk gsed grep gtar gzip lzip unzip zip xz bzip2 jq yq git curl tree patchelf
+    for item in bash coreutils findutils easyutils gawk gsed grep bsdtar zip jq yq git curl tree patchelf
     do
         run bin/uppm install "$item"
 
@@ -8652,7 +8623,7 @@ ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
     show version of this command.
 
 ${COLOR_GREEN}ndk-pkg setup${COLOR_OFF}
-    install essential tools (e.g. uppm, bash, coreutils, findutils, sed, grep, git, curl, gtar, gzip, tree, jq, yq, etc) used by this shell script.
+    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, grep, git, curl, bsdtar, tree, jq, yq, etc) used by this shell script.
 
 ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
     show basic information about this software.
@@ -8994,7 +8965,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.22
+    NDKPKG_VERSION=0.6.23
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'

@@ -177,7 +177,7 @@ function _ndk_pkg() {
                 pack)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '-t[specify output type]:output-type:(zip tar.gz tar.xz tar.lz tar.bz2)' \
+                        '-t[specify output type]:output-type:(zip 7z tar.gz tar.xz tar.lz tar.bz2)' \
                         '-o[specify output filepath or directory]:output-path:_files' \
                         '--keep-session-dir[do not delete the session direcotory even if successfully packed]'
                     ;;

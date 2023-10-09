@@ -293,18 +293,12 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     - [GNU awk](https://www.gnu.org/software/gawk/manual/gawk.html)
     - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
     - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
+    - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
+    - [tree](https://linux.die.net/man/1/tree)
     - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
-    - [GNU tar](https://www.gnu.org/software/tar/manual/tar.html)
-    - [gzip](https://www.gnu.org/software/gzip/manual/gzip.html)
-    - [lzip](https://www.nongnu.org/lzip/)
-    - [bzip2](https://linux.die.net/man/1/bzip2)
-    - [xz](https://linux.die.net/man/1/xz)
-    - [zip](https://linux.die.net/man/1/zip)
-    - [unzip](https://linux.die.net/man/1/unzip)
     - [yq](https://mikefarah.gitbook.io/yq/)
     - [jq](https://stedolan.github.io/jq/manual/)
-    - [tree](https://linux.die.net/man/1/tree)
 
 - **integrate `zsh-completion` script**
 
