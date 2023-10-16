@@ -60,10 +60,15 @@ docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg -v ~/.m2:/root/.m2
 docker start ndk-pkg
 ```
 
-**step3. run `ndk-pkg` command in the ndk-pkg docker container**
+**step3. install essential tools**
 
 ```bash
 docker exec -it ndk-pkg ndk-pkg setup
+```
+
+**step4. update formula repositories**
+
+```bash
 docker exec -it ndk-pkg ndk-pkg update
 ```
 
