@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        distribution: [Ubuntu-22.04, Debian, openSUSE-Leap-15.2]
+        distribution: [Ubuntu-22.04, Debian]
 
     defaults:
       run:

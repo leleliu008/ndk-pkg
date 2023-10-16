@@ -64,7 +64,6 @@ docker start ndk-pkg
 
 ```bash
 docker exec -it ndk-pkg ndk-pkg setup
-docker exec -it ndk-pkg ndk-pkg upgrade-self
 docker exec -it ndk-pkg ndk-pkg update
 ```
 

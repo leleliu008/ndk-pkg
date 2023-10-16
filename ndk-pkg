@@ -2530,7 +2530,7 @@ __fetch_resources_of_the_given_package() {
   __create_google_prefab_for_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
-    PACKAGE_NAME="$PACKAGE_RECEIPT_PKGNAME"
+    PACKAGE_NAME="${PACKAGE_RECEIPT_PKGNAME%@*}"
 
     TARGET_ANDROID_API="$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API"
     TARGET_ANDROID_ABI="$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI"
@@ -2808,6 +2808,8 @@ EOF
     run cp -r "$PACKAGE_INSTALLED_DIR/.ndk-pkg"/* META-INF/
 
     #########################################################################################
+
+    PACKAGE_NAME="${PACKAGE_NAME%@*}"
 
     unset JAVA_PACKAGE_NAME
 
@@ -4635,7 +4637,7 @@ __install_the_given_packages() {
         ruby)
             NATIVE_PACKAGE_SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
             NATIVE_PACKAGE_SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
-            NATIVE_PACKAGE_DEPENDENCIES='zlib libyaml libffi'
+            NATIVE_PACKAGE_DEPENDENCIES='zlib libyaml libffi openssl'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --enable-shared --disable-docs'
             ;;
@@ -8954,7 +8956,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.23
+    NDKPKG_VERSION=0.6.24
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
