@@ -1504,9 +1504,7 @@ EOF
     PACKAGE_SPEC=
     PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
-    is_package_installed "$PACKAGE_SPEC"
-
-    [ $? -eq 0 ] || return $?
+    is_package_installed "$PACKAGE_SPEC" || return $?
 
     PACKAGE_INSTALLED_DIR="$(readlink -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC")"
 
@@ -2426,9 +2424,9 @@ __fetch_resources_of_the_given_package() {
     esac
 
     if [ "$OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL" = yes ] ; then
-        PACKED_DIR_NAME="$PACKAGE_RECEIPT_PKGNAME-$PACKAGE_RECEIPT_VERSION-android$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API-$TARGET_ANDROID_ARCH"
+        PACKED_DIR_NAME="${PACKAGE_RECEIPT_PKGNAME%@*}-$PACKAGE_RECEIPT_VERSION-android$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API-$TARGET_ANDROID_ARCH"
     else
-        PACKED_DIR_NAME="$PACKAGE_RECEIPT_PKGNAME-$PACKAGE_RECEIPT_VERSION-android-$TARGET_ANDROID_ARCH"
+        PACKED_DIR_NAME="${PACKAGE_RECEIPT_PKGNAME%@*}-$PACKAGE_RECEIPT_VERSION-android-$TARGET_ANDROID_ARCH"
     fi
 
     ###########################################################################################
@@ -2711,6 +2709,8 @@ EOF
         *)  abort 1 "invalid argument: $1"
     esac
 
+    X1="$PACKAGE_NAME:android-$TARGET_ANDROID_API"
+
     shift
 
     unset USER_SPECIFIED_ANDROID_NDK_HOME
@@ -2784,7 +2784,7 @@ EOF
 
     for TARGET_ANDROID_ABI in $TARGET_ANDROID_ABIS
     do
-        PACKAGE_SPEC="$PACKAGE_NAME:android-$TARGET_ANDROID_API:$TARGET_ANDROID_ABI"
+        PACKAGE_SPEC="$X1:$TARGET_ANDROID_ABI"
         step "create prefab hierarchial structure for $PACKAGE_SPEC"
         __create_google_prefab_for_the_given_installed_package "$PACKAGE_SPEC"
     done
@@ -8956,7 +8956,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.24
+    NDKPKG_VERSION=0.6.25
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
