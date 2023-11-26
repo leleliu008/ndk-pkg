@@ -3501,12 +3501,13 @@ __gen_url_transform_sample() {
     cat > url-transform.sample <<EOF
 #!/bin/sh
 
+# https://gitmirror.com/
 case \$1 in
     *githubusercontent.com/*)
-        printf 'https://ghproxy.com/%s\n' "\$1"
+        printf '%s\n' "\$1" | sed 's|githubusercontent|gitmirror|'
         ;;
     https://github.com/*)
-        printf 'https://ghproxy.com/%s\n' "\$1"
+        printf 'https://hub.gitmirror.com/%s\n' "\$1"
         ;;
     '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ; exit 1 ;;
     *)  printf '%s\n' "\$1"
@@ -4541,28 +4542,28 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_SRC_SHA='fb36d769189faaf841390fae88639fb02c79b87b0691a340fbbfc32b4f82b789'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='cmake'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
             ;;
         perl)
-            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.36.0.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0'
+            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.38.0.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='eca551caec3bc549a4e590c0015003790bdd1a604ffe19cc78ee631d51f7072e'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         openssl)
-            NATIVE_PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.0.5.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a'
+            NATIVE_PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.1.1.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674'
             NATIVE_PACKAGE_DEPENDENCIES='perl'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         texinfo)
-            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.0.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='20744b82531ce7a04d8cee34b07143ad59777612c3695d5855f29fba40fbe3e0'
+            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953'
             NATIVE_PACKAGE_DEPENDENCIES='perl'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--with-included-regex --enable-threads=posix'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--with-included-regex --enable-threads=posix --disable-nls'
             ;;
         help2man)
             NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
@@ -4614,8 +4615,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
             ;;
         sqlite3)
-            NATIVE_PACKAGE_SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3410100.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='4dadfbeab9f8e16c695d4fbbc51c16b2f77fb97ff4c1c3d139919dfc038c9e33'
+            NATIVE_PACKAGE_SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3440000.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='b9cd386e7cd22af6e0d2a0f06d0404951e1bef109e42ea06cc0450e10cd15550'
             NATIVE_PACKAGE_DEPENDENCIES='zlib'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
@@ -4637,13 +4638,13 @@ __install_the_given_packages() {
         ruby)
             NATIVE_PACKAGE_SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
             NATIVE_PACKAGE_SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
-            NATIVE_PACKAGE_DEPENDENCIES='zlib libyaml libffi openssl'
+            NATIVE_PACKAGE_DEPENDENCIES='zlib libyaml libffi'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --enable-shared --disable-docs'
             ;;
         python3)
-            NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz'
-            NATIVE_PACKAGE_SRC_SHA='2411c74bda5bbcfcddaf4531f66d1adc73f247f529aee981b029513aefdbf849'
+            NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz'
+            NATIVE_PACKAGE_SRC_SHA='c049bf317e877cbf9fce8c3af902436774ecef5249a29d10984ca3a37f7f4736'
             NATIVE_PACKAGE_DEPENDENCIES='zlib libbz2 liblzma gdbm expat sqlite3 libffi openssl perl'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS="--with-system-expat --with-system-ffi --with-openssl=$NATIVE_PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
@@ -4654,6 +4655,20 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_DEPENDENCIES='perl expat'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
+            ;;
+        libpcre2)
+            NATIVE_PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2'
+            NATIVE_PACKAGE_SRC_SHA='8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840'
+            NATIVE_PACKAGE_DEPENDENCIES=
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='cmake'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON'
+            ;;
+        swig)
+            NATIVE_PACKAGE_SRC_URL='https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b'
+            NATIVE_PACKAGE_DEPENDENCIES='libpcre2'
+            NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
+            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go'
             ;;
         *)  abort 1 "unknown native package name: $1"
     esac
@@ -5422,6 +5437,7 @@ $DOT_CONTENT
             intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            swig)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
@@ -6416,7 +6432,10 @@ EOF
 
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
 
-        unset RUSTFLAGS
+        #########################################################################
+
+        # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
+        export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib"
 
         if [ "$LINK_TYPE" = 'static-only' ] ; then
             run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
@@ -6424,17 +6443,12 @@ EOF
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
         fi
 
-        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+        for LDFLAG in $LDFLAGS
         do
-            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
-
-            if [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
-                RUSTFLAGS="-Clink-arg=-L$DEPENDENT_PACKAGE_LIBRARY_DIR -Clink-arg=-Wl,-rpath-link,$DEPENDENT_PACKAGE_LIBRARY_DIR $RUSTFLAGS"
-            fi
+            RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LDFLAG"
         done
 
-        # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-        export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib $RUSTFLAGS"
+        #########################################################################
 
         for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
         do
@@ -8403,17 +8417,23 @@ int main(int argc, char * argv[]) {
 
     if (TARGET == NULL) {
         fprintf(stderr, "ANDROID_TARGET environment variable is not set.\n");
-        return 1;
+        return 3;
     }
 
     if (TARGET[0] == '\0') {
         fprintf(stderr, "ANDROID_TARGET environment variable value should be a non-empty string.\n");
-        return 2;
+        return 4;
     }
 
-    size_t   targetArgLength = strlen(TARGET) + 10U;
-    char     targetArg[targetArgLength];
-    snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
+    size_t targetArgLength = strlen(TARGET) + 10U;
+    char   targetArg[targetArgLength];
+
+    int ret = snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
+
+    if (ret < 0) {
+        perror(NULL);
+        return 5;
+    }
 
     /////////////////////////////////////////////////////////////////
 
@@ -8421,50 +8441,58 @@ int main(int argc, char * argv[]) {
 
     if (SYSROOT == NULL) {
         fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable is not set.\n");
-        return 1;
+        return 6;
     }
 
     if (SYSROOT[0] == '\0') {
         fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable value should be a non-empty string.\n");
-        return 2;
+        return 7;
     }
 
-    size_t   sysrootArgLength = strlen(SYSROOT) + 11U;
-    char     sysrootArg[sysrootArgLength];
-    snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
+    size_t sysrootArgLength = strlen(SYSROOT) + 11U;
+    char   sysrootArg[sysrootArgLength];
+
+    ret = snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
+
+    if (ret < 0) {
+        perror(NULL);
+        return 8;
+    }
 
     /////////////////////////////////////////////////////////////////
 
-    char   sonameArg[100] = {0};
-
-    char * argv2[argc + 4];
+    char* argv2[argc + 5];
 
     argv2[0] = compiler;
     argv2[1] = targetArg;
     argv2[2] = sysrootArg;
 
     if (action == ACTION_CREATE_SHARED_LIBRARY) {
+        argv2[3] = (char*)"-fPIC";
+
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "-static") == 0) {
-                argv2[i + 2] = (char*)"--shared";
+                argv2[i + 3] = (char*)"-fPIC";
             } else if (strcmp(argv[i], "--static") == 0) {
-                argv2[i + 2] = (char*)"--shared";
+                argv2[i + 3] = (char*)"-fPIC";
             } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i + 2] = (char*)"--shared";
+                argv2[i + 3] = (char*)"-fPIC";
             } else {
-                argv2[i + 2] = argv[i];
+                argv2[i + 3] = argv[i];
             }
         }
 
-        char * filepath = NULL;
-        char * filename = NULL;
+        char sonameArg[100]; sonameArg[0] = '\0';
+
+        char * outputFilePath = NULL;
+        char * outputFileName = NULL;
 
         if (indexes[5] == -1) {
             // It's rare to see. like -o/a/b/libxx.so.1
             for (int i = 1; i < argc; i++) {
                 if (strncmp(argv[i], "-o", 2) == 0) {
                     indexes[5] = i;
-                    filepath = &argv[i][2];
+                    outputFilePath = &argv[i][2];
                     break;
                 }
             }
@@ -8473,15 +8501,15 @@ int main(int argc, char * argv[]) {
             int i = indexes[5] + 1;
 
             if (i < argc) {
-                filepath = argv[i];
+                outputFilePath = argv[i];
             }
         }
 
-        if (filepath != NULL) {
+        if (outputFilePath != NULL) {
             int len = 0;
 
             for (;;) {
-                if (filepath[len] == '\0') {
+                if (outputFilePath[len] == '\0') {
                     break;
                 } else {
                     len++;
@@ -8489,14 +8517,14 @@ int main(int argc, char * argv[]) {
             }
 
             for (int i = len - 1; i > 0; i--) {
-                if (filepath[i] == '/') {
-                    filename = filepath + i + 1;
+                if (outputFilePath[i] == '/') {
+                    outputFileName = outputFilePath + i + 1;
                     break;
                 }
             }
 
-            if (filename == NULL) {
-                filename = filepath;
+            if (outputFileName == NULL) {
+                outputFileName = outputFilePath;
             }
 
             regex_t regex;
@@ -8504,23 +8532,37 @@ int main(int argc, char * argv[]) {
             if (regcomp(&regex, "^lib.*\\\\.so", 0) != 0) {
                 perror(NULL);
                 regfree(&regex);
-                return 1;
+                return 9;
             }
 
             regmatch_t regmatch[2];
 
-            if (regexec(&regex, filename, 2, regmatch, 0) == 0) {
+            if (regexec(&regex, outputFileName, 2, regmatch, 0) == 0) {
                 //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
                 //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
 
                 if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
                     int n = regmatch[0].rm_eo - regmatch[0].rm_so;
-                    const char * str = &filename[regmatch[0].rm_so];
-                    snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
+                    const char * str = &outputFileName[regmatch[0].rm_so];
+
+                    ret = snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
+
+                    if (ret < 0) {
+                        perror(NULL);
+                        regfree(&regex);
+                        return 10;
+                    }
                 }
             }
 
             regfree(&regex);
+        }
+
+        if (sonameArg[0] == '\0') {
+            argv2[argc + 3] = NULL;
+        } else {
+            argv2[argc + 3] = sonameArg;
+            argv2[argc + 4] = NULL;
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
         for (int i = 1; i < argc; i++) {
@@ -8536,22 +8578,19 @@ int main(int argc, char * argv[]) {
                 argv2[i + 2] = argv[i];
             }
         }
+
+        argv2[argc + 2] = NULL;
     } else {
         for (int i = 1; i < argc; i++) {
             argv2[i + 2] = argv[i];
         }
-    }
 
-    if (sonameArg[0] == '\0') {
         argv2[argc + 2] = NULL;
-    } else {
-        argv2[argc + 2] = sonameArg;
-        argv2[argc + 3] = NULL;
     }
 
     execv (compiler, argv2);
     perror(compiler);
-    return -1;
+    return 255;
 }
 EOF
 
@@ -8956,7 +8995,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.25
+    NDKPKG_VERSION=0.6.26
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'

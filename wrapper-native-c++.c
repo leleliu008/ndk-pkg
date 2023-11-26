@@ -20,22 +20,17 @@ int main(int argc, char * argv[]) {
 
     argv2[0] = cxxc;
 
+    for (int i = 1; i < argc; i++) {
+        argv2[i] = argv[i];
+    }
+
     char * const sysroot = getenv("SYSROOT_FOR_BUILD");
 
     if (sysroot == NULL || sysroot[0] == '\0') {
-        for (int i = 1; i < argc; i++) {
-            argv2[i] = argv[i];
-        }
-
         argv2[argc] = NULL;
     } else {
-        argv2[1] = (char*)"-isysroot";
-        argv2[2] = sysroot;
-
-        for (int i = 1; i < argc; i++) {
-            argv2[i + 2] = argv[i];
-        }
-
+        argv2[argc]     = (char*)"-isysroot";
+        argv2[argc + 1] = sysroot;
         argv2[argc + 2] = NULL;
     }
 

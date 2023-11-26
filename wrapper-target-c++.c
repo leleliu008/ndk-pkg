@@ -54,17 +54,23 @@ int main(int argc, char * argv[]) {
 
     if (TARGET == NULL) {
         fprintf(stderr, "ANDROID_TARGET environment variable is not set.\n");
-        return 1;
+        return 3;
     }
 
     if (TARGET[0] == '\0') {
         fprintf(stderr, "ANDROID_TARGET environment variable value should be a non-empty string.\n");
-        return 2;
+        return 4;
     }
 
-    size_t   targetArgLength = strlen(TARGET) + 10U;
-    char     targetArg[targetArgLength];
-    snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
+    size_t targetArgLength = strlen(TARGET) + 10U;
+    char   targetArg[targetArgLength];
+
+    int ret = snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
+
+    if (ret < 0) {
+        perror(NULL);
+        return 5;
+    }
 
     /////////////////////////////////////////////////////////////////
 
@@ -72,50 +78,58 @@ int main(int argc, char * argv[]) {
 
     if (SYSROOT == NULL) {
         fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable is not set.\n");
-        return 1;
+        return 6;
     }
 
     if (SYSROOT[0] == '\0') {
         fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable value should be a non-empty string.\n");
-        return 2;
+        return 7;
     }
 
-    size_t   sysrootArgLength = strlen(SYSROOT) + 11U;
-    char     sysrootArg[sysrootArgLength];
-    snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
+    size_t sysrootArgLength = strlen(SYSROOT) + 11U;
+    char   sysrootArg[sysrootArgLength];
+
+    ret = snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
+
+    if (ret < 0) {
+        perror(NULL);
+        return 8;
+    }
 
     /////////////////////////////////////////////////////////////////
 
-    char   sonameArg[100] = {0};
-
-    char * argv2[argc + 4];
+    char* argv2[argc + 4];
 
     argv2[0] = cxxc;
     argv2[1] = targetArg;
     argv2[2] = sysrootArg;
 
     if (action == ACTION_CREATE_SHARED_LIBRARY) {
+        argv2[3] = (char*)"-fPIC";
+
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "-static") == 0) {
-                argv2[i + 2] = (char*)"--shared";
+                argv2[i + 3] = (char*)"-fPIC";
             } else if (strcmp(argv[i], "--static") == 0) {
-                argv2[i + 2] = (char*)"--shared";
+                argv2[i + 3] = (char*)"-fPIC";
             } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i + 2] = (char*)"--shared";
+                argv2[i + 3] = (char*)"-fPIC";
             } else {
-                argv2[i + 2] = argv[i];
+                argv2[i + 3] = argv[i];
             }
         }
 
-        char * filepath = NULL;
-        char * filename = NULL;
+        char sonameArg[100]; sonameArg[0] = '\0';
+
+        char * outputFilePath = NULL;
+        char * outputFileName = NULL;
 
         if (indexes[5] == -1) {
             // It's rare to see. like -o/a/b/libxx.so.1
             for (int i = 1; i < argc; i++) {
                 if (strncmp(argv[i], "-o", 2) == 0) {
                     indexes[5] = i;
-                    filepath = &argv[i][2];
+                    outputFilePath = &argv[i][2];
                     break;
                 }
             }
@@ -124,15 +138,15 @@ int main(int argc, char * argv[]) {
             int i = indexes[5] + 1;
 
             if (i < argc) {
-                filepath = argv[i];
+                outputFilePath = argv[i];
             }
         }
 
-        if (filepath != NULL) {
+        if (outputFilePath != NULL) {
             int len = 0;
 
             for (;;) {
-                if (filepath[len] == '\0') {
+                if (outputFilePath[len] == '\0') {
                     break;
                 } else {
                     len++;
@@ -140,14 +154,14 @@ int main(int argc, char * argv[]) {
             }
 
             for (int i = len - 1; i > 0; i--) {
-                if (filepath[i] == '/') {
-                    filename = filepath + i + 1;
+                if (outputFilePath[i] == '/') {
+                    outputFileName = outputFilePath + i + 1;
                     break;
                 }
             }
 
-            if (filename == NULL) {
-                filename = filepath;
+            if (outputFileName == NULL) {
+                outputFileName = outputFilePath;
             }
 
             regex_t regex;
@@ -155,23 +169,37 @@ int main(int argc, char * argv[]) {
             if (regcomp(&regex, "^lib.*\\.so", 0) != 0) {
                 perror(NULL);
                 regfree(&regex);
-                return 1;
+                return 9;
             }
 
             regmatch_t regmatch[2];
 
-            if (regexec(&regex, filename, 2, regmatch, 0) == 0) {
+            if (regexec(&regex, outputFileName, 2, regmatch, 0) == 0) {
                 //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
                 //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
 
                 if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
                     int n = regmatch[0].rm_eo - regmatch[0].rm_so;
-                    const char * str = &filename[regmatch[0].rm_so];
-                    snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
+                    const char * str = &outputFileName[regmatch[0].rm_so];
+
+                    ret = snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
+
+                    if (ret < 0) {
+                        perror(NULL);
+                        regfree(&regex);
+                        return 10;
+                    }
                 }
             }
 
             regfree(&regex);
+        }
+
+        if (sonameArg[0] == '\0') {
+            argv2[argc + 3] = NULL;
+        } else {
+            argv2[argc + 3] = sonameArg;
+            argv2[argc + 4] = NULL;
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
         for (int i = 1; i < argc; i++) {
@@ -187,17 +215,14 @@ int main(int argc, char * argv[]) {
                 argv2[i + 2] = argv[i];
             }
         }
+
+        argv2[argc + 2] = NULL;
     } else {
         for (int i = 1; i < argc; i++) {
             argv2[i + 2] = argv[i];
         }
-    }
 
-    if (sonameArg[0] == '\0') {
         argv2[argc + 2] = NULL;
-    } else {
-        argv2[argc + 2] = sonameArg;
-        argv2[argc + 3] = NULL;
     }
 
     execv (cxxc, argv2);
