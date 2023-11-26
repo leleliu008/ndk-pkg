@@ -87,7 +87,7 @@ step() {
 }
 
 run() {
-    if [ "$RUN_SILENT" != yes ] ; then
+    if [ "$RUN_SILENT" != 1 ] ; then
         echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
     fi
 
@@ -127,8 +127,17 @@ bppend_to_ACLOCAL_PATH() {
 }
 
 sed_in_place() {
-    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}sed -i $@${COLOR_OFF}"
-    sed -i "$@"
+    if [ "$RUN_SILENT" = 1 ] ; then
+        sed -i "$@"
+    else
+        if [ -z "$SED" ] ; then
+            SED="$(command -v gsed || command -v sed)" || abort 1 "command not found: gsed"
+        fi
+
+        export SED
+
+        "$NDKPKG_CORE_DIR/libexec/sed-in-place" "$@"
+    fi
 }
 
 git() {
@@ -237,7 +246,7 @@ wfetch() {
         case $1 in
             --silent)
                 FETCH_SILENT=yes
-                RUN_SILENT=yes
+                RUN_SILENT=1
                 ;;
             --sha256=*)
                 FETCH_SHA256_EXPECTED="${1#*=}"
@@ -2735,41 +2744,7 @@ EOF
 
     #########################################################################################
 
-    step "find or install android ndk"
-
-    NDKINFO=
-
-    if [ -z "$USER_SPECIFIED_ANDROID_NDK_HOME" ] ; then
-        NDKINFO="$(ndkinfo || true)"
-    else
-        NDKINFO="$(ndkinfo "$USER_SPECIFIED_ANDROID_NDK_HOME")"
-    fi
-
-    if [ -z "$NDKINFO" ] ; then
-        # https://github.com/microsoft/WSL/issues/8681
-        # https://github.com/microsoft/WSL/issues/4071
-
-        if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-            UPPM_PACKAGE_NAME_NDK='android-ndk-r23c'
-        else
-            UPPM_PACKAGE_NAME_NDK='android-ndk-r25c'
-        fi
-
-        "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" || {
-            warn "Android NDK not found, it will be installed via uppm."
-            "$UPPM" install  "$UPPM_PACKAGE_NAME_NDK"
-        }
-
-        ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
-
-        NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
-    fi
-
-    echo "$NDKINFO"
-    eval "$NDKINFO"
-
-    export ANDROID_NDK_HOME
-    export ANDROID_NDK_ROOT
+    setup_android_ndk_env "$USER_SPECIFIED_ANDROID_NDK_HOME"
 
     #########################################################################################
 
@@ -4346,42 +4321,7 @@ inspect_install_arguments() {
 
     USER_SPECIFIED_PACKAGE_SPEC_LIST=${USER_SPECIFIED_PACKAGE_SPEC_LIST#' '}
 
-    #########################################################################################
-
-    NDKINFO=
-
-    if [ -z "$USER_SPECIFIED_ANDROID_NDK_HOME" ] ; then
-        NDKINFO="$(ndkinfo || true)"
-    else
-        NDKINFO="$(ndkinfo "$USER_SPECIFIED_ANDROID_NDK_HOME")"
-    fi
-
-    if [ -z "$NDKINFO" ] ; then
-        # https://github.com/microsoft/WSL/issues/8681
-        # https://github.com/microsoft/WSL/issues/4071
-
-        if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-            UPPM_PACKAGE_NAME_NDK='android-ndk-r23c'
-        else
-            UPPM_PACKAGE_NAME_NDK='android-ndk-r25c'
-        fi
-
-        "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" || {
-            warn "Android NDK not found, it will be installed via uppm."
-            "$UPPM" install  "$UPPM_PACKAGE_NAME_NDK"
-        }
-
-        ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
-
-        NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
-    fi
-
-    eval "$NDKINFO"
-
-    export ANDROID_NDK_HOME
-    export ANDROID_NDK_ROOT
-
-    #########################################################################################
+    setup_android_ndk_env "$USER_SPECIFIED_ANDROID_NDK_HOME"
 
     if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
@@ -6092,6 +6032,13 @@ EOF
         CCFLAGS="$CCFLAGS -Os"
         XXFLAGS="$XXFLAGS -Os"
         LDFLAGS="$LDFLAGS -Wl,-S"
+    fi
+
+    ##############################################
+
+    # https://github.com/madler/zlib/issues/856
+    if [ "$ANDROID_NDK_VERSION_MAJOR" -ge 26 ] ; then
+        LDFLAGS="$LDFLAGS -Wl,--undefined-version"
     fi
 
     ##############################################
@@ -8084,6 +8031,46 @@ ndkinfo() {
     fi
 }
 
+# setup_android_ndk_env [USER_SPECIFIED_ANDROID_NDK_HOME]
+  setup_android_ndk_env() {
+    step "find or install android ndk"
+
+    NDKINFO=
+
+    if [ -n "$1" ] ; then
+        NDKINFO="$(ndkinfo "$1")"
+    else
+        NDKINFO="$(ndkinfo || true)"
+    fi
+
+    if [ -z "$NDKINFO" ] ; then
+        UPPM_PACKAGE_NAME_NDK='android-ndk-r26b'
+
+        if "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" ; then
+            ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
+            NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
+        else
+            warn "Android NDK not found, it will be installed via uppm."
+            "$UPPM" install  "$UPPM_PACKAGE_NAME_NDK"
+            ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
+            NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
+
+            # https://github.com/microsoft/WSL/issues/8681
+            # https://github.com/microsoft/WSL/issues/4071
+
+            if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
+                patchelf --set-interpreter '/lib64/ld-linux-x86-64.so.2' "$ANDROID_NDK_CC"
+            fi
+        fi
+    fi
+
+    echo "$NDKINFO"
+    eval "$NDKINFO"
+
+    export ANDROID_NDK_HOME
+    export ANDROID_NDK_ROOT
+}
+
 # }}}
 ##############################################################################
 # {{{ ndk-pkg setup
@@ -8605,7 +8592,48 @@ EOF
     run cc -std=c99 -o libexec/wrapper-target-cc   wrapper-target-cc.c -UUSED_AS_CXX
     run cc -std=c99 -o libexec/wrapper-target-c++  wrapper-target-cc.c -DUSED_AS_CXX
 
-    #################################################################################
+    #########################################################################################
+
+    cat > sed-in-place.c <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main(int argc, char* argv[]) {
+    char * const sed = getenv("SED");
+
+    if (sed == NULL || sed[0] == '\0') {
+        fprintf(stderr, "SED environment variable was not set.\n");
+        return 1;
+    }
+
+    /////////////////////////////////////////////////////////////////
+
+    char* argv2[argc + 2];
+
+    argv2[0] = sed;
+    argv2[1] = (char*)"-i";
+
+    for (int i = 1; i < argc; i++) {
+        argv2[i + 1] = argv[i];
+    }
+
+    argv2[argc + 1] = NULL;
+
+    for (int i = 0; argv2[i] != NULL; i++) {
+        fprintf(stderr, "%s ", argv2[i]);
+    }
+    fprintf(stderr, "\n");
+
+    execv (sed, argv2);
+    perror(sed);
+    return 255;
+}
+EOF
+
+    run cc -std=c99 -o libexec/sed-in-place sed-in-place.c
+
+    #########################################################################################
 
     if [ -d        "$NDKPKG_CORE_DIR" ] ; then
         run rm -rf "$NDKPKG_CORE_DIR"
@@ -8995,7 +9023,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.26
+    NDKPKG_VERSION=0.6.27
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
