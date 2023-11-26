@@ -8058,9 +8058,9 @@ ndkinfo() {
             # https://github.com/microsoft/WSL/issues/8681
             # https://github.com/microsoft/WSL/issues/4071
 
-            if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-                patchelf --set-interpreter '/lib64/ld-linux-x86-64.so.2' "$ANDROID_NDK_CC"
-            fi
+            #if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
+            #    patchelf --set-interpreter '/lib64/ld-linux-x86-64.so.2' "$ANDROID_NDK_CC"
+            #fi
         fi
     fi
 
