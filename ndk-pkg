@@ -8043,25 +8043,19 @@ ndkinfo() {
         NDKINFO="$(ndkinfo || true)"
     fi
 
+    ANDROID_NDK_IS_INSTALLED_VIA_UPPM=0
+
     if [ -z "$NDKINFO" ] ; then
         UPPM_PACKAGE_NAME_NDK='android-ndk-r26b'
 
-        if "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" ; then
-            ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
-            NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
-        else
+        if ! "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" ; then
+            ANDROID_NDK_IS_INSTALLED_VIA_UPPM=1
             warn "Android NDK not found, it will be installed via uppm."
             "$UPPM" install  "$UPPM_PACKAGE_NAME_NDK"
-            ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
-            NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
-
-            # https://github.com/microsoft/WSL/issues/8681
-            # https://github.com/microsoft/WSL/issues/4071
-
-            #if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-            #    patchelf --set-interpreter '/lib64/ld-linux-x86-64.so.2' "$ANDROID_NDK_CC"
-            #fi
         fi
+
+        ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
+        NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
     fi
 
     echo "$NDKINFO"
@@ -8069,6 +8063,15 @@ ndkinfo() {
 
     export ANDROID_NDK_HOME
     export ANDROID_NDK_ROOT
+
+    if [ "$ANDROID_NDK_IS_INSTALLED_VIA_UPPM" -eq 1 ] ; then
+        # https://github.com/microsoft/WSL/issues/8681
+        # https://github.com/microsoft/WSL/issues/4071
+
+        if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
+            patchelf --set-interpreter '/lib64/ld-linux-x86-64.so.2' "$ANDROID_NDK_CC"
+        fi
+    fi
 }
 
 # }}}
