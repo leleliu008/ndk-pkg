@@ -2150,11 +2150,18 @@ __fetch_resources_of_the_given_package() {
 
 # __tree_the_given_installed_package <PACKAGE-SPEC>
   __tree_the_given_installed_package() {
-    PACKAGE_INSTALL_DIR="$(peel_installed_root_dir_for_the_given_package "$1")"
+    PACKAGE_SPEC=
+    PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+    if is_package_installed "$PACKAGE_SPEC" ; then
+        PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+    else
+        abort 1 "package '$PACKAGE_SPEC' is not installed."
+    fi
 
     shift
 
-    run tree "$@" "$PACKAGE_INSTALL_DIR"
+    run tree "$@" "$PACKAGE_INSTALLED_DIR"
 }
 
 # }}}
@@ -2163,10 +2170,17 @@ __fetch_resources_of_the_given_package() {
 
 # __logs_the_given_installed_package <PACKAGE-SPEC>
   __logs_the_given_installed_package() {
-    PACKAGE_INSTALL_DIR="$(peel_installed_root_dir_for_the_given_package "$1")"
+    PACKAGE_SPEC=
+    PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+    if is_package_installed "$PACKAGE_SPEC" ; then
+        PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+    else
+        abort 1 "package '$PACKAGE_SPEC' is not installed."
+    fi
 
     FILEPATHS=
-    FILEPATHS="$(find "$PACKAGE_INSTALL_DIR/.ndk-pkg" -type f)"
+    FILEPATHS="$(find "$PACKAGE_INSTALLED_DIR/.ndk-pkg" -type f)"
 
     for filepath in $FILEPATHS
     do
