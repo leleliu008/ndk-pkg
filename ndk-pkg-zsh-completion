@@ -17,9 +17,8 @@ _ndk_pkg_actions=(
     'is-installed:is the given package installed.'
     'is-outdated:is the given package outdated.'
     'search:search all available packages whose name matches the given regular expression pattern.'
-    'tree:list files of the given installed package in a tree-like format.'
-    'info:show infomation of the given package or all available packages.'
-    'formula-edit:edit formula of the given package.'
+    'info-available:show infomation of the given available package.'
+    'info-installed:show infomation of the given installed package.'
     'formula-repo-init:create a new empty formula repository.'
     'formula-repo-add:create a new empty formula repository then sync with server.'
     'formula-repo-del:delete the given formula repository from your local cache.'
@@ -27,8 +26,6 @@ _ndk_pkg_actions=(
     'formula-repo-conf:change the config of the given formula repository.'
     'formula-repo-info:show infomation of the given formula repository.'
     'formula-repo-list:list all available formula repositories.'
-    'formula:show formula of the given package.'
-    'receipt:show receipt of the given package.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
@@ -38,10 +35,11 @@ _ndk_pkg_actions=(
     'upgrade-self:upgrade this software.'
     'fetch:download formula resources of the given package to the cache.'
     'depends:show the depends of the given package.'
+    'tree:list files of the given installed package in a tree-like format.'
+    'logs:show logs of the given installed package.'
     'pack:pack the given installed package.'
     'export:export the given installed package as the google prefab aar.'
     'deploy:export the given installed package as the google prefab aar then deploy it to Maven Local Repository or Sonatype OSSRH.'
-    'logs:show logs of the given installed package.'
     'gen-url-transform-sample:generate url-transform sample.'
     'android-versions:show android plaform version, android API level, android version code map.'
 )
@@ -87,11 +85,6 @@ function _ndk_pkg() {
     case $state in
         option)
             case $words[1] in
-                formula-edit)
-                    _arguments \
-                        '1:package-name:_ndk_pkg_available_packages' \
-                        '--editor=-[specify editor]'
-                    ;;
                 formula-repo-add)
                     _arguments \
                         '1:formula-repo-name:(name)' \
@@ -137,36 +130,18 @@ function _ndk_pkg() {
                 formula-repo-info)
                     _arguments '1:formula-repo-name:($(ndk-pkg formula-repo-list | sed -n "/^name: /p" | cut -c7-))'
                     ;;
-                formula)
-                    _arguments '1:package-name:_ndk_pkg_available_packages' \
-                        + '(op)' \
-                        '--path[show formula file path only]' \
-                        '--yaml[show formula file content in yaml format]' \
-                        '--json[show formula file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref git-dep src-url src-sha src-ft src-fp fix-url fix-sha fix-ft fix-fp res-url res-sha res-ft res-fp dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min)'
+                info-available)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_available_packages' \
+                        '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-sha src-ft src-fp fix-url fix-sha fix-ft fix-fp res-url res-sha res-ft res-fp dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min)'
                     ;;
-                receipt)
-                    _arguments '1:package-name:_ndk_pkg_installed_packages' \
-                        + '(op)' \
-                        '--path[show receipt file path only]' \
-                        '--yaml[show receipt file content in yaml format]' \
-                        '--json[show receipt file content in json format]' \
-                        ':key:(summary version license web-url git-url git-sha git-ref git-dep src-url src-sha fix-url fix-sha res-url res-sha dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min signature timestamp)'
-                    ;;
-                info)
-                    case $words[3] in
-                        installed-*|receipt-*)
-                            _arguments \
-                                '1:package-name:()' \
-                                '2:key:(installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version)'
-                            ;;
-                        *)  _arguments \
-                                '1:package-name:(@all $(ndk-pkg ls-available 2>/dev/null))' \
-                                '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-dep src-url src-sha src-ft src-fp fix-url fix-sha fix-ft fix-fp res-url res-sha res-ft res-fp dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min installed-dir installed-files installed-timestamp-unix installed-timestamp-rfc-3339 installed-timestamp-iso-8601 installed-timestamp-rfc-3339-utc installed-timestamp-iso-8601-utc installed-version)'
-                    esac
+                info-installed)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_installed_packages' \
+                        '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-sha src-ft src-fp fix-url fix-sha fix-ft fix-fp res-url res-sha res-ft res-fp dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min --prefix --files builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc)'
                     ;;
                 fetch)
-                    _arguments ':package-name:(@all $(ndk-pkg ls-available 2>/dev/null))'
+                    _arguments ':package-name:_ndk_pkg_available_packages'
                     ;;
                 depends)
                     _arguments \

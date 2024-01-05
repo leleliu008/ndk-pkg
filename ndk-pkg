@@ -21,6 +21,9 @@
 ######################################################################################
 ####################################  convention  ####################################
 # 1. The variable/function name starts with underscore "_" means that it is a private variable/function.
+# 2. 0 represents the boolean value false
+# 3. 1 represents the boolean value true
+# 4. all utilities are GNU-style
 ######################################################################################
 
 # If IFS is not set, the deault value will be <space><tab><newline>
@@ -106,12 +109,6 @@ is_integer() {
     esac
 }
 
-# format_unix_timestamp <TIMESTAMP-UNIX> <TO-FORMAT> [-u]
-  format_unix_timestamp() {
-   date $3 -jf "%s" "$1" "$2" 2> /dev/null ||
-   date $3 -d      "@$1" "$2"
-}
-
 bppend_to_PATH() {
     case ":${PATH}:" in
         *:"$1":*) ;;
@@ -136,7 +133,7 @@ sed_in_place() {
 
         export SED
 
-        "$NDKPKG_CORE_DIR/libexec/sed-in-place" "$@"
+        "$NDKPKG_CORE_DIR/sed-in-place" "$@"
     fi
 }
 
@@ -209,27 +206,36 @@ lolcat_awk() {
 ##############################################################################
 # {{{ wfetch
 
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-filepath=PATH>
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> <--output-filename=NAME>
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> [--output-filename=NAME]
-# wfetch <URL> [--uri=URL-MIRROR] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] <--output-filename=NAME>
-
+# wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <OUTPUT-PATH>] [-q] [--no-buffer]
+#
+# If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwise, the result will be written to stdout.
+#
+# If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
+#
+# If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/$(basename <URL>)
+#
 # influential environment variable:
 # NDKPKG_URL_TRANSFORM
 wfetch() {
+    unset FETCH_UTS
+    unset FETCH_SHA
+
     unset FETCH_URL
     unset FETCH_URI
 
-    unset FETCH_SHA256_EXPECTED
-
-    unset FETCH_BUFFER_DIR
-    unset FETCH_BUFFER_FILEPATH
+    unset FETCH_PATH
 
     unset FETCH_OUTPUT_DIR
-    unset FETCH_OUTPUT_FILENAME
     unset FETCH_OUTPUT_FILEPATH
+    unset FETCH_OUTPUT_FILENAME
+
+    unset FETCH_BUFFER_FILEPATH
+
+    unset FETCH_SHA256_EXPECTED
 
     unset FETCH_SILENT
+
+    unset NOT_BUFFER
 
     [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
 
@@ -244,86 +250,63 @@ wfetch() {
     while [ -n "$1" ]
     do
         case $1 in
-            --silent)
-                FETCH_SILENT=yes
-                RUN_SILENT=1
+            --uri=*)
+                FETCH_URI="${1#*=}"
                 ;;
             --sha256=*)
                 FETCH_SHA256_EXPECTED="${1#*=}"
                 ;;
-            --uri=*)
-                FETCH_URI="${1#*=}"
-                if [ -n "$FETCH_URI" ] && [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
-                    FETCH_URI="$("$NDKPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
+            -o) shift
+                if [ -z "$1" ] ; then
+                    abort 1 "wfetch <URL> -o <PATH> , <PATH> must be non-empty."
+                else
+                    FETCH_PATH="$1"
                 fi
                 ;;
-            --buffer-dir=*)
-                FETCH_BUFFER_DIR="${1#*=}"
-                if [ -z "$FETCH_BUFFER_DIR" ] ; then
-                    abort 1 "wfetch <URL> --buffer-dir=<DIR> , <DIR> must be non-empty."
-                fi
+            -q)
+                FETCH_SILENT=1
+                RUN_SILENT=1
                 ;;
-            --output-dir=*)
-                FETCH_OUTPUT_DIR="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                    abort 1 "wfetch <URL> --output-dir=<DIR> , <DIR> must be non-empty."
-                fi
+            --no-buffer)
+                NOT_BUFFER=1
                 ;;
-            --output-filename=*)
-                FETCH_OUTPUT_FILENAME="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
-                    abort 1 "wfetch <URL> --output-filename=<NAME> , <NAME> must be non-empty."
-                fi
-                ;;
-            --output-filepath=*)
-                FETCH_OUTPUT_FILEPATH="${1#*=}"
-                if [ -z "$FETCH_OUTPUT_FILEPATH" ] ; then
-                    abort 1 "wfetch <URL> --output-filepath=<FILEPATH> , <FILEPATH> must be non-empty."
-                fi
-                ;;
-            *)  abort 1 "wfetch <URL> [OPTION]..., unrecognized option: $1
-
-    wfetch command usage:
-
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-filepath=PATH>
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> <--output-filename=NAME>
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] <--output-dir=DIR> [--output-filename=NAME]
-    wfetch <URL> [--url-mirror=URL2] [--silent] [--sha256=SHA256] [--buffer-dir=DIR] [--output-dir=DIR] <--output-filename=NAME>"
+            *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unrecognized option: $1"
         esac
         shift
     done
 
     if [ -z "$FETCH_URI" ] ; then
         # remove query params
-        FETCH_URL__="${FETCH_URL%%'?'*}"
-
-        FETCH_URI="https://fossies.org/linux/misc/${FETCH_URL__##*/}"
-    fi
-
-    if [ -z "$FETCH_OUTPUT_FILEPATH" ] ; then
-        if [ -z "$FETCH_OUTPUT_DIR" ] && [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
-            FETCH_BUFFER_FILEPATH='-'
-            FETCH_OUTPUT_FILEPATH='-'
-        else
-            if [ -z "$FETCH_OUTPUT_DIR" ] ; then
-                FETCH_OUTPUT_DIR="$PWD"
-            fi
-
-            if [ -z "$FETCH_OUTPUT_FILENAME" ] ; then
-                FETCH_OUTPUT_FILENAME=$(basename "$FETCH_URL")
-            fi
-
-            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_OUTPUT_FILENAME"
-        fi
-    elif [ "$FETCH_OUTPUT_FILEPATH" = '-' ] ; then
-        unset FETCH_OUTPUT_DIR
-        unset FETCH_OUTPUT_FILENAME
+        FETCH_URI="${FETCH_URL%%'?'*}"
+        FETCH_URI="https://fossies.org/linux/misc/${FETCH_URI##*/}"
     else
-        FETCH_OUTPUT_DIR="$(dirname "$FETCH_OUTPUT_FILEPATH")"
-        FETCH_OUTPUT_FILENAME="$(basename "$FETCH_OUTPUT_FILEPATH")"
+        if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
+            FETCH_URI="$("$NDKPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
+        fi
     fi
 
-    if [ "$FETCH_OUTPUT_FILEPATH" != '-' ] ; then
+    case $FETCH_PATH in
+        '')
+            FETCH_BUFFER_FILEPATH='-'
+            ;;
+        .)
+            FETCH_OUTPUT_DIR='.'
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        ..)
+            FETCH_OUTPUT_DIR='..'
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        */)
+            FETCH_OUTPUT_DIR="${FETCH_PATH%/}"
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        *)
+            FETCH_OUTPUT_DIR="$(dirname "$FETCH_PATH")"
+            FETCH_OUTPUT_FILEPATH="$FETCH_PATH"
+    esac
+
+    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
         if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
             if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
                 if [ "$(sha256sum "$FETCH_OUTPUT_FILEPATH" | cut -d ' ' -f1)" = "$FETCH_SHA256_EXPECTED" ] ; then
@@ -333,12 +316,14 @@ wfetch() {
             fi
         fi
 
-        if [ -z "$FETCH_BUFFER_DIR" ] ; then
-            FETCH_BUFFER_DIR="$FETCH_OUTPUT_DIR"
-        fi
+        if [ "$NOT_BUFFER" = 1 ] ; then
+            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_FILEPATH"
+        else
+            FETCH_UTS="$(date +%s)"
 
-        if [ -z "$FETCH_BUFFER_FILEPATH" ] ; then
-            FETCH_BUFFER_FILEPATH="$FETCH_BUFFER_DIR/$FETCH_OUTPUT_FILENAME"
+            FETCH_SHA="$(printf '%s\n' "$FETCH_URL:$$:$FETCH_UTS" | sha256sum | cut -d ' ' -f1)"
+
+            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_SHA.tmp"
         fi
     fi
 
@@ -355,15 +340,17 @@ wfetch() {
         abort 1 "no fetch tool found, please install one of curl wget http lynx aria2c axel, then try again."
     fi
 
-    if [ !          -d "$FETCH_BUFFER_DIR" ] ; then
-        run install -d "$FETCH_BUFFER_DIR" || return 1
+    if [                -n "$FETCH_OUTPUT_DIR" ] ; then
+        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR" || return 1
+        fi
     fi
 
     case $FETCH_TOOL in
         curl)
             unset CURL_OPTIONS
 
-            if [ "$FETCH_SILENT" = yes ] ; then
+            if [ "$FETCH_SILENT" = 1 ] ; then
                 CURL_OPTIONS='--no-progress-meter'
             fi
 
@@ -387,8 +374,8 @@ wfetch() {
             run "lynx -source '$FETCH_URI' > '$FETCH_BUFFER_FILEPATH'"
             ;;
         aria2c)
-            run "aria2c -d '$FETCH_BUFFER_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URL'" ||
-            run "aria2c -d '$FETCH_BUFFER_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URI'"
+            run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URL'" ||
+            run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URI'"
             ;;
         axel)
             run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
@@ -400,7 +387,7 @@ wfetch() {
 
     [ $? -eq 0 ] || return 1
 
-    if [ "$FETCH_OUTPUT_FILEPATH" != '-' ] ; then
+    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
         if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
             FETCH_SHA256_ACTUAL="$(sha256sum "$FETCH_BUFFER_FILEPATH" | cut -d ' ' -f1)"
 
@@ -409,12 +396,8 @@ wfetch() {
             fi
         fi
 
-        if [ "$FETCH_BUFFER_DIR" != "$FETCH_OUTPUT_DIR" ] ; then
-            if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
-                run install -d "$FETCH_OUTPUT_DIR" || return 1
-            fi
-
-            run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_DIR/"
+        if [ "$NOT_BUFFER" != 1 ] ; then
+            run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_FILEPATH"
         fi
     fi
 }
@@ -422,20 +405,6 @@ wfetch() {
 # }}}
 ##############################################################################
 # {{{ version
-
-version_sort() {
-    # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/sort.html
-    # https://man.netbsd.org/NetBSD-8.1/i386/sort.1
-    #
-    # sort: unrecognized option: V
-    # BusyBox v1.29.3 (2019-01-24 07:45:07 UTC) multi-call binary.
-    # Usage: sort [-nrugMcszbdfiokt] [-o FILE] [-k start[.offset][opts][,end[.offset][opts]] [-t CHAR] [FILE]...
-    if  printf '\n' | (sort -V > /dev/null 2>&1) ; then
-        printf '%s\n' "$*" | tr ' ' '\n' | sort -V
-    else
-        printf '%s\n' "$*" | tr ' ' '\n' | sort -t. -n -k1,1 -k2,2 -k3,3 -k4,4
-    fi
-}
 
 # check if match the condition
 #
@@ -461,25 +430,25 @@ version_match() {
             if [ "$1" = "$3" ] ; then
                 return 0
             fi
-            [ "$1" = "$(version_sort "$1" "$3" | head -n 1)" ]
+            [ "$1" = "$(printf '%s\n' "$1" "$3" | sort -V | head -n 1)" ]
             ;;
         ge)
             if [ "$1" = "$3" ] ; then
                 return 0
             fi
-            [ "$1" = "$(version_sort "$1" "$3" | tail -n 1)" ]
+            [ "$1" = "$(printf '%s\n' "$1" "$3" | sort -V | tail -n 1)" ]
             ;;
         lt)
             if [ "$1" = "$3" ] ; then
                 return 1
             fi
-            [ "$1" = "$(version_sort "$1" "$3" | head -n 1)" ]
+            [ "$1" = "$(printf '%s\n' "$1" "$3" | sort -V | head -n 1)" ]
             ;;
         gt)
             if [ "$1" = "$3" ] ; then
                 return 1
             fi
-            [ "$1" = "$(version_sort "$1" "$3" | tail -n 1)" ]
+            [ "$1" = "$(printf '%s\n' "$1" "$3" | sort -V | tail -n 1)" ]
             ;;
         *)  abort 1 "version_compare: $2: not supported operator."
     esac
@@ -491,52 +460,52 @@ version_match() {
 
 # __load_formula_repository_config <REPO-NAME> [REPO-PATH]
   __load_formula_repository_config() {
-    NDKPKG_FORMULA_REPO_NAME="$1"
-    NDKPKG_FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$1"
-    NDKPKG_FORMULA_REPO_CONFIG_FILEPATH="$NDKPKG_FORMULA_REPO_PATH/.ndk-pkg-formula-repo.yml"
+    FORMULA_REPO_NAME="$1"
+    FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$1"
+    FORMULA_REPO_CONFIG_FILEPATH="$FORMULA_REPO_PATH/.ndk-pkg-formula-repo.yml"
 
-    [ -d "$NDKPKG_FORMULA_REPO_PATH" ] || abort 1 "$1 named formula repository does not exist."
-    [ -f "$NDKPKG_FORMULA_REPO_CONFIG_FILEPATH" ] || abort 1 "$1 formula repository is broken."
+    [ -d "$FORMULA_REPO_PATH" ] || abort 1 "$1 named formula repository does not exist."
+    [ -f "$FORMULA_REPO_CONFIG_FILEPATH" ] || abort 1 "$1 formula repository is broken."
 
-    NDKPKG_FORMULA_REPO_URL=
-    NDKPKG_FORMULA_REPO_BRANCH=
-    NDKPKG_FORMULA_REPO_PINNED=
-    NDKPKG_FORMULA_REPO_ENABLED=
-    NDKPKG_FORMULA_REPO_TIMESTAMP_CREATED=
-    NDKPKG_FORMULA_REPO_TIMESTAMP_UPDATED=
+    FORMULA_REPO_URL=
+    FORMULA_REPO_BRANCH=
+    FORMULA_REPO_PINNED=
+    FORMULA_REPO_ENABLED=
+    FORMULA_REPO_TIMESTAMP_CREATED=
+    FORMULA_REPO_TIMESTAMP_UPDATED=
 
-    NDKPKG_FORMULA_REPO_URL="$(yq .url "$NDKPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+    FORMULA_REPO_URL="$(yq .url "$FORMULA_REPO_CONFIG_FILEPATH")"
 
-    [ "$NDKPKG_FORMULA_REPO_URL" = null ] && abort 1 "$1 formula repository is broken."
+    [ "$FORMULA_REPO_URL" = null ] && abort 1 "$1 formula repository is broken."
 
-    NDKPKG_FORMULA_REPO_BRANCH="$(yq .branch "$NDKPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+    FORMULA_REPO_BRANCH="$(yq .branch "$FORMULA_REPO_CONFIG_FILEPATH")"
 
-    [ "$NDKPKG_FORMULA_REPO_BRANCH" = null ] && abort 1 "$1 formula repository is broken."
+    [ "$FORMULA_REPO_BRANCH" = null ] && abort 1 "$1 formula repository is broken."
 
-    NDKPKG_FORMULA_REPO_PINNED="$(yq .pinned "$NDKPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+    FORMULA_REPO_PINNED="$(yq .pinned "$FORMULA_REPO_CONFIG_FILEPATH")"
 
-    case $NDKPKG_FORMULA_REPO_PINNED in
+    case $FORMULA_REPO_PINNED in
         0|1) ;;
         *)   abort 1 "$1 formula repository is broken."
     esac
 
-    NDKPKG_FORMULA_REPO_ENABLED="$(yq .enabled "$NDKPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+    FORMULA_REPO_ENABLED="$(yq .enabled "$FORMULA_REPO_CONFIG_FILEPATH")"
 
-    case $NDKPKG_FORMULA_REPO_ENABLED in
+    case $FORMULA_REPO_ENABLED in
         0|1) ;;
         *)   abort 1 "$1 formula repository is broken."
     esac
 
-    NDKPKG_FORMULA_REPO_TIMESTAMP_CREATED="$(yq .timestamp-created "$NDKPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+    FORMULA_REPO_TIMESTAMP_CREATED="$(yq .created "$FORMULA_REPO_CONFIG_FILEPATH")"
 
-    [ "${#NDKPKG_FORMULA_REPO_TIMESTAMP_CREATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
+    [ "${#FORMULA_REPO_TIMESTAMP_CREATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
 
-    NDKPKG_FORMULA_REPO_TIMESTAMP_UPDATED="$(yq .timestamp-updated "$NDKPKG_FORMULA_REPO_CONFIG_FILEPATH")"
+    FORMULA_REPO_TIMESTAMP_UPDATED="$(yq .updated "$FORMULA_REPO_CONFIG_FILEPATH")"
 
-    if [ "$NDKPKG_FORMULA_REPO_TIMESTAMP_UPDATED" = null ] ; then
-           NDKPKG_FORMULA_REPO_TIMESTAMP_UPDATED=
+    if [ "$FORMULA_REPO_TIMESTAMP_UPDATED" = null ] ; then
+           FORMULA_REPO_TIMESTAMP_UPDATED=
     else
-        [ "${#NDKPKG_FORMULA_REPO_TIMESTAMP_UPDATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
+        [ "${#FORMULA_REPO_TIMESTAMP_UPDATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
     fi
 }
 
@@ -549,57 +518,57 @@ version_match() {
     [ -z "$1" ] && abort 1 "please specify a repository name."
     [ -z "$2" ] && abort 1 "please specify a repository url."
 
-    NDKPKG_FORMULA_REPO_NAME="$1"
-    NDKPKG_FORMULA_REPO_URL="$2"
+    FORMULA_REPO_NAME="$1"
+    FORMULA_REPO_URL="$2"
 
     if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
-        GIT_FETCH_URL="$NDKPKG_FORMULA_REPO_URL"
+        GIT_FETCH_URL="$FORMULA_REPO_URL"
     else
-        GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$NDKPKG_FORMULA_REPO_URL")"
+        GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$FORMULA_REPO_URL")"
     fi
 
     shift 2
 
-    NDKPKG_FORMULA_REPO_BRANCH=
-    NDKPKG_FORMULA_REPO_PINNED=
-    NDKPKG_FORMULA_REPO_ENABLED=
+    FORMULA_REPO_BRANCH=
+    FORMULA_REPO_PINNED=
+    FORMULA_REPO_ENABLED=
 
     while [ -n "$1" ]
     do
         case $1 in
             --branch=*)
-                NDKPKG_FORMULA_REPO_BRANCH="${1#*=}"
+                FORMULA_REPO_BRANCH="${1#*=}"
                 ;;
             --pin)
-                NDKPKG_FORMULA_REPO_PINNED=1
+                FORMULA_REPO_PINNED=1
                 ;;
             --unpin)
-                NDKPKG_FORMULA_REPO_PINNED=0
+                FORMULA_REPO_PINNED=0
                 ;;
             --enable)
-                NDKPKG_FORMULA_REPO_ENABLED=1
+                FORMULA_REPO_ENABLED=1
                 ;;
             --disable)
-                NDKPKG_FORMULA_REPO_ENABLED=0
+                FORMULA_REPO_ENABLED=0
                 ;;
             *)  abort 1 "unrecognized argument: $1"
         esac
         shift
     done
 
-    NDKPKG_FORMULA_REPO_BRANCH="${NDKPKG_FORMULA_REPO_BRANCH:-master}"
-    NDKPKG_FORMULA_REPO_PINNED="${NDKPKG_FORMULA_REPO_PINNED:-0}"
-    NDKPKG_FORMULA_REPO_ENABLED="${NDKPKG_FORMULA_REPO_ENABLED:-1}"
+    FORMULA_REPO_BRANCH="${FORMULA_REPO_BRANCH:-master}"
+    FORMULA_REPO_PINNED="${FORMULA_REPO_PINNED:-0}"
+    FORMULA_REPO_ENABLED="${FORMULA_REPO_ENABLED:-1}"
 
-    NDKPKG_FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$NDKPKG_FORMULA_REPO_NAME"
+    FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$FORMULA_REPO_NAME"
 
-    if [ -d "$NDKPKG_FORMULA_REPO_PATH" ] ; then
-        abort 1 "$NDKPKG_FORMULA_REPO_NAME named formula repository already exists."
+    if [ -d "$FORMULA_REPO_PATH" ] ; then
+        abort 1 "$FORMULA_REPO_NAME named formula repository already exists."
     fi
 
-    printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}$NDKPKG_FORMULA_REPO_NAME${COLOR_OFF}"
+    printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
 
-    SESSION_DIR="$NDKPKG_HOME/run/$$/$NDKPKG_FORMULA_REPO_NAME"
+    SESSION_DIR="$NDKPKG_HOME/run/$$/$FORMULA_REPO_NAME"
 
     run rm -rf     "$SESSION_DIR"
     run install -d "$SESSION_DIR"
@@ -607,15 +576,15 @@ version_match() {
 
     run git -c init.defaultBranch=master init
     run git remote add origin "$GIT_FETCH_URL"
-    run git -c protocol.version=2 fetch --progress origin "+refs/heads/$NDKPKG_FORMULA_REPO_BRANCH:refs/remotes/origin/$NDKPKG_FORMULA_REPO_BRANCH"
-    run git checkout --progress --force -B "$NDKPKG_FORMULA_REPO_BRANCH" "refs/remotes/origin/$NDKPKG_FORMULA_REPO_BRANCH"
+    run git -c protocol.version=2 fetch --progress origin "+refs/heads/$FORMULA_REPO_BRANCH:refs/remotes/origin/$FORMULA_REPO_BRANCH"
+    run git checkout --progress --force -B "$FORMULA_REPO_BRANCH" "refs/remotes/origin/$FORMULA_REPO_BRANCH"
 
     cat > .ndk-pkg-formula-repo.yml <<EOF
-url: $NDKPKG_FORMULA_REPO_URL
-branch: $NDKPKG_FORMULA_REPO_BRANCH
-pinned: $NDKPKG_FORMULA_REPO_PINNED
-enabled: $NDKPKG_FORMULA_REPO_ENABLED
-timestamp-created: $TIMESTAMP_UNIX
+url: $FORMULA_REPO_URL
+branch: $FORMULA_REPO_BRANCH
+pinned: $FORMULA_REPO_PINNED
+enabled: $FORMULA_REPO_ENABLED
+created: $TIMESTAMP_UNIX
 EOF
 
     run install -d        "$NDKPKG_FORMULA_REPO_ROOT"
@@ -631,70 +600,70 @@ EOF
     [ -z "$1" ] && abort 1 "please specify a repository name."
     [ -z "$2" ] && abort 1 "please specify a repository url."
 
-    NDKPKG_FORMULA_REPO_NAME="$1"
+    FORMULA_REPO_NAME="$1"
 
     if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
-        NDKPKG_FORMULA_REPO_URL="$2"
+        FORMULA_REPO_URL="$2"
     else
-        NDKPKG_FORMULA_REPO_URL="$("$NDKPKG_URL_TRANSFORM" "$2")"
+        FORMULA_REPO_URL="$("$NDKPKG_URL_TRANSFORM" "$2")"
     fi
 
     shift 2
 
-    NDKPKG_FORMULA_REPO_BRANCH=
-    NDKPKG_FORMULA_REPO_PINNED=
-    NDKPKG_FORMULA_REPO_ENABLED=
+    FORMULA_REPO_BRANCH=
+    FORMULA_REPO_PINNED=
+    FORMULA_REPO_ENABLED=
 
     while [ -n "$1" ]
     do
         case $1 in
             --branch=*)
-                NDKPKG_FORMULA_REPO_BRANCH="${1#*=}"
+                FORMULA_REPO_BRANCH="${1#*=}"
                 ;;
             --pin)
-                NDKPKG_FORMULA_REPO_PINNED=1
+                FORMULA_REPO_PINNED=1
                 ;;
             --unpin)
-                NDKPKG_FORMULA_REPO_PINNED=0
+                FORMULA_REPO_PINNED=0
                 ;;
             --enable)
-                NDKPKG_FORMULA_REPO_ENABLED=1
+                FORMULA_REPO_ENABLED=1
                 ;;
             --disable)
-                NDKPKG_FORMULA_REPO_ENABLED=0
+                FORMULA_REPO_ENABLED=0
                 ;;
             *)  abort 1 "unrecognized argument: $1"
         esac
         shift
     done
 
-    NDKPKG_FORMULA_REPO_BRANCH="${NDKPKG_FORMULA_REPO_BRANCH:-master}"
-    NDKPKG_FORMULA_REPO_PINNED="${NDKPKG_FORMULA_REPO_PINNED:-1}"
-    NDKPKG_FORMULA_REPO_ENABLED="${NDKPKG_FORMULA_REPO_ENABLED:-1}"
+    FORMULA_REPO_BRANCH="${FORMULA_REPO_BRANCH:-master}"
+    FORMULA_REPO_PINNED="${FORMULA_REPO_PINNED:-1}"
+    FORMULA_REPO_ENABLED="${FORMULA_REPO_ENABLED:-1}"
 
-    NDKPKG_FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$NDKPKG_FORMULA_REPO_NAME"
+    FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$FORMULA_REPO_NAME"
 
-    if [ -d "$NDKPKG_FORMULA_REPO_PATH" ] ; then
-        abort 1 "$NDKPKG_FORMULA_REPO_NAME named formula repository already exists."
+    if [ -d "$FORMULA_REPO_PATH" ] ; then
+        abort 1 "$FORMULA_REPO_NAME named formula repository already exists."
     fi
 
-    printf '%b\n' "${COLOR_PURPLE}==> Creating formula repository${COLOR_OFF} ${COLOR_GREEN}$NDKPKG_FORMULA_REPO_NAME${COLOR_OFF}"
+    printf '%b\n' "${COLOR_PURPLE}==> Creating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
 
-    SESSION_DIR="$NDKPKG_HOME/run/$$/$NDKPKG_FORMULA_REPO_NAME"
+    SESSION_DIR="$NDKPKG_HOME/run/$$/$FORMULA_REPO_NAME"
 
     run rm -rf     "$SESSION_DIR"
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
     run git -c init.defaultBranch=master init
-    run git remote add origin "$NDKPKG_FORMULA_REPO_URL"
+    run git remote add origin "$FORMULA_REPO_URL"
 
     cat > .ndk-pkg-formula-repo.yml <<EOF
-url: $NDKPKG_FORMULA_REPO_URL
-branch: $NDKPKG_FORMULA_REPO_BRANCH
-pinned: $NDKPKG_FORMULA_REPO_PINNED
-enabled: $NDKPKG_FORMULA_REPO_ENABLED
-timestamp-created: $TIMESTAMP_UNIX
+url: $FORMULA_REPO_URL
+branch: $FORMULA_REPO_BRANCH
+pinned: $FORMULA_REPO_PINNED
+enabled: $FORMULA_REPO_ENABLED
+created: $TIMESTAMP_UNIX
 EOF
 
     run install -d        "$NDKPKG_FORMULA_REPO_ROOT"
@@ -728,28 +697,28 @@ EOF
 
     __load_formula_repository_config "$1"
 
-    [ "$NDKPKG_FORMULA_REPO_PINNED" = 1 ] && abort 1 "'$NDKPKG_FORMULA_REPO_NAME' named formula repository is pinned."
+    [ "$FORMULA_REPO_PINNED" = 1 ] && abort 1 "'$FORMULA_REPO_NAME' named formula repository is pinned."
 
     if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
-        GIT_FETCH_URL="$NDKPKG_FORMULA_REPO_URL"
+        GIT_FETCH_URL="$FORMULA_REPO_URL"
     else
-        GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$NDKPKG_FORMULA_REPO_URL")"
+        GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$FORMULA_REPO_URL")"
     fi
 
-    printf '%b\n' "${COLOR_PURPLE}==> Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$NDKPKG_FORMULA_REPO_NAME${COLOR_OFF}"
+    printf '%b\n' "${COLOR_PURPLE}==> Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
 
-    run cd "$NDKPKG_FORMULA_REPO_PATH"
+    run cd "$FORMULA_REPO_PATH"
     run git remote set-url origin "$GIT_FETCH_URL"
-    run git -c protocol.version=2 fetch --progress origin "+refs/heads/$NDKPKG_FORMULA_REPO_BRANCH:refs/remotes/origin/$NDKPKG_FORMULA_REPO_BRANCH"
-    run git checkout --progress --force -B "$NDKPKG_FORMULA_REPO_BRANCH" "refs/remotes/origin/$NDKPKG_FORMULA_REPO_BRANCH"
+    run git -c protocol.version=2 fetch --progress origin "+refs/heads/$FORMULA_REPO_BRANCH:refs/remotes/origin/$FORMULA_REPO_BRANCH"
+    run git checkout --progress --force -B "$FORMULA_REPO_BRANCH" "refs/remotes/origin/$FORMULA_REPO_BRANCH"
 
     cat > .ndk-pkg-formula-repo.yml <<EOF
-url: $NDKPKG_FORMULA_REPO_URL
-branch: $NDKPKG_FORMULA_REPO_BRANCH
-pinned: $NDKPKG_FORMULA_REPO_PINNED
-enabled: $NDKPKG_FORMULA_REPO_ENABLED
-timestamp-created: $NDKPKG_FORMULA_REPO_TIMESTAMP_CREATED
-timestamp-updated: $TIMESTAMP_UNIX
+url: $FORMULA_REPO_URL
+branch: $FORMULA_REPO_BRANCH
+pinned: $FORMULA_REPO_PINNED
+enabled: $FORMULA_REPO_ENABLED
+created: $FORMULA_REPO_TIMESTAMP_CREATED
+updated: $TIMESTAMP_UNIX
 EOF
 }
 
@@ -775,7 +744,7 @@ EOF
                 if [ -z "$FORMULA_REPO_URL" ] ; then
                     abort 1 "--url=<VALUE> , <VALUE> should be non-empty."
                 else
-                    NDKPKG_FORMULA_REPO_URL="$FORMULA_REPO_URL"
+                    FORMULA_REPO_URL="$FORMULA_REPO_URL"
                 fi
                 ;;
             --branch=*)
@@ -784,42 +753,42 @@ EOF
                 if [ -z "$FORMULA_REPO_BRANCH" ] ; then
                     abort 1 "--branch=<VALUE> , <VALUE> should be non-empty."
                 else
-                    NDKPKG_FORMULA_REPO_BRANCH="$FORMULA_REPO_BRANCH"
+                    FORMULA_REPO_BRANCH="$FORMULA_REPO_BRANCH"
                 fi
                 ;;
             --pin)
-                NDKPKG_FORMULA_REPO_PINNED=1
+                FORMULA_REPO_PINNED=1
                 ;;
             --unpin)
-                NDKPKG_FORMULA_REPO_PINNED=0
+                FORMULA_REPO_PINNED=0
                 ;;
             --enable)
-                NDKPKG_FORMULA_REPO_ENABLED=1
+                FORMULA_REPO_ENABLED=1
                 ;;
             --disable)
-                NDKPKG_FORMULA_REPO_ENABLED=0
+                FORMULA_REPO_ENABLED=0
                 ;;
             *)  abort 1 "unrecognized argument: $1"
         esac
         shift
     done
 
-    if [ -z "$NDKPKG_FORMULA_REPO_TIMESTAMP_UPDATED" ] ; then
-        cat > "$NDKPKG_FORMULA_REPO_PATH/.ndk-pkg-formula-repo.yml" <<EOF
-url:  $NDKPKG_FORMULA_REPO_URL
-branch: $NDKPKG_FORMULA_REPO_BRANCH
-pinned:  $NDKPKG_FORMULA_REPO_PINNED
-enabled: $NDKPKG_FORMULA_REPO_ENABLED
-timestamp-created: $NDKPKG_FORMULA_REPO_TIMESTAMP_CREATED
+    if [ -z "$FORMULA_REPO_TIMESTAMP_UPDATED" ] ; then
+        cat > "$FORMULA_REPO_PATH/.ndk-pkg-formula-repo.yml" <<EOF
+url:  $FORMULA_REPO_URL
+branch: $FORMULA_REPO_BRANCH
+pinned:  $FORMULA_REPO_PINNED
+enabled: $FORMULA_REPO_ENABLED
+created: $FORMULA_REPO_TIMESTAMP_CREATED
 EOF
     else
-        cat > "$NDKPKG_FORMULA_REPO_PATH/.ndk-pkg-formula-repo.yml" <<EOF
-url:  $NDKPKG_FORMULA_REPO_URL
-branch: $NDKPKG_FORMULA_REPO_BRANCH
-pinned:  $NDKPKG_FORMULA_REPO_PINNED
-enabled: $NDKPKG_FORMULA_REPO_ENABLED
-timestamp-created: $NDKPKG_FORMULA_REPO_TIMESTAMP_CREATED
-timestamp-updated: $NDKPKG_FORMULA_REPO_TIMESTAMP_UPDATED
+        cat > "$FORMULA_REPO_PATH/.ndk-pkg-formula-repo.yml" <<EOF
+url:  $FORMULA_REPO_URL
+branch: $FORMULA_REPO_BRANCH
+pinned:  $FORMULA_REPO_PINNED
+enabled: $FORMULA_REPO_ENABLED
+created: $FORMULA_REPO_TIMESTAMP_CREATED
+updated: $FORMULA_REPO_TIMESTAMP_UPDATED
 EOF
 fi
 }
@@ -834,28 +803,28 @@ fi
 
     __load_formula_repository_config "$1"
 
-    case $NDKPKG_FORMULA_REPO_PINNED in
-        0)  NDKPKG_FORMULA_REPO_PINNED=no ;;
-        1)  NDKPKG_FORMULA_REPO_PINNED=yes ;;
+    case $FORMULA_REPO_PINNED in
+        0)  FORMULA_REPO_PINNED=no ;;
+        1)  FORMULA_REPO_PINNED=yes ;;
     esac
 
-    case $NDKPKG_FORMULA_REPO_ENABLED in
-        0)  NDKPKG_FORMULA_REPO_ENABLED=no ;;
-        1)  NDKPKG_FORMULA_REPO_ENABLED=yes ;;
+    case $FORMULA_REPO_ENABLED in
+        0)  FORMULA_REPO_ENABLED=no ;;
+        1)  FORMULA_REPO_ENABLED=yes ;;
     esac
 
     cat <<EOF
-name: $NDKPKG_FORMULA_REPO_NAME
-path: $NDKPKG_FORMULA_REPO_PATH
-url:  $NDKPKG_FORMULA_REPO_URL
-branch: $NDKPKG_FORMULA_REPO_BRANCH
-pinned: $NDKPKG_FORMULA_REPO_PINNED
-enabled: $NDKPKG_FORMULA_REPO_ENABLED
-timestamp-created: $(format_unix_timestamp "$NDKPKG_FORMULA_REPO_TIMESTAMP_CREATED" '+%Y-%m-%d %H:%M:%S%:z')
+name: $FORMULA_REPO_NAME
+path: $FORMULA_REPO_PATH
+url:  $FORMULA_REPO_URL
+branch: $FORMULA_REPO_BRANCH
+pinned: $FORMULA_REPO_PINNED
+enabled: $FORMULA_REPO_ENABLED
+created: $(date -d "@$FORMULA_REPO_TIMESTAMP_CREATED" '+%Y-%m-%d %H:%M:%S%:z')
 EOF
 
-    if [ -n "$NDKPKG_FORMULA_REPO_TIMESTAMP_UPDATED" ] ; then
-        printf 'timestamp-updated: %s\n' "$(format_unix_timestamp "$NDKPKG_FORMULA_REPO_TIMESTAMP_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')"
+    if [ -n "$FORMULA_REPO_TIMESTAMP_UPDATED" ] ; then
+        printf 'updated: %s\n' "$(date -d "@$FORMULA_REPO_TIMESTAMP_UPDATED" '+%Y-%m-%d %H:%M:%S%:z')"
     fi
 }
 
@@ -1150,15 +1119,15 @@ filetype_from_url() {
     fi
 
     if [ -z "$PACKAGE_BINBSTD" ] ; then
-        PACKAGE_BINBSTD=no
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=no
+        PACKAGE_BINBSTD=0
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=0
     else
         PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
     fi
 
     if [ -z "$PACKAGE_PARALLEL" ] ; then
-        PACKAGE_PARALLEL=yes
-        PACKAGE_BUILD_IN_PARALLEL=yes
+        PACKAGE_PARALLEL=1
+        PACKAGE_BUILD_IN_PARALLEL=1
     else
         PACKAGE_BUILD_IN_PARALLEL="$PACKAGE_PARALLEL"
     fi
@@ -1184,7 +1153,7 @@ filetype_from_url() {
         PACKAGE_SRC_FILETYPE=.git
 
         if [ -z "$PACKAGE_VERSION" ] ; then
-            PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+            PACKAGE_VERSION="$(date -u -d "@$TIMESTAMP_UNIX" '+%Y.%m.%d')"
         fi
 
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git"
@@ -1195,7 +1164,7 @@ filetype_from_url() {
                 PACKAGE_SRC_FILEPATH=$(printf '%s\n' "$PACKAGE_SRC_URL" | cut -c7-)
 
                 if [ -z "$PACKAGE_VERSION" ] ; then
-                    PACKAGE_VERSION="$(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y.%m.%d')"
+                    PACKAGE_VERSION="$(date -u -d "@$TIMESTAMP_UNIX" '+%Y.%m.%d')"
                 fi
                 ;;
             *)  PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
@@ -1276,19 +1245,19 @@ filetype_from_url() {
     for item in $PACKAGE_BUILD_SYSTEM
     do
         case $item in
-            autogen)     PACKAGE_BUILD_SYSTEM_AUTOGENSH=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=yes ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            cmake-gmake) PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_GMAKE=yes ;;
-            cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
-            cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
-            xmake)       PACKAGE_BUILD_SYSTEM_XMAKE=yes     ;;
-            meson)       PACKAGE_BUILD_SYSTEM_MESON=yes     ; PACKAGE_BUILD_SYSTEM_NINJA=yes ;;
-            ninja)       PACKAGE_BUILD_SYSTEM_NINJA=yes     ;;
-            gmake)       PACKAGE_BUILD_SYSTEM_GMAKE=yes     ;;
-            rake)        PACKAGE_BUILD_SYSTEM_RAKE=yes      ;;
-            cargo)       PACKAGE_BUILD_SYSTEM_CARGO=yes     ;;
-            go)          PACKAGE_BUILD_SYSTEM_GO=yes        ;;
+            autogen)     PACKAGE_BUILD_SYSTEM_AUTOGENSH=1 ; PACKAGE_BUILD_SYSTEM_GMAKE=1 ;;
+            autotools)   PACKAGE_BUILD_SYSTEM_AUTOTOOLS=1 ; PACKAGE_BUILD_SYSTEM_GMAKE=1 ;;
+            configure)   PACKAGE_BUILD_SYSTEM_CONFIGURE=1 ; PACKAGE_BUILD_SYSTEM_GMAKE=1 ;;
+            cmake-gmake) PACKAGE_BUILD_SYSTEM_CMAKE=1     ; PACKAGE_BUILD_SYSTEM_GMAKE=1 ;;
+            cmake-ninja) PACKAGE_BUILD_SYSTEM_CMAKE=1     ; PACKAGE_BUILD_SYSTEM_NINJA=1 ;;
+            cmake)       PACKAGE_BUILD_SYSTEM_CMAKE=1     ; PACKAGE_BUILD_SYSTEM_NINJA=1 ;;
+            xmake)       PACKAGE_BUILD_SYSTEM_XMAKE=1     ;;
+            meson)       PACKAGE_BUILD_SYSTEM_MESON=1     ; PACKAGE_BUILD_SYSTEM_NINJA=1 ;;
+            ninja)       PACKAGE_BUILD_SYSTEM_NINJA=1     ;;
+            gmake)       PACKAGE_BUILD_SYSTEM_GMAKE=1     ;;
+            rake)        PACKAGE_BUILD_SYSTEM_RAKE=1      ;;
+            cargo)       PACKAGE_BUILD_SYSTEM_CARGO=1     ;;
+            go)          PACKAGE_BUILD_SYSTEM_GO=1        ;;
         esac
     done
 
@@ -1332,7 +1301,7 @@ filetype_from_url() {
 
     #########################################################################################
 
-    [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_MESON" = 1 ] && {
         PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
     }
 
@@ -1344,95 +1313,30 @@ filetype_from_url() {
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake"
     }
 
-    [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] && {
+    [ "$PACKAGE_BUILD_IN_PARALLEL" = 0 ] && {
         BUILD_NJOBS=1
     }
 
-    [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] && {
-        PACKAGE_BINBSTD=yes
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
+    [ "$PACKAGE_BUILD_SYSTEM_GO" = 1 ] && {
+        PACKAGE_BINBSTD=1
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=1
     }
 
-    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
-        PACKAGE_BINBSTD=yes
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = 1 ] && {
+        PACKAGE_BINBSTD=1
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=1
     }
 
-    [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] && {
-        PACKAGE_BINBSTD=yes
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=yes
+    [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = 1 ] && {
+        PACKAGE_BINBSTD=1
+        PACKAGE_BUILD_IN_BSCRIPT_DIR=1
     }
 
     #########################################################################################
 
     PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
 
-    PACKAGE_FORMULA_LOADED=yes
-}
-
-# }}}
-##############################################################################
-# {{{ ndk-pkg formula
-
-# __show_formula_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>]
-  __show_formula_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__show_formula_of_the_given_package <PACKAGE-NAME> [--json] [--yaml] [--path] [<KEY>], <PACKAGE-NAME> is unspecified."
-
-    PACKAGE_FORMULA_FILEPATH=
-    PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
-
-    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && abort 1 "package '$1' is not available."
-
-    case $2 in
-        --yaml|'')
-            if [ -t 1 ] ; then
-                yq  "$PACKAGE_FORMULA_FILEPATH"
-            else
-                cat "$PACKAGE_FORMULA_FILEPATH"
-            fi
-            ;;
-        --json)
-            yq -o=json "$PACKAGE_FORMULA_FILEPATH"
-            ;;
-        --path)
-            printf '%s\n' "$PACKAGE_FORMULA_FILEPATH"
-            ;;
-        *)  yq ".$2 | select(. != null)" "$PACKAGE_FORMULA_FILEPATH"
-    esac
-}
-
-# }}}
-##############################################################################
-# {{{ ndk-pkg formula-edit
-
-# __edit_formula_of_the_given_package <PACKAGE-NAME> [--editor=<EDITOR>]
-  __edit_formula_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__edit_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
-
-    unset  PACKAGE_FORMULA_FILEPATH; PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
-
-    [ -z "$PACKAGE_FORMULA_FILEPATH" ] && abort 1 "package '$1' is not available."
-
-    shift
-
-    EDITOR=
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --editor=*)
-                EDITOR="${1#*=}"
-                ;;
-            *)  abort 1 "unrecognized option: $1"
-        esac
-        shift
-    done
-
-    [ -z "$EDITOR" ] && {
-        EDITOR=$(command -v nvim || command -v vim || command -v vi || command -v open) || abort 1 "please sepecify editor via [--editor=<EDITOR> option."
-    }
-
-    "$EDITOR" "$PACKAGE_FORMULA_FILEPATH"
+    PACKAGE_FORMULA_LOADED=1
 }
 
 # }}}
@@ -1492,7 +1396,9 @@ filetype_from_url() {
 
     cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
 ndkvers: $ANDROID_NDK_VERSION
-build-on:
+builtby: ndk-pkg-$NDKPKG_VERSION
+builtat: $TIMESTAMP_UNIX
+buildon:
     os-arch: $NATIVE_OS_ARCH
     os-kind: $NATIVE_OS_KIND
     os-type: $NATIVE_OS_TYPE
@@ -1502,9 +1408,7 @@ build-on:
     os-ncpu: $NATIVE_OS_NCPU
     os-euid: $NATIVE_OS_EUID
     os-egid: $NATIVE_OS_EGID
-built-for: $TARGET_ANDROID_SPEC
-signature: ndk-pkg-$NDKPKG_VERSION
-timestamp: $TIMESTAMP_UNIX
+builtfor: $TARGET_PLATFORM_SPEC
 EOF
 }
 
@@ -1519,153 +1423,149 @@ EOF
 
     PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ndk-pkg/RECEIPT.yml"
 
-    unset PACKAGE_RECEIPT_PKGNAME
-    unset PACKAGE_RECEIPT_SUMMARY
-    unset PACKAGE_RECEIPT_VERSION
-    unset PACKAGE_RECEIPT_LICENSE
+    unset RECEIPT_PACKAGE_PKGNAME
+    unset RECEIPT_PACKAGE_SUMMARY
+    unset RECEIPT_PACKAGE_VERSION
+    unset RECEIPT_PACKAGE_LICENSE
 
-    unset PACKAGE_RECEIPT_WEB_URL
+    unset RECEIPT_PACKAGE_WEB_URL
 
-    unset PACKAGE_RECEIPT_GIT_URL
-    unset PACKAGE_RECEIPT_GIT_SHA
-    unset PACKAGE_RECEIPT_GIT_REF
-    unset PACKAGE_RECEIPT_GIT_NTH
+    unset RECEIPT_PACKAGE_GIT_URL
+    unset RECEIPT_PACKAGE_GIT_SHA
+    unset RECEIPT_PACKAGE_GIT_REF
+    unset RECEIPT_PACKAGE_GIT_NTH
 
-    unset PACKAGE_RECEIPT_SRC_URL
-    unset PACKAGE_RECEIPT_SRC_URI
-    unset PACKAGE_RECEIPT_SRC_SHA
+    unset RECEIPT_PACKAGE_SRC_URL
+    unset RECEIPT_PACKAGE_SRC_URI
+    unset RECEIPT_PACKAGE_SRC_SHA
 
-    unset PACKAGE_RECEIPT_FIX_URL
-    unset PACKAGE_RECEIPT_FIX_URI
-    unset PACKAGE_RECEIPT_FIX_SHA
+    unset RECEIPT_PACKAGE_FIX_URL
+    unset RECEIPT_PACKAGE_FIX_URI
+    unset RECEIPT_PACKAGE_FIX_SHA
 
-    unset PACKAGE_RECEIPT_RES_URL
-    unset PACKAGE_RECEIPT_RES_URI
-    unset PACKAGE_RECEIPT_RES_SHA
+    unset RECEIPT_PACKAGE_RES_URL
+    unset RECEIPT_PACKAGE_RES_URI
+    unset RECEIPT_PACKAGE_RES_SHA
 
-    unset PACKAGE_RECEIPT_DEP_PKG
-    unset PACKAGE_RECEIPT_DEP_UPP
-    unset PACKAGE_RECEIPT_DEP_PYM
-    unset PACKAGE_RECEIPT_DEP_PLM
+    unset RECEIPT_PACKAGE_DEP_PKG
+    unset RECEIPT_PACKAGE_DEP_UPP
+    unset RECEIPT_PACKAGE_DEP_PYM
+    unset RECEIPT_PACKAGE_DEP_PLM
 
-    unset PACKAGE_RECEIPT_BSYSTEM
-    unset PACKAGE_RECEIPT_BSCRIPT
-    unset PACKAGE_RECEIPT_DOPATCH
-    unset PACKAGE_RECEIPT_INSTALL
-    unset PACKAGE_RECEIPT_SYMLINK
+    unset RECEIPT_PACKAGE_BSYSTEM
+    unset RECEIPT_PACKAGE_BSCRIPT
+    unset RECEIPT_PACKAGE_DOPATCH
+    unset RECEIPT_PACKAGE_INSTALL
+    unset RECEIPT_PACKAGE_SYMLINK
 
-    unset PACKAGE_RECEIPT_API_MIN
+    unset RECEIPT_PACKAGE_BUILTBY
+    unset RECEIPT_PACKAGE_BUILTAT
 
-    unset PACKAGE_RECEIPT_NDKVERS
+    unset RECEIPT_PACKAGE_BUILTFOR
+    unset RECEIPT_PACKAGE_BUILTFOR_PLATFORM
+    unset RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME
+    unset RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS
+    unset RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH
 
-    unset PACKAGE_RECEIPT_PARALLEL
+    unset RECEIPT_PACKAGE_PARALLEL
+    unset RECEIPT_PACKAGE_DEVELOPER
 
-    unset PACKAGE_RECEIPT_DEVELOPER
+    unset RECEIPT_PACKAGE_API_MIN
+    unset RECEIPT_PACKAGE_NDKVERS
 
-    unset PACKAGE_RECEIPT_SIGNATURE
-    unset PACKAGE_RECEIPT_TIMESTAMP
 
-    unset PACKAGE_RECEIPT_BUILT_FOR
-    unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID
-    unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API
-    unset PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI
+    RECEIPT_PACKAGE_PKGNAME="$(yq '.pkgname | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    for key in pkgname summary web-url git-url git-sha git-ref git-nth src-url src-uri src-sha fix-url fix-uri fix-sha res-url res-uri res-sha dep-pkg dep-upp dep-pym dep-plm api-min license version bsystem bscript binbstd ccflags xxflags ppflags ldflags parallel developer signature timestamp built-for ndkvers
-    do
-        unset __KEY_UPPERCASE_UNDERSCORE__
-        unset __VALUE__
+    RECEIPT_PACKAGE_WEB_URL="$(yq '.web-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-        __KEY_UPPERCASE_UNDERSCORE__="$(printf '%s\n' "$key" | tr '-' '_' | tr a-z A-Z)"
-        __VALUE__="$(yq ".$key" "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_GIT_URL="$(yq '.git-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_GIT_SHA="$(yq '.git-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_GIT_REF="$(yq '.git-ref | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_GIT_NTH="$(yq '.git-nth | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-        if [ "$__VALUE__" = null ] ; then
-               __VALUE__=
-        fi
+    RECEIPT_PACKAGE_SRC_URL="$(yq '.src-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_SRC_URI="$(yq '.src-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_SRC_SHA="$(yq '.src-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-        eval "PACKAGE_RECEIPT_$__KEY_UPPERCASE_UNDERSCORE__='$__VALUE__'"
-    done
+    RECEIPT_PACKAGE_FIX_URL="$(yq '.fix-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_FIX_URI="$(yq '.fix-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_FIX_SHA="$(yq '.fix-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    if [ "${PACKAGE_SPEC%%:*}" != "$PACKAGE_RECEIPT_PKGNAME" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_PKGNAME does not identical with your request: ${PACKAGE_SPEC%%:*}"
+    RECEIPT_PACKAGE_RES_URL="$(yq '.res-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_RES_URI="$(yq '.res-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_RES_SHA="$(yq '.res-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DEP_UPP="$(yq '.dep-upp | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DEP_PYM="$(yq '.dep-pym | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DEP_PLM="$(yq '.dep-plm | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_BSYSTEM="$(yq '.bsystem | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_BSCRIPT="$(yq '.bscript | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_BINBSTD="$(yq '.binbstd | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_CCFLAGS="$(yq '.ccflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_XXFLAGS="$(yq '.xxflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_INSTALL="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_SYMLINK="$(yq '.symlink | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_API_MIN="$(yq '.api-min | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_NDKVERS="$(yq '.ndkvers | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_BUILTBY="$(yq '.builtby | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_BUILTAT="$(yq '.builtat | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_BUILTFOR="$(yq '.builtfor | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    if [ "${PACKAGE_SPEC#*/}" != "$RECEIPT_PACKAGE_PKGNAME" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_PKGNAME does not identical with your request: ${PACKAGE_SPEC#*/}"
         return 1
     fi
 
-    if [ "${PACKAGE_SPEC#*:}" != "$PACKAGE_RECEIPT_BUILT_FOR" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_BUILT_FOR does not identical with your request: ${PACKAGE_SPEC#*:}"
+    if [ "${PACKAGE_SPEC%/*}" != "$RECEIPT_PACKAGE_BUILTFOR" ] ; then
+        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_BUILTFOR does not identical with your request: ${PACKAGE_SPEC%/*}"
         return 1
     fi
 
-    PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI="${PACKAGE_RECEIPT_BUILT_FOR#*:}"
-    PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API="${PACKAGE_RECEIPT_BUILT_FOR%:*}"
-    PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API="${PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API#android-}"
+    RECEIPT_PACKAGE_BUILTFOR_PLATFORM="$RECEIPT_PACKAGE_BUILTFOR"
 
-    case $PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API in
-        [1-9][0-9])
+    case $RECEIPT_PACKAGE_BUILTFOR in
+        android-[1-9][0-9]-armv7a)
+            RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH='armv7a'
             ;;
-        *)  abort 1 "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API must be an integer."
+        android-[1-9][0-9]-aarch64)
+            RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH='aarch64'
+            ;;
+        android-[1-9][0-9]-i686)
+            RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH='i686'
+            ;;
+        android-[1-9][0-9]-x86_64)
+            RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH='x86_64'
+            ;;
+        *)  abort 1 "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_BUILTFOR is invalid: $RECEIPT_PACKAGE_BUILTFOR"
     esac
 
-    case $PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI in
-        arm64-v8a|armeabi-v7a|x86_64|x86)
-            ;;
-        *)  abort 1 "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI must be any one of arm64-v8a|armeabi-v7a|x86_64|x86"
-    esac
+    RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS="$(printf '%s\n' "$RECEIPT_PACKAGE_BUILTFOR" | cut -d- -f2)"
 
-    if [ -z "$PACKAGE_RECEIPT_VERSION" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_VERSION must be non-empty."
-        return 1
-    fi
+    [ -z "$RECEIPT_PACKAGE_BUILTBY" ] && abort 1 "receipt scheme error. builtby mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_BUILTAT" ] && abort 1 "receipt scheme error. builtat mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_VERSION" ] && abort 1 "receipt scheme error. version mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_SUMMARY" ] && abort 1 "receipt scheme error. summary mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_WEB_URL" ] && abort 1 "receipt scheme error. web-url mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
 
-    if [ -z "$PACKAGE_RECEIPT_SUMMARY" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_SUMMARY must be non-empty."
-        return 1
-    fi
-
-    if [ -z "$PACKAGE_RECEIPT_WEB_URL" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_WEB_URL must be non-empty."
-        return 1
-    fi
-
-    if [ -z "$PACKAGE_RECEIPT_SIGNATURE" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_SIGNATURE must be non-empty."
-        return 1
-    fi
-
-    if [ -z "$PACKAGE_RECEIPT_TIMESTAMP" ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. value of PACKAGE_RECEIPT_TIMESTAMP must be non-empty."
-        return 1
-    fi
-
-    if [ "${#PACKAGE_RECEIPT_TIMESTAMP}" -ne 10 ] ; then
-        error "$PACKAGE_RECEIPT_FILEPATH is broken. length of \$PACKAGE_RECEIPT_TIMESTAMP must be 10."
-        return 1
-    fi
-}
-
-# }}}
-##############################################################################
-# {{{ ndk-pkg receipt
-
-# __show_receipt_of_the_given_package <PACKAGE-SPEC> [--json] [--yaml] [--path] [<KEY>]
-  __show_receipt_of_the_given_package() {
-    __load_receipt_of_the_given_package "$1"
-
-    case $2 in
-        --yaml|'')
-            if [ -t 1 ] ; then
-                yq  "$PACKAGE_RECEIPT_FILEPATH"
-            else
-                cat "$PACKAGE_RECEIPT_FILEPATH"
-            fi
-            ;;
-        --json)
-            yq -o=json "$PACKAGE_RECEIPT_FILEPATH"
-            ;;
-        --path)
-            printf '%s\n' "$PACKAGE_RECEIPT_FILEPATH"
-            ;;
-        *)  yq ".$2 | select(. != null)" "$PACKAGE_RECEIPT_FILEPATH"
-    esac
+    [ "${#RECEIPT_PACKAGE_BUILTAT}" -eq 10 ] || abort 1 "receipt scheme error. builtat mapping's value length must be 10."
 }
 
 # }}}
@@ -1763,7 +1663,7 @@ is_package_available() {
   is_package__outdated() {
     __load_receipt_of_the_given_package "$1"
     __load_formula_of_the_given_package "${1%%:*}"
-    version_match "$PACKAGE_VERSION" gt "$PACKAGE_RECEIPT_VERSION"
+    version_match "$PACKAGE_VERSION" gt "$RECEIPT_PACKAGE_VERSION"
 }
 
 # }}}
@@ -1807,7 +1707,7 @@ __list_available_packages() {
 __list_installed_packages() {
     if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT" ] ; then
          cd "$NDKPKG_PACKAGE_INSTALLED_ROOT" || return 1
-        find . -maxdepth 1 -mindepth 1 -type l -regex '\./[^:]*:android-[1-9][0-9]:\(armeabi-v7a\|arm64-v8a\|x86\|x86_64\)' -printf '%P\n'
+        find . -maxdepth 2 -mindepth 2 -type l -regex '\./android-[1-9][0-9]-\(armv7a\|aarch64\|i686\|x86_64\)/[^/]*' -printf '%P\n'
     else
         return 0
     fi
@@ -1840,65 +1740,8 @@ __search_packages() {
 ##############################################################################
 # {{{ ndk-pkg info
 
-# __show_information_of_all_available_packages [--json] [--yaml] [--shell]
-  __show_information_of_all_available_packages() {
-    case $1 in
-        '')     __show_information_as_yaml__of_all_available_packages ;;
-        --yaml) __show_information_as_yaml__of_all_available_packages ;;
-        --json) __show_information_as_json__of_all_available_packages ;;
-        --shell)__show_information_as_shell_of_all_available_packages ;;
-        *)    abort 1 "__show_information_of_all_available_packages [--json] [--yaml] [--shell], unrecognized option: $1"
-    esac
-}
-
-__show_information_as_json__of_all_available_packages() {
-    printf '%s\n' '['
-
-    FIRST=yes
-
-    for PACKAGE in $(__list_available_packages)
-    do
-        if [ "$FIRST" = yes ] ; then
-            FIRST=no
-        else
-            printf '%s\n' ','
-        fi
-        __show_information_as_json__of_the_given_package "$PACKAGE"
-    done
-
-    printf '%s\n' ']'
-}
-
-__show_information_as_yaml__of_all_available_packages() {
-    FIRST=yes
-
-    for PACKAGE in $(__list_available_packages)
-    do
-        if [ "$FIRST" = yes ] ; then
-            FIRST=no
-        else
-            printf '%s\n' '---'
-        fi
-        __show_information_as_yaml__of_the_given_package "$PACKAGE"
-    done
-}
-
-__show_information_as_shell_of_all_available_packages() {
-    FIRST=yes
-
-    for PACKAGE in $(__list_available_packages)
-    do
-        if [ "$FIRST" = yes ] ; then
-            FIRST=no
-        else
-            printf '%s\n' '#---'
-        fi
-        __show_information_as_shell_of_the_given_package "$PACKAGE"
-    done
-}
-
-# __show_information_as_json__of_the_given_package <PACKAGE-NAME>
-  __show_information_as_json__of_the_given_package() {
+# __info_the_given_available_package_as_json <PACKAGE-NAME>
+  __info_the_given_available_package_as_json() {
     __load_formula_of_the_given_package "$1"
 
     if [ -z "$PACKAGE_WEB_URL" ] ; then
@@ -1928,15 +1771,14 @@ __show_information_as_shell_of_all_available_packages() {
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
-        --arg dopatch "$PACKAGE_DOPATCH_ACTIONS" \
-        --arg install "$PACKAGE_DOBUILD_ACTIONS" \
+        --arg dopatch "$PACKAGE_ACTIONS_DOPATCH" \
+        --arg install "$PACKAGE_ACTIONS_DOBUILD" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
         --arg ccflags "$PACKAGE_CCFLAGS" \
         --arg xxflags "$PACKAGE_XXFLAGS" \
         --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
-        --arg api_min "$PACKAGE_API_MIN" \
         --arg parallel $PACKAGE_BUILD_IN_PARALLEL \
 '{
     "pkgname":$pkgname,
@@ -1961,7 +1803,6 @@ __show_information_as_shell_of_all_available_packages() {
     "dep-upp":$dep_upp,
     "dep-pym":$dep_pym,
     "dep-plm":$dep_plm,
-    "api-min":$api_min,
     "bsystem":$bsystem,
     "binbstd":$binbstd,
     "ccflags":$ccflags,
@@ -1974,8 +1815,8 @@ __show_information_as_shell_of_all_available_packages() {
 }' | jq 'with_entries(select(.value != ""))'
 }
 
-# __show_information_as_yaml__of_the_given_package <PACKAGE-NAME>
-  __show_information_as_yaml__of_the_given_package() {
+# __info_the_given_available_package_as_yaml <PACKAGE-NAME>
+  __info_the_given_available_package_as_yaml() {
     __load_formula_of_the_given_package "$1"
 
     if [ -z "$PACKAGE_WEB_URL" ] ; then
@@ -2006,7 +1847,6 @@ dep-pkg: $PACKAGE_DEP_PKG
 dep-upp: $PACKAGE_DEP_UPP
 dep-pym: $PACKAGE_DEP_PYM
 dep-plm: $PACKAGE_DEP_PLM
-api-min: $PACKAGE_API_MIN
 bsystem: $PACKAGE_BSYSTEM
 binbstd: $PACKAGE_BINBSTD
 ppflags: $PACKAGE_PPFLAGS
@@ -2024,8 +1864,8 @@ EOF
     fi
 }
 
-# __show_information_as_shell_of_the_given_package <PACKAGE-NAME>
-  __show_information_as_shell_of_the_given_package() {
+# __info_the_given_available_package_as_shell <PACKAGE-NAME>
+  __info_the_given_available_package_as_shell() {
     __load_formula_of_the_given_package "$1"
 
     while read KEY
@@ -2034,6 +1874,12 @@ EOF
     done <<EOF
 PACKAGE_NAME
 PACKAGE_SUMMARY
+PACKAGE_LICENSE
+PACKAGE_VERSION
+PACKAGE_VERSION_MAJOR
+PACKAGE_VERSION_MINOR
+PACKAGE_VERSION_PATCH
+PACKAGE_VERSION_TWEAK
 PACKAGE_WEB_URL
 PACKAGE_GIT_URL
 PACKAGE_GIT_SHA
@@ -2057,13 +1903,6 @@ PACKAGE_RES_SHA
 PACKAGE_RES_FILETYPE
 PACKAGE_RES_FILENAME
 PACKAGE_RES_FILEPATH
-PACKAGE_VERSION
-PACKAGE_VERSION_MAJOR
-PACKAGE_VERSION_MINOR
-PACKAGE_VERSION_PATCH
-PACKAGE_VERSION_TWEAK
-PACKAGE_DEVELOPER
-PACKAGE_LICENSE
 PACKAGE_BSCRIPT
 PACKAGE_BSYSTEM
 PACKAGE_BINBSTD
@@ -2085,73 +1924,34 @@ PACKAGE_DEP_PKG
 PACKAGE_DEP_UPP
 PACKAGE_DEP_PYM
 PACKAGE_DEP_PLM
-PACKAGE_API_MIN
 PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
 PACKAGE_PPFLAGS
 PACKAGE_LDFLAGS
 PACKAGE_FORMULA_FILEPATH
+PACKAGE_DEVELOPER
 EOF
 }
 
-# __show_information_of_the_given_package <PACKAGE-NAME> [--yaml] [--json] [<KEY>]
-#
-# __show_information_of_the_given_package curl
-#
-# __show_information_of_the_given_package curl version
-# __show_information_of_the_given_package curl web-url
-  __show_information_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__show_information_of_the_given_package <PACKAGE-NAME> [--yaml] [--json] [<KEY>], <PACKAGE-NAME> is unspecified."
-
-    case $1 in
-        @all) shift ; __show_information_of_all_available_packages "$@" ; return 0
-    esac
-
+# __info_the_given_available_package <PACKAGE-NAME> [--yaml] [--json] [<KEY>]
+# __info_the_given_available_package curl
+# __info_the_given_available_package curl version
+# __info_the_given_available_package curl web-url
+  __info_the_given_available_package() {
     case $2 in
         --yaml|'')
-            __show_information_as_yaml__of_the_given_package "$1"
+            __info_the_given_available_package_as_yaml "$1"
             ;;
         --json)
-            __show_information_as_json__of_the_given_package "$1"
-            ;;
-        installed-dir)
-            peel_installed_root_dir_for_the_given_package "$1"
-            ;;
-        installed-files)
-            PACKAGE_INSTALL_DIR="$(peel_installed_root_dir_for_the_given_package "$1")"
-            cut -d '|' -f3 "$PACKAGE_INSTALL_DIR/.ndk-pkg/MANIFEST.txt"
-            ;;
-        installed-timestamp-unix)
-            __load_receipt_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_RECEIPT_TIMESTAMP"
-            ;;
-        installed-timestamp-rfc-3339)
-            __load_receipt_of_the_given_package "$1"
-            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z'
-            ;;
-        installed-timestamp-iso-8601)
-            __load_receipt_of_the_given_package "$1"
-            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%dT%H:%M:%S%:z'
-            ;;
-        installed-timestamp-rfc-3339-utc)
-            __load_receipt_of_the_given_package "$1"
-            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%d %H:%M:%S%:z' -u
-            ;;
-        installed-timestamp-iso-8601-utc)
-            __load_receipt_of_the_given_package "$1"
-            format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y-%m-%dT%H:%M:%SZ' -u
-            ;;
-        installed-version)
-            __load_receipt_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_RECEIPT_VERSION"
+            __info_the_given_available_package_as_json "$1"
             ;;
         dopatch)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_DOPATCH_ACTIONS"
+            printf '%s\n' "$PACKAGE_ACTIONS_DOPATCH"
             ;;
         install)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_DOBUILD_ACTIONS"
+            printf '%s\n' "$PACKAGE_ACTIONS_DOBUILD"
             ;;
         developer)
             __load_formula_of_the_given_package "$1"
@@ -2199,6 +1999,72 @@ EOF
     esac
 }
 
+# __info_the_given_installed_package <PACKAGE-SPEC> [<KEY>]
+# __info_the_given_installed_package curl
+# __info_the_given_installed_package curl version
+# __info_the_given_installed_package curl web-url
+  __info_the_given_installed_package() {
+    case $2 in
+        --yaml|'')
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+            if is_package_installed "$PACKAGE_SPEC" ; then
+                yq "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC/.ndk-pkg/RECEIPT.yml"
+            else
+                abort 1 "package '$PACKAGE_SPEC' is not installed."
+            fi
+            ;;
+        --json)
+            __info_the_given_installed_package_as_json "$1"
+            ;;
+        --prefix)
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+            if is_package_installed "$PACKAGE_SPEC" ; then
+                PACKAGE_INSTALLED_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+                printf '%s\n' "$PACKAGE_INSTALLED_DIR"
+            else
+                abort 1 "package '$PACKAGE_SPEC' is not installed."
+            fi
+            ;;
+        --files)
+            PACKAGE_SPEC=
+            PACKAGE_SPEC="$(inspect_package_spec "$1")"
+
+            if is_package_installed "$PACKAGE_SPEC" ; then
+                cut -d '|' -f3 "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC/.ndk-pkg/MANIFEST.txt"
+            else
+                abort 1 "package '$PACKAGE_SPEC' is not installed."
+            fi
+            ;;
+        builtat)
+            __load_receipt_of_the_given_package "$1"
+            printf '%s\n' "$RECEIPT_PACKAGE_BUILTAT"
+            ;;
+        builtat-rfc-3339)
+            __load_receipt_of_the_given_package "$1"
+            date -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%d %H:%M:%S%:z'
+            ;;
+        builtat-iso-8601)
+            __load_receipt_of_the_given_package "$1"
+            date -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%dT%H:%M:%S%:z'
+            ;;
+        builtat-rfc-3339-utc)
+            __load_receipt_of_the_given_package "$1"
+            date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%d %H:%M:%S%:z'
+            ;;
+        builtat-iso-8601-utc)
+            __load_receipt_of_the_given_package "$1"
+            date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y-%m-%dT%H:%M:%SZ'
+            ;;
+        *)  __load_receipt_of_the_given_package "$1"
+            __PACKAGE_GET__KEY__="$(printf '%s\n' "$2" | tr '+-.' '_' | tr a-z A-Z)"
+            eval echo \$RECEIPT_PACKAGE_$__PACKAGE_GET__KEY__
+    esac
+}
+
 # }}}
 ##############################################################################
 # {{{ ndk-pkg fetch
@@ -2208,85 +2074,73 @@ __fetch_resources_of_the_given_package() {
         abort 1 "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
     fi
 
-    if [ "$1" = '@all' ] ; then
-        shift
+    __load_formula_of_the_given_package "$1"
 
-        unset STEP_NUM
+    if [ "$PACKAGE_SRC_FILETYPE" = '.dir' ] ; then
+        note "$PACKAGE_SRC_URL is local path, no need to fetch."
+        return 0
+    fi
 
-        for PKG in $(__list_available_packages)
-        do
-            step "fetching resources for package : $PKG"
-            __fetch_resources_of_the_given_package "$PKG"
-        done
-    else
-        __load_formula_of_the_given_package "$1"
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-        if [ "$PACKAGE_SRC_FILETYPE" = '.dir' ] ; then
-            note "$PACKAGE_SRC_URL is local path, no need to fetch."
-            return 0
-        fi
+    if [ -z "$PACKAGE_SRC_URL" ] ; then
+        unset GIT_FETCH_URL
 
-        SESSION_DIR="$NDKPKG_HOME/run/$$/$1"
-
-        if [ -z "$PACKAGE_SRC_URL" ] ; then
-            unset GIT_FETCH_URL
-
-            if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
-                GIT_FETCH_URL="$PACKAGE_GIT_URL"
-            else
-                GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
-            fi
-
-            if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                if [ -z "$PACKAGE_GIT_REF" ] ; then
-                    GIT_BRANCH_NAME=master
-                    GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
-                else
-                    GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
-                    GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
-                fi
-            else
-                GIT_BRANCH_NAME=master
-                GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
-            fi
-
-            if [ -z "$PACKAGE_GIT_NTH" ] ; then
-                PACKAGE_GIT_NTH=1
-            fi
-
-            if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
-                if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
-                    GIT_FETCH_EXTRA_OPTIONS='--unshallow'
-                else
-                    GIT_FETCH_EXTRA_OPTIONS=
-                fi
-            else
-                GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
-            fi
-
-            run rm -rf     "$SESSION_DIR"
-            run install -d "$SESSION_DIR"
-            run cd         "$SESSION_DIR"
-            run git -c init.defaultBranch=master init
-            run git remote add origin "$GIT_FETCH_URL"
-            run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
-            run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-            run git submodule update --init
+        if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
+            GIT_FETCH_URL="$PACKAGE_GIT_URL"
         else
-            wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$SESSION_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
+            GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
         fi
 
-        if [ -n    "$PACKAGE_FIX_URL" ] ; then
-            wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir="$SESSION_DIR" --output-filepath="$PACKAGE_FIX_FILEPATH" --uri="$PACKAGE_FIX_URI"
+        if [ -z "$PACKAGE_GIT_SHA" ] ; then
+            if [ -z "$PACKAGE_GIT_REF" ] ; then
+                GIT_BRANCH_NAME=master
+                GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+            else
+                GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
+                GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+            fi
+        else
+            GIT_BRANCH_NAME=master
+            GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
         fi
 
-        if [ -n    "$PACKAGE_RES_URL" ] ; then
-            wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir="$SESSION_DIR" --output-filepath="$PACKAGE_RES_FILEPATH" --uri="$PACKAGE_RES_URI"
+        if [ -z "$PACKAGE_GIT_NTH" ] ; then
+            PACKAGE_GIT_NTH=1
         fi
 
-        if [    -d "$SESSION_DIR" ] ; then
-            rm -rf "$SESSION_DIR"
+        if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
+            if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
+                GIT_FETCH_EXTRA_OPTIONS='--unshallow'
+            else
+                GIT_FETCH_EXTRA_OPTIONS=
+            fi
+        else
+            GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
         fi
+
+        run rm -rf     "$SESSION_DIR"
+        run install -d "$SESSION_DIR"
+        run cd         "$SESSION_DIR"
+        run git -c init.defaultBranch=master init
+        run git remote add origin "$GIT_FETCH_URL"
+        run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
+        run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
+        run git submodule update --init
+    else
+        wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+    fi
+
+    if [ -n    "$PACKAGE_FIX_URL" ] ; then
+        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+    fi
+
+    if [ -n    "$PACKAGE_RES_URL" ] ; then
+        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+    fi
+
+    if [    -d "$SESSION_DIR" ] ; then
+        rm -rf "$SESSION_DIR"
     fi
 }
 
@@ -2336,42 +2190,42 @@ __fetch_resources_of_the_given_package() {
 # {{{ ndk-pkg pack
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME|PACKAGE-SPEC> [-t <zip|7z|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-session-dir]
+# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-session-dir]
+# __pack_the_given_installed_package    autoconf     -t tar.xz
   __pack_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
     shift
 
-    unset OUTPUT_DIR
-    unset OUTPUT_FILETYPE
-    unset OUTPUT_FILEPATH
+    ###########################################################################################
 
-    unset KEEP_SESSION_DIR
+    unset OUTPUT_PATH
+    unset OUTPUT_TYPE
 
     while [ -n "$1" ]
     do
         case $1 in
             --keep-session-dir)
-                KEEP_SESSION_DIR=yes
+                KEEP_SESSION_DIR=1
                 ;;
             -t) shift
 
                 if [ -z "$1" ] ; then
-                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified."
+                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is specified but <OUTPUT-TYPE> is unspecified."
                 else
-                    OUTPUT_FILETYPE="$1"
+                    OUTPUT_TYPE="$1"
                 fi
 
-                case $OUTPUT_FILETYPE in
-                    zip|7z|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
-                    *) abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_FILETYPE, <OUTPU-TYPE> should be one of zip|7z|tar.gz|tar.xz|tar.lz|tar.bz2"
+                case $OUTPUT_TYPE in
+                    zip|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
+                    *) abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_TYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
                 esac
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
+                    abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
                 else
-                    OUTPUT_FILEPATH="$1"
+                    OUTPUT_PATH="$1"
                 fi
                 ;;
             *)  abort 1 "$_0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
@@ -2381,122 +2235,128 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=no
+    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=0
 
-    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
-    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALLED_DIR" && find -not -name . -type f -exec base64-encode '{}' \;)"
-
-    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
-    do
-        BASE64_DECODED_RELATIVE_FILEPATH=
-        BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
-
-        FILEPATH="$PACKAGE_INSTALLED_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
-
-        FILEMAGIC=
-        FILEMAGIC="$(head -c 4 "$FILEPATH" | base16-encode)"
-
-        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-        if [ "$FILEMAGIC" = '7F454C46' ] ; then
-            # may report: patchelf: cannot find section '.interp'. The input file is most likely statically linked
-            PT_INTERP=
-            PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
-
-            if [ -n "$PT_INTERP" ] ; then
-                OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
-                break
-            fi
-
-            DT_SONAME=
-            DT_SONAME="$(patchelf --print-soname "$FILEPATH")"
-
-            if [ -n "$DT_SONAME" ] ; then
-                OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
-                break
-            fi
-        elif basename "$FILEPATH" | grep -q '^lib.*\.a$' ; then
-            OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
-            break
-        elif basename "$FILEPATH" | grep -q '^lib.*\.so' ; then
-            OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL=yes
-            break
-        fi
-    done
-
-    ###########################################################################################
-
-    case $PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI in
-        armeabi-v7a) TARGET_ANDROID_ARCH='armv7a'  ;;
-        arm64-v8a)   TARGET_ANDROID_ARCH='aarch64' ;;
-        x86)         TARGET_ANDROID_ARCH='i686'    ;;
-        x86_64)      TARGET_ANDROID_ARCH='x86_64'  ;;
-    esac
-
-    if [ "$OUTPUT_FILENAME_NEED_CONTAIN_MIN_SDK_API_LEVEL" = yes ] ; then
-        PACKED_DIR_NAME="${PACKAGE_RECEIPT_PKGNAME%@*}-$PACKAGE_RECEIPT_VERSION-android$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API-$TARGET_ANDROID_ARCH"
-    else
-        PACKED_DIR_NAME="${PACKAGE_RECEIPT_PKGNAME%@*}-$PACKAGE_RECEIPT_VERSION-android-$TARGET_ANDROID_ARCH"
-    fi
-
-    ###########################################################################################
-
-    if [ -z "$OUTPUT_FILEPATH" ] ; then
-        if [ -z "$OUTPUT_FILETYPE" ] ; then
-            OUTPUT_FILETYPE='tar.xz'
-        fi
-
-        OUTPUT_DIR="$NDKPKG_HOME/packed"
-        OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
-    else
-        if [ -d "$OUTPUT_FILEPATH" ] ; then
-            if [ -z "$OUTPUT_FILETYPE" ] ; then
-                OUTPUT_FILETYPE='tar.xz'
-            fi
-
-            OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
-            OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
-        else
-            case $OUTPUT_FILEPATH in
-                */)
-                    if [ -z "$OUTPUT_FILETYPE" ] ; then
-                        OUTPUT_FILETYPE='tar.xz'
-                    fi
-
-                    OUTPUT_DIR="$(realpath -s "$OUTPUT_FILEPATH")"
-                    OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_FILETYPE"
-                    ;;
-                *)
-                    OUTPUT_FILEPATH="$(realpath -s "$OUTPUT_FILEPATH")"
-
-                    if [ -z "$OUTPUT_FILETYPE" ] ; then
-                        case $OUTPUT_FILEPATH in
-                            *.tar.gz|*.tgz)
-                                OUTPUT_FILETYPE=tar.gz
-                                ;;
-                            *.tar.xz|*.txz)
-                                OUTPUT_FILETYPE=tar.xz
-                                ;;
-                            *.tar.lz|*.tlz)
-                                OUTPUT_FILETYPE=tar.lz
-                                ;;
-                            *.tar.bz2|*.tbz2)
-                                OUTPUT_FILETYPE=tar.bz2
-                                ;;
-                            *.zip)
-                                OUTPUT_FILETYPE=zip
-                                ;;
-                            *.7z)
-                                OUTPUT_FILETYPE=7z
-                                ;;
-                            *)  abort 1 "when -t <OUTPUT-TYPE> option is not given, -o <OUTPUT-PATH> option specified filename must ends with one of .tar.gz|.tar.xz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz|.tbz2|.zip|.7z"
-                        esac
-                    fi
-
-                    OUTPUT_DIR="$(dirname "$OUTPUT_FILEPATH")"
-                    OUTPUT_FILENAME="$(basename "$OUTPUT_FILEPATH")"
+    if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/lib" ] ; then
+        for FILEPATH in $(find "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/lib" -type f)
+        do
+            case $FILEPATH in
+                */lib*.a)   OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
+                */lib*.so*) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
+                */*.o)      OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
             esac
+        done
+    fi
+
+    if [ -z "$PACKED_DIR_NAME" ] ; then
+        if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/bin" ] ; then
+            for FILEPATH in $(find "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/bin" -type f)
+            do
+                FILEMAGIC=
+                FILEMAGIC="$(head -c 4 "$FILEPATH" | base16-encode)"
+
+                if [ "$FILEMAGIC" = '7F454C46' ] ; then
+                    # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                    PT_INTERP=
+                    PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                    if [ -n "$PT_INTERP" ] ; then
+                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+                        break
+                    fi
+                fi
+            done
         fi
     fi
+
+    if [ -z "$PACKED_DIR_NAME" ] ; then
+        for FILEPATH in $(find "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME" -type f -a -name "*.a")
+        do
+            OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+        done
+    fi
+
+    if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
+        PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+    else
+        PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+    fi
+
+    ###########################################################################################
+
+    unset OUTPUT_DIR
+    unset OUTPUT_FILEPATH
+
+    case $OUTPUT_PATH in
+        '')
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='tar.xz'
+            fi
+
+            OUTPUT_DIR="$PWD"
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+            ;;
+        .|./)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='tar.xz'
+            fi
+
+            OUTPUT_DIR="$PWD"
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+            ;;
+        ..|../)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='tar.xz'
+            fi
+
+            OUTPUT_DIR="$PWD/.."
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+            ;;
+        */)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                OUTPUT_TYPE='tar.xz'
+            fi
+
+            case $OUTPUT_PATH in
+                /*) OUTPUT_DIR="$OUTPUT_PATH" ;;
+                *)  OUTPUT_DIR="$PWD/$OUTPUT_PATH"
+            esac
+
+            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+            ;;
+        *)
+            if [ -z "$OUTPUT_TYPE" ] ; then
+                case $OUTPUT_PATH in
+                    *.tar.gz|*.tgz)
+                        OUTPUT_TYPE=tar.gz
+                        ;;
+                    *.tar.xz|*.txz)
+                        OUTPUT_TYPE=tar.xz
+                        ;;
+                    *.tar.lz|*.tlz)
+                        OUTPUT_TYPE=tar.lz
+                        ;;
+                    *.tar.bz2|*.tbz2)
+                        OUTPUT_TYPE=tar.bz2
+                        ;;
+                    *.zip)
+                        OUTPUT_TYPE=zip
+                        ;;
+                    *.7z)
+                        OUTPUT_TYPE=7z
+                        ;;
+                    *)  OUTPUT_TYPE=tar.xz
+                esac
+            fi
+
+            case $OUTPUT_PATH in
+                /*) OUTPUT_DIR="${OUTPUT_PATH%/*}"
+                    OUTPUT_FILEPATH="$OUTPUT_PATH"
+                    ;;
+                *)  OUTPUT_DIR="$PWD/$(dirname "$OUTPUT_PATH")"
+                    OUTPUT_FILEPATH="$PWD/$OUTPUT_PATH"
+            esac
+    esac
 
     ###########################################################################################
 
@@ -2508,25 +2368,25 @@ __fetch_resources_of_the_given_package() {
     run cd         "$SESSION_DIR"
 
     step "make link refer to installed package root directory"
-    run ln -s "$PACKAGE_INSTALLED_DIR" "$PACKED_DIR_NAME"
+    run ln -s "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME" "$PACKED_DIR_NAME"
 
     step "packing"
-    run bsdtar cvaf "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg"
+    run bsdtar cvaf "packed.$OUTPUT_TYPE" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg"
 
     step "show size of packed file"
-    run "du -sh $OUTPUT_FILENAME | cut -f1"
+    run "du -sh "packed.$OUTPUT_TYPE" | cut -f1"
 
     if [ ! -d "$OUTPUT_DIR" ] ; then
         step "create output directory"
         run install -d "$OUTPUT_DIR"
     fi
 
-    step "move packed file to output directory"
-    run mv "$OUTPUT_FILENAME" "$OUTPUT_DIR/"
+    step "move the packed file to output directory"
+    run mv "packed.$OUTPUT_TYPE" "$OUTPUT_FILEPATH"
 
-    if [ "$KEEP_SESSION_DIR" = yes ] ; then
-        printf '\n'
-        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
+    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+        echo
+        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is specified."
     else
         step "delete the session directory"
         run rm -rf "$SESSION_DIR"
@@ -2537,10 +2397,24 @@ __fetch_resources_of_the_given_package() {
   __create_google_prefab_for_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
-    PACKAGE_NAME="${PACKAGE_RECEIPT_PKGNAME%@*}"
+    PACKAGE_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}"
 
-    TARGET_ANDROID_API="$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_API"
-    TARGET_ANDROID_ABI="$PACKAGE_RECEIPT_BUILT_FOR_ANDROID_ABI"
+    TARGET_PLATFORM_VERS="$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS"
+
+    case $RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH in
+        armv7a)
+            TARGET_PLATFORM_ABI='armeabi-v7a'
+            ;;
+        aarch64)
+            TARGET_PLATFORM_ABI='arm64-v8a'
+            ;;
+        i686)
+            TARGET_PLATFORM_ABI='x86'
+            ;;
+        x86_64)
+            TARGET_PLATFORM_ABI='x86_64'
+            ;;
+    esac
 
     PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALLED_DIR/include"
     PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib-for-apk"
@@ -2587,7 +2461,7 @@ EOF
 
         run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
 
-        ABI_DIR="$MODULE_DIR/libs/android.$TARGET_ANDROID_ABI"
+        ABI_DIR="$MODULE_DIR/libs/android.$TARGET_PLATFORM_ABI"
 
         run install -d "$ABI_DIR"
 
@@ -2614,7 +2488,7 @@ EOF
             fi
         fi
 
-        printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${PACKAGE_RECEIPT_NDKVERS%%.*}" "$TARGET_ANDROID_API" "$TARGET_ANDROID_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
+        printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${RECEIPT_PACKAGE_NDKVERS%%.*}" "$TARGET_PLATFORM_VERS" "$TARGET_PLATFORM_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
     done
 
     #########################################################################################
@@ -2625,8 +2499,8 @@ EOF
 
     unset VERSION
 
-    if [ -z "$PACKAGE_RECEIPT_VERSION" ] ; then
-        VERSION="$(format_unix_timestamp "$PACKAGE_RECEIPT_TIMESTAMP" '+%Y.%m.%d')"
+    if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
+        VERSION="$(date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y.%m.%d')"
     else
         unset SED_E
 
@@ -2650,7 +2524,7 @@ EOF
         # 3.0-11
         # 1.4g
         # 0.15.2e
-        VERSION="$(printf '%s\n' "$PACKAGE_RECEIPT_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
+        VERSION="$(printf '%s\n' "$RECEIPT_PACKAGE_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
 
         printf '%s\n' "$VERSION" | {
             grep -q '[0-9]*' ||
@@ -2662,7 +2536,7 @@ EOF
 
     unset DEPENDENCIES
 
-    for DEPENDENT_PACKAGE_NAME in $PACKAGE_RECEIPT_DEP_PKG
+    for DEPENDENT_PACKAGE_NAME in $RECEIPT_PACKAGE_DEP_PKG
     do
         if [ -z "$DEPENDENCIES" ] ; then
             DEPENDENCIES="\"$DEPENDENT_PACKAGE_NAME\""
@@ -2681,48 +2555,49 @@ EOF
 EOF
 }
 
-# __export_google_prefab_aar_for_the_given_installed_packages <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]
+# __export_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]
   __export_google_prefab_aar_for_the_given_installed_packages() {
     unset PACKAGE_NAME
 
-    unset TARGET_ANDROID_API
-    unset TARGET_ANDROID_ABIS
+    unset TARGET_PLATFORM_VERS
+    unset TARGET_PLATFORM_ARCHS
+
+    unset SPECIFIED_PACKAGE_SPEC_LIST
 
     case $1 in
-        *:android-[1-9][0-9]:*)
-            PACKAGE_NAME="${1%%:*}"
+        android-[1-9][0-9]-*/*)
+            PACKAGE_NAME="${1#*/}"
 
             if [ -z "$PACKAGE_NAME" ] ; then
-                abort 1 "invalid argument: $1\n    package name is unspecifed."
+                abort 1 "invalid package spec: $1\n    package name is unspecifed."
             elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                 :
             else
-                abort 1 "invalid argument: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
+                abort 1 "invalid package spec: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
             fi
 
-            TARGET_ANDROID_API="$( printf '%s\n' "$1" | cut -d: -f2 | cut -d- -f2)"
-            TARGET_ANDROID_ABIS="$(printf '%s\n' "$1" | cut -d: -f3 | tr ',' ' ')"
+            TARGET_PLATFORM_SPEC="${1%%/*}"
+            TARGET_PLATFORM_VERS="$( printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+            TARGET_PLATFORM_ARCHS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3 | tr ',' ' ')"
 
-            if [ -z "$TARGET_ANDROID_ABIS" ] ; then
-                abort 1 "invalid argument: $1\n    android abis are unspecified."
-            fi
-
-            for TARGET_ANDROID_ABI in $TARGET_ANDROID_ABIS
+            for TARGET_PLATFORM_ARCH in $TARGET_PLATFORM_ARCHS
             do
-                case $TARGET_ANDROID_ABI in
-                    armeabi-v7a|arm64-v8a|x86|x86_64) ;;
-                    *)  abort 1 "invalid argument: $1\n    unrecognized android abi: $TARGET_ANDROID_ABI"
+                case $TARGET_PLATFORM_ARCH in
+                    armv7a|aarch64|i686|x86_64)
+                        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ARCH/$PACKAGE_NAME"
+                        ;;
+                    *)  abort 1 "invalid package spec: $1\n    unsupported arch: $TARGET_PLATFORM_ARCH"
                 esac
             done
             ;;
-        *)  abort 1 "invalid argument: $1"
+        *)  abort 1 "invalid package spec: $1"
     esac
 
-    X1="$PACKAGE_NAME:android-$TARGET_ANDROID_API"
+    #########################################################################################
 
     shift
 
-    unset USER_SPECIFIED_ANDROID_NDK_HOME
+    unset SPECIFIED_ANDROID_NDK_HOME
 
     unset OUTPUT_FILEPATH
 
@@ -2730,7 +2605,7 @@ EOF
     do
         case $1 in
             --ndk-home=*)
-                USER_SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
+                SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
@@ -2744,7 +2619,7 @@ EOF
 
     #########################################################################################
 
-    setup_android_ndk_env "$USER_SPECIFIED_ANDROID_NDK_HOME"
+    setup_android_ndk_env "$SPECIFIED_ANDROID_NDK_HOME"
 
     #########################################################################################
 
@@ -2757,9 +2632,8 @@ EOF
 
     #########################################################################################
 
-    for TARGET_ANDROID_ABI in $TARGET_ANDROID_ABIS
+    for PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_SPEC="$X1:$TARGET_ANDROID_ABI"
         step "create prefab hierarchial structure for $PACKAGE_SPEC"
         __create_google_prefab_for_the_given_installed_package "$PACKAGE_SPEC"
     done
@@ -2776,7 +2650,7 @@ EOF
     step "create META-INF"
     run install -d META-INF
     cat > META-INF/README.ndk-pkg <<EOF
-packed by ndk-pkg-$NDKPKG_VERSION in $(format_unix_timestamp "$TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%S') UTC
+packed by ndk-pkg-$NDKPKG_VERSION in $(date -u -d "@$TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%SZ')
 
 For more details, please refer to https://github.com/leleliu008/ndk-pkg
 EOF
@@ -2796,16 +2670,16 @@ EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fpliu.ndk.pkg.prefab.android$TARGET_ANDROID_API.$JAVA_PACKAGE_NAME">
+    package="com.fpliu.ndk.pkg.prefab.android$TARGET_PLATFORM_VERS.$JAVA_PACKAGE_NAME">
 
-    <uses-sdk android:minSdkVersion="$TARGET_ANDROID_API" />
+    <uses-sdk android:minSdkVersion="$TARGET_PLATFORM_VERS" />
 
 </manifest>
 EOF
 
     #########################################################################################
 
-    AAR_FILENAME="$PACKAGE_NAME-$PACKAGE_RECEIPT_VERSION.aar"
+    AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION.aar"
 
     step "packing the prefab aar file"
     run zip -9 -r "$AAR_FILENAME" .
@@ -2866,7 +2740,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     run rm -rf "$SESSION_DIR"
 }
 
-# __deploy_google_prefab_aar_for_the_given_installed_packages <PACKAGE-NAME>/android-<ANDROID-API>/<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [--keep-session-dir] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
+# __deploy_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>/<ANDROID-ARCHs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [--keep-session-dir] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
   __deploy_google_prefab_aar_for_the_given_installed_packages() {
     __export_google_prefab_aar_for_the_given_installed_packages "$@"
 
@@ -2874,7 +2748,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     shift
 
-    unset USER_SPECIFIED_ANDROID_NDK_HOME
+    unset SPECIFIED_ANDROID_NDK_HOME
 
     unset DEPLOYED_TO_SONATYPE_OSSRH
     unset DEPLOYED_TO_SPECIFIED_LOCAL_PATH
@@ -2891,22 +2765,22 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     do
         case $1 in
             --ndk-home=*)
-                USER_SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
+                SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
                 ;;
             --debug)
                 MVN_OPTIONS=-X
                 ;;
             --remote)
-                DEPLOYED_TO_SONATYPE_OSSRH=yes
+                DEPLOYED_TO_SONATYPE_OSSRH=1
                 ;;
             --local=*)
                 DEPLOYED_TO_SPECIFIED_LOCAL_PATH="${1#*=}"
                 ;;
             --dry-run)
-                DRYRUN=yes
+                DRYRUN=1
                 ;;
             --keep-session-dir)
-                KEEP_SESSION_DIR=yes
+                KEEP_SESSION_DIR=1
                 ;;
             --groupId=*)
                 GROUPID="${1#*=}"
@@ -2919,12 +2793,12 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     #########################################################################################
 
-    [ -z "$GROUPID" ] && GROUPID="com.fpliu.ndk.pkg.prefab.android.$TARGET_ANDROID_API"
+    [ -z "$GROUPID" ] && GROUPID="com.fpliu.ndk.pkg.prefab.android.$TARGET_PLATFORM_VERS"
 
     #########################################################################################
 
     if [ -z "$DEPLOYED_TO_SONATYPE_OSSRH" ] && [ -z "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
-        if [ "$DRYRUN" = yes ] ; then
+        if [ "$DRYRUN" = 1 ] ; then
             printf '%b\n' "
 ${COLOR_GREEN}Note:${COLOR_OFF}
     ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
@@ -2932,7 +2806,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
     cd $SESSION_DIR
-    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$PACKAGE_RECEIPT_VERSION -Dpackaging=aar -DgeneratePom=true
+    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=true
     cd -
     rm -rf $SESSION_DIR
             "
@@ -2959,9 +2833,9 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
         # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
         step "deploying the prefab aar to Maven Local Repository"
-        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=true
+        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=true
 
-        if [ "$KEEP_SESSION_DIR" = yes ] ; then
+        if [ "$KEEP_SESSION_DIR" = 1 ] ; then
             printf '\n'
             note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
         else
@@ -2994,13 +2868,13 @@ ${COLOR_GREEN}step3. configure dependencies${COLOR_OFF}
 ${COLOR_PURPLE}For Gradle Groovy DSL:${COLOR_OFF}
 
 dependencies {
-    implementation '$GROUPID:$PACKAGE_NAME:$PACKAGE_RECEIPT_VERSION@aar'
+    implementation '$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar'
 }
 
 ${COLOR_PURPLE}For Gradle Kotlin DSL:${COLOR_OFF}
 
 dependencies {
-    implementation(\"$GROUPID:$PACKAGE_NAME:$PACKAGE_RECEIPT_VERSION@aar\")
+    implementation(\"$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar\")
 }
 
 ${COLOR_GREEN}step4. find package and link libraries in your Android project's CMakeLists.txt${COLOR_OFF}
@@ -3039,12 +2913,12 @@ ${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.s
     # https://central.sonatype.org/publish/publish-manual/
 
     if [ -n "$DEPLOYED_TO_SONATYPE_OSSRH" ] ; then
-        if [ -z "$PACKAGE_RECEIPT_LICENSE" ] ; then
-            abort 1 "can not be deployed to Sonatype OSSRH due to PACKAGE_RECEIPT_LICENSE is empty."
+        if [ -z "$RECEIPT_PACKAGE_LICENSE" ] ; then
+            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_LICENSE is empty."
         fi
 
-        if [ -z "$PACKAGE_RECEIPT_GIT_URL" ] ; then
-            abort 1 "can not be deployed to Sonatype OSSRH due to PACKAGE_RECEIPT_GIT_URL is empty."
+        if [ -z "$RECEIPT_PACKAGE_GIT_URL" ] ; then
+            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_GIT_URL is empty."
         fi
     fi
 
@@ -3055,34 +2929,34 @@ ${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.s
 
     <groupId>$GROUPID</groupId>
     <artifactId>$PACKAGE_NAME</artifactId>
-    <version>$PACKAGE_RECEIPT_VERSION</version>
+    <version>$RECEIPT_PACKAGE_VERSION</version>
     <packaging>aar</packaging>
 
     <name>$PACKAGE_NAME</name>
-    <description>$PACKAGE_RECEIPT_SUMMARY</description>
-    <url>$PACKAGE_RECEIPT_WEB_URL</url>
+    <description>$RECEIPT_PACKAGE_SUMMARY</description>
+    <url>$RECEIPT_PACKAGE_WEB_URL</url>
 EOF
 
-    PACKAGE_RECEIPT_SCM_URL=
+    RECEIPT_PACKAGE_SCM_URL=
 
-    if [ -n "$PACKAGE_RECEIPT_GIT_URL" ] ; then
-        PACKAGE_RECEIPT_SCM_TYPE=git
-        PACKAGE_RECEIPT_SCM_URL="$PACKAGE_RECEIPT_GIT_URL"
+    if [ -n "$RECEIPT_PACKAGE_GIT_URL" ] ; then
+        RECEIPT_PACKAGE_SCM_TYPE=git
+        RECEIPT_PACKAGE_SCM_URL="$RECEIPT_PACKAGE_GIT_URL"
     fi
 
-    if [ -n "$PACKAGE_RECEIPT_SCM_URL" ] ; then
+    if [ -n "$RECEIPT_PACKAGE_SCM_URL" ] ; then
         cat >> pom.xml <<EOF
 
     <scm>
-        <connection>scm:$PACKAGE_RECEIPT_SCM_TYPE:$PACKAGE_RECEIPT_SCM_URL</connection>
-        <developerConnection>scm:$PACKAGE_RECEIPT_SCM_TYPE:$PACKAGE_RECEIPT_SCM_URL</developerConnection>
-        <url>$PACKAGE_RECEIPT_SCM_URL</url>
+        <connection>scm:$RECEIPT_PACKAGE_SCM_TYPE:$RECEIPT_PACKAGE_SCM_URL</connection>
+        <developerConnection>scm:$RECEIPT_PACKAGE_SCM_TYPE:$RECEIPT_PACKAGE_SCM_URL</developerConnection>
+        <url>$RECEIPT_PACKAGE_SCM_URL</url>
     </scm>
 EOF
     fi
 
-    if [ -z "$PACKAGE_RECEIPT_DEVELOPER" ] ; then
-        PACKAGE_RECEIPT_DEVELOPER="$PACKAGE_NAME developers <unknown>"
+    if [ -z "$RECEIPT_PACKAGE_DEVELOPER" ] ; then
+        RECEIPT_PACKAGE_DEVELOPER="$PACKAGE_NAME developers <unknown>"
     fi
 
     printf '\n    <developers>\n' >> pom.xml
@@ -3090,7 +2964,7 @@ EOF
     export IFS='
 '
 
-    for DEVELOPER in $PACKAGE_RECEIPT_DEVELOPER
+    for DEVELOPER in $RECEIPT_PACKAGE_DEVELOPER
     do
         DEVELOPER_NAME=
         DEVELOPER_EMAIL=
@@ -3113,10 +2987,10 @@ EOF
 
     printf '    </developers>\n' >> pom.xml
 
-    if [ -n "$PACKAGE_RECEIPT_LICENSE" ] ; then
+    if [ -n "$RECEIPT_PACKAGE_LICENSE" ] ; then
         printf '\n    <licenses>\n' >> pom.xml
 
-        for LICENSE_NAME in $PACKAGE_RECEIPT_LICENSE
+        for LICENSE_NAME in $RECEIPT_PACKAGE_LICENSE
         do
             cat >> pom.xml <<EOF
         <license>
@@ -3147,7 +3021,7 @@ EOF
         DEPLOYED_TO_SPECIFIED_LOCAL_PATH="$(realpath -s "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH")"
         cd -
 
-        if [ "$DRYRUN" = yes ] ; then
+        if [ "$DRYRUN" = 1 ] ; then
             printf '%b\n' "
 ${COLOR_GREEN}Note:${COLOR_OFF}
     ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
@@ -3155,7 +3029,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
     cd $SESSION_DIR
-    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$PACKAGE_RECEIPT_VERSION -Dpackaging=aar -DgeneratePom=false -DpomFile=$POM_FILE -DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH
+    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=false -DpomFile=$POM_FILE -DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH
     cd -
     rm -rf $SESSION_DIR
             "
@@ -3182,9 +3056,9 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
         # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
         step "deploying the prefab aar to Maven Local Repository"
-        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$PACKAGE_RECEIPT_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
+        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
 
-        if [ "$KEEP_SESSION_DIR" = yes ] ; then
+        if [ "$KEEP_SESSION_DIR" = 1 ] ; then
             printf '\n'
             note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
         else
@@ -3197,7 +3071,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     #########################################################################################
 
-    if [ "$DRYRUN" = yes ] ; then
+    if [ "$DRYRUN" = 1 ] ; then
         printf '%b\n' "
 ${COLOR_GREEN}Note:${COLOR_OFF}
     ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
@@ -3311,7 +3185,7 @@ EOF
 
     #########################################################################################
 
-    if [ "$KEEP_SESSION_DIR" = yes ] ; then
+    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
         printf '\n'
         note "the session dir '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
     else
@@ -3358,7 +3232,7 @@ __cleanup() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    wfetch "$1" --output-filename=self
+    wfetch "$1" -o self --no-buffer
 
     run chmod 755 self
 
@@ -3432,7 +3306,7 @@ __cleanup() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" --output-filename=_ndk-pkg
+    wfetch "$ZSH_COMPLETIONS_SCRIPT_URL" -o _ndk-pkg --no-buffer
 
     run chmod 644 _ndk-pkg
 
@@ -3697,6 +3571,7 @@ __show_packages_depended_by_the_given_package() {
         DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH_LIST_PART2"
     done
 
+
     ###########################################################################################
 
     [ -z "$DOT_CONTENT" ] && return 0
@@ -3839,7 +3714,7 @@ __uninstall_the_given_packages() {
 __reinstall_the_given_packages() {
     inspect_install_arguments "$@"
 
-    [ -z "$USER_SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "no package is specified to be reinstalled."
+    [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "neither package-name nor package-spec is specified."
 
     #########################################################################################
 
@@ -3854,9 +3729,9 @@ __reinstall_the_given_packages() {
     # 2. backup formulas
     # 3. cache variables
 
-    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
+        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -3892,21 +3767,23 @@ __reinstall_the_given_packages() {
 
     #########################################################################################
 
-    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*:}"
+        TARGET_PLATFORM_SPEC="${SPECIFIED_PACKAGE_SPEC%/*}"
 
-        TARGET_ANDROID_API=
-        TARGET_ANDROID_ABI=
+        TARGET_PLATFORM_NAME=
+        TARGET_PLATFORM_VERS=
+        TARGET_PLATFORM_ARCH=
 
-        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f1 | cut -d- -f2)"
-        TARGET_ANDROID_ABI="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f2)"
+        TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
+        TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
 
         ##################################################################
 
-        TO_BE_INSTALLED_PACKAGE_NAMES=
+        REQUESTED_PACKAGE_NAME_LIST=
 
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
+        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -3917,15 +3794,15 @@ __reinstall_the_given_packages() {
 
             ##################################################################
 
-            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+            REQUESTED_PACKAGE_NAME_LIST2="$PACKAGE_NAME"
 
-            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            for item in $REQUESTED_PACKAGE_NAME_LIST
             do
                 [ "$item" = "$PACKAGE_NAME" ] && continue
-                TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                REQUESTED_PACKAGE_NAME_LIST2="$REQUESTED_PACKAGE_NAME_LIST2 $item"
             done
 
-            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+            REQUESTED_PACKAGE_NAME_LIST="$REQUESTED_PACKAGE_NAME_LIST2"
 
             ##################################################################
 
@@ -3943,26 +3820,22 @@ __reinstall_the_given_packages() {
 
         ##################################################################
 
-        for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
+        for PACKAGE_NAME in $REQUESTED_PACKAGE_NAME_LIST
         do
-            PACKAGE_SPEC="$PACKAGE_NAME:$TARGET_ANDROID_SPEC"
+            PACKAGE_SPEC="$TARGET_PLATFORM_SPEC/$PACKAGE_NAME"
 
-            if is_package_installed "$PACKAGE_SPEC" ; then
-                PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-                PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
+            PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+            PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
 
-                (__install_the_given_package "$PACKAGE_SPEC")
+            (__install_the_given_package "$PACKAGE_SPEC")
 
-                rm -rf "$PACKAGE_INSTALLED_REAL_DIR"
-            else
-                (__install_the_given_package "$PACKAGE_SPEC")
-            fi
+            rm -rf "$PACKAGE_INSTALLED_REAL_DIR"
         done
     done
 
     #########################################################################################
 
-    if [ "$KEEP_SESSION_DIR" != yes ] ; then
+    if [ "$KEEP_SESSION_DIR" != 1 ] ; then
         rm -rf "$SESSION_DIR"
     fi
 }
@@ -3974,8 +3847,12 @@ __reinstall_the_given_packages() {
 __upgrade_packages() {
     inspect_install_arguments "$@"
 
-    if [ -z "$USER_SPECIFIED_PACKAGE_SPEC_LIST" ] ; then
-        USER_SPECIFIED_PACKAGE_SPEC_LIST=$(__list__outdated_packages)
+    if [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] ; then
+        SPECIFIED_PACKAGE_SPEC_LIST=$(__list__outdated_packages)
+    fi
+
+    if [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] ; then
+        return 0
     fi
 
     #########################################################################################
@@ -3991,9 +3868,9 @@ __upgrade_packages() {
     # 2. backup formulas
     # 3. cache variables
 
-    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
+        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -4029,21 +3906,23 @@ __upgrade_packages() {
 
     #########################################################################################
 
-    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*:}"
+        TARGET_PLATFORM_SPEC="${SPECIFIED_PACKAGE_SPEC%/*}"
 
-        TARGET_ANDROID_API=
-        TARGET_ANDROID_ABI=
+        TARGET_PLATFORM_NAME=
+        TARGET_PLATFORM_VERS=
+        TARGET_PLATFORM_ARCH=
 
-        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f1 | cut -d- -f2)"
-        TARGET_ANDROID_ABI="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f2)"
+        TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
+        TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
 
         ##################################################################
 
-        TO_BE_INSTALLED_PACKAGE_NAMES=
+        REQUESTED_PACKAGE_NAME_LIST=
 
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
+        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -4054,15 +3933,15 @@ __upgrade_packages() {
 
             ##################################################################
 
-            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+            REQUESTED_PACKAGE_NAME_LIST2="$PACKAGE_NAME"
 
-            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            for item in $REQUESTED_PACKAGE_NAME_LIST
             do
                 [ "$item" = "$PACKAGE_NAME" ] && continue
-                TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                REQUESTED_PACKAGE_NAME_LIST2="$REQUESTED_PACKAGE_NAME_LIST2 $item"
             done
 
-            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+            REQUESTED_PACKAGE_NAME_LIST="$REQUESTED_PACKAGE_NAME_LIST2"
 
             ##################################################################
 
@@ -4080,41 +3959,28 @@ __upgrade_packages() {
 
         ##################################################################
 
-        for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
+        for PACKAGE_NAME in $REQUESTED_PACKAGE_NAME_LIST
         do
-            PACKAGE_SPEC="$PACKAGE_NAME:$TARGET_ANDROID_SPEC"
+            PACKAGE_SPEC="$TARGET_PLATFORM_SPEC/$PACKAGE_NAME"
 
-            if is_package__outdated "$PACKAGE_SPEC" ; then
-                PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-                PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
+            is_package__outdated "$PACKAGE_SPEC" || {
+                note 1 "$PACKAGE_SPEC is not outdated."
+                continue
+            }
 
-                (__install_the_given_package "$PACKAGE_SPEC")
+            PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+            PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
 
-                rm -rf "$PACKAGE_INSTALLED_REAL_DIR"
-            else
-                note "package '$PACKAGE_SPEC' is up-to-date."
-            fi
+            (__install_the_given_package "$PACKAGE_SPEC")
+
+            rm -rf "$PACKAGE_INSTALLED_REAL_DIR"
         done
     done
 
     #########################################################################################
 
-    if [ "$KEEP_SESSION_DIR" != yes ] ; then
+    if [ "$KEEP_SESSION_DIR" != 1 ] ; then
         rm -rf "$SESSION_DIR"
-    fi
-}
-
-# peel_installed_root_dir_for_the_given_package <PACKAGE-NAME|PACKAGE-SPEC>
-  peel_installed_root_dir_for_the_given_package() {
-    PACKAGE_SPEC=
-    PACKAGE_SPEC="$(inspect_package_spec "$1")"
-
-    if is_package_installed "$PACKAGE_SPEC" ; then
-        PACKAGE_INSTALLED_LINK_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
-        PACKAGE_INSTALLED_REAL_DIR="$(readlink -f "$PACKAGE_INSTALLED_LINK_DIR")"
-        printf '%s\n' "$PACKAGE_INSTALLED_REAL_DIR"
-    else
-        abort 1 "package '$PACKAGE_SPEC' is not installed."
     fi
 }
 
@@ -4127,11 +3993,24 @@ __upgrade_packages() {
     case $1 in
         '') abort 1 "neither package-name nor package-spec is specified."
             ;;
-        *:android-[1-9][0-9]:*:*)
-            abort 1 "invalid package spec: $1"
-            ;;
-        *:android-[1-9][0-9]:*)
-            PACKAGE_NAME="${1%%:*}"
+        */*)
+            case $1 in
+                android-[1-9][0-9]-armv7a/*)
+                    TARGET_PLATFORM_ARCH='armv7a'
+                    ;;
+                android-[1-9][0-9]-aarch64/*)
+                    TARGET_PLATFORM_ARCH='aarch64'
+                    ;;
+                android-[1-9][0-9]-i686/*)
+                    TARGET_PLATFORM_ARCH='i686'
+                    ;;
+                android-[1-9][0-9]-x86_64/*)
+                    TARGET_PLATFORM_ARCH='x86_64'
+                    ;;
+                *)  abort 1 "invalid package spec: $1"
+            esac 
+
+            PACKAGE_NAME="${1##*/}"
 
             if [ -z "$PACKAGE_NAME" ] ; then
                 abort 1 "invalid package spec: $1\n    package name is unspecifed."
@@ -4141,34 +4020,27 @@ __upgrade_packages() {
                 abort 1 "invalid package spec: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
             fi
 
-            TARGET_ANDROID_API="$(printf '%s\n' "$1" | cut -d: -f2 | cut -d- -f2)"
-            TARGET_ANDROID_ABI="$(printf '%s\n' "$1" | cut -d: -f3)"
-
-            case $TARGET_ANDROID_ABI in
-                armeabi-v7a|arm64-v8a|x86|x86_64) ;;
-                *)  abort 1 "invalid package spec: $1\n    unrecognized android abi: $TARGET_ANDROID_ABI"
-            esac
+            TARGET_PLATFORM_SPEC="${1%/*}"
+            TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
 
             PACKAGE_SPEC="$1"
             ;;
-        *:*)abort 1 "invalid package spec: $1"
-            ;;
         *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
-                case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-                    '') NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21:arm64-v8a'
+                case $NDKPKG_DEFAULT_TARGET in
+                    '') NDKPKG_DEFAULT_TARGET='android-21-aarch64'
                         ;;
-                    android-[1-9][0-9]:armeabi-v7a)
+                    android-[1-9][0-9]-armv7a)
                         ;;
-                    android-[1-9][0-9]:arm64-v8a)
+                    android-[1-9][0-9]-aarch64)
                         ;;
-                    android-[1-9][0-9]:x86)
+                    android-[1-9][0-9]-i686)
                         ;;
-                    android-[1-9][0-9]:x86_64)
+                    android-[1-9][0-9]-x86_64)
                         ;;
-                    *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
+                    *) abort 1 "you have set NDKPKG_DEFAULT_TARGET=$NDKPKG_DEFAULT_TARGET , but it is an invalid target spec."
                 esac
 
-                PACKAGE_SPEC="$1:$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC"
+                PACKAGE_SPEC="$NDKPKG_DEFAULT_TARGET/$1"
             else
                 abort 1 "invalid package name: $1"
             fi
@@ -4177,17 +4049,72 @@ __upgrade_packages() {
     printf '%s\n' "$PACKAGE_SPEC"
 }
 
+# inspect_package_spec_list <PACKAGE-NAME | PACKAGE-SPECS>
+  inspect_package_spec_list() {
+    case $1 in
+        '') abort 1 "neither package-name nor package-specs is specified."
+            ;;
+        */*)
+            PACKAGE_NAME="${1##*/}"
+
+            if [ -z "$PACKAGE_NAME" ] ; then
+                abort 1 "invalid package spec: $1\n    package name is unspecifed."
+            elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
+                :
+            else
+                abort 1 "invalid package spec: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
+            fi
+
+            TARGET_PLATFORM_SPEC="${1%/*}"
+
+            case $TARGET_PLATFORM_SPEC in
+                android-[1-9][0-9]-*) ;;
+                *)  abort 1 "invalid package spec: $1"
+            esac
+
+            TARGET_PLATFORM_VERS="$( printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+            TARGET_PLATFORM_ARCHS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3 | tr ',' ' ')"
+
+            unset PACKAGE_SPEC_LIST
+
+            for TARGET_PLATFORM_ARCH in $TARGET_PLATFORM_ARCHS
+            do
+                case $TARGET_PLATFORM_ARCH in
+                    armv7a|aarch64|i686|x86_64)
+                        PACKAGE_SPEC_LIST="$PACKAGE_SPEC_LIST android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ARCH/$PACKAGE_NAME"
+                        ;;
+                    *)  abort 1 "invalid package spec: $1\n    unrecognized android arch: $TARGET_PLATFORM_ARCH"
+                esac
+            done
+
+            printf '%s\n' "$PACKAGE_SPEC_LIST"
+            ;;
+        *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
+                case $NDKPKG_DEFAULT_TARGET in
+                    '') NDKPKG_DEFAULT_TARGET='android-21-aarch64'
+                        ;;
+                    android-[1-9][0-9]-armv7a)
+                        ;;
+                    android-[1-9][0-9]-aarch64)
+                        ;;
+                    android-[1-9][0-9]-i686)
+                        ;;
+                    android-[1-9][0-9]-x86_64)
+                        ;;
+                    *) abort 1 "you have set NDKPKG_DEFAULT_TARGET=$NDKPKG_DEFAULT_TARGET , but it is an invalid android spec."
+                esac
+
+                printf '%s\n' "$NDKPKG_DEFAULT_TARGET/$1"
+            else
+                abort 1 "invalid package name: $1"
+            fi
+    esac
+}
+
 inspect_install_arguments() {
-    # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
-    unset TARGET_ARCH
+    DRYRUN=0
 
-    unset USER_SPECIFIED_PACKAGE_LIST
-
-    unset USER_SPECIFIED_ANDROID_NDK_HOME
-
-    DRYRUN=no
-
-    CCACHE_ENABLED=no
+    CCACHE_ENABLED=0
 
     LOG_LEVEL_QUIET=0
     LOG_LEVEL_NORMAL=1
@@ -4202,9 +4129,14 @@ inspect_install_arguments() {
 
     LINK_TYPE=static-prefered
 
-    KEEP_SESSION_DIR=no
+    KEEP_SESSION_DIR=0
 
-    EXPORT_COMPILE_COMMANDS_JSON=no
+    EXPORT_COMPILE_COMMANDS_JSON=0
+
+    unset SPECIFIED_PACKAGE_LIST
+
+    unset SPECIFIED_ANDROID_NDK_HOME
+
 
     while [ -n "$1" ]
     do
@@ -4219,16 +4151,16 @@ inspect_install_arguments() {
                 LOG_LEVEL="$LOG_LEVEL_QUIET"
                 ;;
             --disable-ccache)
-                CCACHE_ENABLED=no
+                CCACHE_ENABLED=0
                 ;;
             --dry-run)
-                DRYRUN=yes
+                DRYRUN=1
                 ;;
             --keep-session-dir)
-                KEEP_SESSION_DIR=yes
+                KEEP_SESSION_DIR=1
                 ;;
             --export-compile-commands-json)
-                EXPORT_COMPILE_COMMANDS_JSON=yes
+                EXPORT_COMPILE_COMMANDS_JSON=1
                 ;;
             --build-type=*)
                 BUILD_TYPE="${1#*=}"
@@ -4251,88 +4183,41 @@ inspect_install_arguments() {
                 is_integer "$BUILD_NJOBS" || abort 1 "--jobs=INTEGER argument's value must be an integer."
                 ;;
             --ndk-home=*)
-                USER_SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
+                SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
                 ;;
             -*) abort 1 "unrecognized option: $1"
                 ;;
-            *)  USER_SPECIFIED_PACKAGE_LIST="$USER_SPECIFIED_PACKAGE_LIST $1"
+            *)  SPECIFIED_PACKAGE_LIST="$SPECIFIED_PACKAGE_LIST $1"
         esac
         shift
     done
 
     #########################################################################################
 
-    unset USER_SPECIFIED_PACKAGE_SPEC_LIST
+    unset SPECIFIED_PACKAGE_SPEC_LIST
 
-    for PACKAGE in $USER_SPECIFIED_PACKAGE_LIST
+    for PACKAGE in $SPECIFIED_PACKAGE_LIST
     do
-        case $PACKAGE in
-            *:android-[1-9][0-9]:*:*)
-                abort 1 "invalid package spec: $PACKAGE"
-                ;;
-            *:android-[1-9][0-9]:*)
-                PACKAGE_NAME="${PACKAGE%%:*}"
-
-                if [ -z "$PACKAGE_NAME" ] ; then
-                    abort 1 "invalid package spec: $PACKAGE\n    package name is unspecifed."
-                elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
-                    :
-                else
-                    abort 1 "invalid package spec: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
-                fi
-
-                TARGET_ANDROID_API="$( printf '%s\n' "$PACKAGE" | cut -d: -f2 | cut -d- -f2)"
-                TARGET_ANDROID_ABIS="$(printf '%s\n' "$PACKAGE" | cut -d: -f3 | tr ',' ' ')"
-
-                for TARGET_ANDROID_ABI in $TARGET_ANDROID_ABIS
-                do
-                    case $TARGET_ANDROID_ABI in
-                        armeabi-v7a|arm64-v8a|x86|x86_64)
-                            USER_SPECIFIED_PACKAGE_SPEC_LIST="$USER_SPECIFIED_PACKAGE_SPEC_LIST $PACKAGE_SPEC $PACKAGE_NAME:android-$TARGET_ANDROID_API:$TARGET_ANDROID_ABI"
-                            ;;
-                        *)  abort 1 "invalid package spec: $PACKAGE\n    unrecognized android abi: $TARGET_ANDROID_ABI"
-                    esac
-                done
-                ;;
-            *:*)
-                abort 1 "invalid package spec: $PACKAGE"
-                ;;
-            *)  if printf '%s\n' "$PACKAGE" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
-                    case $NDKPKG_DEFAULT_TARGET_ANDROID_SPEC in
-                        '') NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21:arm64-v8a'
-                            ;;
-                        android-[1-9][0-9]:armeabi-v7a)
-                            ;;
-                        android-[1-9][0-9]:arm64-v8a)
-                            ;;
-                        android-[1-9][0-9]:x86)
-                            ;;
-                        android-[1-9][0-9]:x86_64)
-                            ;;
-                        *) abort 1 "you have set NDKPKG_DEFAULT_TARGET_ANDROID_SPEC=$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC , but it is an invalid android spec."
-                    esac
-
-                    USER_SPECIFIED_PACKAGE_SPEC_LIST="$USER_SPECIFIED_PACKAGE_SPEC_LIST $PACKAGE:$NDKPKG_DEFAULT_TARGET_ANDROID_SPEC"
-                else
-                    abort 1 "invalid package name: $PACKAGE"
-                fi
-        esac
+        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST $(inspect_package_spec_list "$PACKAGE")"
     done
 
-    USER_SPECIFIED_PACKAGE_SPEC_LIST=${USER_SPECIFIED_PACKAGE_SPEC_LIST#' '}
+    SPECIFIED_PACKAGE_SPEC_LIST=${SPECIFIED_PACKAGE_SPEC_LIST#' '}
 
-    setup_android_ndk_env "$USER_SPECIFIED_ANDROID_NDK_HOME"
+    setup_android_ndk_env "$SPECIFIED_ANDROID_NDK_HOME"
 
     if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
         exec 2>&1
     fi
+
+    # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
+    unset TARGET_ARCH
 }
 
 __install_the_given_packages() {
     inspect_install_arguments "$@"
 
-    [ -z "$USER_SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "$_0 install <PACKAGE-SPEC|PACKAGE-NAME>..., <|PACKAGE-SPEC|PACKAGE-NAME> is unspecified."
+    [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "$_0 install <PACKAGE-SPEC|PACKAGE-NAME>..., <|PACKAGE-SPEC|PACKAGE-NAME> is unspecified."
 
     #########################################################################################
 
@@ -4347,9 +4232,9 @@ __install_the_given_packages() {
     # 2. backup formulas
     # 3. cache variables
 
-    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
+        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -4385,21 +4270,23 @@ __install_the_given_packages() {
 
     #########################################################################################
 
-    for USER_SPECIFIED_PACKAGE_SPEC in $USER_SPECIFIED_PACKAGE_SPEC_LIST
+    for SPECIFIED_PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
     do
-        TARGET_ANDROID_SPEC="${USER_SPECIFIED_PACKAGE_SPEC#*:}"
+        TARGET_PLATFORM_SPEC="${SPECIFIED_PACKAGE_SPEC%/*}"
 
-        TARGET_ANDROID_API=
-        TARGET_ANDROID_ABI=
+        TARGET_PLATFORM_NAME=
+        TARGET_PLATFORM_VERS=
+        TARGET_PLATFORM_ARCH=
 
-        TARGET_ANDROID_API="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f1 | cut -d- -f2)"
-        TARGET_ANDROID_ABI="$(printf '%s\n' "$TARGET_ANDROID_SPEC" | cut -d: -f2)"
+        TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
+        TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
 
         ##################################################################
 
-        TO_BE_INSTALLED_PACKAGE_NAMES=
+        REQUESTED_PACKAGE_NAME_LIST=
 
-        PACKAGE_NAME_STACK="${USER_SPECIFIED_PACKAGE_SPEC%%:*}"
+        PACKAGE_NAME_STACK="${SPECIFIED_PACKAGE_SPEC##*/}"
 
         while [ -n "$PACKAGE_NAME_STACK" ]
         do
@@ -4410,15 +4297,15 @@ __install_the_given_packages() {
 
             ##################################################################
 
-            TO_BE_INSTALLED_PACKAGE_NAMES2="$PACKAGE_NAME"
+            REQUESTED_PACKAGE_NAME_LIST2="$PACKAGE_NAME"
 
-            for item in $TO_BE_INSTALLED_PACKAGE_NAMES
+            for item in $REQUESTED_PACKAGE_NAME_LIST
             do
                 [ "$item" = "$PACKAGE_NAME" ] && continue
-                TO_BE_INSTALLED_PACKAGE_NAMES2="$TO_BE_INSTALLED_PACKAGE_NAMES2 $item"
+                REQUESTED_PACKAGE_NAME_LIST2="$REQUESTED_PACKAGE_NAME_LIST2 $item"
             done
 
-            TO_BE_INSTALLED_PACKAGE_NAMES="$TO_BE_INSTALLED_PACKAGE_NAMES2"
+            REQUESTED_PACKAGE_NAME_LIST="$REQUESTED_PACKAGE_NAME_LIST2"
 
             ##################################################################
 
@@ -4436,13 +4323,23 @@ __install_the_given_packages() {
 
         ##################################################################
 
-        for PACKAGE_NAME in $TO_BE_INSTALLED_PACKAGE_NAMES
+        for PACKAGE_NAME in $REQUESTED_PACKAGE_NAME_LIST
         do
-            PACKAGE_SPEC="$PACKAGE_NAME:$TARGET_ANDROID_SPEC"
+            PACKAGE_SPEC="$TARGET_PLATFORM_SPEC/$PACKAGE_NAME"
 
             if is_package_installed "$PACKAGE_SPEC" ; then
-                if [ "$LOG_LEVEL" -gt 0 ] ; then
-                    printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_SPEC"
+                if [ "$UPGRAGE" = 1 ] ; then
+                    if is_package__outdated "$PACKAGE_SPEC" ; then
+                        (__install_the_given_package "$PACKAGE_SPEC")
+                    else
+                        if [ "$LOG_LEVEL" -gt 0 ] ; then
+                            printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed and is up-to-date.\n" "$PACKAGE_SPEC"
+                        fi
+                    fi
+                else
+                    if [ "$LOG_LEVEL" -gt 0 ] ; then
+                        printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_SPEC"
+                    fi
                 fi
             else
                 (__install_the_given_package "$PACKAGE_SPEC")
@@ -4452,7 +4349,7 @@ __install_the_given_packages() {
 
     #########################################################################################
 
-    if [ "$KEEP_SESSION_DIR" != yes ] ; then
+    if [ "$KEEP_SESSION_DIR" != 1 ] ; then
         rm -rf "$SESSION_DIR"
     fi
 }
@@ -4650,6 +4547,7 @@ EOF
 
     NATIVE_PACKAGE_SRC_FILETYPE="$(filetype_from_url "$NATIVE_PACKAGE_SRC_URL")"
     NATIVE_PACKAGE_SRC_FILENAME="$NATIVE_PACKAGE_SRC_SHA$NATIVE_PACKAGE_SRC_FILETYPE"
+    NATIVE_PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$NATIVE_PACKAGE_SRC_FILENAME"
 
     NATIVE_PACKAGE_WORKING_DIR="$PACKAGE_WORKING_DIR/native/$1"
 
@@ -4730,9 +4628,9 @@ EOF
     run install -d "$NATIVE_PACKAGE_WORKING_DIR/src"
     run cd         "$NATIVE_PACKAGE_WORKING_DIR"
 
-    wfetch "$NATIVE_PACKAGE_SRC_URL" --sha256="$NATIVE_PACKAGE_SRC_SHA" --buffer-dir="$NATIVE_PACKAGE_WORKING_DIR" --output-dir="$NDKPKG_DOWNLOADS_DIR" --output-filename="$NATIVE_PACKAGE_SRC_FILENAME"
+    wfetch "$NATIVE_PACKAGE_SRC_URL" --sha256="$NATIVE_PACKAGE_SRC_SHA" -o "$NATIVE_PACKAGE_SRC_FILEPATH"
 
-    run bsdtar xvf "$NDKPKG_DOWNLOADS_DIR/$NATIVE_PACKAGE_SRC_FILENAME" --strip-components=1 --no-same-owner -C src
+    run bsdtar xvf "$NATIVE_PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner -C src
 
     run cd src
 
@@ -4805,7 +4703,7 @@ EOF
 }
 
 __install_the_given_package_onexit() {
-    if [ "$DRYRUN" != yes ] ; then
+    if [ "$DRYRUN" != 1 ] ; then
         is_package_installed "$PACKAGE_SPEC" || {
             abort 1 "package installation failure: $PACKAGE_SPEC\n"
 
@@ -4824,22 +4722,24 @@ __install_the_given_package() {
 
     trap  __install_the_given_package_onexit EXIT
 
-    case $TARGET_ANDROID_ABI in
-        armeabi-v7a) TARGET_ANDROID_ARCH='armv7a'  ;;
-        arm64-v8a)   TARGET_ANDROID_ARCH='aarch64' ;;
-        x86)         TARGET_ANDROID_ARCH='i686'    ;;
-        x86_64)      TARGET_ANDROID_ARCH='x86_64'  ;;
-    esac
-
-    case $TARGET_ANDROID_ARCH in
-        i686|armv7a)
-            TARGET_ANDROID_NBIT=32
-            ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker'
+    case $TARGET_PLATFORM_ARCH in
+        armv7a)
+            TARGET_PLATFORM_ABI='armeabi-v7a'
+            TARGET_PLATFORM_NBIT=32
             ;;
-        x86_64|aarch64)
-            TARGET_ANDROID_NBIT=64
-            ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker64'
+        aarch64)
+            TARGET_PLATFORM_ABI='arm64-v8a'
+            TARGET_PLATFORM_NBIT=64
             ;;
+        i686)
+            TARGET_PLATFORM_ABI='x86'
+            TARGET_PLATFORM_NBIT=32
+            ;;
+        x86_64)
+            TARGET_PLATFORM_ABI='x86_64'
+            TARGET_PLATFORM_NBIT=64
+            ;;
+        *)  abort 1 "unsupported target arch: $TARGET_PLATFORM_ARCH"
     esac
 
     #########################################################################################
@@ -4854,7 +4754,7 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    if [ "$PACKAGE_BUILD_IN_PARALLEL" = no ] ; then
+    if [ "$PACKAGE_BUILD_IN_PARALLEL" = 0 ] ; then
         BUILD_NJOBS=1
     fi
 
@@ -4864,11 +4764,11 @@ __install_the_given_package() {
 
     cat <<EOF
 supported min sdk api level: $PACKAGE_API_MIN
-requested min sdk api level: $TARGET_ANDROID_API
+requested min sdk api level: $TARGET_PLATFORM_VERS
 EOF
 
-    if [ "$PACKAGE_API_MIN" -gt "$TARGET_ANDROID_API" ] ; then
-        abort 1 "package installation failure: '$1'\n    supported min sdk api level: $PACKAGE_API_MIN\n    requested min sdk api level: $TARGET_ANDROID_API"
+    if [ "$PACKAGE_API_MIN" -gt "$TARGET_PLATFORM_VERS" ] ; then
+        abort 1 "package installation failure: '$1'\n    supported min sdk api level: $PACKAGE_API_MIN\n    requested min sdk api level: $TARGET_PLATFORM_VERS"
     fi
 
     #########################################################################################
@@ -4887,9 +4787,9 @@ EOF
      NATIVE_OS_EUID = $NATIVE_OS_EUID
      NATIVE_OS_EGID = $NATIVE_OS_EGID
 
-TARGET_ANDROID_ARCH = $TARGET_ANDROID_ARCH
-TARGET_ANDROID_ABI  = $TARGET_ANDROID_ABI
-TARGET_ANDROID_API  = $TARGET_ANDROID_API
+TARGET_PLATFORM_VERS= $TARGET_PLATFORM_VERS
+TARGET_PLATFORM_ARCH= $TARGET_PLATFORM_ARCH
+TARGET_PLATFORM_ABI = $TARGET_PLATFORM_ABI
 
 NDKPKG_VERSION      = $NDKPKG_VERSION
 NDKPKG_HOME         = $NDKPKG_HOME
@@ -4944,7 +4844,7 @@ $PACKAGE_SPEC:$$:$PACKAGE_INSTALL_UTS
 EOF
 } | cut -d ' ' -f1)"
 
-    PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+    PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$PACKAGE_INSTALL_SHA"
 
     #########################################################################################
 
@@ -5014,9 +4914,9 @@ EOF
     PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
     PROXIED_OBJC_FOR_BUILD="$OBJC_FOR_BUILD"
 
-     CC_FOR_BUILD="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-native-cc"
-   OBJC_FOR_BUILD="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-native-objc"
-    CXX_FOR_BUILD="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-native-c++"
+     CC_FOR_BUILD="$NDKPKG_CORE_DIR/wrapper-native-cc"
+   OBJC_FOR_BUILD="$NDKPKG_CORE_DIR/wrapper-native-objc"
+    CXX_FOR_BUILD="$NDKPKG_CORE_DIR/wrapper-native-c++"
     CPP_FOR_BUILD="$CC_FOR_BUILD -E"
 
     for TOOL in PROXIED_CC PROXIED_CXX PROXIED_OBJC CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT
@@ -5109,7 +5009,7 @@ EOF
 
     #########################################################################################
 
-    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = 1 ] ; then
         step "config environment variables for cmake for native build"
 
         # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
@@ -5153,14 +5053,14 @@ EOF
         export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
 
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
-        if [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] ; then
+        if [ "$PACKAGE_BUILD_SYSTEM_NINJA" = 1 ] ; then
             export CMAKE_GENERATOR='Ninja'
         else
             export CMAKE_GENERATOR='Unix Makefiles'
         fi
 
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
-        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] ; then
+        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
             export CMAKE_EXPORT_COMPILE_COMMANDS=ON
         else
             export CMAKE_EXPORT_COMPILE_COMMANDS=OFF
@@ -5248,7 +5148,7 @@ EOF
     [ -n "$PACKAGE_DEP_PKG" ] && {
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            DEPENDENT_PACKAGE_INSTALL_DIR="$(readlink -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME:$TARGET_ANDROID_SPEC")"
+            DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME"
 
             if [ -z "$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS" ] ; then
                 RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$DEPENDENT_PACKAGE_INSTALL_DIR"
@@ -5387,11 +5287,11 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = 1 ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
         PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 bear"
     fi
 
-    if [ "$CCACHE_ENABLED" = yes ] ; then
+    if [ "$CCACHE_ENABLED" = 1 ] ; then
         PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 ccache"
     fi
 
@@ -5521,12 +5421,12 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = 1 ] && {
         command -v rustup > /dev/null || {
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
 
-            wfetch 'https://sh.rustup.rs' --output-filename=rustup-init.sh
+            wfetch 'https://sh.rustup.rs' -o rustup-init.sh --no-buffer
 
             run bash rustup-init.sh -y
 
@@ -5556,7 +5456,7 @@ $DOT_CONTENT
     unset CCACHE
     unset PKG_CONFIG
 
-    if [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = yes ] || [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = yes ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = 1 ] || [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = 1 ] ; then
         AUTORECONF=$(command -v autoreconf) || abort 1 "command not found: autoreconf"
         AUTOCONF=$(command -v autoconf)     || abort 1 "command not found: autoconf"
         AUTOMAKE=$(command -v automake)     || abort 1 "command not found: automake"
@@ -5578,19 +5478,19 @@ $DOT_CONTENT
         printf '\n'
     fi
 
-    [ "$PACKAGE_BUILD_SYSTEM_MESON" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_MESON" = 1 ] && {
         MESON=$(command -v meson) || abort 1 "command not found: meson"
         run "$MESON"      --version
         printf '\n'
     }
 
-    [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = 1 ] && {
         CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
         run "$CMAKE"      --version
         printf '\n'
     }
 
-    [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_XMAKE" = 1 ] && {
         XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
 
         # error: Running xmake as root is extremely dangerous and no longer supported.
@@ -5603,19 +5503,19 @@ $DOT_CONTENT
         printf '\n'
     }
 
-    [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_GMAKE" = 1 ] && {
         GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake and make"
         run "$GMAKE"      --version
         printf '\n'
     }
 
-    [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_NINJA" = 1 ] && {
         NINJA=$(command -v ninja) || abort 1 "command not found: ninja"
         run "$NINJA"      --version
         printf '\n'
     }
 
-    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = 1 ] && {
         RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
         CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
         run "$RUSTUP"     --version
@@ -5624,13 +5524,13 @@ $DOT_CONTENT
         printf '\n'
     }
 
-    [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_GO" = 1 ] && {
         GO=$(command -v go) || abort 1 "command not found: go"
         run "$GO"      version
         printf '\n'
     }
 
-    [ "$CCACHE_ENABLED" = yes ] && {
+    [ "$CCACHE_ENABLED" = 1 ] && {
         CCACHE=$(command -v ccache) || abort 1 "command not found: ccache"
         run "$CCACHE"    --version
         printf '\n'
@@ -5719,15 +5619,15 @@ $DOT_CONTENT
             run git submodule update --init
         fi
     else
-        wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_SRC_FILEPATH" --uri="$PACKAGE_SRC_URI"
+        wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
     fi
 
     if [ -n    "$PACKAGE_FIX_URL" ] ; then
-        wfetch "$PACKAGE_FIX_URL" --sha256="$PACKAGE_FIX_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_FIX_FILEPATH" --uri="$PACKAGE_FIX_URI"
+        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
     fi
 
     if [ -n    "$PACKAGE_RES_URL" ] ; then
-        wfetch "$PACKAGE_RES_URL" --sha256="$PACKAGE_RES_SHA" --buffer-dir="$PACKAGE_WORKING_DIR" --output-filepath="$PACKAGE_RES_FILEPATH" --uri="$PACKAGE_RES_URI"
+        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
     fi
 
     #########################################################################################
@@ -5799,7 +5699,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ "$DRYRUN" = yes ] && {
+    [ "$DRYRUN" = 1 ] && {
         [ -z "$SHELL" ] || SHELL=$(command -v zsh || command -v bash || command -v sh) || abort 1 "none of zsh|bash|sh shell found in your system."
         exec "$SHELL"
     }
@@ -5807,9 +5707,9 @@ $DOT_CONTENT
     #########################################################################################
 
     {
-        [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = yes ] ||
-        [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = yes ] ||
-        [ "$PACKAGE_BUILD_SYSTEM_CONFIGURE" = yes ]
+        [ "$PACKAGE_BUILD_SYSTEM_AUTOGENSH" = 1 ] ||
+        [ "$PACKAGE_BUILD_SYSTEM_AUTOTOOLS" = 1 ] ||
+        [ "$PACKAGE_BUILD_SYSTEM_CONFIGURE" = 1 ]
     } && {
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
         # https://git.savannah.gnu.org/cgit/config.git/tree/
@@ -5820,7 +5720,7 @@ $DOT_CONTENT
         do
             FILEPATH="$SESSION_DIR/$FILENAME"
 
-            wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" --output-filepath="$FILEPATH"
+            wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH" --no-buffer
 
             run chmod a+x "$FILEPATH"
 
@@ -5839,20 +5739,20 @@ $DOT_CONTENT
     if [ -z "$PACKAGE_DONATIVE_ACTIONS" ] ; then
         note "build0 mapping was not found in formula, skipped."
     else
-        NATIVE_INSTALL_NEEDED=yes
+        NATIVE_BUILD_NEEDED=1
 
         NATIVE_INSTALLED_VERSION_TXT_FILEPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME/version.txt"
 
         [ -f "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH" ] && {
             if [ "$(cat "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH")" = "$PACKAGE_VERSION" ] ; then
-                NATIVE_INSTALL_NEEDED=no
+                NATIVE_BUILD_NEEDED=0
                 note "build for native already have been done, skipped."
             else
                 note "build for native already have been done, but not the same version, rebuild it."
             fi
         }
 
-        if [ "$NATIVE_INSTALL_NEEDED" = yes ] ; then
+        if [ "$NATIVE_BUILD_NEEDED" = 1 ] ; then
             NATIVE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/-"
             NATIVE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
 
@@ -5861,22 +5761,27 @@ NATIVE_BCACHED_DIR = $NATIVE_BCACHED_DIR
 NATIVE_INSTALL_DIR = $NATIVE_INSTALL_DIR
 EOF
 
-            run install -d "$NATIVE_BCACHED_DIR"
+            (
+                PACKAGE_BCACHED_DIR="$NATIVE_BCACHED_DIR"
+                PACKAGE_INSTALL_DIR="$NATIVE_INSTALL_DIR"
 
-            if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
-                if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+                run install -d "$PACKAGE_BCACHED_DIR"
+
+                if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = 1 ] ; then
                     run cd "$PACKAGE_BSCRIPT_DIR"
+                else
+                    run cd "$PACKAGE_BCACHED_DIR"
                 fi
-            else
-                    run cd "$NATIVE_BCACHED_DIR"
-            fi
 
-            eval "
-do_build_for_native() {
+                eval "
+build_for_native() {
 $PACKAGE_DONATIVE_ACTIONS
 }"
 
-            do_build_for_native
+                BUILD_FOR_NATIVE=1
+
+                build_for_native
+            )
 
             [ -d "$NATIVE_INSTALL_DIR" ] && {
                 printf '%s\n' "$PACKAGE_VERSION" > "$NATIVE_INSTALL_DIR/version.txt"
@@ -5903,13 +5808,13 @@ $PACKAGE_DONATIVE_ACTIONS
 
     #########################################################################################
 
-    if [ "$TARGET_ANDROID_ARCH" = armv7a ] ; then
+    if [ "$TARGET_PLATFORM_ARCH" = armv7a ] ; then
         TARGET_TRIPLE='armv7a-linux-androideabi'
     else
-        TARGET_TRIPLE="$TARGET_ANDROID_ARCH-linux-android"
+        TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-linux-android"
     fi
 
-    export ANDROID_TARGET="${TARGET_TRIPLE}${TARGET_ANDROID_API}"
+    export ANDROID_TARGET="${TARGET_TRIPLE}${TARGET_PLATFORM_VERS}"
     export ANDROID_NDK_CC
     export ANDROID_NDK_CXX
     export ANDROID_NDK_SYSROOT
@@ -5918,8 +5823,8 @@ $PACKAGE_DONATIVE_ACTIONS
 
     step "locate C/C++ toolchain for target build"
 
-    export      CC="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-target-cc"
-    export     CXX="$NDKPKG_CORE_LIBEXEC_DIR/wrapper-target-c++"
+    export      CC="$NDKPKG_CORE_DIR/wrapper-target-cc"
+    export     CXX="$NDKPKG_CORE_DIR/wrapper-target-c++"
     export     CPP="$CC -E"
     export      LD="$ANDROID_NDK_LD"
     export      AS="$ANDROID_NDK_AS"
@@ -5977,33 +5882,33 @@ EOF
 
     ##############################################
 
-    _F_COMMON_OPT_IS_SET=no
+    _F_COMMON_OPT_IS_SET=0
 
     for item in $PACKAGE_CCFLAGS
     do
         [ "$item" = '-fcommon' ] && {
-            _F_COMMON_OPT_IS_SET=yes
+            _F_COMMON_OPT_IS_SET=1
             break
         }
     done
 
-    if [ "$_F_COMMON_OPT_IS_SET" = no ] ; then
+    if [ "$_F_COMMON_OPT_IS_SET" = 0 ] ; then
         CCFLAGS="$CCFLAGS -fno-common"
     fi
 
     ##############################################
 
-    _F_COMMON_OPT_IS_SET=no
+    _F_COMMON_OPT_IS_SET=0
 
     for item in $PACKAGE_XXFLAGS
     do
         [ "$item" = '-fcommon' ] && {
-            _F_COMMON_OPT_IS_SET=yes
+            _F_COMMON_OPT_IS_SET=1
             break
         }
     done
 
-    if [ "$_F_COMMON_OPT_IS_SET" = no ] ; then
+    if [ "$_F_COMMON_OPT_IS_SET" = 0 ] ; then
         XXFLAGS="$XXFLAGS -fno-common"
     fi
 
@@ -6047,14 +5952,12 @@ EOF
     do
         DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
 
-        DEPENDENT_PACKAGE_INSTALL_DIR="$(readlink -f "$NDKPKG_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME:$TARGET_ANDROID_SPEC")"
-        DEPENDENT_PACKAGE_BINARY__DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/bin"
+        DEPENDENT_PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME"
         DEPENDENT_PACKAGE_INCLUDE_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/include"
         DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
         DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib/pkgconfig"
 
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INSTALL_DIR='$DEPENDENT_PACKAGE_INSTALL_DIR'"
-        eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_BINARY__DIR='$DEPENDENT_PACKAGE_BINARY__DIR'"
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_INCLUDE_DIR='$DEPENDENT_PACKAGE_INCLUDE_DIR'"
         eval "${DEPENDENT_PACKAGE_NAME_UNDERSCORE}_LIBRARY_DIR='$DEPENDENT_PACKAGE_LIBRARY_DIR'"
 
@@ -6075,7 +5978,7 @@ EOF
         # https://android.googlesource.com/platform/bionic/+/master/docs/status.md
 
         if [ "$DEPENDENT_PACKAGE_NAME" = libexecinfo ] ; then
-            if [ "$TARGET_ANDROID_API" -lt 33 ] ; then
+            if [ "$TARGET_PLATFORM_VERS" -lt 33 ] ; then
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/execinfo.h
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/execinfo.cpp
                 CPPFLAGS="$CPPFLAGS -include $libexecinfo_INCLUDE_DIR/execinfo.h"
@@ -6084,7 +5987,7 @@ EOF
         fi
 
         if [ "$DEPENDENT_PACKAGE_NAME" = libgetloadavg ] ; then
-            if [ "$TARGET_ANDROID_API" -lt 29 ] ; then
+            if [ "$TARGET_PLATFORM_VERS" -lt 29 ] ; then
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#157
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getloadavg.cpp
                 # int getloadavg(double __averages[], int __n) __INTRODUCED_IN(29);
@@ -6096,7 +5999,7 @@ EOF
         if [ "$DEPENDENT_PACKAGE_NAME" = libglob ] ; then
             # https://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/glob.h
-            if [ "$TARGET_ANDROID_API" -lt 28 ] ; then
+            if [ "$TARGET_PLATFORM_VERS" -lt 28 ] ; then
                 LDFLAGS="$LDFLAGS -l:libglob.a"
             fi
         fi
@@ -6104,7 +6007,7 @@ EOF
         if [ "$DEPENDENT_PACKAGE_NAME" = liblanginfo ] ; then
             # https://pubs.opengroup.org/onlinepubs/9699919799/functions/nl_langinfo.html
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/langinfo.h
-            if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
+            if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
                 LDFLAGS="$LDFLAGS -l:liblanginfo.a"
             fi
         fi
@@ -6113,7 +6016,7 @@ EOF
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#163
             # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/mblen.cpp
             # int mblen(const char* __s, size_t __n) __INTRODUCED_IN_NO_GUARD_FOR_NDK(26);
-            if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
+            if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
                 CPPFLAGS="$CPPFLAGS -include $libmblen_INCLUDE_DIR/mblen.h"
                 LDFLAGS="$LDFLAGS -l:libmblen.a"
             fi
@@ -6123,7 +6026,7 @@ EOF
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/unistd.h#313
             # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getdomainname.cpp
             # int getdomainname(char* __buf, size_t __buf_size) __INTRODUCED_IN(26);
-            if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
+            if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
                 CPPFLAGS="$CPPFLAGS -include $libgetdomainname_INCLUDE_DIR/getdomainname.h"
                 LDFLAGS="$LDFLAGS -l:libgetdomainname.a"
             fi
@@ -6132,7 +6035,7 @@ EOF
         if [ "$DEPENDENT_PACKAGE_NAME" = libstrchrnul ] ; then
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/string.h#68
             # char* strchrnul(char* __s, int __ch) __RENAME(strchrnul) __attribute_pure__ __INTRODUCED_IN(24);
-            if [ "$TARGET_ANDROID_API" -lt 24 ] ; then
+            if [ "$TARGET_PLATFORM_VERS" -lt 24 ] ; then
                 CPPFLAGS="$CPPFLAGS -include $libstrchrnul_INCLUDE_DIR/strchrnul.h"
                 LDFLAGS="$LDFLAGS -l:libstrchrnul.a"
             fi
@@ -6258,12 +6161,12 @@ EOF
 
     export IFS=':'
 
-    FIRST=yes
+    FIRST=1
 
     for item in $(printf '%s\n' "$PKG_CONFIG_PATH")
     do
-        if [ "$FIRST" = yes ] ; then
-            FIRST=no
+        if [ "$FIRST" = 1 ] ; then
+            FIRST=0
             printf 'PKG_CONFIG_PATH     = %s\n' "$item"
         else
             printf '%s\n' "                      $item"
@@ -6274,7 +6177,7 @@ EOF
 
     #########################################################################################
 
-    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = yes ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM_CMAKE" = 1 ] ; then
         step "config environment variables for cmake"
 
         # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
@@ -6311,14 +6214,14 @@ EOF
         export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
 
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
-        if [ "$PACKAGE_BUILD_SYSTEM_NINJA" = yes ] ; then
+        if [ "$PACKAGE_BUILD_SYSTEM_NINJA" = 1 ] ; then
             export CMAKE_GENERATOR='Ninja'
         else
             export CMAKE_GENERATOR='Unix Makefiles'
         fi
 
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
-        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] ; then
+        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
             export CMAKE_EXPORT_COMPILE_COMMANDS=ON
         else
             export CMAKE_EXPORT_COMPILE_COMMANDS=OFF
@@ -6356,14 +6259,14 @@ EOF
 
     #########################################################################################
 
-    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM_CARGO" = 1 ] ; then
         step "config environment variables for cargo and rustc"
 
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
 
         # this environment variable is not defined by Rust, but it is widely used by third-party project.
-        case $TARGET_ANDROID_ARCH in
+        case $TARGET_PLATFORM_ARCH in
             armv7a)  export RUST_TARGET='armv7-linux-androideabi' ;;
             aarch64) export RUST_TARGET='aarch64-linux-android'   ;;
             i686)    export RUST_TARGET='i686-linux-android'      ;;
@@ -6400,7 +6303,7 @@ EOF
         for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
         do
             if [ "$DEPENDENT_PACKAGE_NAME" = libgetloadavg ] ; then
-                if [ "$TARGET_ANDROID_API" -lt 29 ] ; then
+                if [ "$TARGET_PLATFORM_VERS" -lt 29 ] ; then
                     # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#157
                     # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getloadavg.cpp
                     # int getloadavg(double __averages[], int __n) __INTRODUCED_IN(29);
@@ -6412,7 +6315,7 @@ EOF
             if [ "$DEPENDENT_PACKAGE_NAME" = libglob ] ; then
                 # https://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/glob.h
-                if [ "$TARGET_ANDROID_API" -lt 28 ] ; then
+                if [ "$TARGET_PLATFORM_VERS" -lt 28 ] ; then
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libglob_LIBRARY_DIR/libglob.a"
                 fi
             fi
@@ -6420,7 +6323,7 @@ EOF
             if [ "$DEPENDENT_PACKAGE_NAME" = liblanginfo ] ; then
                 # https://pubs.opengroup.org/onlinepubs/9699919799/functions/nl_langinfo.html
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/langinfo.h
-                if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
+                if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$liblanginfo_LIBRARY_DIR/liblanginfo.a"
                 fi
             fi
@@ -6429,7 +6332,7 @@ EOF
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#163
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/mblen.cpp
                 # int mblen(const char* __s, size_t __n) __INTRODUCED_IN_NO_GUARD_FOR_NDK(26);
-                if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
+                if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
                     CPPFLAGS="$CPPFLAGS -include $libmblen_INCLUDE_DIR/mblen.h"
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libmblen_LIBRARY_DIR/libmblen.a"
                 fi
@@ -6439,7 +6342,7 @@ EOF
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/unistd.h#313
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getdomainname.cpp
                 # int getdomainname(char* __buf, size_t __buf_size) __INTRODUCED_IN(26);
-                if [ "$TARGET_ANDROID_API" -lt 26 ] ; then
+                if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
                     # CPPFLAGS="$CPPFLAGS -include $libgetdomainname_INCLUDE_DIR/getdomainname.h"
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libgetdomainname_LIBRARY_DIR/libgetdomainname.a"
                 fi
@@ -6448,7 +6351,7 @@ EOF
             if [ "$DEPENDENT_PACKAGE_NAME" = libstrchrnul ] ; then
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/string.h#68
                 # char* strchrnul(char* __s, int __ch) __RENAME(strchrnul) __attribute_pure__ __INTRODUCED_IN(24);
-                if [ "$TARGET_ANDROID_API" -lt 24 ] ; then
+                if [ "$TARGET_PLATFORM_VERS" -lt 24 ] ; then
                     # CPPFLAGS="$CPPFLAGS -include $libstrchrnul_INCLUDE_DIR/strchrnul.h"
                     export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libstrchrnul_LIBRARY_DIR/libstrchrnul.a"
                 fi
@@ -6517,15 +6420,15 @@ EOF
         export TARGET_CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/android.toolchain.cmake"
 
         cat > "$TARGET_CMAKE_TOOLCHAIN_FILE" <<EOF
-set(TARGET_ANDROID_ABI "${TARGET_ANDROID_ABI}")
-set(ANDROID_PLATFORM "android-${TARGET_ANDROID_API}")
+set(ANDROID_ABI "${TARGET_PLATFORM_ABI}")
+set(ANDROID_PLATFORM "android-${TARGET_PLATFORM_VERS}")
 include(${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake)
 EOF
     fi
 
     #########################################################################################
 
-    if [ "$PACKAGE_BUILD_SYSTEM_GO" = yes ] ; then
+    if [ "$PACKAGE_BUILD_SYSTEM_GO" = 1 ] ; then
         step "config environment variables for go"
 
         # https://pkg.go.dev/cmd/cgo
@@ -6545,7 +6448,7 @@ EOF
         # https://golang.org/doc/install/source#environment
         export GOOS='android'
 
-        case $TARGET_ANDROID_ARCH in
+        case $TARGET_PLATFORM_ARCH in
             armv7a)  export GOARCH=arm   ;;
             aarch64) export GOARCH=arm64 ;;
             i686)    export GOARCH=386   ;;
@@ -6613,7 +6516,7 @@ EOF
 
     if [ "$ANDROID_NDK_VERSION_MAJOR" -ge 23 ] ; then
         # https://github.com/rust-windowing/android-ndk-rs/issues/149
-        if [ "$TARGET_ANDROID_ARCH" = 'x86_64' ] ; then
+        if [ "$TARGET_PLATFORM_ARCH" = 'x86_64' ] ; then
             LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
         else
             LIBCLANG_RT_BUILTINS_FILEPATH=
@@ -6657,14 +6560,14 @@ EOF
 
     step "config ccache"
 
-    if [ "$CCACHE_ENABLED" = yes ] ; then
+    if [ "$CCACHE_ENABLED" = 1 ] ; then
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-cc"
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-c++"
     else
         note "ccache is disabled, skipped."
     fi
 
-    if [ "$CCACHE_ENABLED" = yes ] ; then
+    if [ "$CCACHE_ENABLED" = 1 ] ; then
         ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
     fi
 
@@ -6720,7 +6623,7 @@ $PACKAGE_DOPATCH_ACTIONS
 
     step "install for target"
 
-    if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = yes ] ; then
+    if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = 1 ] ; then
         run cd "$PACKAGE_BSCRIPT_DIR"
     else
         run cd "$PACKAGE_BCACHED_DIR"
@@ -6739,7 +6642,7 @@ $PACKAGE_DOBUILD_ACTIONS
 
     #########################################################################################
 
-    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = yes ] && {
+    [ "$PACKAGE_BUILD_SYSTEM_CARGO" = 1 ] && {
         rm -f "$PACKAGE_INSTALL_DIR/.crates.toml"
         rm -f "$PACKAGE_INSTALL_DIR/.crates2.json"
     }
@@ -6896,7 +6799,7 @@ $PACKAGE_DOBUILD_ACTIONS
 
     #########################################################################################
 
-    [ "$CCACHE_ENABLED" = yes ] && {
+    [ "$CCACHE_ENABLED" = 1 ] && {
         step "show ccache statistics summary"
         note "Before Build:"
         run  cat "$PACKAGE_WORKING_DIR/ccache-s.txt"
@@ -6904,7 +6807,7 @@ $PACKAGE_DOBUILD_ACTIONS
         run  ccache -s
     }
 
-    [ "$KEEP_SESSION_DIR" != yes ] && {
+    [ "$KEEP_SESSION_DIR" != 1 ] && {
         step "delete the working directory"
         run rm -rf "$PACKAGE_WORKING_DIR"
     }
@@ -7002,11 +6905,11 @@ __adjust_elf_files_for_the_given_target() {
                 ELF_TYPE=
                 ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
 
-                case $TARGET_ANDROID_ABI in
-                    armeabi-v7a) FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}002800" ;;
-                    arm64-v8a)   FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}00B700" ;;
-                    x86)         FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}000300" ;;
-                    x86_64)      FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}003E00" ;;
+                case $TARGET_PLATFORM_ARCH in
+                    armv7a)  FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}002800" ;;
+                    aarch64) FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}00B700" ;;
+                    x86)     FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}000300" ;;
+                    x86_64)  FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}003E00" ;;
                 esac
 
                 if [ "$FILE_HEADER_EXPACT" != "$FILE_HEADER_ACTUAL" ] ; then
@@ -7018,6 +6921,12 @@ __adjust_elf_files_for_the_given_target() {
                 PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
 
                 if [ -n  "$PT_INTERP" ] ; then
+                    if [ "$TARGET_PLATFORM_NBIT" -eq 64 ] ; then
+                        ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker64'
+                    else
+                        ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker'
+                    fi
+
                     if [ "$PT_INTERP" != "$ANDROID_DYNAMIC_LINKER_PATH" ] ; then
                         abort 1 "ELF file PT_INTERP mismatch: $FILEPATH\n    expect : $ANDROID_DYNAMIC_LINKER_PATH\n    actual : $PT_INTERP"
                     fi
@@ -7453,9 +7362,9 @@ cargow() {
 
 # run in a subshell
 configure() {
-    if [ "$STEP_MESSAGE" = 'build for native' ] ; then
+    if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
         if run "$PACKAGE_BSCRIPT_DIR"/configure \
-            --prefix="$NATIVE_INSTALL_DIR" \
+            --prefix="$PACKAGE_INSTALL_DIR" \
             $@ ; then
             echo
         else
@@ -7475,13 +7384,13 @@ configure() {
         export ac_cv_func_realloc_0_nonnull=yes
 
         # https://android.googlesource.com/platform/bionic/+/master/docs/32-bit-abi.md#is-32_bit-on-lp32-y2038
-        if [ "$TARGET_ANDROID_NBIT" -eq 32 ] ; then
+        if [ "$TARGET_PLATFORM_NBIT" -eq 32 ] ; then
             export ac_year2038_required=no
         fi
 
-        CONFIGURE_ARG_ENABLE_NLS=no
-        CONFIGURE_ARG_ENABLE_RPATH=no
-        CONFIGURE_ARG_ENABLE_LARGEFILE=yes
+        CONFIGURE_ARG_ENABLE_NLS=0
+        CONFIGURE_ARG_ENABLE_RPATH=0
+        CONFIGURE_ARG_ENABLE_LARGEFILE=1
 
         CONFIGURE_ARG_ENABLE_DEBUG=
         CONFIGURE_ARG_ENABLE_STATIC=
@@ -7490,53 +7399,53 @@ configure() {
         for arg in "$@"
         do
             case $arg in
-                --enable-nls)      CONFIGURE_ARG_ENABLE_NLS=yes ;;
-                --enable-nls=yes)  CONFIGURE_ARG_ENABLE_NLS=yes ;;
-                --enable-nls=no)   CONFIGURE_ARG_ENABLE_NLS=no  ;;
-                --disable-nls)     CONFIGURE_ARG_ENABLE_NLS=no  ;;
+                --enable-nls)      CONFIGURE_ARG_ENABLE_NLS=1 ;;
+                --enable-nls=yes)  CONFIGURE_ARG_ENABLE_NLS=1 ;;
+                --enable-nls=no)   CONFIGURE_ARG_ENABLE_NLS=0 ;;
+                --disable-nls)     CONFIGURE_ARG_ENABLE_NLS=0 ;;
 
-                --enable-rpath)     CONFIGURE_ARG_ENABLE_RPATH=yes ;;
-                --enable-rpath=yes) CONFIGURE_ARG_ENABLE_RPATH=yes ;;
-                --enable-rpath=no)  CONFIGURE_ARG_ENABLE_RPATH=no  ;;
-                --disable-rpath)    CONFIGURE_ARG_ENABLE_RPATH=no  ;;
+                --enable-rpath)     CONFIGURE_ARG_ENABLE_RPATH=1 ;;
+                --enable-rpath=yes) CONFIGURE_ARG_ENABLE_RPATH=1 ;;
+                --enable-rpath=no)  CONFIGURE_ARG_ENABLE_RPATH=0 ;;
+                --disable-rpath)    CONFIGURE_ARG_ENABLE_RPATH=0 ;;
 
-                --enable-largefile)     CONFIGURE_ARG_ENABLE_LARGEFILE=yes ;;
-                --enable-largefile=yes) CONFIGURE_ARG_ENABLE_LARGEFILE=yes ;;
-                --enable-largefile=no)  CONFIGURE_ARG_ENABLE_LARGEFILE=no  ;;
-                --disable-largefile)    CONFIGURE_ARG_ENABLE_LARGEFILE=no  ;;
+                --enable-largefile)     CONFIGURE_ARG_ENABLE_LARGEFILE=1 ;;
+                --enable-largefile=yes) CONFIGURE_ARG_ENABLE_LARGEFILE=1 ;;
+                --enable-largefile=no)  CONFIGURE_ARG_ENABLE_LARGEFILE=0 ;;
+                --disable-largefile)    CONFIGURE_ARG_ENABLE_LARGEFILE=0 ;;
 
-                --enable-debug)     CONFIGURE_ARG_ENABLE_DEBUG=yes ;;
-                --enable-debug=yes) CONFIGURE_ARG_ENABLE_DEBUG=yes ;;
-                --enable-debug=no)  CONFIGURE_ARG_ENABLE_DEBUG=no  ;;
-                --disable-debug)    CONFIGURE_ARG_ENABLE_DEBUG=no  ;;
+                --enable-debug)     CONFIGURE_ARG_ENABLE_DEBUG=1 ;;
+                --enable-debug=yes) CONFIGURE_ARG_ENABLE_DEBUG=1 ;;
+                --enable-debug=no)  CONFIGURE_ARG_ENABLE_DEBUG=0 ;;
+                --disable-debug)    CONFIGURE_ARG_ENABLE_DEBUG=0 ;;
 
-                --enable-static)     CONFIGURE_ARG_ENABLE_STATIC=yes ;;
-                --enable-static=yes) CONFIGURE_ARG_ENABLE_STATIC=yes ;;
-                --enable-static=no)  CONFIGURE_ARG_ENABLE_STATIC=no  ;;
-                --disable-static)    CONFIGURE_ARG_ENABLE_STATIC=no  ;;
+                --enable-static)     CONFIGURE_ARG_ENABLE_STATIC=1 ;;
+                --enable-static=yes) CONFIGURE_ARG_ENABLE_STATIC=1 ;;
+                --enable-static=no)  CONFIGURE_ARG_ENABLE_STATIC=0 ;;
+                --disable-static)    CONFIGURE_ARG_ENABLE_STATIC=0 ;;
 
-                --enable-shared)     CONFIGURE_ARG_ENABLE_SHARED=yes ;;
-                --enable-shared=yes) CONFIGURE_ARG_ENABLE_SHARED=yes ;;
-                --enable-shared=no)  CONFIGURE_ARG_ENABLE_SHARED=no  ;;
-                --disable-shared)    CONFIGURE_ARG_ENABLE_SHARED=no  ;;
+                --enable-shared)     CONFIGURE_ARG_ENABLE_SHARED=1 ;;
+                --enable-shared=yes) CONFIGURE_ARG_ENABLE_SHARED=1 ;;
+                --enable-shared=no)  CONFIGURE_ARG_ENABLE_SHARED=0 ;;
+                --disable-shared)    CONFIGURE_ARG_ENABLE_SHARED=0 ;;
             esac
         done
 
         CONFIGURE_ARGS="--host='$TARGET_TRIPLE' --prefix='$PACKAGE_INSTALL_DIR' --disable-option-checking"
 
-        if [ "$CONFIGURE_ARG_ENABLE_NLS" = yes ] ; then
+        if [ "$CONFIGURE_ARG_ENABLE_NLS" = 1 ] ; then
             CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-nls"
         else
             CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-nls"
         fi
 
-        if [ "$CONFIGURE_ARG_ENABLE_RPATH" = yes ] ; then
+        if [ "$CONFIGURE_ARG_ENABLE_RPATH" = 1 ] ; then
             CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-rpath"
         else
             CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-rpath"
         fi
 
-        if [ "$CONFIGURE_ARG_ENABLE_LARGEFILE" = yes ] ; then
+        if [ "$CONFIGURE_ARG_ENABLE_LARGEFILE" = 1 ] ; then
             CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-largefile"
         else
             CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-largefile"
@@ -7612,29 +7521,25 @@ gmakew() {
     for option in $@
     do
         case $option in
-            -C)           GMAKE_OPTION_SETTED_C=yes ;;
-            -w)           GMAKE_OPTION_SETTED_w=yes ;;
-            -j)           GMAKE_OPTION_SETTED_j=yes ;;
-            -j[1-9])      GMAKE_OPTION_SETTED_j=yes ;;
-            -j[1-9][0-9]) GMAKE_OPTION_SETTED_j=yes ;;
+            -C)           GMAKE_OPTION_SETTED_C=1 ;;
+            -w)           GMAKE_OPTION_SETTED_w=1 ;;
+            -j)           GMAKE_OPTION_SETTED_j=1 ;;
+            -j[1-9])      GMAKE_OPTION_SETTED_j=1 ;;
+            -j[1-9][0-9]) GMAKE_OPTION_SETTED_j=1 ;;
         esac
     done
 
-    if [ "$GMAKE_OPTION_SETTED_w" != yes ] ; then
+    if [ "$GMAKE_OPTION_SETTED_w" != 1 ] ; then
         GMAKE_OPTIONS="$GMAKE_OPTIONS -w"
     fi
 
-    if [ "$GMAKE_OPTION_SETTED_C" != yes ] ; then
-        if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" != yes ] ; then
-            if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-                GMAKE_OPTIONS="$GMAKE_OPTIONS -C $NATIVE_BCACHED_DIR"
-            else
-                GMAKE_OPTIONS="$GMAKE_OPTIONS -C $PACKAGE_BCACHED_DIR"
-            fi
+    if [ "$GMAKE_OPTION_SETTED_C" != 1 ] ; then
+        if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" != 1 ] ; then
+            GMAKE_OPTIONS="$GMAKE_OPTIONS -C $PACKAGE_BCACHED_DIR"
         fi
     fi
 
-    if [ "$GMAKE_OPTION_SETTED_j" != yes ] ; then
+    if [ "$GMAKE_OPTION_SETTED_j" != 1 ] ; then
         GMAKE_OPTIONS="$GMAKE_OPTIONS -j$BUILD_NJOBS"
     fi
 
@@ -7642,7 +7547,7 @@ gmakew() {
         GMAKE_OPTIONS="$GMAKE_OPTIONS --debug V=1"
     fi
 
-    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] && [ "$BEAR_ENABLED" = yes ] ; then
+    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
         run bear -- $GMAKE $GMAKE_OPTIONS $*
     else
         run         $GMAKE $GMAKE_OPTIONS $*
@@ -7667,14 +7572,12 @@ cmakew() {
         CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_FIND_DEBUG_MODE=TRUE"
     fi
 
-    if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-        CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX='$NATIVE_INSTALL_DIR'"
-
-        CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $NATIVE_BCACHED_DIR"
+    if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
+        CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX='$PACKAGE_INSTALL_DIR' -S $PACKAGE_BSCRIPT_DIR -B $PACKAGE_BCACHED_DIR"
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
-        run $CMAKE --build   "$NATIVE_BCACHED_DIR" -- -j$BUILD_NJOBS &&
-        run $CMAKE --install "$NATIVE_BCACHED_DIR"
+        run $CMAKE --build   "$PACKAGE_BCACHED_DIR" -- -j$BUILD_NJOBS &&
+        run $CMAKE --install "$PACKAGE_BCACHED_DIR"
     else
         case $BUILD_TYPE in
             debug)   CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_BUILD_TYPE=Debug"   ;;
@@ -7687,7 +7590,7 @@ cmakew() {
             CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON  -DCMAKE_COLOR_MAKEFILE=ON"
         fi
 
-        case $TARGET_ANDROID_ARCH in
+        case $TARGET_PLATFORM_ARCH in
             armv7a)  CMAKE_SYSTEM_PROCESSOR=armv7-a ;;
             aarch64) CMAKE_SYSTEM_PROCESSOR=aarch64 ;;
             i686)    CMAKE_SYSTEM_PROCESSOR=i686    ;;
@@ -7723,12 +7626,12 @@ cmakew() {
         -DCMAKE_SHARED_LINKER_FLAGS='$CMAKE_SHARED_LINKER_FLAGS'
         -DCMAKE_EXE_LINKER_FLAGS='$LDFLAGS'
         -DANDROID_TOOLCHAIN=clang
-        -DANDROID_ABI=$TARGET_ANDROID_ABI
+        -DANDROID_ABI=$TARGET_PLATFORM_ABI
         -DANDROID_ARM_NEON=TRUE
         -DANDROID_STL=c++_shared
-        -DANDROID_PLATFORM=$TARGET_ANDROID_API"
+        -DANDROID_PLATFORM=$TARGET_PLATFORM_VERS"
 
-        if [ "$CCACHE_ENABLED" = yes ] ; then
+        if [ "$CCACHE_ENABLED" = 1 ] ; then
             CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DNDK_CCACHE=$CCACHE"
         fi
 
@@ -7770,12 +7673,12 @@ xmakew() {
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --mode=$BUILD_TYPE"
     fi
 
-    if [ "$STEP_MESSAGE" = 'build for native' ] ; then
-        run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_BSCRIPT_DIR --buildir=$NATIVE_BCACHED_DIR &&
+    if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
+        run $XMAKE config $XMAKE_CONFIG_OPTIONS --project=$PACKAGE_BSCRIPT_DIR --buildir=$PACKAGE_BCACHED_DIR &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
-        run $XMAKE install -o "$NATIVE_INSTALL_DIR"
+        run $XMAKE install -o "$PACKAGE_INSTALL_DIR"
     else
-        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_ANDROID_ABI --ndk_sdkver=$TARGET_ANDROID_API --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$PACKAGE_BCACHED_DIR --cc=$CC --cxx=$CXX --cflags='$CFLAGS' --cxxflags='$CXXFLAGS' --ldflags='$LDFLAGS' --shflags='$LDFLAGS'"
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_PLATFORM_ABI --ndk_sdkver=$TARGET_PLATFORM_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$PACKAGE_BCACHED_DIR --cc=$CC --cxx=$CXX --cflags='$CFLAGS' --cxxflags='$CXXFLAGS' --ldflags='$LDFLAGS' --shflags='$LDFLAGS'"
 
         run $XMAKE config $XMAKE_CONFIG_OPTIONS &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
@@ -7786,22 +7689,22 @@ xmakew() {
 # https://mesonbuild.com/Cross-compilation.html
 # run in a subshell
 mesonw() {
-    case $TARGET_ANDROID_ARCH in
-        armv7*)
+    case $TARGET_PLATFORM_ARCH in
+        armv7a)
             HOST_MACHINE_CPU_FAMILY='arm'
-            HOST_MACHINE_CPU_NAME="$TARGET_ANDROID_ARCH"
+            HOST_MACHINE_CPU_NAME="$TARGET_PLATFORM_ARCH"
             ;;
-        arm64*|aarch64)
+        aarch64)
             HOST_MACHINE_CPU_FAMILY='aarch64'
             HOST_MACHINE_CPU_NAME='armv8a'
             ;;
-        i386|i686)
+        i686)
             HOST_MACHINE_CPU_FAMILY='x86'
-            HOST_MACHINE_CPU_NAME="$TARGET_ANDROID_ARCH"
+            HOST_MACHINE_CPU_NAME="$TARGET_PLATFORM_ARCH"
             ;;
         x86_64)
             HOST_MACHINE_CPU_FAMILY='x86_64'
-            HOST_MACHINE_CPU_NAME="$TARGET_ANDROID_ARCH"
+            HOST_MACHINE_CPU_NAME="$TARGET_PLATFORM_ARCH"
             ;;
     esac
 
@@ -7868,18 +7771,18 @@ to_meson_array() {
 ndk_build() {
     # https://developer.android.com/ndk/downloads/revision_history#expandable-33
     # Android NDK r7 (November 2011)
-    if [ "$CCACHE_ENABLED" = yes ] ; then
+    if [ "$CCACHE_ENABLED" = 1 ] ; then
         export NDK_CCACHE=$CCACHE
     fi
 
-    NDK_BUILD_ARGS="NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=Android.mk APP_PLATFORM=android-$TARGET_ANDROID_API APP_STRIP_MODE=-S"
+    NDK_BUILD_ARGS="NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=Android.mk APP_PLATFORM=android-$TARGET_PLATFORM_VERS APP_STRIP_MODE=-S"
 
     case $BUILD_TYPE in
         debug)   NDK_BUILD_ARGS="$NDK_BUILD_ARGS NDK_DEBUG=1" ;;
         release) NDK_BUILD_ARGS="$NDK_BUILD_ARGS NDK_DEBUG=0" ;;
     esac
 
-    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = yes ] ; then
+    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
         NDK_BUILD_ARGS="$NDK_BUILD_ARGS GEN_COMPILE_COMMANDS_DB=true"
     fi
 
@@ -8031,7 +7934,7 @@ ndkinfo() {
     fi
 }
 
-# setup_android_ndk_env [USER_SPECIFIED_ANDROID_NDK_HOME]
+# setup_android_ndk_env [SPECIFIED_ANDROID_NDK_HOME]
   setup_android_ndk_env() {
     step "find or install android ndk"
 
@@ -8117,7 +8020,7 @@ __setup() {
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' --output-filename=uppm-latest-release
+    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' -o uppm-latest-release --no-buffer
 
     ##################################################################################
 
@@ -8138,18 +8041,18 @@ __setup() {
         UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
     fi
 
-    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" --output-filename="$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"
+    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" -o "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"  --no-buffer
 
     run tar xvf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
 
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' --output-dir=etc
+    wfetch 'https://curl.se/ca/cacert.pem' -o . --no-buffer
 
     ##################################################################################
 
-    export SSL_CERT_FILE="$PWD/etc/cacert.pem"
+    export SSL_CERT_FILE="$PWD/cacert.pem"
 
     run bin/uppm env
     run bin/uppm update
@@ -8179,7 +8082,7 @@ __setup() {
     UPPM_PACKAGE_EXEFIND_PATH="${UPPM_PACKAGE_EXEFIND_PATH#':'}"
     UPPM_PACKAGE_ACLOCAL_PATH="${UPPM_PACKAGE_ACLOCAL_PATH#':'}"
 
-    cat > etc/profile <<EOF
+    cat > profile <<EOF
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
@@ -8586,14 +8489,12 @@ EOF
 
     ##################################################################################
 
-    run install -d libexec
+    run cc -std=c99 -o wrapper-native-cc   wrapper-native-cc.c
+    run cc -std=c99 -o wrapper-native-c++  wrapper-native-c++.c
+    run cc -std=c99 -o wrapper-native-objc wrapper-native-objc.c
 
-    run cc -std=c99 -o libexec/wrapper-native-cc   wrapper-native-cc.c
-    run cc -std=c99 -o libexec/wrapper-native-c++  wrapper-native-c++.c
-    run cc -std=c99 -o libexec/wrapper-native-objc wrapper-native-objc.c
-
-    run cc -std=c99 -o libexec/wrapper-target-cc   wrapper-target-cc.c -UUSED_AS_CXX
-    run cc -std=c99 -o libexec/wrapper-target-c++  wrapper-target-cc.c -DUSED_AS_CXX
+    run cc -std=c99 -o wrapper-target-cc   wrapper-target-cc.c -UUSED_AS_CXX
+    run cc -std=c99 -o wrapper-target-c++  wrapper-target-cc.c -DUSED_AS_CXX
 
     #########################################################################################
 
@@ -8634,7 +8535,7 @@ int main(int argc, char* argv[]) {
 }
 EOF
 
-    run cc -std=c99 -o libexec/sed-in-place sed-in-place.c
+    run cc -std=c99 -o sed-in-place sed-in-place.c
 
     #########################################################################################
 
@@ -8713,26 +8614,6 @@ ${COLOR_GREEN}ndk-pkg cleanup${COLOR_OFF}
     delete the unused cached files.
 
 
-${COLOR_GREEN}ndk-pkg ls-available${COLOR_OFF}
-    list all the available packages.
-
-${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
-    list all the installed packages.
-
-${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
-    list all the outdated  packages.
-
-
-${COLOR_GREEN}ndk-pkg is-available <PACKAGE-NAME>${COLOR_OFF}
-    check if the given package is available.
-
-${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-SPEC>${COLOR_OFF}
-    check if the given package is installed.
-
-${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-SPEC>${COLOR_OFF}
-    check if the given package is outdated.
-
-
 ${COLOR_GREEN}ndk-pkg formula-repo-init <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]${COLOR_OFF}
     create a new empty formula repository.
 
@@ -8755,48 +8636,65 @@ ${COLOR_GREEN}ndk-pkg formula-repo-list${COLOR_OFF}
     list all available formula repositories.
 
 
-${COLOR_GREEN}ndk-pkg formula-edit <PACKAGE-NAME> --editor=<EDITOR>${COLOR_OFF}
-    edit the formula of the given package.
+${COLOR_GREEN}ndk-pkg info-available <PACKAGE-NAME> [--json | --yaml | <KEY>]${COLOR_OFF}
+    show information of the given available package.
 
-${COLOR_GREEN}ndk-pkg formula <PACKAGE-NAME> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
-    show formula of the given available package.
+${COLOR_GREEN}ndk-pkg info-installed <PACKAGE-SPEC> [--json | --yaml | <KEY>]${COLOR_OFF}
+    show information of the given installed package.
 
 
-${COLOR_GREEN}ndk-pkg info <PACKAGE-NAME> [--json] [--yaml] [<KEY>]${COLOR_OFF}
-    show information of the given package.
+${COLOR_GREEN}ndk-pkg ls-available${COLOR_OFF}
+    list all the available packages.
 
-${COLOR_GREEN}ndk-pkg info @all [--json] [--yaml]${COLOR_OFF}
-    show information of all the available packages.
+${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
+    list all the installed packages.
 
-${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-PATH>]${COLOR_OFF}
-    show the packages that are depended by the given package.
+${COLOR_GREEN}ndk-pkg ls-outdated${COLOR_OFF}
+    list all the outdated  packages.
 
-    <OUTPUT-PATH> can be either the filepath or directory where the file will be written to. If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
 
-    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a directory, then <OUTPU-TYPE> will be box and <OUTPUT-PATH> will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.box
+${COLOR_GREEN}ndk-pkg is-available <PACKAGE-NAME>${COLOR_OFF}
+    check if the given package is available.
 
-    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a filepath, then <OUTPUT-PATH> must ends with one of .dot|.box|.svg|.png
+${COLOR_GREEN}ndk-pkg is-installed <PACKAGE-SPEC>${COLOR_OFF}
+    check if the given package is installed.
 
-    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
+${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-SPEC>${COLOR_OFF}
+    check if the given package is outdated.
 
 
 ${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN>${COLOR_OFF}
     search all available packages whose name matches the given regular expression pattern.
 
 
+${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <dot|box|svg|png>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+    show the packages that are depended by the given package.
+
+    <OUTPUT-TYPE> must be one of dot box svg png
+
+    <OUTPUT-PATH> can be either the filepath or directory.
+
+    If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwise, the result will be written to stdout.
+
+    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
+
+    If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>
+
+    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.
+
+    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
+
+
 ${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
     download all the resources of the given package to the local cache.
 
-${COLOR_GREEN}ndk-pkg fetch @all${COLOR_OFF}
-    download all the resources of all the available packages to the local cache.
 
-
-${COLOR_GREEN}ndk-pkg install <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     install the given packages.
 
     ${COLOR_RED}C and C++ compiler for native build should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
 
-    ${COLOR_RED}<ANDROID-ABIS>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
+    ${COLOR_RED}<ANDROID-ARCHs>${COLOR_OFF} is a comma-separated list, any combination of aarch64, armv7a, x86_64, i686
 
     INSTALL-OPTIONS:
         ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
@@ -8833,23 +8731,20 @@ ${COLOR_GREEN}ndk-pkg install <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS
             do not delete the session directory even if this package is successfully installed.
 
     USAGE-EXAMPLES:
-        ndk-pkg install zlib:android-21:arm64-v8a
-        ndk-pkg install zlib:android-21:arm64-v8a,armeabi-v7a
-        ndk-pkg install zlib:android-21:arm64-v8a,armeabi-v7a,x86_64
-        ndk-pkg install zlib:android-21:arm64-v8a,armeabi-v7a,x86_64,x86
+        ndk-pkg install android-21-aarch64/zlib
+        ndk-pkg install android-21-aarch64,armv7a/zlib
+        ndk-pkg install android-21-aarch64,armv7a,x86_64/zlib
+        ndk-pkg install android-21-aarch64,armv7a,x86_64,i686/zlib
 
-${COLOR_GREEN}ndk-pkg reinstall <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg reinstall android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ndk-pkg upgrade   <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg upgrade   android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
 ${COLOR_GREEN}ndk-pkg uninstall <PACKAGE_SPEC>...${COLOR_OFF}
     uninstall the given packages.
 
-
-${COLOR_GREEN}ndk-pkg receipt <PACKAGE-SPEC> [--path] [--yaml] [--json] [<KEY>]${COLOR_OFF}
-    show receipt of the given installed package.
 
 ${COLOR_GREEN}ndk-pkg tree <PACKAGE-SPEC> [--dirsfirst | -L N]${COLOR_OFF}
     list the installed files of the given installed package in a tree-like format.
@@ -8857,26 +8752,33 @@ ${COLOR_GREEN}ndk-pkg tree <PACKAGE-SPEC> [--dirsfirst | -L N]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg logs <PACKAGE-SPEC>${COLOR_OFF}
     show logs of the given installed package.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     pack the given installed package.
 
-    <OUTPUT-PATH> can be either the filepath or directory where the packed archive will be written to. If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+    <OUTPUT-TYPE> must ends with one of tar.gz tar.xz tar.lz tar.bz2 zip
 
-    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a filepath, then <OUTPUT-PATH> must ends with one of .tar.gz|.tar.xz|.tar.lz|.tar.bz2|.tgz|.txz|.tlz|.tbz2|zip
+    <OUTPUT-PATH> can be either the filepath or directory which indicates where the packed archive file would be written to.
 
-    If -t <OUTPUT-TYPE> option is not given but -o <OUTPUT-PATH> option is given, if <OUTPUT-PATH> is treated as a directory, then <OUTPUT-TYPE> will be .tar.xz, OUTPUT-PATH will be expanded to <OUTPUT-PATH>/\$NDKPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$TARGET_PLATFORM_NAME-\$TARGET_PLATFORM_ARCH.tar.xz
+    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it would be treated as a directory, otherwise, it would be treated as a filepath.
 
-    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPUT-TYPE> will be .tar.xz, OUTPUT-PATH will be \$NDKPKG_HOME/packed/\$PACKAGE_NAME-\$PACKAGE_VERSION-\$TARGET_PLATFORM_NAME-\$TARGET_PLATFORM_ARCH.tar.xz
+    If <OUTPUT-PATH> is treated as a filepath, then it must ends with one of .tar.gz .tar.xz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2 .zip , in this case, -t <OUTPUT-TYPE> option would be ignored if it also is specified.
+
+    If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
+
+    If -o <OUTPUT-PATH> option is unspecified, <OUTPUT-PATH> would be assigned to ./<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
+
+    If -t <OUTPUT-TYPE> option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
 
 
-${COLOR_GREEN}ndk-pkg export <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     export the given installed package as google prefab aar.
 
     For details about google prefab, please visit https://google.github.io/prefab/
 
     For details about the aar file contains google prefab, please visit https://developer.android.com/studio/projects/android-library#aar-contents
 
-    ${COLOR_RED}<ANDROID-ABIS>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
+    ${COLOR_RED}<ANDROID-ARCHs>${COLOR_OFF} is a comma-separated list, any combination of aarch64, armv7a, x86_64, i686
 
     If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
 
@@ -8886,14 +8788,14 @@ ${COLOR_GREEN}ndk-pkg export <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS>
 
     If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar
 
-${COLOR_GREEN}ndk-pkg deploy <PACKAGE-NAME>:android-<ANDROID-API>:<ANDROID-ABIS> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-session-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-session-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
     export the given installed package as google prefab aar then deploy it to Maven Repository.
 
     For details about google prefab, please visit https://google.github.io/prefab/
 
     For details about the aar file contains google prefab, please visit https://developer.android.com/studio/projects/android-library#aar-contents
 
-    ${COLOR_RED}<ANDROID-ABIS>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
+    ${COLOR_RED}<ANDROID-ARCHs>${COLOR_OFF} is a comma-separated list, any combination of aarch64, armv7a, x86_64, i686
 
     If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
 
@@ -8917,20 +8819,20 @@ Naming explanation
 ==================
 
 ${COLOR_GREEN}PACKAGE-SPEC${COLOR_OFF}
-    a formatted string that has form: <PACKAGE-NAME>:<ANDROID-SPEC>
+    a formatted string that has form: <TARGET>/<PACKAGE-NAME>
 
 ${COLOR_GREEN}PACKAGE-NAME${COLOR_OFF}
     must match regular expression pattern ^[A-Za-z0-9+-_.@]{1,50}$
 
-${COLOR_GREEN}ANDROID-SPEC${COLOR_OFF}
-    a formatted string that has form: android-<ANDROID-API>/<ANDROID-ABI>
+${COLOR_GREEN}TARGET${COLOR_OFF}
+    a formatted string that has form: android-<ANDROID-API>-<ANDROID-ARCH>
 
 ${COLOR_GREEN}ANDROID-API${COLOR_OFF}
     indicates which minimum Android SDK API level would be built for or can run on.
 
     Reference: https://developer.android.com/tools/releases/platforms
 
-${COLOR_GREEN}ANDROID-ABI${COLOR_OFF}
+${COLOR_GREEN}ANDROID-ARCH${COLOR_OFF}
     indicates which Android ABI would be built for or can run on.
 
     Reference: https://developer.android.com/ndk/guides/abis
@@ -8976,14 +8878,14 @@ ${COLOR_GREEN}NDKPKG_URL_TRANSFORM${COLOR_OFF}
 ${COLOR_GREEN}NDKPKG_XTRACE${COLOR_OFF}
     for debugging purposes. to enable set -x: ${COLOR_RED}export NDKPKG_XTRACE=1${COLOR_OFF}
 
-${COLOR_GREEN}NDKPKG_DEFAULT_TARGET_ANDROID_SPEC${COLOR_OFF}
-    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <PACKAGE-NAME>:<TARGET-ANDROID-SPEC>, To simplify the usage, you are allowed to omit :<TARGET-ANDROID-SPEC>. If :<TARGET-ANDROID-SPEC> is omitted, this environment variable will be used, if this environment variable is not set, then android-21:arm64-v8a will be used as the default.
+${COLOR_GREEN}NDKPKG_DEFAULT_TARGET${COLOR_OFF}
+    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <TARGET>/<PACKAGE-NAME>, To simplify the usage, you are allowed to omit <TARGET>/. If <TARGET>/ is omitted, this environment variable will be used, if this environment variable is not set, then android-21-aarch64 will be used as the default.
 
-    <TARGET-ANDROID-SPEC> has the form android-<MIN-SDK-API-LEVEL>:<ANDROID-ABI>
+    <TARGET> has the form android-<MIN-SDK-API-LEVEL>-<ANDROID-ARCH>
 
     Example:
 
-    ${COLOR_RED}export NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21:arm64-v8a'${COLOR_OFF}
+    ${COLOR_RED}export NDKPKG_DEFAULT_TARGET='android-21-aarch64'${COLOR_OFF}
 
     References:
 
@@ -9026,7 +8928,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.6.27
+    NDKPKG_VERSION=0.7.1
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
@@ -9041,11 +8943,9 @@ main() {
     NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
     NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"
 
-    NDKPKG_CORE_LIBEXEC_DIR="$NDKPKG_CORE_DIR/libexec"
-
     # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-    if [ -f "$NDKPKG_CORE_DIR/etc/cacert.pem" ] ; then
-        export SSL_CERT_FILE="$NDKPKG_CORE_DIR/etc/cacert.pem"
+    if [ -f "$NDKPKG_CORE_DIR/cacert.pem" ] ; then
+        export SSL_CERT_FILE="$NDKPKG_CORE_DIR/cacert.pem"
     fi
 
     if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
@@ -9149,8 +9049,8 @@ EOF
 
     #########################################################################################
 
-    if [ -f "$NDKPKG_CORE_DIR/etc/profile" ] ; then
-        .   "$NDKPKG_CORE_DIR/etc/profile"
+    if [ -f "$NDKPKG_CORE_DIR/profile" ] ; then
+        .   "$NDKPKG_CORE_DIR/profile"
     else
         abort 1 "please run ${COLOR_GREEN}$_0 setup${COLOR_OFF} command first, then try again."
     fi
@@ -9191,21 +9091,21 @@ EOF
         ndkinfo)
             shift
 
-            unset USER_SPECIFIED_ANDROID_NDK_HOME
+            unset SPECIFIED_ANDROID_NDK_HOME
 
             for arg in "$@"
             do
                 case $arg in
                     --ndk-home=*)
-                        USER_SPECIFIED_ANDROID_NDK_HOME="${arg#*=}"
+                        SPECIFIED_ANDROID_NDK_HOME="${arg#*=}"
                         ;;
                 esac
             done
 
-            if [ -z "$USER_SPECIFIED_ANDROID_NDK_HOME" ] ; then
+            if [ -z "$SPECIFIED_ANDROID_NDK_HOME" ] ; then
                 ndkinfo
             else
-                ndkinfo "$USER_SPECIFIED_ANDROID_NDK_HOME"
+                ndkinfo "$SPECIFIED_ANDROID_NDK_HOME"
             fi
 
             ;;
@@ -9213,6 +9113,9 @@ EOF
             shift
             sysinfo
             ;;
+
+        info-available) shift; __info_the_given_available_package "$@" ;;
+        info-installed) shift; __info_the_given_installed_package "$@" ;;
 
         ls-available) shift; __list_available_packages ;;
         ls-installed) shift; __list_installed_packages ;;
@@ -9233,11 +9136,6 @@ EOF
             PACKAGE_SPEC="$(inspect_package_spec "$1")"
             is_package__outdated "$PACKAGE_SPEC"
             ;;
-
-        formula) shift; __show_formula_of_the_given_package "$@" ;;
-        receipt) shift; __show_receipt_of_the_given_package "$@" ;;
-
-        formula-edit) shift; __edit_formula_of_the_given_package "$@" ;;
 
         update)            shift; __sync_available_formula_repositories "$@" ;;
         formula-repo-list) shift; __list_available_formula_repositories "$@" ;;
@@ -9304,10 +9202,6 @@ EOF
         pack) shift; __pack_the_given_installed_package "$@" ;;
         tree) shift; __tree_the_given_installed_package "$@" ;;
 
-        info)
-            shift
-            __show_information_of_the_given_package "$@"
-            ;;
         *)  abort 1 "unrecognized argument: $1"
     esac
 }

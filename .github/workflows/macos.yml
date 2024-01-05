@@ -41,33 +41,20 @@ jobs:
       - run: ./ndk-pkg search libzip
 
 
-      - run: ./ndk-pkg info @all
-      - run: ./ndk-pkg info libzip
-      - run: ./ndk-pkg info libzip --yaml
-      - run: ./ndk-pkg info libzip --json
-      - run: ./ndk-pkg info libzip version
-      - run: ./ndk-pkg info libzip license
-      - run: ./ndk-pkg info libzip summary
-      - run: ./ndk-pkg info libzip web-url
-      - run: ./ndk-pkg info libzip git-url
-      - run: ./ndk-pkg info libzip git-sha
-      - run: ./ndk-pkg info libzip git-ref
-      - run: ./ndk-pkg info libzip src-url
-      - run: ./ndk-pkg info libzip src-sha
+      - run: ./ndk-pkg info-available libzip
+      - run: ./ndk-pkg info-available libzip --yaml
+      - run: ./ndk-pkg info-available libzip --json
+      - run: ./ndk-pkg info-available libzip version
+      - run: ./ndk-pkg info-available libzip license
+      - run: ./ndk-pkg info-available libzip summary
+      - run: ./ndk-pkg info-available libzip web-url
+      - run: ./ndk-pkg info-available libzip git-url
+      - run: ./ndk-pkg info-available libzip git-sha
+      - run: ./ndk-pkg info-available libzip git-ref
+      - run: ./ndk-pkg info-available libzip src-url
+      - run: ./ndk-pkg info-available libzip src-sha
 
 
-      - run: ./ndk-pkg formula libzip
-      - run: ./ndk-pkg formula libzip --yaml
-      - run: ./ndk-pkg formula libzip --json
-      - run: ./ndk-pkg formula libzip version
-      - run: ./ndk-pkg formula libzip license
-      - run: ./ndk-pkg formula libzip summary
-      - run: ./ndk-pkg formula libzip web-url
-      - run: ./ndk-pkg formula libzip git-url
-      - run: ./ndk-pkg formula libzip git-sha
-      - run: ./ndk-pkg formula libzip git-ref
-      - run: ./ndk-pkg formula libzip src-url
-      - run: ./ndk-pkg formula libzip src-sha
 
 
       - run: ./ndk-pkg depends libzip
@@ -80,28 +67,16 @@ jobs:
       - run: ./ndk-pkg install libzip
 
 
-      - run: ./ndk-pkg receipt libzip
-      - run: ./ndk-pkg receipt libzip --yaml
-      - run: ./ndk-pkg receipt libzip --json
-      - run: ./ndk-pkg receipt libzip version
-      - run: ./ndk-pkg receipt libzip license
-      - run: ./ndk-pkg receipt libzip summary
-      - run: ./ndk-pkg receipt libzip web-url
-      - run: ./ndk-pkg receipt libzip git-url
-      - run: ./ndk-pkg receipt libzip git-sha
-      - run: ./ndk-pkg receipt libzip git-ref
-      - run: ./ndk-pkg receipt libzip src-url
-      - run: ./ndk-pkg receipt libzip src-sha
 
 
-      - run: ./ndk-pkg info libzip installed-dir
-      - run: ./ndk-pkg info libzip installed-files
-      - run: ./ndk-pkg info libzip installed-version
-      - run: ./ndk-pkg info libzip installed-timestamp-unix
-      - run: ./ndk-pkg info libzip installed-timestamp-iso-8601
-      - run: ./ndk-pkg info libzip installed-timestamp-rfc-3339
-      - run: ./ndk-pkg info libzip installed-timestamp-iso-8601-utc
-      - run: ./ndk-pkg info libzip installed-timestamp-rfc-3339-utc
+      - run: ./ndk-pkg info-installed libzip --prefix
+      - run: ./ndk-pkg info-installed libzip --files
+      - run: ./ndk-pkg info-installed libzip version
+      - run: ./ndk-pkg info-installed libzip builtat
+      - run: ./ndk-pkg info-installed libzip builtat-iso-8601
+      - run: ./ndk-pkg info-installed libzip builtat-rfc-3339
+      - run: ./ndk-pkg info-installed libzip builtat-iso-8601-utc
+      - run: ./ndk-pkg info-installed libzip builtat-rfc-3339-utc
 
 
       - run: ./ndk-pkg tree libzip

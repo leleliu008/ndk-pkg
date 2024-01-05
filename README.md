@@ -75,7 +75,7 @@ docker exec -it ndk-pkg ndk-pkg update
 If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package:
 
 ```bash
-docker exec -it ndk-pkg ndk-pkg install curl:android-21:arm64-v8a
+docker exec -it ndk-pkg ndk-pkg install android-21-aarch64/curl
 ```
 
 **Note:** you can use `podman` instead of `docker`
@@ -147,20 +147,25 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 ├── core
 │   ├── bin
 │   │   └── uppm
-│   ├── etc
-│   │   ├── cacert.pem
-│   │   └── profile
-│   ├── libexec
-│   │   ├── wrapper-native-c++
-│   │   ├── wrapper-native-cc
-│   │   ├── wrapper-native-objc
-│   │   ├── wrapper-target-c++
-│   │   └── wrapper-target-cc
+│   ├── cacert.pem
+│   ├── profile
+│   ├── sed-in-place
+│   ├── sed-in-place.c
 │   ├── share
 │   │   └── zsh
 │   │       └── site-functions
 │   │           └── _uppm
-│   └── xxxx
+│   ├── uppm-0.15.0-linux-x86_64.tar.xz
+│   ├── uppm-latest-release
+│   ├── wrapper-native-c++
+│   ├── wrapper-native-c++.c
+│   ├── wrapper-native-cc
+│   ├── wrapper-native-cc.c
+│   ├── wrapper-native-objc
+│   ├── wrapper-native-objc.c
+│   ├── wrapper-target-c++
+│   ├── wrapper-target-cc
+│   └── wrapper-target-cc.c
 ├── downloads
 │   ├── 8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313.tgz
 │   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz
@@ -331,73 +336,35 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg search lib
     ```
 
-- **show information of the given package**
+- **show information of the given available package**
 
     ```bash
-    ndk-pkg info curl
-    ndk-pkg info curl --yaml
-    ndk-pkg info curl --json
-    ndk-pkg info curl version
-    ndk-pkg info curl license
-    ndk-pkg info curl summary
-    ndk-pkg info curl web-url
-    ndk-pkg info curl git-url
-    ndk-pkg info curl git-sha
-    ndk-pkg info curl git-ref
-    ndk-pkg info curl src-url
-    ndk-pkg info curl src-sha
-    ndk-pkg info curl src-ft
-    ndk-pkg info curl src-fp
-
-    ndk-pkg info curl installed-dir
-    ndk-pkg info curl installed-files
-    ndk-pkg info curl installed-version
-    ndk-pkg info curl installed-timestamp-unix
-    ndk-pkg info curl installed-timestamp-iso-8601
-    ndk-pkg info curl installed-timestamp-rfc-3339
-    ndk-pkg info curl installed-timestamp-iso-8601-utc
-    ndk-pkg info curl installed-timestamp-rfc-3339-utc
-
-    ndk-pkg info @all
+    ndk-pkg info-available curl
+    ndk-pkg info-available curl --yaml
+    ndk-pkg info-available curl --json
+    ndk-pkg info-available curl version
+    ndk-pkg info-available curl license
+    ndk-pkg info-available curl summary
+    ndk-pkg info-available curl web-url
+    ndk-pkg info-available curl git-url
+    ndk-pkg info-available curl git-sha
+    ndk-pkg info-available curl git-ref
+    ndk-pkg info-available curl src-url
+    ndk-pkg info-available curl src-sha
+    ndk-pkg info-available curl src-ft
+    ndk-pkg info-available curl src-fp
     ```
 
-- **show formula of the given package**
+- **show information of the given installed package**
 
     ```bash
-    ndk-pkg formula curl
-    ndk-pkg formula curl --yaml
-    ndk-pkg formula curl --json
-    ndk-pkg formula curl --path
-    ndk-pkg formula curl version
-    ndk-pkg formula curl license
-    ndk-pkg formula curl summary
-    ndk-pkg formula curl web-url
-    ndk-pkg formula curl git-url
-    ndk-pkg formula curl git-sha
-    ndk-pkg formula curl git-ref
-    ndk-pkg formula curl src-url
-    ndk-pkg formula curl src-sha
-    ndk-pkg formula curl src-ft
-    ndk-pkg formula curl src-fp
-    ```
-
-- **show receipt of the given installed package**
-
-    ```bash
-    ndk-pkg receipt curl
-    ndk-pkg receipt curl:android-21:arm64-v8a
-    ndk-pkg receipt curl:android-21:arm64-v8a --yaml
-    ndk-pkg receipt curl:android-21:arm64-v8a --json
-    ndk-pkg receipt curl:android-21:arm64-v8a --path
-    ndk-pkg receipt curl:android-21:arm64-v8a version
-    ndk-pkg receipt curl:android-21:arm64-v8a license
-    ndk-pkg receipt curl:android-21:arm64-v8a summary
-    ndk-pkg receipt curl:android-21:arm64-v8a web-url
-    ndk-pkg receipt curl:android-21:arm64-v8a git-url
-    ndk-pkg receipt curl:android-21:arm64-v8a git-sha
-    ndk-pkg receipt curl:android-21:arm64-v8a git-ref
-    ndk-pkg receipt curl:android-21:arm64-v8a src-url
-    ndk-pkg receipt curl:android-21:arm64-v8a src-sha
+    ndk-pkg info-installed android-21-aarch64/curl --prefix
+    ndk-pkg info-installed android-21-aarch64/curl --files
+    ndk-pkg info-installed android-21-aarch64/curl builtat
+    ndk-pkg info-installed android-21-aarch64/curl builtat-iso-8601
+    ndk-pkg info-installed android-21-aarch64/curl builtat-rfc-3339
+    ndk-pkg info-installed android-21-aarch64/curl builtat-iso-8601-utc
+    ndk-pkg info-installed android-21-aarch64/curl builtat-rfc-3339-utc
     ```
 
 - **show packages that are depended by the given package**
@@ -425,39 +392,36 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     ```bash
     ndk-pkg fetch curl
-    ndk-pkg fetch @all
-
     ndk-pkg fetch curl -v
-    ndk-pkg fetch @all -v
     ```
 
 - **install packages**
 
     ```bash
     ndk-pkg install curl
-    ndk-pkg install curl:android-33:arm64-v8a
-    ndk-pkg install curl:android-33:arm64-v8a,x86_64 --link-type=static-only
+    ndk-pkg install android-33-aarch64/curl
+    ndk-pkg install android-33-aarch64/curl --link-type=static-full
     ```
 
 - **reinstall packages**
 
     ```bash
     ndk-pkg reinstall curl
-    ndk-pkg reinstall curl:android-33:arm64-v8a --link-type=static-only
+    ndk-pkg reinstall android-33-aarch64/curl --link-type=static-full
     ```
 
 - **uninstall packages**
 
     ```bash
     ndk-pkg uninstall curl
-    ndk-pkg uninstall curl:android-33:arm64-v8a
+    ndk-pkg uninstall android-33-aarch64/curl
     ```
 
 - **upgrade the outdated packages**
 
     ```bash
     ndk-pkg upgrade curl
-    ndk-pkg upgrade curl:android-33:arm64-v8a --link-type=static-only
+    ndk-pkg upgrade android-33-aarch64/curl --link-type=static-full
     ```
 
 - **upgrade this software**
@@ -466,15 +430,6 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg upgrade-self
     ndk-pkg upgrade-self -v
     ```
-
-- **edit the formula of the given package**
-
-    ```bash
-    ndk-pkg formula-edit curl
-    ndk-pkg formula-edit curl --editor=/usr/local/bin/vim
-    ```
-
-    **Caveats**: `ndk-pkg` does NOT save your changes, which means that your changes may be lost after the formula repository is updated!
 
 - **list all avaliable formula repositories**
 
@@ -524,64 +479,64 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
     ```bash
     ndk-pkg is-installed curl
-    ndk-pkg is-installed curl:android-21:arm64-v8a
+    ndk-pkg is-installed android-21-aarch64/curl
     ```
 
 - **check if the given package is outdated**
 
     ```bash
     ndk-pkg is-outdated  curl
-    ndk-pkg is-outdated  curl:android-21:arm64-v8a
+    ndk-pkg is-outdated  android-21-aarch64/curl
     ```
 
 - **list installed files of the given installed package in a tree-like format**
 
     ```bash
     ndk-pkg tree curl
-    ndk-pkg tree curl:android-21:arm64-v8a -L 3
+    ndk-pkg tree android-21-aarch64/curl -L 3
     ```
 
 - **show logs of the given installed package**
 
     ```bash
     ndk-pkg logs curl
-    ndk-pkg logs curl curl:android-21:arm64-v8a
+    ndk-pkg logs android-21-aarch64/curl
     ```
 
 - **pack the given installed package**
 
     ```bash
     ndk-pkg pack curl
-    ndk-pkg pack curl:android-21:arm64-v8a
-    ndk-pkg pack curl:android-21:arm64-v8a -t tar.xz
-    ndk-pkg pack curl:android-21:arm64-v8a -t tar.gz
-    ndk-pkg pack curl:android-21:arm64-v8a -t tar.lz
-    ndk-pkg pack curl:android-21:arm64-v8a -t tar.bz2
-    ndk-pkg pack curl:android-21:arm64-v8a -t zip
-    ndk-pkg pack curl:android-21:arm64-v8a -t zip -o a/
-    ndk-pkg pack curl:android-21:arm64-v8a -o a/x.zip
+    ndk-pkg pack android-21-aarch64/curl
+    ndk-pkg pack android-21-aarch64/curl -t tar.xz
+    ndk-pkg pack android-21-aarch64/curl -t tar.gz
+    ndk-pkg pack android-21-aarch64/curl -t tar.lz
+    ndk-pkg pack android-21-aarch64/curl -t tar.bz2
+    ndk-pkg pack android-21-aarch64/curl -t zip
+    ndk-pkg pack android-21-aarch64/curl -t zip -o a/
+    ndk-pkg pack android-21-aarch64/curl -o a/x.zip
     ```
 
 - **export the given installed package as the google prefab aar**
 
     ```bash
-    ndk-pkg export curl:android-21:arm64-v8a,x86_64 -o .
-    ndk-pkg export curl:android-21:arm64-v8a,x86_64 -o curl-8.1.2.aar
+    ndk-pkg export android-21-aarch64,x86_64/curl -o .
+    ndk-pkg export android-21-aarch64,x86_64/curl -o curl-8.1.2.aar
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Maven Local Repository**
 
     ```bash
-    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64
-    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64 --debug
-    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64 --local=/somewhere
+    ndk-pkg depoly android-21-aarch64,x86_64/curl
+    ndk-pkg depoly android-21-aarch64,x86_64/curl --debug
+    ndk-pkg depoly android-21-aarch64,x86_64/curl --local=/somewhere
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Sonatype OSSRH**
 
     ```bash
-    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64 --remote < ~/OSSRH-config
-    ndk-pkg depoly curl:android-21:arm64-v8a,x86_64 --remote <<EOF
+    ndk-pkg depoly android-21-aarch64,x86_64/curl --remote < ~/OSSRH-config
+    ndk-pkg depoly android-21-aarch64,x86_64/curl --remote <<EOF
     SERVER_ID=OSSRH
     SERVER_URL=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
     SERVER_USERNAME=your-sonatype-account-username
@@ -649,16 +604,16 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     export NDKPKG_XTRACE=1
     ```
 
-- **NDKPKG_DEFAULT_TARGET_ANDROID_SPEC**
+- **NDKPKG_DEFAULT_TARGET**
 
-    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<PACKAGE-NAME>:<TARGET-ANDROID-SPEC>`, To simplify the usage, you are allowed to omit `:<TARGET-ANDROID-SPEC>`. If `:<TARGET-ANDROID-SPEC>` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21:arm64-v8a` will be used as the default.
+    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET>/<PACKAGE-NAME>`, To simplify the usage, you are allowed to omit `<TARGET>/`. If `<TARGET>/` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21-aarch64` will be used as the default.
 
-    `<TARGET-ANDROID-SPEC>` has the form `android-<MIN-SDK-API-LEVEL>:<ANDROID-ABI>`
+    `<TARGET>` has the form `android-<MIN-SDK-API-LEVEL>-<TARGET-ARCH>`
 
     **Example**:
 
     ```bash
-    export NDKPKG_DEFAULT_TARGET_ANDROID_SPEC='android-21:arm64-v8a'
+    export NDKPKG_DEFAULT_TARGET='android-21-aarch64'
     ```
 
     **References**:
@@ -668,7 +623,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
 **Note:** some commonly used environment variables are override by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
 
-## ndk-pkg formula
+## ndk-pkg formula scheme
 
 a ndk-pkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file which is used to config a ndk-pkg package's meta-information including one sentence description, package version, installation instructions, etc.
 
@@ -676,9 +631,162 @@ a ndk-pkg formula's filename suffix must be `.yml`
 
 a ndk-pkg formula'a filename prefix would be treated as the package name.
 
-a ndk-pkg formula'a filename prefix must match the regular expression pattern `^[A-Za-z0-9+-._@]{1,50}$`
+a ndk-pkg formula'a filename prefix must match regular expression pattern `^[A-Za-z0-9+-._@]{1,50}$`
 
-a ndk-pkg formula's file content must follow [the ndk-pkg formula scheme](https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core)
+a uppm formula's file content only has one level mapping and shall has following KEY:
+
+|KEY|required?|overview|
+|-|-|-|
+|`summary`|required|describe this package in one sentence.|
+|`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
+|`version`|optional|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|
+||||
+|`web-url`|optional|the home webpage of this package.<br>If this mapping is not present, `git-url` must be present.|
+||||
+|`git-url`|optional|the source code git repository.<br>If `src-url` is not present, this mapping must be present.|
+|`git-ref`|optional|reference: <https://git-scm.com/book/en/v2/Git-Internals-Git-References> <br>example values: `HEAD` `refs/heads/master` `refs/heads/main` `refs/tags/v1`, default value is `HEAD`|
+|`git-sha`|optional|the full git commit id, 40-byte hexadecimal string, if `git-ref` and `git-sha` both are present, `git-sha` takes precedence over `git-ref`|
+|`git-nth`|optional|tell `ndk-pkg` that how many depth commits would you like to be fetched. default is `1`, this would save your time and storage. If you want to fetch all commits, set this to `0`|
+||||
+|`src-url`|optional|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
+|`src-uri`|optional|the mirror of `src-url`.|
+|`src-sha`|optional|the `sha256sum` of source code.<br>`src-sha` and `src-url` must appear together.|
+||||
+|`fix-url`|optional|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
+|`fix-sha`|optional|the `sha256sum` of patch file.<br>`fix-sha` and `fix-url` must appear together.|
+||||
+|`res-url`|optional|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
+|`res-sha`|optional|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
+||||
+|`dep-pkg`|optional|a space-separated list of   `ndk-pkg packages` that are depended by this package when installing and/or runtime, which will be installed via [ndk-pkg](https://github.com/leleliu008/ndk-pkg).|
+|`dep-upp`|optional|a space-separated list of   `uppm packages` that are depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
+|`dep-pym`|optional|a space-separated list of `python packages` that are depended by this package when installing and/or runtime, which will be installed via [pip3](https://github.com/pypa/pip).|
+|`dep-plm`|optional|a space-separated list of    `perl modules` that are depended by this package when installing and/or runtime, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
+||||
+|`ccflags`|optional|append to `CFLAGS`|
+|`xxflags`|optional|append to `CXXFLAGS`|
+|`ppflags`|optional|append to `CPPFLAGS`|
+|`ldflags`|optional|append to `LDFLAGS`|
+||||
+|`bsystem`|optional|build system name.<br>values can be some of `autogen` `autotools` `configure` `cmake` `cmake-gmake` `cmake-ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go`|
+|`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
+|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
+||||
+|`symlink`|optional|whether to symlink installed files to `$NDKPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`. It is only meaningful when requesting for native building.|
+||||
+|`do12345`|optional|POSIX shell code to be run for native build. It is only meaningful when requesting for cross building.|
+|`dopatch`|optional|POSIX shell code to be run to apply patches for target build. current working directory is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run for target build. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`|
+||||
+|`api-min`|optional|specify which minimum Android SDK API level is supported for this package.|
+
+**commands that can be used out of the box:**
+
+|command|usage-example|
+|-|-|
+|`bash`|[Reference](https://www.gnu.org/software/bash/manual/bash.html)|
+|`CoreUtils`|[Reference](https://www.gnu.org/software/coreutils/manual/coreutils.html)|
+|`xargs`|[Reference](https://www.gnu.org/software/findutils/manual/html_node/find_html/Invoking-xargs.html)|
+|`find`|[Reference](https://www.gnu.org/software/findutils/manual/html_mono/find.html)|
+|`gawk`|[Reference](https://www.gnu.org/software/gawk/manual/gawk.html)|
+|`gsed`|[Reference](https://www.gnu.org/software/sed/manual/sed.html)|
+|`grep`|[Reference](https://www.gnu.org/software/grep/manual/grep.html)|
+|`yq`|[Reference](https://mikefarah.gitbook.io/yq/)|
+|`jq`|[Reference](https://stedolan.github.io/jq/manual/)|
+|`git`|[Reference](https://git-scm.com/docs/git)|
+|`curl`|[Reference](https://curl.se/docs/manpage.html)|
+|`bsdtar`|[Reference](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)|
+|`tree`|[Reference](https://linux.die.net/man/1/tree)|
+|`pkg-config`|[Reference](https://people.freedesktop.org/~dbn/pkg-config-guide.html)|
+|||
+|`echo`|`echo 'your message.'`|
+|`info`|`info 'your information.'`|
+|`warn`|`warn "no package manager found."`|
+|`error`|`error 'error message.'`|
+|`abort`|`abort 1 "please specify a package name."`|
+|`success`|`success "build success."`|
+|`sed_in_place`|`sed_in_place 's/-mandroid//g' Configure`|
+|`wfetch`|`wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH> [-q]`|
+|||
+|`configure`|`configure --enable-pic`|
+|`mesonw`|`mesonw -Dneon=disabled -Darm-simd=disabled`|
+|`cmakew`|`cmakew -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON`|
+|`gmakew`|`gmakew`|
+|`xmakew`|`xmakew`|
+|`cargow`|`cargow`|
+|`gow`|`gow`|
+
+**shell variables can be used directly:**
+
+|variable|overview|
+|-|-|
+|`NDKPKG_VERSION`|the version of `ndk-pkg`.|
+|`NDKPKG_HOME`|the home directory of `ndk-pkg`.|
+|`NDKPKG`|the executable filepath of `ndk-pkg`.|
+|||
+|`UPPM`|the executable filepath of [uppm](https://github.com/leleliu008/uppm)|
+|||
+|`TIMESTAMP_UNIX`|the unix timestamp of this action.|
+|||
+|`NATIVE_OS_KIND`|current running os kind. value might be `linux` or `darwin`|
+|`NATIVE_OS_TYPE`|current running os type. value might be `linux` or `macos`|
+|`NATIVE_OS_NAME`|current running os name. value might be `Ubuntu`, `macOS`, etc|
+|`NATIVE_OS_VERS`|current running os version.|
+|`NATIVE_OS_ARCH`|current running os arch. value might be any one of `x86_64`, `arm64`, etc|
+|`NATIVE_OS_NCPU`|current running os's cpu core count.|
+|`NATIVE_OS_EUID`|current running os's effective user ID.|
+|`NATIVE_OS_EGID`|current running os's effective group ID.|
+|||
+|`TARGET_PLATFORM_VERS`|[android sdk api-level table](https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element#api-level-table)|
+|`TARGET_PLATFORM_ARCH`|value shall be any one of `armv7a` `aarch64` `i686` `x86_64`|
+|`TARGET_PLATFORM_NBIT`|value shall be any one of `32` `64`|
+|`TARGET_PLATFORM_ABI`|value shall be any one of `armeabi-v7a` `arm64-v8a` `x86` `x86_64`|
+|`TARGET_TRIPLE`|value shall be any one of `armv7a-linux-androideabi` `aarch64-linux-android` `i686-linux-android` `x86_64-linux-android`|
+|||
+|`ANDROID_NDK_HOME`|the home directory of `Android NDK`.|
+|`ANDROID_NDK_ROOT`|the home directory of `Android NDK`.|
+|`ANDROID_NDK_VERSION`|the version of `Android NDK`.|
+|`ANDROID_NDK_VERSION_MAJOR`|the major part of version of `Android NDK`.|
+|`ANDROID_NDK_TOOLCHAIN_BIND`|the `bin` directory of `Android NDK`.|
+|`ANDROID_NDK_SYSROOT`|the `sysroot` directory of `Android NDK`.|
+|||
+|`CC_FOR_BUILD`|the C Compiler for native build.|
+|`CFLAGS_FOR_BUILD`|the flags of `CC_FOR_BUILD`.|
+|`CXX_FOR_BUILD`|the C++ Compiler for native build.|
+|`CXXFLAGS_FOR_BUILD`|the flags of `CXX_FOR_BUILD`.|
+|`CPP_FOR_BUILD`|the C/C++ PreProcessor for native build.|
+|`CPPFLAGS_FOR_BUILD`|the flags of `CPP_FOR_BUILD`.|
+|`AS_FOR_BUILD`|the assembler for native build.|
+|`AR_FOR_BUILD`|the archiver for native build.|
+|`RANLIB_FOR_BUILD`|the archiver extra tool for native build.|
+|`LD_FOR_BUILD`|the linker for native build.|
+|`LDFLAGS_FOR_BUILD`|the flags of `LD_FOR_BUILD`.|
+|`NM_FOR_BUILD`|a command line tool to list symbols from object files for native build.|
+|`STRIP_FOR_BUILD`|a command line tool to discard symbols and other data from object files for native build.|
+|||
+|`CC`|the C Compiler.|
+|`CFLAGS`|the flags of `CC`.|
+|`CXX`|the C++ Compiler.|
+|`CXXFLAGS`|the flags of `CXX`.|
+|`CPP`|the C/C++ PreProcessor.|
+|`CPPFLAGS`|the flags of `CPP`.|
+|`AS`|the assembler.|
+|`AR`|the archiver.|
+|`RANLIB`|the archiver extra tool.|
+|`LD`|the linker.|
+|`LDFLAGS`|the flags of `LD`.|
+|`NM`|a command line tool to list symbols from object files.|
+|`STRIP`|a command line tool to discard symbols and other data from object files.|
+|||
+|`PACKAGE_WORKING_DIR`|the working directory when installing.|
+|`PACKAGE_BSCRIPT_DIR`|the directory where the build script (e.g. `Makefile`, `configure`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc) is located in.|
+|`PACKAGE_BCACHED_DIR`|the directory where the temporary files are stored in when building.|
+|`PACKAGE_INSTALL_DIR`|the directory where the final files will be installed to.|
+|||
+|`x_INSTALL_DIR`|the installation directory of x package.|
+|`x_INCLUDE_DIR`|`$x_INSTALL_DIR/include`|
+|`x_LIBRARY_DIR`|`$x_INSTALL_DIR/lib`|
+
 
 ## ndk-pkg formula repository
 
@@ -701,8 +809,8 @@ url: https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core
 branch: master
 pinned: 0
 enabled: 1
-timestamp-created: 1673684639
-timestamp-updated: 1673684767
+created: 1673684639
+updated: 1673684767
 ```
 
 If a ndk-pkg formula repository is `pinned`, which means it would not be updated.
