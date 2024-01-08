@@ -1021,9 +1021,9 @@ filetype_from_url() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
-    unset PACKAGE_DONATIVE_ACTIONS
-    unset PACKAGE_DOPATCH_ACTIONS
-    unset PACKAGE_DOBUILD_ACTIONS
+    unset PACKAGE_ACTIONS_DO12345
+    unset PACKAGE_ACTIONS_DOPATCH
+    unset PACKAGE_ACTIONS_DOBUILD
 
     #########################################################################################
 
@@ -1082,14 +1082,14 @@ filetype_from_url() {
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_DONATIVE_ACTIONS="$(yq '.build0 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_DOPATCH_ACTIONS="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_DOBUILD_ACTIONS="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_ACTIONS_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_ACTIONS_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_ACTIONS_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_DOBUILD_ACTIONS" ] ; then
-        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_DOBUILD_ACTIONS" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
+    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_ACTIONS_DOBUILD" ] ; then
+        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_ACTIONS_DOBUILD" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
         do
             case "$FirstWordOfLineInInstallActions" in
                 configure)    PACKAGE_BSYSTEM=configure ; break ;;
@@ -1283,18 +1283,18 @@ filetype_from_url() {
 
     #########################################################################################
 
-    [ -z "$PACKAGE_DOBUILD_ACTIONS" ] && {
+    [ -z "$PACKAGE_ACTIONS_DOBUILD" ] && {
         case $PACKAGE_BUILD_SYSTEM in
-            autogen)   PACKAGE_DOBUILD_ACTIONS='configure' ;;
-            autotools) PACKAGE_DOBUILD_ACTIONS='configure' ;;
-            configure) PACKAGE_DOBUILD_ACTIONS='configure' ;;
-            cmake*)    PACKAGE_DOBUILD_ACTIONS='cmakew' ;;
-            xmake)     PACKAGE_DOBUILD_ACTIONS='xmakew' ;;
-            meson)     PACKAGE_DOBUILD_ACTIONS='mesonw' ;;
-            ninja)     PACKAGE_DOBUILD_ACTIONS='ninjaw clean && ninjaw && ninjaw install' ;;
-            gmake)     PACKAGE_DOBUILD_ACTIONS='gmakew clean && gmakew && gmakew install' ;;
-            cargo)     PACKAGE_DOBUILD_ACTIONS='cargow install' ;;
-            go)        PACKAGE_DOBUILD_ACTIONS='gow' ;;
+            autogen)   PACKAGE_ACTIONS_DOBUILD='configure' ;;
+            autotools) PACKAGE_ACTIONS_DOBUILD='configure' ;;
+            configure) PACKAGE_ACTIONS_DOBUILD='configure' ;;
+            cmake*)    PACKAGE_ACTIONS_DOBUILD='cmakew' ;;
+            xmake)     PACKAGE_ACTIONS_DOBUILD='xmakew' ;;
+            meson)     PACKAGE_ACTIONS_DOBUILD='mesonw' ;;
+            ninja)     PACKAGE_ACTIONS_DOBUILD='ninjaw clean && ninjaw && ninjaw install' ;;
+            gmake)     PACKAGE_ACTIONS_DOBUILD='gmakew clean && gmakew && gmakew install' ;;
+            cargo)     PACKAGE_ACTIONS_DOBUILD='cargow install' ;;
+            go)        PACKAGE_ACTIONS_DOBUILD='gow' ;;
             *)         abort 1 "install mapping not found in $PACKAGE_FORMULA_FILEPATH"
         esac
     }
@@ -1771,6 +1771,7 @@ __search_packages() {
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
+        --arg do12345 "$PACKAGE_ACTIONS_DO12345" \
         --arg dopatch "$PACKAGE_ACTIONS_DOPATCH" \
         --arg install "$PACKAGE_ACTIONS_DOBUILD" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
@@ -1779,7 +1780,9 @@ __search_packages() {
         --arg xxflags "$PACKAGE_XXFLAGS" \
         --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
+        --arg api_min "$PACKAGE_API_MIN" \
         --arg parallel $PACKAGE_BUILD_IN_PARALLEL \
+        --arg developer "$PACKAGE_DEVELOPER" \
 '{
     "pkgname":$pkgname,
     "version":$version,
@@ -1809,7 +1812,10 @@ __search_packages() {
     "xxflags":$xxflags,
     "ppflags":$ppflags,
     "ldflags":$ldflags,
+    "api-min":$api_min,
     "parallel":$parallel,
+    "developer":$developer,
+    "do12345":$do12345,
     "dopatch":$dopatch,
     "install":$install
 }' | jq 'with_entries(select(.value != ""))'
@@ -1853,6 +1859,7 @@ ppflags: $PACKAGE_PPFLAGS
 ccflags: $PACKAGE_CCFLAGS
 xxflags: $PACKAGE_XXFLAGS
 ldflags: $PACKAGE_LDFLAGS
+api-min: $PACKAGE_API_MIN
 parallel: $PACKAGE_BUILD_IN_PARALLEL
 EOF
     } | yq eval '. | with_entries(select(.value != null))'
@@ -1928,6 +1935,7 @@ PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
 PACKAGE_PPFLAGS
 PACKAGE_LDFLAGS
+PACKAGE_API_MIN
 PACKAGE_FORMULA_FILEPATH
 PACKAGE_DEVELOPER
 EOF
@@ -1944,6 +1952,10 @@ EOF
             ;;
         --json)
             __info_the_given_available_package_as_json "$1"
+            ;;
+        do12345)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_ACTIONS_DO12345"
             ;;
         dopatch)
             __load_formula_of_the_given_package "$1"
@@ -4396,8 +4408,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
             ;;
         perl)
-            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.38.0.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='eca551caec3bc549a4e590c0015003790bdd1a604ffe19cc78ee631d51f7072e'
+            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.38.2.tar.xz'
+            NATIVE_PACKAGE_SRC_SHA='d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
@@ -5750,8 +5762,8 @@ $DOT_CONTENT
 
     step "build for native"
 
-    if [ -z "$PACKAGE_DONATIVE_ACTIONS" ] ; then
-        note "build0 mapping was not found in formula, skipped."
+    if [ -z "$PACKAGE_ACTIONS_DO12345" ] ; then
+        note "do12345 mapping was not found in formula, skipped."
     else
         NATIVE_BUILD_NEEDED=1
 
@@ -5789,7 +5801,7 @@ EOF
 
                 eval "
 build_for_native() {
-$PACKAGE_DONATIVE_ACTIONS
+$PACKAGE_ACTIONS_DO12345
 }"
 
                 BUILD_FOR_NATIVE=1
@@ -6498,16 +6510,11 @@ EOF
 #ifndef NDKPKG_COMMON_H
 #define NDKPKG_COMMON_H
 
-#define rindex(a,b) strrchr((a),(b))
+//#define rindex(a,b) strrchr((a),(b))
 
 #define bcmp(b1,b2,len) memcmp((b1), (b2), (size_t)(len))
 
 #define wait3(status,options,rusage) waitpid(-1,status,options)
-
-#if __ANDROID_API__ < 24
-    #define ftello(f) ftell(f)
-    #define fseeko    fseek
-#endif
 
 #endif
 EOF
@@ -6589,12 +6596,12 @@ EOF
 
     step "dopatch for target"
 
-    if [ -z "$PACKAGE_DOPATCH_ACTIONS" ] ; then
+    if [ -z "$PACKAGE_ACTIONS_DOPATCH" ] ; then
         note "dopatch mapping was not found in formula, skipped."
     else
         eval "
 dopatch() {
-$PACKAGE_DOPATCH_ACTIONS
+$PACKAGE_ACTIONS_DOPATCH
 }"
         run cd "$PACKAGE_BSCRIPT_DIR"
         dopatch
@@ -6649,7 +6656,7 @@ $PACKAGE_DOPATCH_ACTIONS
 
     eval "
 dobuild() {
-$PACKAGE_DOBUILD_ACTIONS
+$PACKAGE_ACTIONS_DOBUILD
 }"
 
     dobuild
