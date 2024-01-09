@@ -6527,6 +6527,11 @@ EOF
 
 #define wait3(status,options,rusage) waitpid(-1,status,options)
 
+#if __ANDROID_API__ < 24
+    #define ftello(f) ftell(f)
+    #define fseeko    fseek
+#endif
+
 $PACKAGE_INCLUDE
 
 #endif
