@@ -1021,6 +1021,8 @@ filetype_from_url() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
+    unset PACKAGE_INCLUDE
+
     unset PACKAGE_ACTIONS_DO12345
     unset PACKAGE_ACTIONS_DOPATCH
     unset PACKAGE_ACTIONS_DOBUILD
@@ -1077,6 +1079,8 @@ filetype_from_url() {
     PACKAGE_XXFLAGS="$(yq '.xxflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    PACKAGE_INCLUDE="$(yq '.include | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1780,6 +1784,7 @@ __search_packages() {
         --arg xxflags "$PACKAGE_XXFLAGS" \
         --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
+        --arg include2 "$PACKAGE_INCLUDE" \
         --arg api_min "$PACKAGE_API_MIN" \
         --arg parallel $PACKAGE_BUILD_IN_PARALLEL \
         --arg developer "$PACKAGE_DEVELOPER" \
@@ -1812,6 +1817,7 @@ __search_packages() {
     "xxflags":$xxflags,
     "ppflags":$ppflags,
     "ldflags":$ldflags,
+    "include":$include2,
     "api-min":$api_min,
     "parallel":$parallel,
     "developer":$developer,
@@ -1935,6 +1941,7 @@ PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
 PACKAGE_PPFLAGS
 PACKAGE_LDFLAGS
+PACKAGE_INCLUDE
 PACKAGE_API_MIN
 PACKAGE_FORMULA_FILEPATH
 PACKAGE_DEVELOPER
@@ -1952,6 +1959,10 @@ EOF
             ;;
         --json)
             __info_the_given_available_package_as_json "$1"
+            ;;
+        include)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_INCLUDE"
             ;;
         do12345)
             __load_formula_of_the_given_package "$1"
@@ -6515,6 +6526,8 @@ EOF
 #define bcmp(b1,b2,len) memcmp((b1), (b2), (size_t)(len))
 
 #define wait3(status,options,rusage) waitpid(-1,status,options)
+
+$PACKAGE_INCLUDE
 
 #endif
 EOF
