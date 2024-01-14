@@ -6018,7 +6018,7 @@ EOF
             if [ "$TARGET_PLATFORM_VERS" -lt 33 ] ; then
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/execinfo.h
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/execinfo.cpp
-                CPPFLAGS="$CPPFLAGS -include $libexecinfo_INCLUDE_DIR/execinfo.h"
+                PPFLAGS="$PPFLAGS -include $libexecinfo_INCLUDE_DIR/execinfo.h"
                 LDFLAGS="$LDFLAGS -l:libexecinfo.a -lm"
             fi
         fi
@@ -6028,7 +6028,7 @@ EOF
                 # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#157
                 # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getloadavg.cpp
                 # int getloadavg(double __averages[], int __n) __INTRODUCED_IN(29);
-                CPPFLAGS="$CPPFLAGS -include $libgetloadavg_INCLUDE_DIR/getloadavg.h"
+                PPFLAGS="$PPFLAGS -include $libgetloadavg_INCLUDE_DIR/getloadavg.h"
                 LDFLAGS="$LDFLAGS -l:libgetloadavg.a"
             fi
         fi
@@ -6054,7 +6054,7 @@ EOF
             # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/mblen.cpp
             # int mblen(const char* __s, size_t __n) __INTRODUCED_IN_NO_GUARD_FOR_NDK(26);
             if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
-                CPPFLAGS="$CPPFLAGS -include $libmblen_INCLUDE_DIR/mblen.h"
+                PPFLAGS="$PPFLAGS -include $libmblen_INCLUDE_DIR/mblen.h"
                 LDFLAGS="$LDFLAGS -l:libmblen.a"
             fi
         fi
@@ -6064,7 +6064,7 @@ EOF
             # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getdomainname.cpp
             # int getdomainname(char* __buf, size_t __buf_size) __INTRODUCED_IN(26);
             if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
-                CPPFLAGS="$CPPFLAGS -include $libgetdomainname_INCLUDE_DIR/getdomainname.h"
+                PPFLAGS="$PPFLAGS -include $libgetdomainname_INCLUDE_DIR/getdomainname.h"
                 LDFLAGS="$LDFLAGS -l:libgetdomainname.a"
             fi
         fi
@@ -6073,13 +6073,13 @@ EOF
             # https://android.googlesource.com/platform/bionic/+/master/libc/include/string.h#68
             # char* strchrnul(char* __s, int __ch) __RENAME(strchrnul) __attribute_pure__ __INTRODUCED_IN(24);
             if [ "$TARGET_PLATFORM_VERS" -lt 24 ] ; then
-                CPPFLAGS="$CPPFLAGS -include $libstrchrnul_INCLUDE_DIR/strchrnul.h"
+                PPFLAGS="$PPFLAGS -include $libstrchrnul_INCLUDE_DIR/strchrnul.h"
                 LDFLAGS="$LDFLAGS -l:libstrchrnul.a"
             fi
         fi
 
         if [ "$DEPENDENT_PACKAGE_NAME" = libgetdtablesize ] ; then
-            CPPFLAGS="$CPPFLAGS -include $libgetdtablesize_INCLUDE_DIR/getdtablesize.h"
+            PPFLAGS="$PPFLAGS -include $libgetdtablesize_INCLUDE_DIR/getdtablesize.h"
             # https://android.googlesource.com/platform/bionic/+/72dc1c22dc6a92dea925398c9e3880364ab29c1c/libc/bionic/getdtablesize.c
             LDFLAGS="$LDFLAGS -l:libgetdtablesize.a"
         fi
@@ -8967,7 +8967,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.7.1
+    NDKPKG_VERSION=0.7.2
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
