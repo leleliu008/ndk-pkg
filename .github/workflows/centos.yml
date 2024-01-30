@@ -9,25 +9,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        tag: ['7.5.1804', '8.4.2105']
 
-    container: centos:${{ matrix.tag }}
+    container: centos:8.4.2105
 
     steps:
-      - run: yum -y update && yum -y install curl gcc-c++ git
-        if:  ${{ matrix.tag == '7.5.1804' }}
-
         # https://stackoverflow.com/questions/70926799/centos-through-vm-no-urls-in-mirrorlist
       - run: |
           sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
           sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
           dnf -y update
           dnf -y install curl gcc-c++ git
-        if:  ${{ matrix.tag == '8.4.2105' }}
 
       - uses: actions/checkout@v4
 

@@ -21,7 +21,7 @@ jobs:
 
     steps:
       # https://github.com/marketplace/actions/setup-wsl
-      - uses: Vampire/setup-wsl@v2
+      - uses: Vampire/setup-wsl@v2.0.2
         with:
           distribution: ${{ matrix.distribution }}
 
