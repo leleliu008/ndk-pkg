@@ -14,7 +14,7 @@ Please read these caveats carefully before starting to use this software.
 
 - Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change files under `~/.ndk-pkg` directory without notice.
 
-- Please do NOT run `ndk-pkg` command in parallell to avoid generating dirty data.
+- Please do NOT run `ndk-pkg` command in parallel to avoid generating dirty data.
 
 ## Supported platforms (platforms that this software can be run on)
 
@@ -103,39 +103,6 @@ git clone --depth 1 https://github.com/leleliu008/ndk-pkg
 ndk-pkg/ndk-pkg setup
 ```
 
-## Install ndk-pkg on WSL
-
-**Note:**
-
-- `WSL2` is recommended. [Comparing WSL 1 and WSL 2](https://docs.microsoft.com/en-us/windows/wsl/compare-versions)
-
-- `Ubuntu-22.04` distrbution is recommended. [Available WSL distribution](https://docs.microsoft.com/en-us/windows/wsl/install-manual#downloading-distributions)
-
-- I assume that `WSL` has been installed, if not, you can follow the step-by-step instructions to install it. [Install WSL](https://docs.microsoft.com/en-us/windows/wsl/install)
-
-**/etc/wsl.conf**
-
-```ini
-[network]
-hostname = ubuntu
-generateHosts = false
-
-[automount]
-enabled = true
-root = /mnt/
-options = "metadata,umask=22,fmask=11"
-mountFsTab = true
-```
-
-_instructions installing ndk-pkg on WSL is same as described in section [Install ndk-pkg via cURL](https://github.com/leleliu008/ndk-pkg#install-ndk-pkg-via-curl)_
-
-**Things You Should Do Immediately After Installing ndk-pkg on WSL** :
-
-```bash
-sudo install -o $(whoami) -d /mnt/d/ndk-pkg
-ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
-```
-
 ## ~/.ndk-pkg
 
 all relevant directories and files are located under `~/.ndk-pkg` directory.
@@ -145,16 +112,11 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 ```text
 ~/.ndk-pkg
 ├── core
-│   ├── bin
-│   │   └── uppm
 │   ├── cacert.pem
 │   ├── profile
 │   ├── sed-in-place
 │   ├── sed-in-place.c
-│   ├── share
-│   │   └── zsh
-│   │       └── site-functions
-│   │           └── _uppm
+│   ├── uppm
 │   ├── uppm-0.15.0-linux-x86_64.tar.xz
 │   ├── uppm-latest-release
 │   ├── wrapper-native-c++
@@ -171,48 +133,34 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz
 │   └── c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4.tgz
 ├── installed
-│   ├── 356a9aa408c53bb93f85a768b1a8a2dd5cb4851992b9a59964bafeefca808881
-│   │   ├── .ndk-pkg
-│   │   │   ├── FAQ
-│   │   │   ├── LICENSE
-│   │   │   ├── MANIFEST.txt
-│   │   │   ├── METADATA.yml
-│   │   │   └── README
-│   │   ├── include
-│   │   │   ├── zconf.h
-│   │   │   └── zlib.h
-│   │   ├── lib
-│   │   │   ├── pkgconfig
-│   │   │   │   └── zlib.pc
-│   │   │   ├── libz.a
-│   │   │   └── libz.so
-│   │   ├── lib-for-apk
-│   │   │   ├── cmake
-│   │   │   │   └── zlib
-│   │   │   │       ├── zlibConfig.cmake
-│   │   │   │       └── zlibConfigVersion.cmake
-│   │   │   ├── libz.a
-│   │   │   └── libz.so
-│   │   └── share
-│   │       └── man
-│   │           └── man3
-│   │               └── zlib.3
-│   ├── 1f6e3471cc3fed6ac255d262c4b151fff1e73e178e266476eced394cd7a7a286
-│   │   ├── .ndk-pkg
-│   │   │   ├── FAQ
-│   │   │   ├── LICENSE
-│   │   │   ├── MANIFEST.txt
-│   │   │   ├── METADATA.yml
-│   │   │   └── README
-│   │   └── ...
-│   │       └── ...
-│   ├── f1dd85386c380267b40759f291da65ecfde1375f0c64ada692aebc3fbe1834d8
-│   │   └── ...
-│   │       └── ...
-│   ├── zlib:android-21:arm64-v8a -> 356a9aa408c53bb93f85a768b1a8a2dd5cb4851992b9a59964bafeefca808881
-│   ├── zlib:android-21:armeabi-v7a -> 1f6e3471cc3fed6ac255d262c4b151fff1e73e178e266476eced394cd7a7a286
-│   ├── zlib:android-21:x86 -> f1dd85386c380267b40759f291da65ecfde1375f0c64ada692aebc3fbe1834d8
-│   └── zlib:android-21:x86_64 -> fe901c866e12f2f6816c269b774f9ca48a83f5c269e515a320fae7a7bcc0d791
+│   ├── android-21-aarch64
+│   │   ├── f39a5f7836ac7ca1e04de14c8103e663d0b375a524a40e537258747e2deb3c0b
+│   │   │   ├── include
+│   │   │   ├── lib
+│   │   │   ├── lib-for-apk
+│   │   │   └── share
+│   │   └── zlib -> f39a5f7836ac7ca1e04de14c8103e663d0b375a524a40e537258747e2deb3c0b
+│   ├── android-21-armv7a
+│   │   ├── cc9b367d5068ef6b8aaaee38ec2a25691da35e02757c7e0d83aff3775aef3323
+│   │   │   ├── include
+│   │   │   ├── lib
+│   │   │   ├── lib-for-apk
+│   │   │   └── share
+│   │   └── zlib -> cc9b367d5068ef6b8aaaee38ec2a25691da35e02757c7e0d83aff3775aef3323
+│   ├── android-21-i686
+│   │   ├── a0718632fe829426c1d946e6658cc7586da0039e99d5a140d1e402a6b4a4e2f3
+│   │   │   ├── include
+│   │   │   ├── lib
+│   │   │   ├── lib-for-apk
+│   │   │   └── share
+│   │   └── zlib -> a0718632fe829426c1d946e6658cc7586da0039e99d5a140d1e402a6b4a4e2f3
+│   └── android-21-x86_64
+│       ├── c099047714d4ce1402d66346da88d14f25c313b0d4c879520198426ebc2f36fe
+│       │   ├── include
+│       │   ├── lib
+│       │   ├── lib-for-apk
+│       │   └── share
+│       └── zlib -> c099047714d4ce1402d66346da88d14f25c313b0d4c879520198426ebc2f36fe
 ├── native
 │   └── linux-x86_64
 │       ├── 30b5043e2c5513343152506e5b1e14436ddbb654f7edf69167df05f117fcdb16
@@ -225,7 +173,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 │       │   └── receipt.txt
 │       └── automake -> 30b5043e2c5513343152506e5b1e14436ddbb654f7edf69167df05f117fcdb16
 ├── repos.d
-│   └── offical-core
+│   └── official-core
 │       ├── formula
 │       │   ├── zlib.yml
 │       │   ├── libbz2.yml
@@ -431,7 +379,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg upgrade-self -v
     ```
 
-- **list all avaliable formula repositories**
+- **list all available formula repositories**
 
     ```bash
     ndk-pkg formula-repo-list
@@ -805,7 +753,7 @@ After a ndk-pkg formula repository is successfully fetched from server to local,
 a typical ndk-pkg formula repository's config is as follows:
 
 ```yaml
-url: https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core
+url: https://github.com/leleliu008/ndk-pkg-formula-repository-official-core
 branch: master
 pinned: 0
 enabled: 1
@@ -817,13 +765,13 @@ If a ndk-pkg formula repository is `pinned`, which means it would not be updated
 
 If a ndk-pkg formula repository is `disabled`, which means ndk-pkg would not search formulas in this formula repository.
 
-## ndk-pkg offical formula repository
+## ndk-pkg official formula repository
 
-ndk-pkg offical formula repository is hosted at <https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core>
+ndk-pkg official formula repository is hosted at <https://github.com/leleliu008/ndk-pkg-formula-repository-official-core>
 
-ndk-pkg offical formula repository would be automatically fetched to local cache as name `offical-core` when you run `ndk-pkg update` command.
+ndk-pkg official formula repository would be automatically fetched to local cache as name `official-core` when you run `ndk-pkg update` command.
 
-**Note:** If you find that a package is not in ndk-pkg offical formula repository yet, PR is welcomed.
+**Note:** If you find that a package is not in ndk-pkg official formula repository yet, PR is welcomed.
 
 ## Using my prefab aars that have been published to GitHub-Hosted Maven Repository alongside with Android Gradle Plugin
 
@@ -833,7 +781,7 @@ I have published some commonly used packages as google prefab aar to <https://gi
 
 I have published some commonly used packages as google prefab aar to `Maven Central Repository`.
 
-To get the full list of my published packages, please visit the follwoing websites:
+To get the full list of my published packages, please visit the following websites:
 
 - <https://repo1.maven.org/maven2/com/fpliu/ndk/pkg/prefab/android/21/>
 - <https://search.maven.org/search?q=com.fpliu.ndk.pkg.prefab>
@@ -1036,9 +984,9 @@ android {
 
 - <https://github.com/leleliu008/android-calendar-for-the-aged>
 
-## Create the google prefab aar then deploy it to Maven Local Reposotory and use it alongside with Android Gradle Plugin
+## Create the google prefab aar then deploy it to Maven Local Repository and use it alongside with Android Gradle Plugin
 
-If my published packages don't meet your needs, you can use this software to install packages then deploy them to `Maven Local Reposotory`.
+If my published packages don't meet your needs, you can use this software to install packages then deploy them to `Maven Local Repository`.
 
 In the next two sections, I will show you how to configure with `Android Gradle Plugin` in `Kotlin DSL` and `Groovy DSL` respectively.
 
@@ -1046,16 +994,16 @@ In the next two sections, I will show you how to configure with `Android Gradle 
 
 **step1. build and install libpng**
 
-Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-21` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
+Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-21` API and build for `aarch64` and `armv7a` arch respectively.
 
 ```bash
-ndk-pkg install libpng:android-21:arm64-v8a,armeabi-v7a
+ndk-pkg install android-21-aarch64,armv7a/libpng
 ```
 
-**step2. export the installed libpng package as the google prefab aar and deploy it to your Maven Local Reposotory**
+**step2. export the installed libpng package as the google prefab aar and deploy it to your Maven Local Repository**
 
 ```bash
-ndk-pkg deploy  libpng:android-21:arm64-v8a,armeabi-v7a
+ndk-pkg deploy  android-21-aarch64,armv7a/libpng
 ```
 
 **step3. enable prefab feature for Android Gradle Plugin**
@@ -1141,16 +1089,16 @@ android {
 
 **step1. build and install libpng**
 
-Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-21` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
+Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-21` API and build for `aarch64` and `armv7a` arch respectively.
 
 ```bash
-ndk-pkg install libpng:android-21:arm64-v8a,armeabi-v7a
+ndk-pkg install android-21-aarch64,armv7a/libpng
 ```
 
-**step2. export the installed libpng package as the google prefab aar and deploy it to your Maven Local Reposotory**
+**step2. export the installed libpng package as the google prefab aar and deploy it to your Maven Local Repository**
 
 ```bash
-ndk-pkg deploy  libpng:android-21:arm64-v8a,armeabi-v7a
+ndk-pkg deploy  android-21-aarch64,armv7a/libpng
 ```
 
 **step3. enable prefab feature for Android Gradle Plugin**

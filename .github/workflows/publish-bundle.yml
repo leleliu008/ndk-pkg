@@ -34,29 +34,29 @@ jobs:
       - run: ./xcpkg setup
       - run: ./xcpkg update
 
-      - run: ./xcpkg install      uppm:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install      bash:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install coreutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install findutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install easyutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install      gawk:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install      gsed:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install      grep:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install      gtar:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install      gzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install      lzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install     unzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install       zip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install        xz:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install     bzip2:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install        jq:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install        yq:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install       git:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install      curl:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install      tree:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install  patchelf:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install    figlet:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
-      - run: ./xcpkg install    lolcat:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-prefered --install-lib=static
+      - run: ./xcpkg install      uppm:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install      bash:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install coreutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install findutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install easyutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install      gawk:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install      gsed:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install      grep:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install      gtar:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install      gzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install      lzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install     unzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install       zip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install        xz:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install     bzip2:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install        jq:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install        yq:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install       git:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install      curl:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install      tree:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install  patchelf:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install    figlet:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
+      - run: ./xcpkg install    lolcat:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
 
       - run: install -d out/libexec
 

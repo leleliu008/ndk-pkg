@@ -34,7 +34,7 @@ NdkPkgFormulaRepoList* ndk_pkg_list_formula_repositories() {
             perror("Can not create file");
             return NULL;
         }
-        fprintf(formulaRepoConfigFile, "offical=https://github.com/leleliu008/ndk-pkg-formula-repository.git");
+        fprintf(formulaRepoConfigFile, "official=https://github.com/leleliu008/ndk-pkg-formula-repository.git");
         fclose(formulaRepoConfigFile);
     }
 

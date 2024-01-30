@@ -26,7 +26,7 @@
 # 4. all utilities are GNU-style
 ######################################################################################
 
-# If IFS is not set, the deault value will be <space><tab><newline>
+# If IFS is not set, the default value will be <space><tab><newline>
 # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
 unset IFS
 
@@ -678,7 +678,7 @@ EOF
   __delete_a_formula_repository() {
     [ -z "$1" ] && abort 1 "please specify a repository name."
 
-    [ "$1" = 'offical-core' ] && abort 1 "'offical-core' formula repository is not allowed to delete."
+    [ "$1" = 'official-core' ] && abort 1 "'official-core' formula repository is not allowed to delete."
 
     if [ -d    "$NDKPKG_HOME/repos.d/$1" ] ; then
         rm -rf "$NDKPKG_HOME/repos.d/$1"
@@ -842,8 +842,8 @@ __sync_available_formula_repositories() {
         done
     }
 
-    [ -d "$NDKPKG_FORMULA_REPO_ROOT/offical-core" ] || {
-        __create_a_formula_repository_then_sync_it offical-core "$NDKPKG_OFFICAL_FORMULA_REPO_URL"
+    [ -d "$NDKPKG_FORMULA_REPO_ROOT/official-core" ] || {
+        __create_a_formula_repository_then_sync_it official-core "$NDKPKG_OFFICIAL_FORMULA_REPO_URL"
     }
 }
 
@@ -3202,7 +3202,7 @@ EOF
     #########################################################################################
 
     # There are two maven plugins maven-deploy-plugin and maven-gpg-plugin can be used
-    # maven-gpg-plugin is prefered as it is automatically signed with gpg.
+    # maven-gpg-plugin is preferred as it is automatically signed with gpg.
     # 
     # https://maven.apache.org/plugins/maven-gpg-plugin/sign-and-deploy-file-mojo.html
     # https://maven.apache.org/plugins/maven-deploy-plugin/deploy-file-mojo.html
@@ -4164,7 +4164,7 @@ inspect_install_arguments() {
 
     BUILD_TYPE=release
 
-    LINK_TYPE=static-prefered
+    LINK_TYPE=static-preferred
 
     KEEP_SESSION_DIR=0
 
@@ -4210,9 +4210,9 @@ inspect_install_arguments() {
             --link-type=*)
                 LINK_TYPE="${1#*=}"
                 case $LINK_TYPE in
-                    static-only|shared-only|static-prefered|shared-prefered) ;;
+                    static-only|shared-only|static-preferred|shared-preferred) ;;
                     '') abort 1 "--link-type=<VALUE>, VALUE must be non-empty." ;;
-                    *)  abort 1 "--link-type=<VALUE>, VALUE must be one of static-only|shared-only|static-prefered|shared-prefered"
+                    *)  abort 1 "--link-type=<VALUE>, VALUE must be one of static-only|shared-only|static-preferred|shared-preferred"
                 esac
                 ;;
             --jobs=*)
@@ -5751,7 +5751,7 @@ $DOT_CONTENT
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
         # https://git.savannah.gnu.org/cgit/config.git/tree/
 
-        step "replace config.sub and config.guess with the lastest version"
+        step "replace config.sub and config.guess with the latest version"
 
         for FILENAME in config.sub config.guess
         do
@@ -6576,8 +6576,8 @@ EOF
         step "create symlinks for dependent libraries"
 
         case $LINK_TYPE in
-            static-only|static-prefered) LINK_LIBRARY_TYPE='a'  ;;
-            shared-only|shared-prefered) LINK_LIBRARY_TYPE='so' ;;
+            static-only|static-preferred) LINK_LIBRARY_TYPE='a'  ;;
+            shared-only|shared-preferred) LINK_LIBRARY_TYPE='so' ;;
         esac
 
         for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
@@ -7553,32 +7553,32 @@ configure() {
 # gmake wrapper
 gmakew() {
     unset GMAKE_OPTIONS
-    unset GMAKE_OPTION_SETTED_C
-    unset GMAKE_OPTION_SETTED_w
-    unset GMAKE_OPTION_SETTED_j
+    unset GMAKE_OPTION_SET_C
+    unset GMAKE_OPTION_SET_w
+    unset GMAKE_OPTION_SET_j
 
     for option in $@
     do
         case $option in
-            -C)           GMAKE_OPTION_SETTED_C=1 ;;
-            -w)           GMAKE_OPTION_SETTED_w=1 ;;
-            -j)           GMAKE_OPTION_SETTED_j=1 ;;
-            -j[1-9])      GMAKE_OPTION_SETTED_j=1 ;;
-            -j[1-9][0-9]) GMAKE_OPTION_SETTED_j=1 ;;
+            -C)           GMAKE_OPTION_SET_C=1 ;;
+            -w)           GMAKE_OPTION_SET_w=1 ;;
+            -j)           GMAKE_OPTION_SET_j=1 ;;
+            -j[1-9])      GMAKE_OPTION_SET_j=1 ;;
+            -j[1-9][0-9]) GMAKE_OPTION_SET_j=1 ;;
         esac
     done
 
-    if [ "$GMAKE_OPTION_SETTED_w" != 1 ] ; then
+    if [ "$GMAKE_OPTION_SET_w" != 1 ] ; then
         GMAKE_OPTIONS="$GMAKE_OPTIONS -w"
     fi
 
-    if [ "$GMAKE_OPTION_SETTED_C" != 1 ] ; then
+    if [ "$GMAKE_OPTION_SET_C" != 1 ] ; then
         if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" != 1 ] ; then
             GMAKE_OPTIONS="$GMAKE_OPTIONS -C $PACKAGE_BCACHED_DIR"
         fi
     fi
 
-    if [ "$GMAKE_OPTION_SETTED_j" != 1 ] ; then
+    if [ "$GMAKE_OPTION_SET_j" != 1 ] ; then
         GMAKE_OPTIONS="$GMAKE_OPTIONS -j$BUILD_NJOBS"
     fi
 
@@ -7642,9 +7642,9 @@ cmakew() {
         # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
         case $LINK_TYPE in
             static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-            static-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-preferred) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
             shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-prefered) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-preferred) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
         esac
 
         if [ "$LOG_LEVEL" -gt 0 ] ; then
@@ -7776,7 +7776,7 @@ EOF
     MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
 
     case $LINK_TYPE in
-        static-only|static-prefered) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
+        static-only|static-preferred) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
     esac
 
     MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
@@ -8586,7 +8586,7 @@ EOF
 
     #################################################################################
 
-    success "ndk-pkg have been succefully setup."
+    success "ndk-pkg have been successfully setup."
 }
 
 # }}}
@@ -8754,7 +8754,7 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAM
         ${COLOR_BLUE}--build-type=<debug|release>${COLOR_OFF}
             set build type.
 
-        ${COLOR_BLUE}--link-type=<static-only|shared-only|static-prefered|shared-prefered>${COLOR_OFF}
+        ${COLOR_BLUE}--link-type=<static-only|shared-only|static-preferred|shared-preferred>${COLOR_OFF}
             link static or shared library.
 
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
@@ -8823,7 +8823,7 @@ ${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME
 
     ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} can be either the filepath or directory where the aar file will be written to.
 
-    If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is an existing directory or ends with slash, then it will be treated as a directory, otherwize, it will be treated as a filepath.
+    If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is an existing directory or ends with slash, then it will be treated as a directory, otherwise, it will be treated as a filepath.
 
     If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar
 
@@ -8897,14 +8897,14 @@ ${COLOR_GREEN}SSL_CERT_FILE${COLOR_OFF}
     export SSL_CERT_FILE="$PWD/cacert.pem"${COLOR_OFF}
 
 ${COLOR_GREEN}GOPROXY${COLOR_OFF}
-    exmaple:
+    example:
 
     ${COLOR_RED}export GOPROXY='https://goproxy.cn'${COLOR_OFF}
 
 ${COLOR_GREEN}NDKPKG_URL_TRANSFORM${COLOR_OFF}
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
-    exmaple:
+    example:
 
     ${COLOR_RED}export NDKPKG_URL_TRANSFORM=/path/of/url-transform${COLOR_OFF}
 
@@ -8944,7 +8944,7 @@ This software can NOT run on Cygwin and MSYS2 due to CMake: Builds hosted on 'CY
 
 Please do NOT place your own files under ~/.ndk-pkg directory, as ndk-pkg will change files under ~/.ndk-pkg directory without notice.
 
-Please do NOT run ndk-pkg command in parallell to avoid generating dirty data.
+Please do NOT run ndk-pkg command in parallel to avoid generating dirty data.
     "
 
     if [ -z "$1" ] ; then
@@ -8970,7 +8970,7 @@ main() {
     NDKPKG_VERSION=0.7.2
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
-    NDKPKG_OFFICAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-offical-core.git'
+    NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
     NDKPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg'
 
     NDKPKG_HOME="$HOME/.ndk-pkg"
@@ -9185,7 +9185,7 @@ EOF
             shift
 
             case $1 in
-                offical-*) abort 1 "ndk-pkg formula repository name that starts with 'offical-' is reserved for ndk-pkg offical formula repository, please use other name."
+                official-*) abort 1 "ndk-pkg formula repository name that starts with 'official-' is reserved for ndk-pkg official formula repository, please use other name."
             esac
 
             __create_a_formula_repository "$@"
@@ -9194,7 +9194,7 @@ EOF
             shift
 
             case $1 in
-                offical-*) abort 1 "ndk-pkg formula repository name that starts with 'offical-' is reserved for ndk-pkg offical formula repository, please use other name."
+                official-*) abort 1 "ndk-pkg formula repository name that starts with 'official-' is reserved for ndk-pkg official formula repository, please use other name."
             esac
 
             __create_a_formula_repository_then_sync_it "$@"

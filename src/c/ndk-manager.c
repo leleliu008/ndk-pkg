@@ -72,7 +72,7 @@ NDKToolchainInfo* make_ndk_toolchain_info(const char* hostOSKind, const char* nd
         strcpy(ndkToolchainHostTag, "darwin-x86_64");
     } else {
         char error_message[30] = {0};
-        sprintf(error_message, "unsupport system: %s", hostOSKind);
+        sprintf(error_message, "unsupported system: %s", hostOSKind);
         perror(error_message);
     }
 

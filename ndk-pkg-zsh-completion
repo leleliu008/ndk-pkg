@@ -17,14 +17,14 @@ _ndk_pkg_actions=(
     'is-installed:is the given package installed.'
     'is-outdated:is the given package outdated.'
     'search:search all available packages whose name matches the given regular expression pattern.'
-    'info-available:show infomation of the given available package.'
-    'info-installed:show infomation of the given installed package.'
+    'info-available:show information of the given available package.'
+    'info-installed:show information of the given installed package.'
     'formula-repo-init:create a new empty formula repository.'
     'formula-repo-add:create a new empty formula repository then sync with server.'
     'formula-repo-del:delete the given formula repository from your local cache.'
     'formula-repo-sync:sync the given formula repository.'
     'formula-repo-conf:change the config of the given formula repository.'
-    'formula-repo-info:show infomation of the given formula repository.'
+    'formula-repo-info:show information of the given formula repository.'
     'formula-repo-list:list all available formula repositories.'
     'install:install packages.'
     'reinstall:reinstall packages.'
@@ -41,7 +41,7 @@ _ndk_pkg_actions=(
     'export:export the given installed package as the google prefab aar.'
     'deploy:export the given installed package as the google prefab aar then deploy it to Maven Local Repository or Sonatype OSSRH.'
     'gen-url-transform-sample:generate url-transform sample.'
-    'android-versions:show android plaform version, android API level, android version code map.'
+    'android-versions:show android platform version, android API level, android version code map.'
 )
 
 function _ndk_pkg_available_packages() {
@@ -154,7 +154,7 @@ function _ndk_pkg() {
                         '1:package-name:_ndk_pkg_installed_packages' \
                         '-t[specify output type]:output-type:(zip 7z tar.gz tar.xz tar.lz tar.bz2)' \
                         '-o[specify output filepath or directory]:output-path:_files' \
-                        '--keep-session-dir[do not delete the session direcotory even if successfully packed]'
+                        '--keep-session-dir[do not delete the session directory even if successfully packed]'
                     ;;
                 export)
                     _arguments \
@@ -164,19 +164,19 @@ function _ndk_pkg() {
                 deploy)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_package_names' \
-                        '--keep-session-dir[do not delete the session direcotory even if successfully deployed]' \
+                        '--keep-session-dir[do not delete the session directory even if successfully deployed]' \
                         '--dry-run[do not actually deploy the aar]' \
                         '--debug[debug the process of deployment]' \
                         '--groupId=-[specify groupId]:groupId:(com. org.)' \
                         + '(where_to_deploy)' \
                         '--remote[deploy to Sonatype OSSRH]' \
-                        '--local=-[specify the local reposotory path]:local-path:_path_files -/'
+                        '--local=-[specify the local repository path]:local-path:_path_files -/'
                     ;;
                 tree)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
                         '-L[level]:level:(3)' \
-                        '--dirsfirst[show direcotories first]'
+                        '--dirsfirst[show directories first]'
                     ;;
                 logs)
                     _arguments '1:package-name:_ndk_pkg_installed_packages'
@@ -184,12 +184,12 @@ function _ndk_pkg() {
                 install)
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
-                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/' \
+                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
                         '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[do not actually install the package]' \
-                        '--keep-session-dir[do not delete the session direcotory even if this package is successfully installed]' \
+                        '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
                         '--build-type=-[specify build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-preferred shared-preferred)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
@@ -200,12 +200,12 @@ function _ndk_pkg() {
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
-                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/' \
+                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
                         '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-session-dir[do not delete the session direcotory even if this package is successfully installed]' \
+                        '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
                         '--build-type=-[specify build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-preferred shared-preferred)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
@@ -216,12 +216,12 @@ function _ndk_pkg() {
                 upgrade)
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
-                        '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/' \
+                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
                         '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
-                        '--keep-session-dir[do not delete the session direcotory even if this package is successfully installed]' \
+                        '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
                         '--build-type=-[specify build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-prefered shared-prefered)' \
+                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-preferred shared-preferred)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
@@ -248,7 +248,7 @@ function _ndk_pkg() {
                     _arguments '1:what:(zsh cmake)'
                     ;;
                 ndkinfo)
-                    _arguments '--ndk-home=-[specify Android NDK HOME direcotory]:ndk-home:_path_files -/'
+                    _arguments '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/'
                     ;;
                 *)  ;;
             esac
