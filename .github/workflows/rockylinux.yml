@@ -24,7 +24,7 @@ jobs:
           command -v curl > /dev/null || dnf -y install curl
           #https://bugs.launchpad.net/tripleo/+bug/1953156
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help
       - run: ./ndk-pkg -h

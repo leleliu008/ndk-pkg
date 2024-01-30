@@ -28,7 +28,7 @@ jobs:
       - name: Use unix line endings
         shell: bash
         run: |
-          # Github's actions/checkout@v3 when run on Windows mangles the line-endings to DOS-style
+          # Github's actions/checkout@v4 when run on Windows mangles the line-endings to DOS-style
           # but we're running Linux *on top* of Windows, so we need to not mangle them!
           # https://github.com/actions/checkout/issues/135#issuecomment-602171132
           # https://github.com/actions/virtual-environments/issues/50#issuecomment-663920265
@@ -46,7 +46,7 @@ jobs:
       - run: zypper update -y && zypper install -y curl tar xz gcc-c++ git
         if:  ${{ matrix.distribution == 'openSUSE-Leap-15.2'  }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help
       - run: ./ndk-pkg -h

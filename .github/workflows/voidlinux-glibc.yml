@@ -22,7 +22,7 @@ jobs:
       - run: xbps-install -Syu curl xz gcc git
 
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help
       - run: ./ndk-pkg -h
