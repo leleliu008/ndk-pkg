@@ -1546,13 +1546,13 @@ EOF
     RECEIPT_PACKAGE_BUILTFOR_PLATFORM="$RECEIPT_PACKAGE_BUILTFOR"
 
     case $RECEIPT_PACKAGE_BUILTFOR in
-        android-[1-9][0-9]-armv7a)
+        android-[1-9][0-9]-armeabi-v7a)
             RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH='armv7a'
             ;;
-        android-[1-9][0-9]-aarch64)
+        android-[1-9][0-9]-arm64-v8a)
             RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH='aarch64'
             ;;
-        android-[1-9][0-9]-i686)
+        android-[1-9][0-9]-x86)
             RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH='i686'
             ;;
         android-[1-9][0-9]-x86_64)
@@ -1711,7 +1711,7 @@ __list_available_packages() {
 __list_installed_packages() {
     if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT" ] ; then
          cd "$NDKPKG_PACKAGE_INSTALLED_ROOT" || return 1
-        find . -maxdepth 2 -mindepth 2 -type l -regex '\./android-[1-9][0-9]-\(armv7a\|aarch64\|i686\|x86_64\)/[^/]*' -printf '%P\n'
+        find . -maxdepth 2 -mindepth 2 -type l -regex '\./android-[1-9][0-9]-\(armeabi-v7a\|arm64-v8a\|x86\|x86_64\)/[^/]*' -printf '%P\n'
     else
         return 0
     fi
@@ -2592,12 +2592,12 @@ EOF
 EOF
 }
 
-# __export_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]
+# __export_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]
   __export_google_prefab_aar_for_the_given_installed_packages() {
     unset PACKAGE_NAME
 
     unset TARGET_PLATFORM_VERS
-    unset TARGET_PLATFORM_ARCHS
+    unset TARGET_PLATFORM_ABIS
 
     unset SPECIFIED_PACKAGE_SPEC_LIST
 
@@ -2614,16 +2614,16 @@ EOF
             fi
 
             TARGET_PLATFORM_SPEC="${1%%/*}"
-            TARGET_PLATFORM_VERS="$( printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
-            TARGET_PLATFORM_ARCHS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3 | tr ',' ' ')"
+            TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+            TARGET_PLATFORM_ABIS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -c 12- | tr ',' ' ')"
 
-            for TARGET_PLATFORM_ARCH in $TARGET_PLATFORM_ARCHS
+            for TARGET_PLATFORM_ABI in $TARGET_PLATFORM_ABIS
             do
-                case $TARGET_PLATFORM_ARCH in
-                    armv7a|aarch64|i686|x86_64)
-                        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ARCH/$PACKAGE_NAME"
+                case $TARGET_PLATFORM_ABI in
+                    armeabi-v7a|arm64-v8a|x86|x86_64)
+                        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ABI/$PACKAGE_NAME"
                         ;;
-                    *)  abort 1 "invalid package spec: $1\n    unsupported arch: $TARGET_PLATFORM_ARCH"
+                    *)  abort 1 "invalid package spec: $1\n    unsupported abi: $TARGET_PLATFORM_ABI"
                 esac
             done
             ;;
@@ -2716,7 +2716,7 @@ EOF
 
     #########################################################################################
 
-    AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION.aar"
+    AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$TARGET_PLATFORM_VERS-$(printf '%s\n' "$TARGET_PLATFORM_ABIS" | tr ' ' '+').aar"
 
     step "packing the prefab aar file"
     run zip -9 -r "$AAR_FILENAME" .
@@ -2777,7 +2777,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     run rm -rf "$SESSION_DIR"
 }
 
-# __deploy_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>/<ANDROID-ARCHs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [--keep-session-dir] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
+# __deploy_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>/<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [--keep-session-dir] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
   __deploy_google_prefab_aar_for_the_given_installed_packages() {
     __export_google_prefab_aar_for_the_given_installed_packages "$@"
 
@@ -3814,7 +3814,7 @@ __reinstall_the_given_packages() {
 
         TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
         TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
-        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
+        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -c 12-)"
 
         ##################################################################
 
@@ -3953,7 +3953,7 @@ __upgrade_packages() {
 
         TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
         TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
-        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
+        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -c 12-)"
 
         ##################################################################
 
@@ -4032,17 +4032,17 @@ __upgrade_packages() {
             ;;
         */*)
             case $1 in
-                android-[1-9][0-9]-armv7a/*)
-                    TARGET_PLATFORM_ARCH='armv7a'
+                android-[1-9][0-9]-armeabi-v7a/*)
+                    TARGET_PLATFORM_ABI='armeabi-v7a'
                     ;;
-                android-[1-9][0-9]-aarch64/*)
-                    TARGET_PLATFORM_ARCH='aarch64'
+                android-[1-9][0-9]-arm64-v8a/*)
+                    TARGET_PLATFORM_ABI='arm64-v8a'
                     ;;
-                android-[1-9][0-9]-i686/*)
-                    TARGET_PLATFORM_ARCH='i686'
+                android-[1-9][0-9]-x86/*)
+                    TARGET_PLATFORM_ABI='x86'
                     ;;
                 android-[1-9][0-9]-x86_64/*)
-                    TARGET_PLATFORM_ARCH='x86_64'
+                    TARGET_PLATFORM_ABI='x86_64'
                     ;;
                 *)  abort 1 "invalid package spec: $1"
             esac 
@@ -4064,13 +4064,13 @@ __upgrade_packages() {
             ;;
         *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                 case $NDKPKG_DEFAULT_TARGET in
-                    '') NDKPKG_DEFAULT_TARGET='android-21-aarch64'
+                    '') NDKPKG_DEFAULT_TARGET='android-21-arm64-v8a'
                         ;;
-                    android-[1-9][0-9]-armv7a)
+                    android-[1-9][0-9]-armeabi-v7a)
                         ;;
-                    android-[1-9][0-9]-aarch64)
+                    android-[1-9][0-9]-arm64-v8a)
                         ;;
-                    android-[1-9][0-9]-i686)
+                    android-[1-9][0-9]-x86)
                         ;;
                     android-[1-9][0-9]-x86_64)
                         ;;
@@ -4109,18 +4109,18 @@ __upgrade_packages() {
                 *)  abort 1 "invalid package spec: $1"
             esac
 
-            TARGET_PLATFORM_VERS="$( printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
-            TARGET_PLATFORM_ARCHS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3 | tr ',' ' ')"
+            TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+            TARGET_PLATFORM_ABIS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -c 12- | tr ',' ' ')"
 
             unset PACKAGE_SPEC_LIST
 
-            for TARGET_PLATFORM_ARCH in $TARGET_PLATFORM_ARCHS
+            for TARGET_PLATFORM_ABI in $TARGET_PLATFORM_ABIS
             do
-                case $TARGET_PLATFORM_ARCH in
-                    armv7a|aarch64|i686|x86_64)
-                        PACKAGE_SPEC_LIST="$PACKAGE_SPEC_LIST android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ARCH/$PACKAGE_NAME"
+                case $TARGET_PLATFORM_ABI in
+                    armeabi-v7a|arm64-v8a|x86|x86_64)
+                        PACKAGE_SPEC_LIST="$PACKAGE_SPEC_LIST android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ABI/$PACKAGE_NAME"
                         ;;
-                    *)  abort 1 "invalid package spec: $1\n    unrecognized android arch: $TARGET_PLATFORM_ARCH"
+                    *)  abort 1 "invalid package spec: $1\n    unrecognized android abi: $TARGET_PLATFORM_ABI"
                 esac
             done
 
@@ -4128,13 +4128,13 @@ __upgrade_packages() {
             ;;
         *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                 case $NDKPKG_DEFAULT_TARGET in
-                    '') NDKPKG_DEFAULT_TARGET='android-21-aarch64'
+                    '') NDKPKG_DEFAULT_TARGET='android-21-arm64-v8a'
                         ;;
-                    android-[1-9][0-9]-armv7a)
+                    android-[1-9][0-9]-armeabi-v7a)
                         ;;
-                    android-[1-9][0-9]-aarch64)
+                    android-[1-9][0-9]-arm64-v8a)
                         ;;
-                    android-[1-9][0-9]-i686)
+                    android-[1-9][0-9]-x86)
                         ;;
                     android-[1-9][0-9]-x86_64)
                         ;;
@@ -4317,7 +4317,7 @@ __install_the_given_packages() {
 
         TARGET_PLATFORM_NAME="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f1)"
         TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
-        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f3)"
+        TARGET_PLATFORM_ARCH="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -c 12-)"
 
         ##################################################################
 
@@ -4760,20 +4760,24 @@ __install_the_given_package() {
     trap  __install_the_given_package_onexit EXIT
 
     case $TARGET_PLATFORM_ARCH in
-        armv7a)
+        armeabi-v7a)
             TARGET_PLATFORM_ABI='armeabi-v7a'
+            TARGET_PLATFORM_ARCH='armv7a'
             TARGET_PLATFORM_NBIT=32
             ;;
-        aarch64)
+        arm64-v8a)
             TARGET_PLATFORM_ABI='arm64-v8a'
+            TARGET_PLATFORM_ARCH='aarch64'
             TARGET_PLATFORM_NBIT=64
             ;;
-        i686)
+        x86)
             TARGET_PLATFORM_ABI='x86'
+            TARGET_PLATFORM_ARCH='i686'
             TARGET_PLATFORM_NBIT=32
             ;;
         x86_64)
             TARGET_PLATFORM_ABI='x86_64'
+            TARGET_PLATFORM_ARCH='x86_64'
             TARGET_PLATFORM_NBIT=64
             ;;
         *)  abort 1 "unsupported target arch: $TARGET_PLATFORM_ARCH"
@@ -8728,12 +8732,12 @@ ${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
     download all the resources of the given package to the local cache.
 
 
-${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     install the given packages.
 
     ${COLOR_RED}C and C++ compiler for native build should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
 
-    ${COLOR_RED}<ANDROID-ARCHs>${COLOR_OFF} is a comma-separated list, any combination of aarch64, armv7a, x86_64, i686
+    ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
     INSTALL-OPTIONS:
         ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
@@ -8770,15 +8774,15 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAM
             do not delete the session directory even if this package is successfully installed.
 
     USAGE-EXAMPLES:
-        ndk-pkg install android-21-aarch64/zlib
-        ndk-pkg install android-21-aarch64,armv7a/zlib
-        ndk-pkg install android-21-aarch64,armv7a,x86_64/zlib
-        ndk-pkg install android-21-aarch64,armv7a,x86_64,i686/zlib
+        ndk-pkg install android-21-arm64-v8a/zlib
+        ndk-pkg install android-21-arm64-v8a,armeabi-v7a/zlib
+        ndk-pkg install android-21-arm64-v8a,armeabi-v7a,x86_64/zlib
+        ndk-pkg install android-21-arm64-v8a,armeabi-v7a,x86_64,x86/zlib
 
-${COLOR_GREEN}ndk-pkg reinstall android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg reinstall android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     reinstall the given packages.
 
-${COLOR_GREEN}ndk-pkg upgrade   android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg upgrade   android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     upgrade the given packages or all outdated packages.
 
 ${COLOR_GREEN}ndk-pkg uninstall <PACKAGE_SPEC>...${COLOR_OFF}
@@ -8810,14 +8814,14 @@ ${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <OUTPUT-TYPE>
     If -t <OUTPUT-TYPE> option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
 
 
-${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     export the given installed package as google prefab aar.
 
     For details about google prefab, please visit https://google.github.io/prefab/
 
     For details about the aar file contains google prefab, please visit https://developer.android.com/studio/projects/android-library#aar-contents
 
-    ${COLOR_RED}<ANDROID-ARCHs>${COLOR_OFF} is a comma-separated list, any combination of aarch64, armv7a, x86_64, i686
+    ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
     If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
 
@@ -8827,14 +8831,14 @@ ${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME
 
     If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar
 
-${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ARCHs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-session-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-session-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
     export the given installed package as google prefab aar then deploy it to Maven Repository.
 
     For details about google prefab, please visit https://google.github.io/prefab/
 
     For details about the aar file contains google prefab, please visit https://developer.android.com/studio/projects/android-library#aar-contents
 
-    ${COLOR_RED}<ANDROID-ARCHs>${COLOR_OFF} is a comma-separated list, any combination of aarch64, armv7a, x86_64, i686
+    ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
     If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
 
@@ -8864,14 +8868,14 @@ ${COLOR_GREEN}PACKAGE-NAME${COLOR_OFF}
     must match regular expression pattern ^[A-Za-z0-9+-_.@]{1,50}$
 
 ${COLOR_GREEN}TARGET${COLOR_OFF}
-    a formatted string that has form: android-<ANDROID-API>-<ANDROID-ARCH>
+    a formatted string that has form: android-<ANDROID-API>-<ANDROID-ABI>
 
 ${COLOR_GREEN}ANDROID-API${COLOR_OFF}
     indicates which minimum Android SDK API level would be built for or can run on.
 
     Reference: https://developer.android.com/tools/releases/platforms
 
-${COLOR_GREEN}ANDROID-ARCH${COLOR_OFF}
+${COLOR_GREEN}ANDROID-ABI${COLOR_OFF}
     indicates which Android ABI would be built for or can run on.
 
     Reference: https://developer.android.com/ndk/guides/abis
@@ -8918,13 +8922,13 @@ ${COLOR_GREEN}NDKPKG_XTRACE${COLOR_OFF}
     for debugging purposes. to enable set -x: ${COLOR_RED}export NDKPKG_XTRACE=1${COLOR_OFF}
 
 ${COLOR_GREEN}NDKPKG_DEFAULT_TARGET${COLOR_OFF}
-    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <TARGET>/<PACKAGE-NAME>, To simplify the usage, you are allowed to omit <TARGET>/. If <TARGET>/ is omitted, this environment variable will be used, if this environment variable is not set, then android-21-aarch64 will be used as the default.
+    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <TARGET>/<PACKAGE-NAME>, To simplify the usage, you are allowed to omit <TARGET>/. If <TARGET>/ is omitted, this environment variable will be used, if this environment variable is not set, then android-21-aarm64-v8a will be used as the default.
 
-    <TARGET> has the form android-<MIN-SDK-API-LEVEL>-<ANDROID-ARCH>
+    <TARGET> has the form android-<MIN-SDK-API-LEVEL>-<ANDROID-ABI>
 
     Example:
 
-    ${COLOR_RED}export NDKPKG_DEFAULT_TARGET='android-21-aarch64'${COLOR_OFF}
+    ${COLOR_RED}export NDKPKG_DEFAULT_TARGET='android-21-arm64-v8a'${COLOR_OFF}
 
     References:
 

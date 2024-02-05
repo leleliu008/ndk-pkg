@@ -82,11 +82,11 @@ jobs:
       - run: ./ndk-pkg pack libzip -o .
       - run: ./ndk-pkg pack libzip -o xx.tar.xz
 
-      - run: ./ndk-pkg export android-21-aarch64/libzip
-      - run: ./ndk-pkg export android-21-aarch64/libzip -o .
+      - run: ./ndk-pkg export android-21-arm64-v8a/libzip
+      - run: ./ndk-pkg export android-21-arm64-v8a/libzip -o .
 
-      - run: ./ndk-pkg deploy android-21-aarch64/libzip
-      - run: ./ndk-pkg deploy android-21-aarch64/libzip --local=xxxxx
+      - run: ./ndk-pkg deploy android-21-arm64-v8a/libzip
+      - run: ./ndk-pkg deploy android-21-arm64-v8a/libzip --local=xxxxx
 
       - run: ./ndk-pkg formula-repo-list
 
