@@ -2716,7 +2716,7 @@ EOF
 
     #########################################################################################
 
-    AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$TARGET_PLATFORM_VERS-$(printf '%s\n' "$TARGET_PLATFORM_ABIS" | tr ' ' '+').aar"
+    AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$TARGET_PLATFORM_VERS-$(printf '%s\n' "$TARGET_PLATFORM_ABIS" | tr ' ' ',').aar"
 
     step "packing the prefab aar file"
     run zip -9 -r "$AAR_FILENAME" .
