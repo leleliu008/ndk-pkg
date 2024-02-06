@@ -8907,7 +8907,7 @@ ${COLOR_GREEN}SSL_CERT_FILE${COLOR_OFF}
     In general, you don't need to set this environment variable, but, if you encounter the reporting ${COLOR_RED}the SSL certificate is invalid${COLOR_OFF}, trying to run below commands in your terminal will do the trick.
 
     ${COLOR_RED}curl -LO https://curl.se/ca/cacert.pem
-    export SSL_CERT_FILE="$PWD/cacert.pem"${COLOR_OFF}
+    export SSL_CERT_FILE="\$PWD/cacert.pem"${COLOR_OFF}
 
 ${COLOR_GREEN}GOPROXY${COLOR_OFF}
     example:
