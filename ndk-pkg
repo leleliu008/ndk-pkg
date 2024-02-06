@@ -4164,7 +4164,7 @@ inspect_install_arguments() {
 
     BUILD_TYPE=release
 
-    LINK_TYPE=static-preferred
+    LINK_TYPE=static-most
 
     KEEP_SESSION_DIR=0
 
@@ -4210,9 +4210,9 @@ inspect_install_arguments() {
             --link-type=*)
                 LINK_TYPE="${1#*=}"
                 case $LINK_TYPE in
-                    static-only|shared-only|static-preferred|shared-preferred) ;;
+                    static-only|shared-only|static-most|shared-most) ;;
                     '') abort 1 "--link-type=<VALUE>, VALUE must be non-empty." ;;
-                    *)  abort 1 "--link-type=<VALUE>, VALUE must be one of static-only|shared-only|static-preferred|shared-preferred"
+                    *)  abort 1 "--link-type=<VALUE>, VALUE must be one of static-only|shared-only|static-most|shared-most"
                 esac
                 ;;
             --jobs=*)
@@ -6580,8 +6580,8 @@ EOF
         step "create symlinks for dependent libraries"
 
         case $LINK_TYPE in
-            static-only|static-preferred) LINK_LIBRARY_TYPE='a'  ;;
-            shared-only|shared-preferred) LINK_LIBRARY_TYPE='so' ;;
+            static-only|static-most) LINK_LIBRARY_TYPE='a'  ;;
+            shared-only|shared-most) LINK_LIBRARY_TYPE='so' ;;
         esac
 
         for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
@@ -7645,10 +7645,10 @@ cmakew() {
 
         # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
         case $LINK_TYPE in
-            static-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-            static-preferred) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-only)     printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-preferred) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-only) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
+            static-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-only) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
+            shared-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
         esac
 
         if [ "$LOG_LEVEL" -gt 0 ] ; then
@@ -7780,7 +7780,7 @@ EOF
     MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
 
     case $LINK_TYPE in
-        static-only|static-preferred) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
+        static-only|static-most) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
     esac
 
     MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
@@ -8735,7 +8735,7 @@ ${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     install the given packages.
 
-    ${COLOR_RED}C and C++ compiler for native build should be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
+    ${COLOR_RED}C and C++ compiler for native build might be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
 
     ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
@@ -8744,7 +8744,7 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
             If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
 
         ${COLOR_BLUE}--jobs=N${COLOR_OFF}
-            set the number of jobs you can run in parallel.
+            specify the number of jobs you can run in parallel.
 
         ${COLOR_BLUE}-q${COLOR_OFF}
             silent mode. no any messages will be output to terminal.
@@ -8756,16 +8756,25 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
             very verbose mode. many many messages will be output to terminal.
 
         ${COLOR_BLUE}--build-type=<debug|release>${COLOR_OFF}
-            set build type.
+            specify the build type.
 
-        ${COLOR_BLUE}--link-type=<static-only|shared-only|static-preferred|shared-preferred>${COLOR_OFF}
-            link static or shared library.
+        ${COLOR_BLUE}--link-type=<static-only|static-most|shared-only|shared-most>${COLOR_OFF}
+            specify the link strategy.
+
+            a fully  statically linked executable is a executable that without any additional library dependencies even the standard C library.
+            a mostly statically linked executable is a executable that without any additional library dependencies except the standard C library.
+
+            a fully  statically linked executable is easy to distribute to all version of Android devices.
+            a mostly statically linked executable is easy to distribute to one version of Android devices.
 
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
             do not use ccache.
 
         ${COLOR_BLUE}--export-compile-commands-json${COLOR_OFF}
             generates compile_commands.json
+
+        ${COLOR_BLUE}--upgrade${COLOR_OFF}
+            If this package has been already installed, then it will be upgraded if it could be.
 
         ${COLOR_BLUE}--dry-run${COLOR_OFF}
             do not actually install the package.
