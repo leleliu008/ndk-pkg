@@ -21,7 +21,7 @@ jobs:
 
     steps:
       # https://github.com/marketplace/actions/setup-wsl
-      - uses: Vampire/setup-wsl@v2.0.2
+      - uses: Vampire/setup-wsl@v3
         with:
           distribution: ${{ matrix.distribution }}
 
@@ -37,10 +37,10 @@ jobs:
 
       - run: export -p
 
-      - run: apt -y update && apt -y install curl xz-utils g++ git
+      - run: apt -y update && apt -y install curl xz-utils g++ git patchelf
         if:  ${{ matrix.distribution == 'Debian'  }}
 
-      - run: apt -y update && apt -y install curl xz-utils g++ git
+      - run: apt -y update && apt -y install curl xz-utils g++ git patchelf
         if:  ${{ matrix.distribution == 'Ubuntu-22.04'  }}
 
       - run: zypper update -y && zypper install -y curl tar xz gcc-c++ git
@@ -57,6 +57,9 @@ jobs:
       - run: ./ndk-pkg env
 
       - run: ./ndk-pkg setup
+
+      # https://github.com/microsoft/WSL/issues/8681
+      - run: patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 ~/.uppm/installed/android-ndk-r26b/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
 
       - run: ./ndk-pkg sysinfo
 
