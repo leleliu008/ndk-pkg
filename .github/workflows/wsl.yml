@@ -58,11 +58,7 @@ jobs:
 
       - run: ./ndk-pkg setup
 
-      # https://github.com/microsoft/WSL/issues/8681
-      - run: patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 ~/.uppm/installed/android-ndk-r26b/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
-
       - run: ./ndk-pkg sysinfo
-
 
       - run: ./ndk-pkg integrate zsh
 
