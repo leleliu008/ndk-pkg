@@ -8002,7 +8002,7 @@ ndkinfo() {
     ANDROID_NDK_IS_INSTALLED_VIA_UPPM=0
 
     if [ -z "$NDKINFO" ] ; then
-        UPPM_PACKAGE_NAME_NDK='android-ndk-r26b'
+        UPPM_PACKAGE_NAME_NDK='android-ndk-r26c'
 
         if ! "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" ; then
             ANDROID_NDK_IS_INSTALLED_VIA_UPPM=1
@@ -8996,7 +8996,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.7.2
+    NDKPKG_VERSION=0.7.3
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
