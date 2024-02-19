@@ -8012,7 +8012,8 @@ ndkinfo() {
             # https://github.com/microsoft/WSL/issues/8681
             # https://github.com/microsoft/WSL/issues/4071
             if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-                patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 ~/.uppm/installed/android-ndk-r26b/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
+                ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
+                patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang-17"
             fi
         fi
 
@@ -8996,7 +8997,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.7.3
+    NDKPKG_VERSION=0.7.4
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'

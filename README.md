@@ -31,7 +31,7 @@ This is the recommended way of using this software.
 
 In this way, you don't need to care about other things than:
 
-- what package would you like to build?
+- what package would you like to build? [lookup package names](https://github.com/leleliu008/ndk-pkg-formula-repository-official-core/tree/master/formula)
 - which minimum Android SDK API level would you like to support?
 - which Android ABI would you like to build for?
 - which build type would you like to use?
@@ -41,7 +41,7 @@ In this way, you don't need to care about other things than:
 |-|
 |<img src="1.png" width="311px" >|
 
-For details please refer to <https://github.com/leleliu008/ndk-pkg-package-manually-build>
+For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-manually-build>
 
 ## Using ndk-pkg via Docker
 
