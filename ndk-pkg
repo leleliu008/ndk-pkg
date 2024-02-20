@@ -5756,7 +5756,6 @@ $DOT_CONTENT
         [ "$PACKAGE_BUILD_SYSTEM_CONFIGURE" = 1 ]
     } && {
         # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
-        # https://git.savannah.gnu.org/cgit/config.git/tree/
 
         step "replace config.sub and config.guess with the latest version"
 
@@ -5764,7 +5763,7 @@ $DOT_CONTENT
         do
             FILEPATH="$SESSION_DIR/$FILENAME"
 
-            wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH" --no-buffer
+            wfetch "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$FILENAME;hb=HEAD" -o "$FILEPATH" --no-buffer
 
             run chmod a+x "$FILEPATH"
 
@@ -8997,7 +8996,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.7.4
+    NDKPKG_VERSION=0.7.5
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
