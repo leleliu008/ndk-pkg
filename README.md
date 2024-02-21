@@ -80,11 +80,11 @@ docker exec -it ndk-pkg ndk-pkg install android-33-arm64-v8a/curl
 
 ## Using ndk-pkg via [WSL](https://docs.microsoft.com/en-us/windows/wsl)
 
-**Note:**
+**Note** :
 
-- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the Android NDK's linux binaries, Android NDK is incompatible with WSL1. For more details please read: https://github.com/android/ndk/issues/1755
+- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the Android NDK's linux binaries, Android NDK is incompatible with WSL1. For more details please read https://github.com/android/ndk/issues/1755
 
-**/etc/wsl.conf**
+**/etc/wsl.conf** :
 
 ```ini
 [network]
