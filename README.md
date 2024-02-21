@@ -43,7 +43,7 @@ In this way, you don't need to care about other things than:
 
 For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-manually-build>
 
-## Using ndk-pkg via Docker
+## Using ndk-pkg via [Docker](https://www.docker.com/) or [Podman](https://podman.io/)
 
 **step1. create the ndk-pkg docker container**
 
@@ -78,7 +78,36 @@ If all goes well, then next you can start to install packages whatever you want,
 docker exec -it ndk-pkg ndk-pkg install android-33-arm64-v8a/curl
 ```
 
-**Note:** you can use `podman` instead of `docker`
+## Using ndk-pkg via [WSL](https://docs.microsoft.com/en-us/windows/wsl)
+
+**Note:**
+
+- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the Android NDK's linux binaries, Android NDK is incompatible with WSL1. For more details please read: https://github.com/android/ndk/issues/1755
+
+**/etc/wsl.conf**
+
+```ini
+[network]
+hostname = ubuntu
+generateHosts = false
+
+[automount]
+enabled = true
+root = /mnt/
+options = "metadata,umask=22,fmask=11"
+mountFsTab = true
+```
+
+**Install ndk-pkg** :
+
+```bash
+sudo install -o $(whoami) -d /mnt/d/ndk-pkg
+ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
+
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
+chmod a+x ndk-pkg
+./ndk-pkg setup
+```
 
 ## Install ndk-pkg via cURL
 
