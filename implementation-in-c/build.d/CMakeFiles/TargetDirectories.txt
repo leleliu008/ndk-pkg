@@ -1,7 +1,0 @@
-/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/ndk-pkg.dir
-/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/edit_cache.dir
-/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/rebuild_cache.dir
-/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/list_install_components.dir
-/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/install.dir
-/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/install/local.dir
-/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/install/strip.dir
