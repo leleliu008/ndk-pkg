@@ -1,0 +1,833 @@
+#!/bin/sh
+
+# Copyright (c) 2020-2024 刘富频
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# https://developer.android.google.cn/ndk/guides/other_build_systems
+# https://clang.llvm.org/docs/CrossCompilation.html
+
+######################################################################################
+####################################  convention  ####################################
+# 1. The variable/function name starts with underscore "_" means that it is a private variable/function.
+# 2. 0 represents the boolean value false
+# 3. 1 represents the boolean value true
+# 4. all utilities are GNU-style
+######################################################################################
+
+# If IFS is not set, the default value will be <space><tab><newline>
+# https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
+unset IFS
+
+# __create_google_prefab_for_the_given_installed_package <PACKAGE-SPEC>
+  __create_google_prefab_for_the_given_installed_package() {
+    __load_receipt_of_the_given_package "$1"
+
+    PACKAGE_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}"
+
+    TARGET_PLATFORM_VERS="$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS"
+
+    case $RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH in
+        armv7a)
+            TARGET_PLATFORM_ABI='armeabi-v7a'
+            ;;
+        aarch64)
+            TARGET_PLATFORM_ABI='arm64-v8a'
+            ;;
+        i686)
+            TARGET_PLATFORM_ABI='x86'
+            ;;
+        x86_64)
+            TARGET_PLATFORM_ABI='x86_64'
+            ;;
+    esac
+
+    PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALLED_DIR/include"
+    PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib-for-apk"
+
+    #########################################################################################
+
+    [ -d "$PACKAGE_INCLUDE_DIR" ] || abort 10 "unable to be exported as google prefab, because there is no C/C++ header files in package $PACKAGE_SPEC"
+
+    run install -d prefab/modules/headers
+    run cp -r "$PACKAGE_INCLUDE_DIR" prefab/modules/headers/
+
+    #########################################################################################
+
+    unset PACKAGE_STATIC_LIBRARY_FILENAMES
+    unset PACKAGE_SHARED_LIBRARY_FILENAMES
+
+    if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
+        PACKAGE_STATIC_LIBRARY_FILENAMES="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.a'  -printf '%P\n')"
+        PACKAGE_SHARED_LIBRARY_FILENAMES="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.so' -printf '%P\n')"
+    fi
+
+    PACKAGE_LIBRARY_FILENAMES="$PACKAGE_STATIC_LIBRARY_FILENAMES $PACKAGE_SHARED_LIBRARY_FILENAMES"
+
+    for LIBRARY_FILENAME in $PACKAGE_LIBRARY_FILENAMES
+    do
+        case $LIBRARY_FILENAME in
+            *.a)  LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.a}"  ; IS_STATIC_LIBRARY=true  ;;
+            *.so) LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}" ; IS_STATIC_LIBRARY=false ;;
+        esac
+
+        MODULE_DIR="prefab/modules/$LIBRARY_FILENAME"
+
+        run install -d "$MODULE_DIR"
+
+        cat > "$MODULE_DIR/module.json" <<EOF
+{
+  "export_libraries": [],
+  "android": {
+    "library_name": "$LIBRARY_FILENAME_PREFIX",
+    "export_libraries": []
+  }
+}
+EOF
+
+        run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
+
+        ABI_DIR="$MODULE_DIR/libs/android.$TARGET_PLATFORM_ABI"
+
+        run install -d "$ABI_DIR"
+
+        LIBRARY_FILEPATH="$PACKAGE_LIBRARY_DIR/$LIBRARY_FILENAME"
+
+        run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
+
+        STL=none
+
+        # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
+        if [ "$IS_STATIC_LIBRARY" = true ] ; then
+            if   "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+            elif "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
+                STL=c++_shared
+            fi
+        else
+            if "$ANDROID_NDK_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
+                STL=c++_shared
+            elif "$ANDROID_NDK_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
+                # https://developer.android.com/ndk/guides/cpp-support
+                abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+            fi
+        fi
+
+        printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${RECEIPT_PACKAGE_NDKVERS%%.*}" "$TARGET_PLATFORM_VERS" "$TARGET_PLATFORM_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
+    done
+
+    #########################################################################################
+
+    # https://google.github.io/prefab/#package-metadata
+    #
+    # For compatibility with CMake, versions must be specified as major[.minor[.patch[.tweak]]] with all components being numeric.
+
+    unset VERSION
+
+    if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
+        VERSION="$(date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y.%m.%d')"
+    else
+        unset SED_E
+
+        I=0
+
+        for CHAR in a b c d e f g h i j k l m n o p q r s t u v w x y z
+        do
+            I=$(expr "$I" + 1)
+            SED_E="$SED_E -e s|$CHAR|.$I|g"
+        done
+
+        # r3060
+        # 1.4.rc5
+        # 2022-03-28
+        # 2.4+20151223
+        # 1.1.1n
+        # 9e
+        # 2.8.9rel.1
+        # 0.14.1-beta
+        # 0.99.beta20
+        # 3.0-11
+        # 1.4g
+        # 0.15.2e
+        VERSION="$(printf '%s\n' "$RECEIPT_PACKAGE_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
+
+        printf '%s\n' "$VERSION" | {
+            grep -q '[0-9]*' ||
+            grep -q '[0-9]*\.[0-9]*' ||
+            grep -q '[0-9]*\.[0-9]*\.[0-9]*' ||
+            grep -q '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'
+        } || abort 1 "version[$VERSION] not expected."
+    fi
+
+    unset DEPENDENCIES
+
+    for DEPENDENT_PACKAGE_NAME in $RECEIPT_PACKAGE_DEP_PKG
+    do
+        if [ -z "$DEPENDENCIES" ] ; then
+            DEPENDENCIES="\"$DEPENDENT_PACKAGE_NAME\""
+        else
+            DEPENDENCIES="$DEPENDENCIES, \"$DEPENDENT_PACKAGE_NAME\""
+        fi
+    done
+
+    cat > prefab/prefab.json <<EOF
+{
+  "schema_version": 2,
+  "name": "$PACKAGE_NAME",
+  "version": "$VERSION",
+  "dependencies": [ ]
+}
+EOF
+}
+
+# __export_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]
+  __export_google_prefab_aar_for_the_given_installed_packages() {
+    unset PACKAGE_NAME
+
+    unset TARGET_PLATFORM_VERS
+    unset TARGET_PLATFORM_ABIS
+
+    unset SPECIFIED_PACKAGE_SPEC_LIST
+
+    case $1 in
+        android-[1-9][0-9]-*/*)
+            PACKAGE_NAME="${1#*/}"
+
+            if [ -z "$PACKAGE_NAME" ] ; then
+                abort 1 "invalid package spec: $1\n    package name is unspecifed."
+            elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
+                :
+            else
+                abort 1 "invalid package spec: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
+            fi
+
+            TARGET_PLATFORM_SPEC="${1%%/*}"
+            TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+            TARGET_PLATFORM_ABIS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -c 12- | tr ',' ' ')"
+
+            for TARGET_PLATFORM_ABI in $TARGET_PLATFORM_ABIS
+            do
+                case $TARGET_PLATFORM_ABI in
+                    armeabi-v7a|arm64-v8a|x86|x86_64)
+                        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ABI/$PACKAGE_NAME"
+                        ;;
+                    *)  abort 1 "invalid package spec: $1\n    unsupported abi: $TARGET_PLATFORM_ABI"
+                esac
+            done
+            ;;
+        *)  abort 1 "invalid package spec: $1"
+    esac
+
+    #########################################################################################
+
+    shift
+
+    unset SPECIFIED_ANDROID_NDK_HOME
+
+    unset OUTPUT_FILEPATH
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --ndk-home=*)
+                SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
+                ;;
+            -o) shift
+                if [ -z "$1" ] ; then
+                    abort 1 "-o option is specified but <OUTPUT-PATH> is unspecified."
+                else
+                    OUTPUT_FILEPATH="$(realpath -s "$1")"
+                fi
+        esac
+        shift
+    done
+
+    #########################################################################################
+
+    setup_android_ndk_env "$SPECIFIED_ANDROID_NDK_HOME"
+
+    #########################################################################################
+
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
+
+    step "create the session directory and change to it"
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
+
+    #########################################################################################
+
+    for PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
+    do
+        step "create prefab hierarchial structure for $PACKAGE_SPEC"
+        __create_google_prefab_for_the_given_installed_package "$PACKAGE_SPEC"
+    done
+
+    #########################################################################################
+
+    PREFAB_MODULES="$(find prefab/modules -maxdepth 1 -mindepth 1 -type d -printf '%P ')"
+
+    PREFAB_MODULES="${PREFAB_MODULES% }"
+
+    #########################################################################################
+
+    # https://developer.android.com/studio/projects/android-library#aar-contents
+    step "create META-INF"
+    run install -d META-INF
+    cat > META-INF/README.ndk-pkg <<EOF
+packed by ndk-pkg-$NDKPKG_VERSION in $(date -u -d "@$TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%SZ')
+
+For more details, please refer to https://github.com/leleliu008/ndk-pkg
+EOF
+    run cp -r "$PACKAGE_INSTALLED_DIR/.ndk-pkg"/* META-INF/
+
+    #########################################################################################
+
+    PACKAGE_NAME="${PACKAGE_NAME%@*}"
+
+    unset JAVA_PACKAGE_NAME
+
+    # java package name characters [a-z0-9_.]
+    JAVA_PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_NAME" | tr '+-.' '_' | tr A-Z a-z)"
+
+    step "create AndroidManifest.xml"
+    tee AndroidManifest.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.fpliu.ndk.pkg.prefab.android$TARGET_PLATFORM_VERS.$JAVA_PACKAGE_NAME">
+
+    <uses-sdk android:minSdkVersion="$TARGET_PLATFORM_VERS" />
+
+</manifest>
+EOF
+
+    #########################################################################################
+
+    AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$TARGET_PLATFORM_VERS-$(printf '%s\n' "$TARGET_PLATFORM_ABIS" | tr ' ' ',').aar"
+
+    step "packing the prefab aar file"
+    run zip -9 -r "$AAR_FILENAME" .
+
+    step "show size of the prefab aar file"
+    run du -sh    "$AAR_FILENAME"
+
+    step "show session directory in tree-like format"
+    run tree --dirsfirst .
+
+    ###########################################################################################
+
+    if [ "$NDKPKG_ACTION" = 'deploy' ] ; then
+        return 0
+    fi
+
+    if [ -z "$OUTPUT_FILEPATH" ] ; then
+        printf '%b\n' "
+${COLOR_GREEN}Note:${COLOR_OFF}
+    ${COLOR_RED}NOT proceed due to -o <OUTPUT-PATH> option is unspecified.${COLOR_OFF}
+
+    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+
+    cd $SESSION_DIR
+    mv $AAR_FILENAME /somewhere
+    cd -
+    rm -rf $SESSION_DIR
+        "
+        return 0
+    fi
+
+    ###########################################################################################
+
+    if [ -d "$OUTPUT_FILEPATH" ] ; then
+        OUTPUT_DIR="$OUTPUT_FILEPATH"
+        OUTPUT_FILEPATH="$OUTPUT_FILEPATH/$AAR_FILENAME"
+    else
+        case $OUTPUT_FILEPATH in
+            */)
+                OUTPUT_DIR="$OUTPUT_FILEPATH"
+                OUTPUT_FILEPATH="$OUTPUT_FILEPATH/$AAR_FILENAME"
+                ;;
+            *)
+                OUTPUT_DIR="${OUTPUT_FILEPATH%/*}"
+                OUTPUT_FILENAME="${OUTPUT_FILEPATH##*/}"
+        esac
+    fi
+
+    if [ ! -d "$OUTPUT_DIR" ] ; then
+        step "create the output directory"
+        run install -d "$OUTPUT_DIR"
+    fi
+
+    step "move prefab aar file to destination"
+    run mv "$AAR_FILENAME" "$OUTPUT_FILEPATH"
+
+    step "delete the session directory"
+    run rm -rf "$SESSION_DIR"
+}
+
+# __deploy_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>/<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [--keep-session-dir] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
+  __deploy_google_prefab_aar_for_the_given_installed_packages() {
+    __export_google_prefab_aar_for_the_given_installed_packages "$@"
+
+    #########################################################################################
+
+    shift
+
+    unset SPECIFIED_ANDROID_NDK_HOME
+
+    unset DEPLOYED_TO_SONATYPE_OSSRH
+    unset DEPLOYED_TO_SPECIFIED_LOCAL_PATH
+
+    unset KEEP_SESSION_DIR
+
+    unset MVN_OPTIONS
+
+    unset DRYRUN
+
+    unset GROUPID
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --ndk-home=*)
+                SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
+                ;;
+            --debug)
+                MVN_OPTIONS=-X
+                ;;
+            --remote)
+                DEPLOYED_TO_SONATYPE_OSSRH=1
+                ;;
+            --local=*)
+                DEPLOYED_TO_SPECIFIED_LOCAL_PATH="${1#*=}"
+                ;;
+            --dry-run)
+                DRYRUN=1
+                ;;
+            --keep-session-dir)
+                KEEP_SESSION_DIR=1
+                ;;
+            --groupId=*)
+                GROUPID="${1#*=}"
+                ;;
+            *)  abort 1 "unrecognized argument: $1"
+        esac
+
+        shift
+    done
+
+    #########################################################################################
+
+    [ -z "$GROUPID" ] && GROUPID="com.fpliu.ndk.pkg.prefab.android.$TARGET_PLATFORM_VERS"
+
+    #########################################################################################
+
+    if [ -z "$DEPLOYED_TO_SONATYPE_OSSRH" ] && [ -z "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
+        if [ "$DRYRUN" = 1 ] ; then
+            printf '%b\n' "
+${COLOR_GREEN}Note:${COLOR_OFF}
+    ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
+
+    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+
+    cd $SESSION_DIR
+    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=true
+    cd -
+    rm -rf $SESSION_DIR
+            "
+            return 0
+        fi
+
+        if command -v mvn > /dev/null ; then
+            MVN_COMMAND=mvn
+        else
+            step "install maven"
+            run uppm install maven
+
+            unset  JAVA_HOME
+            unset MAVEN_HOME
+
+            export JAVA_HOME="$(uppm info jdk17 installed-dir)"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
+
+            MAVEN_HOME="$(uppm info maven installed-dir)"
+
+            MVN_COMMAND="$MAVEN_HOME/bin/mvn"
+        fi
+
+        # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
+        step "deploying the prefab aar to Maven Local Repository"
+        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=true
+
+        if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+            printf '\n'
+            note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
+        else
+            step "delete the session directory"
+            run rm -rf "$SESSION_DIR"
+        fi
+
+        printf '%b\n' "
+${COLOR_YELLOW}
+======================================================
+Use this artifact alongside with Android Gradle Plugin
+======================================================${COLOR_OFF}
+
+${COLOR_GREEN}step1. enable prefab feature for Android Gradle Plugin${COLOR_OFF}
+
+android {
+    buildFeatures {
+        prefab true
+    }
+}
+
+${COLOR_GREEN}step2. enable mavenLocal repository for Gradle${COLOR_OFF}
+
+repositories {
+    mavenLocal()
+}
+
+${COLOR_GREEN}step3. configure dependencies${COLOR_OFF}
+
+${COLOR_PURPLE}For Gradle Groovy DSL:${COLOR_OFF}
+
+dependencies {
+    implementation '$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar'
+}
+
+${COLOR_PURPLE}For Gradle Kotlin DSL:${COLOR_OFF}
+
+dependencies {
+    implementation(\"$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar\")
+}
+
+${COLOR_GREEN}step4. find package and link libraries in your Android project's CMakeLists.txt${COLOR_OFF}
+
+${COLOR_PURPLE}This prefab package has $(list_size $PREFAB_MODULES) modules : $PREFAB_MODULES${COLOR_OFF}
+
+find_package($PACKAGE_NAME REQUIRED CONFIG)
+target_link_libraries(app $PACKAGE_NAME::${PREFAB_MODULES%% *})
+
+${COLOR_GREEN}step5. configure C++ standard and STL (optional)${COLOR_OFF}
+
+android {
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+                cppFlags  '-std=c++17'
+            }
+        }
+    }
+}
+
+${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.so, then your Android app should use libc++_shared.so too.${COLOR_OFF}
+"
+        return 0
+    fi
+
+    if [ -n "$DEPLOYED_TO_SONATYPE_OSSRH" ] && [ -n "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
+        abort 1 '--remote and --local=<DIR> can not used as the same time.'
+    fi
+
+    #########################################################################################
+
+    # https://central.sonatype.org/publish/release/
+    # https://central.sonatype.org/publish/requirements/
+    # https://central.sonatype.org/publish/publish-manual/
+
+    if [ -n "$DEPLOYED_TO_SONATYPE_OSSRH" ] ; then
+        if [ -z "$RECEIPT_PACKAGE_LICENSE" ] ; then
+            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_LICENSE is empty."
+        fi
+
+        if [ -z "$RECEIPT_PACKAGE_GIT_URL" ] ; then
+            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_GIT_URL is empty."
+        fi
+    fi
+
+    step "generating pom.xml"
+    cat > pom.xml <<EOF
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>$GROUPID</groupId>
+    <artifactId>$PACKAGE_NAME</artifactId>
+    <version>$RECEIPT_PACKAGE_VERSION</version>
+    <packaging>aar</packaging>
+
+    <name>$PACKAGE_NAME</name>
+    <description>$RECEIPT_PACKAGE_SUMMARY</description>
+    <url>$RECEIPT_PACKAGE_WEB_URL</url>
+EOF
+
+    RECEIPT_PACKAGE_SCM_URL=
+
+    if [ -n "$RECEIPT_PACKAGE_GIT_URL" ] ; then
+        RECEIPT_PACKAGE_SCM_TYPE=git
+        RECEIPT_PACKAGE_SCM_URL="$RECEIPT_PACKAGE_GIT_URL"
+    fi
+
+    if [ -n "$RECEIPT_PACKAGE_SCM_URL" ] ; then
+        cat >> pom.xml <<EOF
+
+    <scm>
+        <connection>scm:$RECEIPT_PACKAGE_SCM_TYPE:$RECEIPT_PACKAGE_SCM_URL</connection>
+        <developerConnection>scm:$RECEIPT_PACKAGE_SCM_TYPE:$RECEIPT_PACKAGE_SCM_URL</developerConnection>
+        <url>$RECEIPT_PACKAGE_SCM_URL</url>
+    </scm>
+EOF
+    fi
+
+    if [ -z "$RECEIPT_PACKAGE_DEVELOPER" ] ; then
+        RECEIPT_PACKAGE_DEVELOPER="$PACKAGE_NAME developers <unknown>"
+    fi
+
+    printf '\n    <developers>\n' >> pom.xml
+
+    export IFS='
+'
+
+    for DEVELOPER in $RECEIPT_PACKAGE_DEVELOPER
+    do
+        DEVELOPER_NAME=
+        DEVELOPER_EMAIL=
+
+        DEVELOPER_NAME="${DEVELOPER% <*>}"
+
+        if [ "$DEVELOPER" != "$DEVELOPER_NAME" ] ; then
+            DEVELOPER_EMAIL="$(printf '%s\n' "$DEVELOPER" | sed -e 's|.* <\(.*\)>|\1|')"
+        fi
+
+        cat >> pom.xml <<EOF
+        <developer>
+            <name>$DEVELOPER_NAME</name>
+            <email>$DEVELOPER_EMAIL</email>
+        </developer>
+EOF
+    done
+
+    unset IFS
+
+    printf '    </developers>\n' >> pom.xml
+
+    if [ -n "$RECEIPT_PACKAGE_LICENSE" ] ; then
+        printf '\n    <licenses>\n' >> pom.xml
+
+        for LICENSE_NAME in $RECEIPT_PACKAGE_LICENSE
+        do
+            cat >> pom.xml <<EOF
+        <license>
+            <name>$LICENSE_NAME</name>
+            <url>https://raw.githubusercontent.com/spdx/license-list-data/master/text/$LICENSE_NAME.txt</url>
+        </license>
+EOF
+        done
+
+        printf '    </licenses>\n' >> pom.xml
+    fi
+
+    printf '</project>\n' >> pom.xml
+
+    cat pom.xml
+
+    #########################################################################################
+
+    POM_FILE="${AAR_FILENAME%.aar}.pom"
+
+    step "rename pom.xml to $POM_FILE"
+    run mv pom.xml "$POM_FILE"
+
+    #########################################################################################
+
+    if [ -n "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
+        cd -
+        DEPLOYED_TO_SPECIFIED_LOCAL_PATH="$(realpath -s "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH")"
+        cd -
+
+        if [ "$DRYRUN" = 1 ] ; then
+            printf '%b\n' "
+${COLOR_GREEN}Note:${COLOR_OFF}
+    ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
+
+    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+
+    cd $SESSION_DIR
+    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=false -DpomFile=$POM_FILE -DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH
+    cd -
+    rm -rf $SESSION_DIR
+            "
+            return 0
+        fi
+
+        if command -v mvn > /dev/null ; then
+            MVN_COMMAND=mvn
+        else
+            step "install maven"
+            run uppm install maven
+
+            unset  JAVA_HOME
+            unset MAVEN_HOME
+
+            export JAVA_HOME="$(uppm info jdk17 installed-dir)"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
+
+            MAVEN_HOME="$(uppm info maven installed-dir)"
+
+            MVN_COMMAND="$MAVEN_HOME/bin/mvn"
+        fi
+
+        # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
+        step "deploying the prefab aar to Maven Local Repository"
+        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
+
+        if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+            printf '\n'
+            note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
+        else
+            step "delete the session directory"
+            run rm -rf "$SESSION_DIR"
+        fi
+
+        return 0
+    fi
+
+    #########################################################################################
+
+    if [ "$DRYRUN" = 1 ] ; then
+        printf '%b\n' "
+${COLOR_GREEN}Note:${COLOR_OFF}
+    ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
+
+    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+
+    cd $SESSION_DIR
+    run mvn --settings settings.xml $MVN_OPTIONS gpg:sign-and-deploy-file -Dfile=$AAR_FILENAME -DgeneratePom=false -DpomFile=$POM_FILE -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 -DrepositoryId=$SERVER_ID -Durl=$SERVER_URL
+    cd -
+    rm -rf $SESSION_DIR
+        "
+        return 0
+    fi
+
+    #########################################################################################
+
+    unset SERVER_ID
+    unset SERVER_URL
+    unset SERVER_USERNAME
+    unset SERVER_PASSWORD
+    unset GPG_PASSPHRASE
+
+    step "read config from stdin"
+    while read -r LINE
+    do
+        case $LINE in
+            SERVER_ID=*)        SERVER_ID="${LINE#*=}" ;;
+            SERVER_URL=*)       SERVER_URL="${LINE#*=}" ;;
+            SERVER_USERNAME=*)  SERVER_USERNAME="${LINE#*=}" ;;
+            SERVER_PASSWORD=*)  SERVER_PASSWORD="${LINE#*=}" ;;
+            GPG_PASSPHRASE=*)   GPG_PASSPHRASE="${LINE#*=}" ;;
+        esac
+    done
+
+    [ -z "$SERVER_ID" ]       && abort 1 "SERVER_ID must not be enpty."
+    [ -z "$SERVER_URL" ]      && abort 1 "SERVER_URL must not be enpty."
+    [ -z "$SERVER_USERNAME" ] && abort 1 "SERVER_USERNAME must not be enpty."
+    [ -z "$SERVER_PASSWORD" ] && abort 1 "SERVER_PASSWORD must not be enpty."
+    [ -z "$GPG_PASSPHRASE"  ] && abort 1 "GPG_PASSPHRASE must not be enpty."
+
+    #########################################################################################
+
+    on_exit_deploy() {
+        rm -f settings.xml
+    }
+
+    trap on_exit_deploy EXIT
+
+    # https://maven.apache.org/plugins/maven-gpg-plugin/usage.html
+    step "generating settings.xml"
+    cat > settings.xml <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <servers>
+    <server>
+      <id>$SERVER_ID</id>
+      <username>$SERVER_USERNAME</username>
+      <password>$SERVER_PASSWORD</password>
+    </server>
+
+    <server>
+      <id>gpg.passphrase</id>
+      <passphrase>$GPG_PASSPHRASE</passphrase>
+    </server>
+  </servers>
+</settings>
+EOF
+
+    #########################################################################################
+
+    if command -v mvn > /dev/null ; then
+        MVN_COMMAND=mvn
+    else
+        step "install maven"
+        run uppm install maven
+
+        unset  JAVA_HOME
+        unset MAVEN_HOME
+
+        export JAVA_HOME="$(uppm info jdk17 installed-dir)"
+        export PATH="$JAVA_HOME/bin:$PATH"
+        export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
+
+        MAVEN_HOME="$(uppm info maven installed-dir)"
+
+        MVN_COMMAND="$MAVEN_HOME/bin/mvn"
+    fi
+
+    #########################################################################################
+
+    # There are two maven plugins maven-deploy-plugin and maven-gpg-plugin can be used
+    # maven-gpg-plugin is preferred as it is automatically signed with gpg.
+    # 
+    # https://maven.apache.org/plugins/maven-gpg-plugin/sign-and-deploy-file-mojo.html
+    # https://maven.apache.org/plugins/maven-deploy-plugin/deploy-file-mojo.html
+    # https://maven.apache.org/resolver/configuration.html
+
+    step "deploying"
+    run "$MVN_COMMAND" \
+        --settings settings.xml \
+        $MVN_OPTIONS \
+        gpg:sign-and-deploy-file \
+        -Dfile=$AAR_FILENAME \
+        -DgeneratePom=false \
+        -DpomFile=$POM_FILE \
+        -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 \
+        -DrepositoryId=$SERVER_ID \
+        -Durl=$SERVER_URL
+
+    #########################################################################################
+
+    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+        printf '\n'
+        note "the session dir '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
+    else
+        step "delete the session directory"
+        run rm -rf "$SESSION_DIR"
+    fi
+}
+

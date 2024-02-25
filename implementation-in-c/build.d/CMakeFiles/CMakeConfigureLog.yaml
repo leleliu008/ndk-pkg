@@ -1,0 +1,431 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeDetermineSystem.cmake:233 (message)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      The system is: Linux - 6.5.0-21-generic - x86_64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: /usr/bin/cc 
+      Build flags: -fsanitize=undefined;-fsanitize=address;-fsanitize=leak
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+      
+      The C compiler identification is GNU, found in:
+        /home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/3.28.3/CompilerIdC/a.out
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:57 (try_compile)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-4zIdRr"
+      binary: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-4zIdRr"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fsanitize=undefined -fsanitize=address -fsanitize=leak"
+      VCPKG_APPLOCAL_DEPS: "ON"
+      VCPKG_TARGET_TRIPLET: "x64-linux"
+      Z_VCPKG_ROOT_DIR: "/home/leleliu008/.vcpkg/root"
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-4zIdRr'
+        
+        Run Build Command(s): /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d1e8d/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_d1e8d.dir/build.make CMakeFiles/cmTC_d1e8d.dir/build
+        gmake[1]: Entering directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-4zIdRr'
+        Building C object CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o
+        /usr/bin/cc   -fsanitize=undefined -fsanitize=address -fsanitize=leak    -v -o CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o -c /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeCCompilerABI.c
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.2.0-4ubuntu3' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-XYspKM/gcc-13-13.2.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-13-XYspKM/gcc-13-13.2.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.2.0 (Ubuntu 13.2.0-4ubuntu3) 
+        COLLECT_GCC_OPTIONS='-fsanitize=undefined' '-fsanitize=address' '-fsanitize=leak' '-v' '-o' 'CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d1e8d.dir/'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/cc1 -quiet -v -imultiarch x86_64-linux-gnu /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_d1e8d.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fsanitize=undefined -fsanitize=address -fsanitize=leak -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccD7Tcqn.s
+        GNU C17 (Ubuntu 13.2.0-4ubuntu3) version 13.2.0 (x86_64-linux-gnu)
+        	compiled by GNU C version 13.2.0, GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version isl-0.26-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib/gcc/x86_64-linux-gnu/13/include
+         /usr/local/include
+         /usr/include/x86_64-linux-gnu
+         /usr/include
+        End of search list.
+        Compiler executable checksum: edbc28f9c9bb85637ee0b8e5b79ac141
+        COLLECT_GCC_OPTIONS='-fsanitize=undefined' '-fsanitize=address' '-fsanitize=leak' '-v' '-o' 'CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d1e8d.dir/'
+         as -v --64 -o CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o /tmp/ccD7Tcqn.s
+        GNU assembler version 2.41 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.41
+        COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-fsanitize=undefined' '-fsanitize=address' '-fsanitize=leak' '-v' '-o' 'CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.'
+        Linking C executable cmTC_d1e8d
+        /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d1e8d.dir/link.txt --verbose=1
+        /usr/bin/cc -fsanitize=undefined -fsanitize=address -fsanitize=leak  -L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib -v CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o -o cmTC_d1e8d 
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.2.0-4ubuntu3' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-XYspKM/gcc-13-13.2.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-13-XYspKM/gcc-13-13.2.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.2.0 (Ubuntu 13.2.0-4ubuntu3) 
+        COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-fsanitize=undefined' '-fsanitize=address' '-fsanitize=leak' '-L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib' '-v' '-o' 'cmTC_d1e8d' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_d1e8d.'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccYbC8Us.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d1e8d /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. /usr/lib/gcc/x86_64-linux-gnu/13/libasan_preinit.o --push-state --no-as-needed -lasan --pop-state CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o --push-state --no-as-needed -lubsan --pop-state -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+        COLLECT_GCC_OPTIONS='-fsanitize=undefined' '-fsanitize=address' '-fsanitize=leak' '-L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib' '-v' '-o' 'cmTC_d1e8d' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_d1e8d.'
+        gmake[1]: Leaving directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-4zIdRr'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:127 (message)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed C implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/lib/gcc/x86_64-linux-gnu/13/include]
+          add: [/usr/local/include]
+          add: [/usr/include/x86_64-linux-gnu]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/lib/gcc/x86_64-linux-gnu/13/include] ==> [/usr/lib/gcc/x86_64-linux-gnu/13/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/lib/gcc/x86_64-linux-gnu/13/include;/usr/local/include;/usr/include/x86_64-linux-gnu;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:159 (message)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        ignore line: [Change Dir: '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-4zIdRr']
+        ignore line: []
+        ignore line: [Run Build Command(s): /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d1e8d/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_d1e8d.dir/build.make CMakeFiles/cmTC_d1e8d.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-4zIdRr']
+        ignore line: [Building C object CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/cc   -fsanitize=undefined -fsanitize=address -fsanitize=leak    -v -o CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o -c /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeCCompilerABI.c]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.2.0-4ubuntu3' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c ada c++ go d fortran objc obj-c++ m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-XYspKM/gcc-13-13.2.0/debian/tmp-nvptx/usr amdgcn-amdhsa=/build/gcc-13-XYspKM/gcc-13-13.2.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.2.0 (Ubuntu 13.2.0-4ubuntu3) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-fsanitize=undefined' '-fsanitize=address' '-fsanitize=leak' '-v' '-o' 'CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d1e8d.dir/']
+        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/cc1 -quiet -v -imultiarch x86_64-linux-gnu /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_d1e8d.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fsanitize=undefined -fsanitize=address -fsanitize=leak -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccD7Tcqn.s]
+        ignore line: [GNU C17 (Ubuntu 13.2.0-4ubuntu3) version 13.2.0 (x86_64-linux-gnu)]
+        ignore line: [	compiled by GNU C version 13.2.0  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version isl-0.26-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/13/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/include/x86_64-linux-gnu]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: edbc28f9c9bb85637ee0b8e5b79ac141]
+        ignore line: [COLLECT_GCC_OPTIONS='-fsanitize=undefined' '-fsanitize=address' '-fsanitize=leak' '-v' '-o' 'CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d1e8d.dir/']
+        ignore line: [ as -v --64 -o CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o /tmp/ccD7Tcqn.s]
+        ignore line: [GNU assembler version 2.41 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.41]
+        ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-fsanitize=undefined' '-fsanitize=address' '-fsanitize=leak' '-v' '-o' 'CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.']
+        ignore line: [Linking C executable cmTC_d1e8d]
+        ignore line: [/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d1e8d.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/cc -fsanitize=undefined -fsanitize=address -fsanitize=leak  -L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib -v CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o -o cmTC_d1e8d ]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.2.0-4ubuntu3' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c ada c++ go d fortran objc obj-c++ m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-XYspKM/gcc-13-13.2.0/debian/tmp-nvptx/usr amdgcn-amdhsa=/build/gcc-13-XYspKM/gcc-13-13.2.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.2.0 (Ubuntu 13.2.0-4ubuntu3) ]
+        ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-fsanitize=undefined' '-fsanitize=address' '-fsanitize=leak' '-L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib' '-v' '-o' 'cmTC_d1e8d' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_d1e8d.']
+        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccYbC8Us.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d1e8d /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. /usr/lib/gcc/x86_64-linux-gnu/13/libasan_preinit.o --push-state --no-as-needed -lasan --pop-state CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o --push-state --no-as-needed -lubsan --pop-state -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o]
+          arg [/usr/libexec/gcc/x86_64-linux-gnu/13/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccYbC8Us.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [--hash-style=gnu] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-pie] ==> ignore
+          arg [-znow] ==> ignore
+          arg [-zrelro] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_d1e8d] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o]
+          arg [-L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib] ==> dir [/home/linuxbrew/.linuxbrew/opt/python@3.10/lib]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib]
+          arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+          arg [-L/lib/../lib] ==> dir [/lib/../lib]
+          arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+          arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../..] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../..]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/libasan_preinit.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/libasan_preinit.o]
+          arg [--push-state] ==> ignore
+          arg [--no-as-needed] ==> ignore
+          arg [-lasan] ==> lib [asan]
+          arg [--pop-state] ==> ignore
+          arg [CMakeFiles/cmTC_d1e8d.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [--push-state] ==> ignore
+          arg [--no-as-needed] ==> ignore
+          arg [-lubsan] ==> lib [ubsan]
+          arg [--pop-state] ==> ignore
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [-lc] ==> lib [c]
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o] ==> [/usr/lib/x86_64-linux-gnu/Scrt1.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o] ==> [/usr/lib/x86_64-linux-gnu/crti.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o] ==> [/usr/lib/x86_64-linux-gnu/crtn.o]
+        collapse library dir [/home/linuxbrew/.linuxbrew/opt/python@3.10/lib] ==> [/home/linuxbrew/.linuxbrew/opt/python@3.10/lib]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13] ==> [/usr/lib/gcc/x86_64-linux-gnu/13]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib] ==> [/usr/lib]
+        collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+        collapse library dir [/lib/../lib] ==> [/lib]
+        collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/../lib] ==> [/usr/lib]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../..] ==> [/usr/lib]
+        implicit libs: [asan;ubsan;gcc;gcc_s;c;gcc;gcc_s]
+        implicit objs: [/usr/lib/x86_64-linux-gnu/Scrt1.o;/usr/lib/x86_64-linux-gnu/crti.o;/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o;/usr/lib/gcc/x86_64-linux-gnu/13/libasan_preinit.o;/usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o;/usr/lib/x86_64-linux-gnu/crtn.o]
+        implicit dirs: [/home/linuxbrew/.linuxbrew/opt/python@3.10/lib;/usr/lib/gcc/x86_64-linux-gnu/13;/usr/lib/x86_64-linux-gnu;/usr/lib;/lib/x86_64-linux-gnu;/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CheckIncludeFiles.cmake:132 (try_compile)"
+      - "CMakeLists.txt:51 (check_include_files)"
+      - "CMakeLists.txt:56 (check_if_have_header_files)"
+    checks:
+      - "Looking for include file linux/limits.h"
+    directories:
+      source: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-h1OIwQ"
+      binary: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-h1OIwQ"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak"
+      VCPKG_APPLOCAL_DEPS: "ON"
+      VCPKG_TARGET_TRIPLET: "x64-linux"
+      Z_VCPKG_ROOT_DIR: "/home/leleliu008/.vcpkg/root"
+    buildResult:
+      variable: "HAVE_LINUX_LIMITS_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-h1OIwQ'
+        
+        Run Build Command(s): /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7629c/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_7629c.dir/build.make CMakeFiles/cmTC_7629c.dir/build
+        gmake[1]: Entering directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-h1OIwQ'
+        Building C object CMakeFiles/cmTC_7629c.dir/HAVE_LINUX_LIMITS_H.c.o
+        /usr/bin/cc   -L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak  -o CMakeFiles/cmTC_7629c.dir/HAVE_LINUX_LIMITS_H.c.o -c /home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-h1OIwQ/HAVE_LINUX_LIMITS_H.c
+        Linking C executable cmTC_7629c
+        /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7629c.dir/link.txt --verbose=1
+        /usr/bin/cc -L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak  -L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib  CMakeFiles/cmTC_7629c.dir/HAVE_LINUX_LIMITS_H.c.o -o cmTC_7629c 
+        gmake[1]: Leaving directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-h1OIwQ'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/FindThreads.cmake:97 (CHECK_C_SOURCE_COMPILES)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/FindThreads.cmake:163 (_threads_check_libc)"
+      - "/home/leleliu008/.vcpkg/root/scripts/buildsystems/vcpkg.cmake:855 (_find_package)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/FindOpenSSL.cmake:151 (find_package)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/FindOpenSSL.cmake:546 (_OpenSSL_test_and_find_dependencies)"
+      - "/home/leleliu008/.vcpkg/root/scripts/buildsystems/vcpkg.cmake:855 (_find_package)"
+      - "CMakeLists.txt:90 (find_package)"
+    checks:
+      - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
+    directories:
+      source: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-oEd8aT"
+      binary: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-oEd8aT"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak"
+      CMAKE_MODULE_PATH: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/cmake;"
+      VCPKG_APPLOCAL_DEPS: "ON"
+      VCPKG_TARGET_TRIPLET: "x64-linux"
+      Z_VCPKG_ROOT_DIR: "/home/leleliu008/.vcpkg/root"
+    buildResult:
+      variable: "CMAKE_HAVE_LIBC_PTHREAD"
+      cached: true
+      stdout: |
+        Change Dir: '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-oEd8aT'
+        
+        Run Build Command(s): /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_50b2b/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_50b2b.dir/build.make CMakeFiles/cmTC_50b2b.dir/build
+        gmake[1]: Entering directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-oEd8aT'
+        Building C object CMakeFiles/cmTC_50b2b.dir/src.c.o
+        /usr/bin/cc -DCMAKE_HAVE_LIBC_PTHREAD  -L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak  -o CMakeFiles/cmTC_50b2b.dir/src.c.o -c /home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-oEd8aT/src.c
+        Linking C executable cmTC_50b2b
+        /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E cmake_link_script CMakeFiles/cmTC_50b2b.dir/link.txt --verbose=1
+        /usr/bin/cc -L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak  -L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib  CMakeFiles/cmTC_50b2b.dir/src.c.o -o cmTC_50b2b 
+        gmake[1]: Leaving directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-oEd8aT'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/FindBZip2.cmake:93 (CHECK_SYMBOL_EXISTS)"
+      - "/home/leleliu008/.vcpkg/root/scripts/buildsystems/vcpkg.cmake:855 (_find_package)"
+      - "/home/leleliu008/.vcpkg/root/installed/x64-linux/share/libarchive/vcpkg-cmake-wrapper.cmake:19 (find_package)"
+      - "/home/leleliu008/.vcpkg/root/scripts/buildsystems/vcpkg.cmake:809 (include)"
+      - "CMakeLists.txt:96 (find_package)"
+    checks:
+      - "Looking for BZ2_bzCompressInit"
+    directories:
+      source: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-EGnNqv"
+      binary: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-EGnNqv"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak"
+      CMAKE_MODULE_PATH: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/cmake;"
+      VCPKG_APPLOCAL_DEPS: "ON"
+      VCPKG_TARGET_TRIPLET: "x64-linux"
+      Z_VCPKG_ROOT_DIR: "/home/leleliu008/.vcpkg/root"
+    buildResult:
+      variable: "BZIP2_NEED_PREFIX"
+      cached: true
+      stdout: |
+        Change Dir: '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-EGnNqv'
+        
+        Run Build Command(s): /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_1dd89/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_1dd89.dir/build.make CMakeFiles/cmTC_1dd89.dir/build
+        gmake[1]: Entering directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-EGnNqv'
+        Building C object CMakeFiles/cmTC_1dd89.dir/CheckSymbolExists.c.o
+        /usr/bin/cc  -I/home/leleliu008/.vcpkg/root/installed/x64-linux/include -L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak  -o CMakeFiles/cmTC_1dd89.dir/CheckSymbolExists.c.o -c /home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-EGnNqv/CheckSymbolExists.c
+        Linking C executable cmTC_1dd89
+        /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1dd89.dir/link.txt --verbose=1
+        /usr/bin/cc -L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak  -L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib  CMakeFiles/cmTC_1dd89.dir/CheckSymbolExists.c.o -o cmTC_1dd89  /home/leleliu008/.vcpkg/root/installed/x64-linux/lib/libbz2.a 
+        gmake[1]: Leaving directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-EGnNqv'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/FindIconv.cmake:115 (check_c_source_compiles)"
+      - "/home/leleliu008/.vcpkg/root/installed/x64-linux/share/iconv/vcpkg-cmake-wrapper.cmake:3 (_find_package)"
+      - "/home/leleliu008/.vcpkg/root/scripts/buildsystems/vcpkg.cmake:809 (include)"
+      - "/home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/share/cmake/Modules/CMakeFindDependencyMacro.cmake:76 (find_package)"
+      - "/home/leleliu008/.vcpkg/root/installed/x64-linux/share/libxml2/libxml2-config.cmake:120 (find_dependency)"
+      - "/home/leleliu008/.vcpkg/root/installed/x64-linux/share/libxml2/vcpkg-cmake-wrapper.cmake:2 (_find_package)"
+      - "/home/leleliu008/.vcpkg/root/scripts/buildsystems/vcpkg.cmake:809 (include)"
+      - "/home/leleliu008/.vcpkg/root/installed/x64-linux/share/libarchive/vcpkg-cmake-wrapper.cmake:23 (find_package)"
+      - "/home/leleliu008/.vcpkg/root/scripts/buildsystems/vcpkg.cmake:809 (include)"
+      - "CMakeLists.txt:96 (find_package)"
+    checks:
+      - "Performing Test Iconv_IS_BUILT_IN"
+    directories:
+      source: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-gnFeSD"
+      binary: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-gnFeSD"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak"
+      CMAKE_MODULE_PATH: "/home/leleliu008/github.com/ndk-pkg/implementation-in-c/cmake;"
+      VCPKG_APPLOCAL_DEPS: "ON"
+      VCPKG_TARGET_TRIPLET: "x64-linux"
+      Z_VCPKG_ROOT_DIR: "/home/leleliu008/.vcpkg/root"
+    buildResult:
+      variable: "Iconv_IS_BUILT_IN"
+      cached: true
+      stdout: |
+        Change Dir: '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-gnFeSD'
+        
+        Run Build Command(s): /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_fb134/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_fb134.dir/build.make CMakeFiles/cmTC_fb134.dir/build
+        gmake[1]: Entering directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-gnFeSD'
+        Building C object CMakeFiles/cmTC_fb134.dir/src.c.o
+        /usr/bin/cc -DIconv_IS_BUILT_IN  -L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak  -o CMakeFiles/cmTC_fb134.dir/src.c.o -c /home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-gnFeSD/src.c
+        Linking C executable cmTC_fb134
+        /home/linuxbrew/.linuxbrew/Cellar/cmake/3.28.3/bin/cmake -E cmake_link_script CMakeFiles/cmTC_fb134.dir/link.txt --verbose=1
+        /usr/bin/cc -L/home/leleliu008/.vcpkg/root/installed/x64-linux/lib -fsanitize=undefined -fsanitize=address -fsanitize=leak  -L/home/linuxbrew/.linuxbrew/opt/python@3.10/lib  CMakeFiles/cmTC_fb134.dir/src.c.o -o cmTC_fb134 
+        gmake[1]: Leaving directory '/home/leleliu008/github.com/ndk-pkg/implementation-in-c/build.d/CMakeFiles/CMakeScratch/TryCompile-gnFeSD'
+        
+      exitCode: 0
+...
