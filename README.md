@@ -98,11 +98,16 @@ options = "metadata,umask=22,fmask=11"
 mountFsTab = true
 ```
 
-**Install ndk-pkg** :
+**Install ndk-pkg on WSL** :
 
 ```bash
+# If you want to store ndk-pkg generated data to D:\ partition to share with your Windows, run the following two instructions
 sudo install -o $(whoami) -d /mnt/d/ndk-pkg
 ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
+
+# If you use Ubuntu distribution, run the following two instructions
+sudo apt -y update
+sudo apt -y install curl xz-utils g++
 
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 chmod a+x ndk-pkg
