@@ -18,12 +18,12 @@ Please read these caveats carefully before starting to use this software.
 
 ## Supported platforms (platforms that this software can be run on)
 
-|HostOS|HostArch|SubSystem|recommended|summary|
-|------|--------|---------|-----------|-------|
-✶|`x86_64`|[Docker](https://www.docker.com/)|✔︎|tested with `Github Actions`|
-[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`|[glibc](http://www.gnu.org/software/libc/)|✔︎|tested with `Github Actions`|
-[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||tested with `Github Actions`|
-[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||tested with `Github Actions`|
+|HostOS|HostArch|SubSystem|recommended|fully tested|fully supported|
+|------|--------|---------|-----------|------------|-------|
+|✶|`x86_64`|[Docker](https://www.docker.com/)|✔︎|✔︎|✔︎|
+|[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`|[glibc](http://www.gnu.org/software/libc/)|✔︎|✔︎|✔︎|
+|[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||||
+|[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||✔︎||
 
 ## Using ndk-pkg via GitHub Actions
 
@@ -101,11 +101,11 @@ mountFsTab = true
 **Install ndk-pkg on WSL** :
 
 ```bash
-# If you want to store ndk-pkg generated data to D:\ partition to share with your Windows, run the following two instructions
-sudo install -o $(whoami) -d /mnt/d/ndk-pkg
+# If you want to store ndk-pkg generated data to D:\ partition to share with your Windows
+mkdir  /mnt/d/ndk-pkg
 ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
 
-# If you use Ubuntu distribution, run the following two instructions
+# If you use Ubuntu or Debian distribution
 sudo apt -y update
 sudo apt -y install curl xz-utils g++
 
