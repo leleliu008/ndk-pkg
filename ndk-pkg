@@ -4736,6 +4736,14 @@ EOF
             ;;
     esac
 
+    # TO FIX: glibtoolize: command not found
+    if [ "$1" = 'libtool' ] ; then
+        run cd "$NATIVE_PACKAGE_INSTALL_DIR/bin"
+        run ln -s -r libtool    glibtool
+        run ln -s -r libtoolize glibtoolize
+        run cd -
+    fi
+
     printf '%s\n' "$NATIVE_PACKAGE_SRC_SHA" > "$NATIVE_PACKAGE_INSTALL_DIR/receipt.txt"
 
     run ln -s -r -f -T "$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_INSTALL_SHA" "$NATIVE_PACKAGE_INSTALLED_ROOT/$1"
@@ -9236,7 +9244,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.7.6
+    NDKPKG_VERSION=0.7.7
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
