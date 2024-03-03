@@ -139,11 +139,9 @@ chmod a+x ndk-pkg
 
 ## ~/.ndk-pkg
 
-**Caveats**:
+**Caveats**: Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change (remove, modify, override) files under `~/.ndk-pkg` directory without notice.
 
-- Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change (remove, modify, override) files under `~/.ndk-pkg` directory without notice.
-
-a typical hierarchical structure under `~/.ndk-pkg` directory looks like:
+a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
 ```text
 ~/.ndk-pkg
