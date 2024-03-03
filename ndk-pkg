@@ -7988,8 +7988,8 @@ EOF
 
         if ! "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" ; then
             ANDROID_NDK_IS_INSTALLED_VIA_UPPM=1
-            warn "Android NDK not found, it will be installed via uppm."
-            "$UPPM" install  "$UPPM_PACKAGE_NAME_NDK"
+            warn "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK will be installed via uppm."
+            run "$UPPM" install  "$UPPM_PACKAGE_NAME_NDK"
 
             # https://github.com/microsoft/WSL/issues/8681
             # https://github.com/microsoft/WSL/issues/4071
