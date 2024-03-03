@@ -31,7 +31,7 @@ jobs:
 
       - run: ./ndk-pkg sysinfo
 
-      - run: ./ndk-pkg ndkinfo
+      - run: ./ndk-pkg ndkinfo "$ANDROID_NDK_HOME"
 
       - run: ./ndk-pkg integrate zsh
 

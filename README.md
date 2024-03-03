@@ -78,42 +78,6 @@ If all goes well, then next you can start to install packages whatever you want,
 docker exec -it ndk-pkg ndk-pkg install android-33-arm64-v8a/curl
 ```
 
-## Using ndk-pkg via [WSL](https://docs.microsoft.com/en-us/windows/wsl)
-
-**Note** :
-
-- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the Android NDK's linux binaries, Android NDK is incompatible with WSL1. For more details please read https://github.com/android/ndk/issues/1755
-
-**/etc/wsl.conf** :
-
-```ini
-[network]
-hostname = ubuntu
-generateHosts = false
-
-[automount]
-enabled = true
-root = /mnt/
-options = "metadata,umask=22,fmask=11"
-mountFsTab = true
-```
-
-**Install ndk-pkg on WSL** :
-
-```bash
-# If you want to store ndk-pkg generated data to D:\ partition to share with your Windows
-mkdir  /mnt/d/ndk-pkg
-ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
-
-# If you use Ubuntu or Debian distribution
-sudo apt -y update
-sudo apt -y install curl xz-utils g++
-
-curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
-chmod a+x ndk-pkg
-./ndk-pkg setup
-```
-
 ## Install ndk-pkg via cURL
 
 ```bash
@@ -137,9 +101,45 @@ git clone --depth 1 https://github.com/leleliu008/ndk-pkg
 ndk-pkg/ndk-pkg setup
 ```
 
+## Install ndk-pkg in [WSL](https://docs.microsoft.com/en-us/windows/wsl)
+
+**Note** :
+
+- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the Android NDK's linux binaries, Android NDK is incompatible with WSL1. For more details please read https://github.com/android/ndk/issues/1755
+
+**/etc/wsl.conf** :
+
+```ini
+[network]
+hostname = ubuntu
+generateHosts = false
+
+[automount]
+enabled = true
+root = /mnt/
+options = "metadata,umask=22,fmask=11"
+mountFsTab = true
+```
+
+**installation instructions** :
+
+```bash
+# If you want to store ndk-pkg generated data to D:\ partition to share with your Windows
+mkdir  /mnt/d/ndk-pkg
+ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
+
+# If you use Ubuntu or Debian distribution
+sudo apt -y update
+sudo apt -y install curl xz-utils g++
+
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
+chmod a+x ndk-pkg
+./ndk-pkg setup
+```
+
 ## ~/.ndk-pkg
 
-all relevant directories and files are located under `~/.ndk-pkg` directory.
+`ndk-pkg` will generate data under `~/.ndk-pkg` directory.
 
 a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
@@ -571,7 +571,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
 - **NDKPKG_XTRACE**
 
-    for debugging purposes.
+    For debugging purposes.
 
     enable `set -x`:
 
