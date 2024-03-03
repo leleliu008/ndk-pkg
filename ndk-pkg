@@ -2636,7 +2636,7 @@ EOF
 
     shift
 
-    unset SPECIFIED_ANDROID_NDK_HOME
+    unset ANDROID_NDK_HOME
 
     unset OUTPUT_FILEPATH
 
@@ -2644,7 +2644,7 @@ EOF
     do
         case $1 in
             --ndk-home=*)
-                SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
+                ANDROID_NDK_HOME="${1#*=}"
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
@@ -2658,7 +2658,7 @@ EOF
 
     #########################################################################################
 
-    setup_android_ndk_env "$SPECIFIED_ANDROID_NDK_HOME"
+    setup_android_ndk_env "$ANDROID_NDK_HOME"
 
     #########################################################################################
 
@@ -2787,7 +2787,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     shift
 
-    unset SPECIFIED_ANDROID_NDK_HOME
+    unset ANDROID_NDK_HOME
 
     unset DEPLOYED_TO_SONATYPE_OSSRH
     unset DEPLOYED_TO_SPECIFIED_LOCAL_PATH
@@ -2804,7 +2804,7 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     do
         case $1 in
             --ndk-home=*)
-                SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
+                ANDROID_NDK_HOME="${1#*=}"
                 ;;
             --debug)
                 MVN_OPTIONS=-X
@@ -4170,11 +4170,13 @@ inspect_install_arguments() {
 
     KEEP_SESSION_DIR=0
 
+    UPGRADE_IF_COULD_BE=0
+
     EXPORT_COMPILE_COMMANDS_JSON=0
 
     unset SPECIFIED_PACKAGE_LIST
 
-    unset SPECIFIED_ANDROID_NDK_HOME
+    unset ANDROID_NDK_HOME
 
 
     while [ -n "$1" ]
@@ -4191,6 +4193,9 @@ inspect_install_arguments() {
                 ;;
             --disable-ccache)
                 CCACHE_ENABLED=0
+                ;;
+            --upgrade)
+                UPGRADE_IF_COULD_BE=1
                 ;;
             --dry-run)
                 DRYRUN=1
@@ -4222,7 +4227,7 @@ inspect_install_arguments() {
                 is_integer "$BUILD_NJOBS" || abort 1 "--jobs=INTEGER argument's value must be an integer."
                 ;;
             --ndk-home=*)
-                SPECIFIED_ANDROID_NDK_HOME="${1#*=}"
+                ANDROID_NDK_HOME="${1#*=}"
                 ;;
             -*) abort 1 "unrecognized option: $1"
                 ;;
@@ -4242,7 +4247,7 @@ inspect_install_arguments() {
 
     SPECIFIED_PACKAGE_SPEC_LIST=${SPECIFIED_PACKAGE_SPEC_LIST#' '}
 
-    setup_android_ndk_env "$SPECIFIED_ANDROID_NDK_HOME"
+    setup_android_ndk_env "$ANDROID_NDK_HOME"
 
     if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
@@ -7860,9 +7865,9 @@ ndk_build() {
 ########################################################################
 
 # must run in a subshell
-# ndk_info <ANDROID-NDK-HOME>
-ndk_info() {
-    [ -z "$1" ] && abort 1 "Usage: ndk_info <ANDROID-NDK-HOME> , <ANDROID-NDK-HOME> is not given."
+# ndkinfo <ANDROID-NDK-HOME>
+ndkinfo() {
+    [ -z "$1" ] && abort 1 "$_0 ndkinfo <ANDROID-NDK-HOME> , <ANDROID-NDK-HOME> is not given."
     [ -d "$1" ] || abort 1 "'$1' was expected to be a directory, but it was not."
 
     NDK_SOURCE_PROPERTIES_FILEPATH="$1/source.properties"
@@ -7976,39 +7981,9 @@ ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL='$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVE
 EOF
 }
 
-# must run in a subshell
-# ndkinfo [ANDROID-NDK-HOME]
-ndkinfo() {
-    if [ -z "$1" ] ; then
-        if [ -n "$ANDROID_NDK_ROOT" ] && ndk_info "$ANDROID_NDK_ROOT" ; then
-            return 0
-        fi
-
-        if [ -n "$ANDROID_NDK_HOME" ] && ndk_info "$ANDROID_NDK_HOME" ; then
-            return 0
-        fi
-
-        return 1
-    else
-        ndk_info "$1"
-    fi
-}
-
-# setup_android_ndk_env [SPECIFIED_ANDROID_NDK_HOME]
+# setup_android_ndk_env [ANDROID_NDK_HOME]
   setup_android_ndk_env() {
-    step "find or install android ndk"
-
-    NDKINFO=
-
-    if [ -n "$1" ] ; then
-        NDKINFO="$(ndkinfo "$1")"
-    else
-        NDKINFO="$(ndkinfo || true)"
-    fi
-
-    ANDROID_NDK_IS_INSTALLED_VIA_UPPM=0
-
-    if [ -z "$NDKINFO" ] ; then
+    if [ -z "$1" ] ; then
         UPPM_PACKAGE_NAME_NDK='android-ndk-r26c'
 
         if ! "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" ; then
@@ -8025,23 +8000,17 @@ ndkinfo() {
         fi
 
         ANDROID_NDK_HOME="$("$UPPM" info "$UPPM_PACKAGE_NAME_NDK" installed-dir)"
-        NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
+    else
+        ANDROID_NDK_HOME="$1"
     fi
+
+    NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
 
     echo "$NDKINFO"
     eval "$NDKINFO"
 
     export ANDROID_NDK_HOME
     export ANDROID_NDK_ROOT
-
-    if [ "$ANDROID_NDK_IS_INSTALLED_VIA_UPPM" -eq 1 ] ; then
-        # https://github.com/microsoft/WSL/issues/8681
-        # https://github.com/microsoft/WSL/issues/4071
-
-        if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-            patchelf --set-interpreter '/lib64/ld-linux-x86-64.so.2' "$ANDROID_NDK_CC"
-        fi
-    fi
 }
 
 # }}}
@@ -8900,10 +8869,8 @@ ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg sysinfo${COLOR_OFF}
     show basic information about your current running operation system.
 
-${COLOR_GREEN}ndk-pkg ndkinfo [--ndk-home=<ANDROID-NDK-HOME>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg ndkinfo <ANDROID-NDK-HOME>${COLOR_OFF}
     show basic information about the specified location of Android NDK.
-
-    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string, a error will arise.
 
 ${COLOR_GREEN}ndk-pkg gen-url-transform-sample${COLOR_OFF}
     generate url-transform sample.
@@ -9005,7 +8972,7 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
 
     INSTALL-OPTIONS:
         ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
-            If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
+            If --ndk-home=<ANDROID-NDK-HOME> is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
 
         ${COLOR_BLUE}--jobs=N${COLOR_OFF}
             specify the number of jobs you can run in parallel.
@@ -9096,7 +9063,7 @@ ${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>
 
     ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
-    If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
+    If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
 
     ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} can be either the filepath or directory where the aar file will be written to.
 
@@ -9113,7 +9080,7 @@ ${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>
 
     ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
-    If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
+    If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
 
     If ${COLOR_RED}--remote${COLOR_OFF} is specified, the aar file would be deployed to Sonatype OSSRH (https://s01.oss.sonatype.org/)
 
@@ -9134,22 +9101,22 @@ ${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>
 Naming explanation
 ==================
 
-${COLOR_GREEN}PACKAGE-SPEC${COLOR_OFF}
-    a formatted string that has form: <TARGET>/<PACKAGE-NAME>
+${COLOR_GREEN}<PACKAGE-SPEC>${COLOR_OFF}
+    a formatted string that has form: ${COLOR_RED}<TARGET>/<PACKAGE-NAME>${COLOR_OFF}, represents an installed package.
 
-${COLOR_GREEN}PACKAGE-NAME${COLOR_OFF}
-    must match regular expression pattern ^[A-Za-z0-9+-_.@]{1,50}$
+${COLOR_GREEN}<PACKAGE-NAME>${COLOR_OFF}
+    must match the regular expression pattern ${COLOR_RED}^[A-Za-z0-9+-_.@]{1,50}\$${COLOR_OFF}
 
-${COLOR_GREEN}TARGET${COLOR_OFF}
-    a formatted string that has form: android-<ANDROID-API>-<ANDROID-ABI>
+${COLOR_GREEN}<TARGET>${COLOR_OFF}
+    a formatted string that has form: ${COLOR_RED}android-<ANDROID-API>-<ANDROID-ABI>${COLOR_OFF}
 
-${COLOR_GREEN}ANDROID-API${COLOR_OFF}
-    indicates which minimum Android SDK API level would be built for or can run on.
+${COLOR_GREEN}<ANDROID-API>${COLOR_OFF}
+    indicates which minimum Android SDK API level was built with.
 
     Reference: https://developer.android.com/tools/releases/platforms
 
-${COLOR_GREEN}ANDROID-ABI${COLOR_OFF}
-    indicates which Android ABI would be built for or can run on.
+${COLOR_GREEN}<ANDROID-ABI>${COLOR_OFF}
+    indicates which Android ABI was built for.
 
     Reference: https://developer.android.com/ndk/guides/abis
 
@@ -9164,9 +9131,6 @@ ${COLOR_GREEN}HOME${COLOR_OFF}
 ${COLOR_GREEN}PATH${COLOR_OFF}
     This environment variable already have been set on the most operating systems, if not set or set a empty string, you will receive an error message.
 
-${COLOR_GREEN}ANDROID_NDK_ROOT and ANDROID_NDK_HOME${COLOR_OFF}
-    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ${COLOR_RED}ANDROID_NDK_ROOT${COLOR_OFF} and ${COLOR_RED}ANDROID_NDK_HOME${COLOR_OFF} environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.
-
 ${COLOR_GREEN}SSL_CERT_FILE${COLOR_OFF}
     In general, you don't need to set this environment variable, but, if you encounter the reporting ${COLOR_RED}the SSL certificate is invalid${COLOR_OFF}, trying to run below commands in your terminal will do the trick.
 
@@ -9174,14 +9138,14 @@ ${COLOR_GREEN}SSL_CERT_FILE${COLOR_OFF}
     export SSL_CERT_FILE="\$PWD/cacert.pem"${COLOR_OFF}
 
 ${COLOR_GREEN}GOPROXY${COLOR_OFF}
-    example:
+    Example:
 
     ${COLOR_RED}export GOPROXY='https://goproxy.cn'${COLOR_OFF}
 
 ${COLOR_GREEN}NDKPKG_URL_TRANSFORM${COLOR_OFF}
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
-    example:
+    Example:
 
     ${COLOR_RED}export NDKPKG_URL_TRANSFORM=/path/of/url-transform${COLOR_OFF}
 
@@ -9195,18 +9159,11 @@ ${COLOR_GREEN}NDKPKG_XTRACE${COLOR_OFF}
     for debugging purposes. to enable set -x: ${COLOR_RED}export NDKPKG_XTRACE=1${COLOR_OFF}
 
 ${COLOR_GREEN}NDKPKG_DEFAULT_TARGET${COLOR_OFF}
-    some sub-commands of ndk-pkg need <PACKAGE-SPEC> to be specified. <PACKAGE-SPEC> has the form <TARGET>/<PACKAGE-NAME>, To simplify the usage, you are allowed to omit <TARGET>/. If <TARGET>/ is omitted, this environment variable will be used, if this environment variable is not set, then android-21-aarm64-v8a will be used as the default.
-
-    <TARGET> has the form android-<MIN-SDK-API-LEVEL>-<ANDROID-ABI>
+    some ACTIONs of ndk-pkg need <PACKAGE-SPEC> to be specified. To simplify the usage, you are allowed to omit <TARGET>/. If <TARGET>/ is omitted, environment variable NDKPKG_DEFAULT_TARGET would be checked, if it is not set, then ${COLOR_RED}android-21-aarm64-v8a${COLOR_OFF} will be used as the default.
 
     Example:
 
     ${COLOR_RED}export NDKPKG_DEFAULT_TARGET='android-21-arm64-v8a'${COLOR_OFF}
-
-    References:
-
-    https://developer.android.com/tools/releases/platforms
-    https://developer.android.com/ndk/guides/abis
 
 
 =======
@@ -9244,7 +9201,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.7.7
+    NDKPKG_VERSION=0.7.8
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
@@ -9406,24 +9363,7 @@ EOF
     case $1 in
         ndkinfo)
             shift
-
-            unset SPECIFIED_ANDROID_NDK_HOME
-
-            for arg in "$@"
-            do
-                case $arg in
-                    --ndk-home=*)
-                        SPECIFIED_ANDROID_NDK_HOME="${arg#*=}"
-                        ;;
-                esac
-            done
-
-            if [ -z "$SPECIFIED_ANDROID_NDK_HOME" ] ; then
-                ndkinfo
-            else
-                ndkinfo "$SPECIFIED_ANDROID_NDK_HOME"
-            fi
-
+            ndkinfo "$@"
             ;;
         sysinfo)
             shift

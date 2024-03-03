@@ -152,7 +152,7 @@ int ndkpkg_help() {
         COLOR_PURPLE
         "        --ndk-home=<ANDROID-NDK-HOME>\n"
         COLOR_OFF
-        "            If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ANDROID_NDK_ROOT and ANDROID_NDK_HOME environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.\n\n"
+        "            If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ANDROID_NDK_ROOT and ANDROID_NDK_HOME environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a proper version of Android NDK will be automatically installed for you via uppm.\n\n"
         COLOR_PURPLE
         "        --jobs=N\n"
         COLOR_OFF
@@ -244,7 +244,7 @@ int ndkpkg_help() {
         "    For details about google prefab, please visit https://google.github.io/prefab/\n\n"
         "    For details about the aar file contains google prefab, please visit https://developer.android.com/studio/projects/android-library#aar-contents\n\n"
         "    <ANDROID-ABIs> is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86\n\n"
-        "    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ANDROID_NDK_ROOT and ANDROID_NDK_HOME environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.\n\n"
+        "    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ANDROID_NDK_ROOT and ANDROID_NDK_HOME environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a proper version of Android NDK will be automatically installed for you via uppm.\n\n"
         "    <OUTPUT-PATH> can be either the filepath or directory where the aar file will be written to.\n\n"
         "    If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwise, it will be treated as a filepath.\n\n"
         "    If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar\n\n\n"
@@ -255,7 +255,7 @@ int ndkpkg_help() {
         "    For details about google prefab, please visit https://google.github.io/prefab/\n\n"
         "    For details about the aar file contains google prefab, please visit https://developer.android.com/studio/projects/android-library#aar-contents\n\n"
         "    <ANDROID-ABIs> is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86\n\n"
-        "    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ANDROID_NDK_ROOT and ANDROID_NDK_HOME environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.\n\n"
+        "    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ANDROID_NDK_ROOT and ANDROID_NDK_HOME environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a proper version of Android NDK will be automatically installed for you via uppm.\n\n"
         "    If --remote is specified, the aar file would be deployed to Sonatype OSSRH (https://s01.oss.sonatype.org/)\n\n"
         "    If --local=<DIR> is specified, the aar file would be deployed to the specified location of Maven Local Repository.\n\n"
         "    If neither --local=<DIR> nor --remote is specified, the aar file would be deployed to your default Maven Local Repository (usually under ~/.m2/repository/ directory, depending on your settings.xml configuration)\n\n"
@@ -334,7 +334,7 @@ int ndkpkg_help() {
         COLOR_GREEN
         "ANDROID_NDK_ROOT and ANDROID_NDK_HOME\n"
         COLOR_OFF
-        "    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ANDROID_NDK_ROOT and ANDROID_NDK_HOME environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a specific version of Android NDK will be automatically installed for you via uppm.\n\n"
+        "    If --ndk-home=<ANDROID-NDK-HOME> is unspecified, then ANDROID_NDK_ROOT and ANDROID_NDK_HOME environment variable would be checked in order to determine the Android NDK's root directory, if they both are not set or set a empty string or are invalid android ndk home directory, a proper version of Android NDK will be automatically installed for you via uppm.\n\n"
         COLOR_GREEN
         "SSL_CERT_FILE\n"
         COLOR_OFF

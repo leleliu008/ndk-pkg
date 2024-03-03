@@ -252,14 +252,11 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ndk-pkg sysinfo
     ```
 
-- **show basic information about [Android NDK](https://developer.android.com/ndk)**
+- **show basic information about the specified location of [Android NDK](https://developer.android.com/ndk)**
 
     ```bash
-    ndk-pkg ndkinfo
-    ndk-pkg ndkinfo --ndk-home=/usr/local/share/android-ndk
+    ndk-pkg ndkinfo /usr/local/share/android-ndk
     ```
-
-    **Note**: If `--ndk-home=<ANDROID-NDK-HOME>` option is not given, then value of `ANDROID_NDK_ROOT` and `ANDROID_NDK_HOME` environment variable would be checked in order.
 
 - **generate url-transform sample**
 
@@ -558,10 +555,6 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     export GOPROXY='https://goproxy.cn'
     ```
 
-- **ANDROID_NDK_ROOT and ANDROID_NDK_HOME**
-
-    If `--ndk-home=<ANDROID-NDK-HOME>` option is not given when installing a package, then value of `ANDROID_NDK_ROOT` and `ANDROID_NDK_HOME` environment variable would be checked in order. If they both are not set or set a empty string or are invalid android ndk home directory, a specific version of `Android NDK` will be automatically installed via [uppm](https://github.com/leleliu008/uppm).
-
 - **NDKPKG_URL_TRANSFORM**
 
     ```bash
@@ -588,20 +581,25 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
 
 - **NDKPKG_DEFAULT_TARGET**
 
-    some sub-commands of `ndk-pkg` need `<PACKAGE-SPEC>` to be specified. `<PACKAGE-SPEC>` has the form `<TARGET>/<PACKAGE-NAME>`, To simplify the usage, you are allowed to omit `<TARGET>/`. If `<TARGET>/` is omitted, this environment variable will be used, if this environment variable is not set, then `android-21-arm64-v8a` will be used as the default.
+    Some ACTIONs of ndk-pkg are associated with an installed package which need `PACKAGE-SPEC` to be specified.
 
-    `<TARGET>` has the form `android-<MIN-SDK-API-LEVEL>-<ANDROID-ABI>`
+    **PACKAGE-SPEC** : a formatted string that has form: `<TARGET>/<PACKAGE-NAME>`, represents an installed package.
+
+    **PACKAGE-NAME** : should match the regular expression pattern `^[A-Za-z0-9+-_.@]{1,50}$`
+
+    **TARGET** : a formatted string that has form: `android-<ANDROID-API>-<ANDROID-ABI>`
+
+    **ANDROID-API**  : indicates which minimum [Android SDK API Level](https://developer.android.com/tools/releases/platforms) was built with.
+
+    **ANDROID-ABI**  : indicates which [Android ABI](https://developer.android.com/ndk/guides/abis) was built for.
+
+    To simplify the usage, you are allowed to omit `<TARGET>/`. If `<TARGET>/` is omitted, environment variable `NDKPKG_DEFAULT_TARGET` would be checked, if this environment variable is not set, then `android-21-arm64-v8a` will be used as the default.
 
     **Example**:
 
     ```bash
     export NDKPKG_DEFAULT_TARGET='android-33-arm64-v8a'
     ```
-
-    **References**:
-
-  - <https://developer.android.com/tools/releases/platforms>
-  - <https://developer.android.com/ndk/guides/abis>
 
 **Note:** some commonly used environment variables are override by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
 
