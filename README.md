@@ -139,9 +139,11 @@ chmod a+x ndk-pkg
 
 ## ~/.ndk-pkg
 
-`ndk-pkg` will generate data under `~/.ndk-pkg` directory.
+**Caveats**:
 
-a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
+- Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change (remove, modify, override) files under `~/.ndk-pkg` directory without notice.
+
+a typical hierarchical structure under `~/.ndk-pkg` directory looks like:
 
 ```text
 ~/.ndk-pkg
@@ -219,10 +221,6 @@ a typical hierarchical structure under `~/.ndk-pkg` directory is as follows:
     ├── 3447656
     └── 3457395
 ```
-
-**Caveats**:
-
-- Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change files under `~/.ndk-pkg` directory without notice.
 
 ## ndk-pkg command usage
 
