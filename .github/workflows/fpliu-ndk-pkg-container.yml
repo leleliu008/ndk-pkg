@@ -17,92 +17,90 @@ jobs:
       - run: export -p
 
       - run: apt -y update
-      - run: apt -y install curl xz-utils g++ git
+      - run: apt -y install curl xz-utils g++
 
-      - uses: actions/checkout@v4
+      - run: ndk-pkg --help
+      - run: ndk-pkg -h
 
-      - run: ./ndk-pkg --help
-      - run: ./ndk-pkg -h
+      - run: ndk-pkg --version
+      - run: ndk-pkg -V
 
-      - run: ./ndk-pkg --version
-      - run: ./ndk-pkg -V
+      - run: ndk-pkg env
 
-      - run: ./ndk-pkg env
+      - run: ndk-pkg setup
 
-      - run: ./ndk-pkg setup
-
-      - run: ./ndk-pkg sysinfo
+      - run: ndk-pkg sysinfo
 
 
-      - run: ./ndk-pkg integrate zsh
+      - run: ndk-pkg integrate zsh
 
-      - run: ./ndk-pkg update
+      - run: ndk-pkg update
 
-      - run: ./ndk-pkg search lib
-      - run: ./ndk-pkg search libzip
+      - run: ndk-pkg search lib
+      - run: ndk-pkg search libzip
 
 
-      - run: ./ndk-pkg info-available libzip
-      - run: ./ndk-pkg info-available libzip --yaml
-      - run: ./ndk-pkg info-available libzip --json
-      - run: ./ndk-pkg info-available libzip version
-      - run: ./ndk-pkg info-available libzip license
-      - run: ./ndk-pkg info-available libzip summary
-      - run: ./ndk-pkg info-available libzip web-url
-      - run: ./ndk-pkg info-available libzip git-url
-      - run: ./ndk-pkg info-available libzip git-sha
-      - run: ./ndk-pkg info-available libzip git-ref
-      - run: ./ndk-pkg info-available libzip src-url
-      - run: ./ndk-pkg info-available libzip src-sha
+      - run: ndk-pkg info-available libzip
+      - run: ndk-pkg info-available libzip --yaml
+      - run: ndk-pkg info-available libzip --json
+      - run: ndk-pkg info-available libzip version
+      - run: ndk-pkg info-available libzip license
+      - run: ndk-pkg info-available libzip summary
+      - run: ndk-pkg info-available libzip web-url
+      - run: ndk-pkg info-available libzip git-url
+      - run: ndk-pkg info-available libzip git-sha
+      - run: ndk-pkg info-available libzip git-ref
+      - run: ndk-pkg info-available libzip src-url
+      - run: ndk-pkg info-available libzip src-sha
 
 
 
 
-      - run: ./ndk-pkg depends libzip
-      - run: ./ndk-pkg depends libzip -t dot
-      - run: ./ndk-pkg depends libzip -t box
-      - run: ./ndk-pkg depends libzip -t dot -o a/
-      - run: ./ndk-pkg depends libzip -o libzip.box
+      - run: ndk-pkg depends libzip
+      - run: ndk-pkg depends libzip -t dot
+      - run: ndk-pkg depends libzip -t box
+      - run: ndk-pkg depends libzip -t dot -o a/
+      - run: ndk-pkg depends libzip -o libzip.box
 
 
-      - run: ./ndk-pkg install libzip
+      - run: ndk-pkg install libzip
 
 
 
 
-      - run: ./ndk-pkg info-installed libzip --prefix
-      - run: ./ndk-pkg info-installed libzip --files
-      - run: ./ndk-pkg info-installed libzip version
-      - run: ./ndk-pkg info-installed libzip builtat
-      - run: ./ndk-pkg info-installed libzip builtat-iso-8601
-      - run: ./ndk-pkg info-installed libzip builtat-rfc-3339
-      - run: ./ndk-pkg info-installed libzip builtat-iso-8601-utc
-      - run: ./ndk-pkg info-installed libzip builtat-rfc-3339-utc
+      - run: ndk-pkg info-installed libzip --prefix
+      - run: ndk-pkg info-installed libzip --files
+      - run: ndk-pkg info-installed libzip version
+      - run: ndk-pkg info-installed libzip builtat
+      - run: ndk-pkg info-installed libzip builtat-iso-8601
+      - run: ndk-pkg info-installed libzip builtat-rfc-3339
+      - run: ndk-pkg info-installed libzip builtat-iso-8601-utc
+      - run: ndk-pkg info-installed libzip builtat-rfc-3339-utc
 
 
-      - run: ./ndk-pkg tree libzip
-      - run: ./ndk-pkg tree libzip -a
+      - run: ndk-pkg tree libzip
+      - run: ndk-pkg tree libzip -a
 
-      - run: ./ndk-pkg pack libzip
-      - run: ./ndk-pkg pack libzip -t tar.gz
-      - run: ./ndk-pkg pack libzip -t tar.xz
-      - run: ./ndk-pkg pack libzip -t tar.xz -o .
-      - run: ./ndk-pkg pack libzip -o .
-      - run: ./ndk-pkg pack libzip -o xx.tar.xz
+      - run: ndk-pkg pack libzip
+      - run: ndk-pkg pack libzip -t tar.gz
+      - run: ndk-pkg pack libzip -t tar.xz
+      - run: ndk-pkg pack libzip -t tar.xz -o .
+      - run: ndk-pkg pack libzip -o .
+      - run: ndk-pkg pack libzip -o xx.tar.xz
 
 
-      - run: ./ndk-pkg formula-repo-list
+      - run: ndk-pkg formula-repo-list
 
-      - run: ./ndk-pkg ls-available
-      - run: ./ndk-pkg ls-installed
-      - run: ./ndk-pkg ls-outdated
+      - run: ndk-pkg ls-available
+      - run: ndk-pkg ls-installed
+      - run: ndk-pkg ls-outdated
 
-      - run: ./ndk-pkg is-available libzip
-      - run: ./ndk-pkg is-installed libzip
-      - run: ./ndk-pkg is-outdated  libzip || echo "not outdated"
+      - run: ndk-pkg is-available libzip
+      - run: ndk-pkg is-installed libzip
+      - run: ndk-pkg is-outdated  libzip || echo "not outdated"
 
-      - run: ./ndk-pkg uninstall libzip
+      - run: ndk-pkg uninstall libzip
 
-      - run: ./ndk-pkg fetch curl
+      - run: ndk-pkg fetch curl
 
-      - run: ./ndk-pkg upgrade-self
+      - run: ndk-pkg upgrade-self
