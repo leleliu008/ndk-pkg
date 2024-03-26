@@ -8124,6 +8124,7 @@ export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 if [ -d "\$HOME/.uppm/installed/git/libexec/git-core" ] ; then
     export GIT_EXEC_PATH="\$HOME/.uppm/installed/git/libexec/git-core"
     export GIT_TEMPLATE_DIR="\$HOME/.uppm/installed/git/share/git-core/templates"
+    export GIT_CONFIG_NOSYSTEM=1
 fi
 EOF
 
@@ -9199,7 +9200,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.7.9
+    NDKPKG_VERSION=0.7.10
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
@@ -9230,6 +9231,9 @@ main() {
     # DO NOT use this environment variable
     # https://cmake.org/cmake/help/latest/envvar/MACOSX_DEPLOYMENT_TARGET.html
     unset MACOSX_DEPLOYMENT_TARGET
+
+    #export UPPM_HOME="$NDKPKG_HOME/uppm"
+    unset UPPM_HOME
 
     #########################################################################################
 
