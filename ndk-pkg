@@ -4412,8 +4412,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
             ;;
         zlib)
-            NATIVE_PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='ff0ba4c292013dbc27530b3a81e1f9a813cd39de01ca5e0f8bf355702efa593e'
+            NATIVE_PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='cmake'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
@@ -4482,8 +4482,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         liblzma)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/tukaani-project/xz/releases/download/v5.4.4/xz-5.4.4.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='aae39544e254cfd27e942d35a048d592959bd7a79f9a624afb0498bb5613bdf8'
+            NATIVE_PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.6.1.tar.bz2'
+            NATIVE_PACKAGE_SRC_SHA='d300422649a0124b1121630be559c890ceedf32667d7064b8128933166c217c8'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
@@ -4496,8 +4496,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
             ;;
         sqlite3)
-            NATIVE_PACKAGE_SRC_URL='https://www.sqlite.org/2023/sqlite-autoconf-3440000.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='b9cd386e7cd22af6e0d2a0f06d0404951e1bef109e42ea06cc0450e10cd15550'
+            NATIVE_PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3450200.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='bc9067442eedf3dd39989b5c5cfbfff37ae66cc9c99274e0c3052dc4d4a8f6ae'
             NATIVE_PACKAGE_DEPENDENCIES='zlib'
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
@@ -9200,7 +9200,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.7.10
+    NDKPKG_VERSION=0.7.11
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
