@@ -4482,8 +4482,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
             ;;
         liblzma)
-            NATIVE_PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.6.1.tar.bz2'
-            NATIVE_PACKAGE_SRC_SHA='d300422649a0124b1121630be559c890ceedf32667d7064b8128933166c217c8'
+            NATIVE_PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.4.6.tar.bz2'
+            NATIVE_PACKAGE_SRC_SHA='913851b274e8e1d31781ec949f1c23e8dbcf0ecf6e73a2436dc21769dd3e6f49'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_BUILD_SYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
@@ -9200,7 +9200,7 @@ main() {
 
     NDKPKG="$CURRENT_SCRIPT_FILEPATH"
 
-    NDKPKG_VERSION=0.7.11
+    NDKPKG_VERSION=0.7.12
 
     NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
     NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
