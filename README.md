@@ -278,11 +278,13 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
     - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
     - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
+    - [patchelf](https://github.com/NixOS/patchelf)
     - [tree](https://linux.die.net/man/1/tree)
     - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
     - [yq](https://mikefarah.gitbook.io/yq/)
     - [jq](https://stedolan.github.io/jq/manual/)
+    - [d2](https://github.com/terrastruct/d2)
 
 - **integrate `zsh-completion` script**
 
@@ -347,16 +349,19 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ```bash
     ndk-pkg depends curl
 
+    ndk-pkg depends curl -t d2
     ndk-pkg depends curl -t dot
     ndk-pkg depends curl -t box
     ndk-pkg depends curl -t png
     ndk-pkg depends curl -t svg
 
+    ndk-pkg depends curl -t d2  -o dependencies/
     ndk-pkg depends curl -t dot -o dependencies/
     ndk-pkg depends curl -t box -o dependencies/
     ndk-pkg depends curl -t png -o dependencies/
     ndk-pkg depends curl -t svg -o dependencies/
 
+    ndk-pkg depends curl -o curl-dependencies.d2
     ndk-pkg depends curl -o curl-dependencies.dot
     ndk-pkg depends curl -o curl-dependencies.box
     ndk-pkg depends curl -o curl-dependencies.png
@@ -575,6 +580,14 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     export NDKPKG_XTRACE=1
     ```
 
+- **NDKPKG_HOME**
+
+    If this environment variable is not set or set a empty string, `$HOME/.ndk-pkg` will be used as the default value.
+
+    ```bash
+    export NDKPKG_HOME=$HOME/ndk-pkg-home
+    ```
+
 - **NDKPKG_DEFAULT_TARGET**
 
     Some ACTIONs of ndk-pkg are associated with an installed package which need `PACKAGE-SPEC` to be specified.
@@ -609,7 +622,7 @@ a ndk-pkg formula'a filename prefix would be treated as the package name.
 
 a ndk-pkg formula'a filename prefix must match regular expression pattern `^[A-Za-z0-9+-._@]{1,50}$`
 
-a uppm formula's file content only has one level mapping and shall has following KEY:
+a ndk-pkg formula's file content only has one level mapping and shall has following KEY:
 
 |KEY|required?|overview|
 |-|-|-|
@@ -625,15 +638,22 @@ a uppm formula's file content only has one level mapping and shall has following
 |`git-sha`|optional|the full git commit id, 40-byte hexadecimal string, if `git-ref` and `git-sha` both are present, `git-sha` takes precedence over `git-ref`|
 |`git-nth`|optional|tell `ndk-pkg` that how many depth commits would you like to be fetched. default is `1`, this would save your time and storage. If you want to fetch all commits, set this to `0`|
 ||||
-|`src-url`|optional|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
+|`src-url`|optional|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
 |`src-uri`|optional|the mirror of `src-url`.|
 |`src-sha`|optional|the `sha256sum` of source code.<br>`src-sha` and `src-url` must appear together.|
 ||||
-|`fix-url`|optional|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
+|`fix-url`|optional|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
+|`fix-uri`|optional|the mirror of `fix-url`.|
 |`fix-sha`|optional|the `sha256sum` of patch file.<br>`fix-sha` and `fix-url` must appear together.|
+|`fix-opt`|optional|options to be passed to `patch` command. default value is `-p1`.|
 ||||
-|`res-url`|optional|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
+|`patches`|optional|multiple lines of `<fix-sha>\|<fix-url>[\|fix-uri][\|fix-opt]`.|
+||||
+|`res-url`|optional|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
+|`res-uri`|optional|the mirror of `res-url`.|
 |`res-sha`|optional|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
+||||
+|`reslist`|optional|multiple lines of `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
 ||||
 |`dep-pkg`|optional|a space-separated list of   `ndk-pkg packages` that are depended by this package when installing and/or runtime, which will be installed via [ndk-pkg](https://github.com/leleliu008/ndk-pkg).|
 |`dep-upp`|optional|a space-separated list of   `uppm packages` that are depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
@@ -648,14 +668,21 @@ a uppm formula's file content only has one level mapping and shall has following
 |`bsystem`|optional|build system name.<br>values can be some of `autogen` `autotools` `configure` `cmake` `cmake-gmake` `cmake-ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
-||||
-|`symlink`|optional|whether to symlink installed files to `$NDKPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`. It is only meaningful when requesting for native building.|
-||||
-|`do12345`|optional|POSIX shell code to be run for native build. It is only meaningful when requesting for cross building.|
-|`dopatch`|optional|POSIX shell code to be run to apply patches for target build. current working directory is `$PACKAGE_BSCRIPT_DIR`|
-|`install`|optional|POSIX shell code to be run for target build. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`|
+|`symlink`|optional|whether to symlink installed files to `$NDKPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
+|`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ndk-pkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-full` install option is given.|
 ||||
 |`api-min`|optional|specify which minimum Android SDK API level is supported for this package.|
+||||
+|`onready`|optional|POSIX shell code to be run when all are ready. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`do12345`|optional|POSIX shell code to be run for native build. It is only meaningful when requesting for cross building.|
+|`dopatch`|optional|POSIX shell code to be run to apply patches manually. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`prepare`|optional|POSIX shell code to be run to do some additional preparation. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`. `pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
+|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing. `pwd` is `$PACKAGE_INSTALL_DIR`|
+
+|phases|
+|-|
+|![phases](phases.svg)|
 
 **commands that can be used out of the box:**
 
@@ -697,9 +724,11 @@ a uppm formula's file content only has one level mapping and shall has following
 
 |variable|overview|
 |-|-|
-|`NDKPKG_VERSION`|the version of `ndk-pkg`.|
-|`NDKPKG_HOME`|the home directory of `ndk-pkg`.|
-|`NDKPKG`|the executable filepath of `ndk-pkg`.|
+|`NDKPKG`|the name or path of `ndk-pkg` that you're running.|
+|`NDKPKG_PATH`|the full path of `ndk-pkg` that you're running.|
+|`NDKPKG_ARGS`|the arguments of `ndk-pkg` that you've supplied.|
+|`NDKPKG_HOME`|the home directory of `ndk-pkg` that you're running.|
+|`NDKPKG_VERSION`|the version of `ndk-pkg` that you're running.|
 |||
 |`UPPM`|the executable filepath of [uppm](https://github.com/leleliu008/uppm)|
 |||
