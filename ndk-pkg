@@ -960,6 +960,7 @@ filetype_from_url() {
     unset PACKAGE_LICENSE
 
     unset PACKAGE_BSYSTEM
+    unset PACKAGE_BSYSTEM_MASTER
 
     unset PACKAGE_USE_BSYSTEM_GO
     unset PACKAGE_USE_BSYSTEM_RAKE
@@ -1108,6 +1109,8 @@ filetype_from_url() {
             esac
         done
     fi
+
+    PACKAGE_BSYSTEM_MASTER="${PACKAGE_BSYSTEM%%' '*}"
 
     #########################################################################################
 
@@ -1284,9 +1287,10 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for item in $PACKAGE_BSYSTEM
+    for BSTSTEM in $PACKAGE_BSYSTEM
     do
-        case $item in
+        case $BSTSTEM in
+            ndk-build)   PACKAGE_USE_BSYSTEM_NDK_BUILD=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
             autogen)     PACKAGE_USE_BSYSTEM_AUTOGENSH=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
             autotools)   PACKAGE_USE_BSYSTEM_AUTOTOOLS=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
             configure)   PACKAGE_USE_BSYSTEM_CONFIGURE=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
@@ -1305,9 +1309,10 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for item in $PACKAGE_BSYSTEM
+    for BSTSTEM in $PACKAGE_BSYSTEM
     do
-        case $item in
+        case $BSTSTEM in
+            ndk-build)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake" ;;
             autogen)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake" ;;
             autotools)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake" ;;
             configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"        ;;
@@ -1326,7 +1331,7 @@ filetype_from_url() {
     #########################################################################################
 
     [ -z "$PACKAGE_DOBUILD" ] && {
-        case $PACKAGE_BSYSTEM in
+        case $PACKAGE_BSYSTEM_MASTER in
             autogen)   PACKAGE_DOBUILD='configure' ;;
             autotools) PACKAGE_DOBUILD='configure' ;;
             configure) PACKAGE_DOBUILD='configure' ;;
@@ -6856,7 +6861,7 @@ EOF
     step "dopatch for target"
 
     if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-        run cd "$PACKAGE_BSCRIPT_DIR"
+        run     cd "$PACKAGE_BSCRIPT_DIR"
     fi
 
     if [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] ; then
@@ -6881,9 +6886,11 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    run cd "$PACKAGE_BSCRIPT_DIR"
+    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+        run     cd "$PACKAGE_BSCRIPT_DIR"
+    fi
 
-    case "${PACKAGE_BSYSTEM%%' '*}" in
+    case $PACKAGE_BSYSTEM_MASTER in
         autogen)
             if [ -f configure ] ; then
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
@@ -9475,7 +9482,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.2
+NDKPKG_VERSION=0.8.3
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
