@@ -1057,7 +1057,7 @@ filetype_from_url() {
     PACKAGE_FIX_URL="$(yq '.fix-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_FIX_URI="$(yq '.fix-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_FIX_SHA="$(yq '.fix-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_FIX_OPT="$(yq '.fix-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_FIX_OPT="$(yq '.fix-opt | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_RES_URL="$(yq '.res-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RES_URI="$(yq '.res-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -3500,7 +3500,7 @@ EOF
 ##############################################################################
 # {{{ ndk-pkg depends
 
-# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <dot|d2|box|svg|png>] [-o <OUTPUT-PATH>]
+# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <d2|dot|box|svg|png>] [-o <OUTPUT-PATH>]
 __show_packages_depended_by_the_given_package() {
     [ -z "$1" ] && abort 1 "$NDKPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], <PACKAGE-NAME> is unspecified."
 
@@ -3518,7 +3518,7 @@ __show_packages_depended_by_the_given_package() {
         case $1 in
             -t) shift
                 case $1 in
-                    dot|d2|box|svg|png)
+                    d2|dot|box|svg|png)
                         OUTPUT_TYPE="$1" ;;
                     '') abort 1 "$NDKPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified." ;;
                     *)  abort 1 "$NDKPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPUT-TYPE>: $1, <OUTPUT-TYPE> should be one of dot|d2|box|svg|png"
@@ -5995,17 +5995,20 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    if [ -n "$PACKAGE_ONREADY" ] ; then
-        step "onready"
+    step "onready"
 
+    if [ -z "$PACKAGE_ONREADY" ] ; then
+        note "onready mapping was not found in formula, skipped."
+    else
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR"
+            run     cd "$PACKAGE_BSCRIPT_DIR"
         fi
+
         eval "
 onready() {
 $PACKAGE_ONREADY
 }"
-        onready "$1"
+        onready
     fi
 
     #########################################################################################
@@ -6874,14 +6877,14 @@ EOF
         done
     fi
 
-    if [ -n "$PACKAGE_DOPATCH" ] ; then
+    if [ -z "$PACKAGE_DOPATCH" ] ; then
+        note "dopatch mapping was not found in formula, skipped."
+    else
         eval "
 dopatch() {
 $PACKAGE_DOPATCH
 }"
-        dopatch "$1"
-    else
-        note "dopatch mapping was not found in formula, skipped."
+        dopatch
     fi
 
     #########################################################################################
@@ -6921,17 +6924,20 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    if [ -n "$PACKAGE_PREPARE" ] ; then
-        step "preparing"
+    step "preparing"
 
+    if [ -z "$PACKAGE_PREPARE" ] ; then
+        note "prepare mapping was not found in formula, skipped."
+    else
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run cd "$PACKAGE_BSCRIPT_DIR"
+            run     cd "$PACKAGE_BSCRIPT_DIR"
         fi
+
         eval "
 prepare() {
 $PACKAGE_PREPARE
 }"
-        prepare "$1"
+        prepare
     fi
 
     #########################################################################################
@@ -6944,7 +6950,7 @@ $PACKAGE_PREPARE
         run cd "$PACKAGE_BCACHED_DIR"
     fi
 
-    if [ -d "$PACKAGE_INSTALL_DIR" ] ; then
+    if [        -d "$PACKAGE_INSTALL_DIR" ] ; then
         run rm -rf "$PACKAGE_INSTALL_DIR"
     fi
 
@@ -6965,14 +6971,14 @@ $PACKAGE_DOBUILD
 
     step "do some tweaks"
 
-    if [ -n "$PACKAGE_DOTWEAK" ] ; then
+    if [ -z "$PACKAGE_DOTWEAK" ] ; then
+        note "dotweak mapping was not found in formula, skipped."
+    else
         eval "
 dotweak() {
 $PACKAGE_DOTWEAK
 }"
-        dotweak "$1"
-    else
-        note "dotweak mapping was not found in formula, skipped."
+        dotweak
     fi
 
     #########################################################################################
@@ -7004,20 +7010,20 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'FAQ*'     -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'TODO*'    -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'NEWS*'    -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'THANKS*'  -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'README*'  -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'COPYING*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'LICENSE*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'AUTHORS*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGES*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGELOG*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTORS*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTING*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'FAQ*'     -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'TODO*'    -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'NEWS*'    -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'THANKS*'  -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'README*'  -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'COPYING*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'LICENSE*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'AUTHORS*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGES*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGELOG*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTORS*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTING*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
 
-    find "$PACKAGE_WORKING_DIR"        -mindepth 1 -maxdepth 1 -name 'dependencies.*' -exec mv {} "$PACKAGE_METAINFO_DIR/" \;
+    find "$PACKAGE_WORKING_DIR"        -mindepth 1 -maxdepth 1 -name 'dependencies.*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
 
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
@@ -8325,6 +8331,57 @@ __setup() {
 
     wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' -o uppm-latest-release --no-buffer
 
+    wfetch 'https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf' -o ./ --no-buffer
+
+    ##################################################################################
+
+    cat > fonts.conf <<EOF
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+	<description>custom configuration file</description>
+
+	<dir>$NDKPKG_CORE_DIR</dir>
+
+	<match target="pattern">
+		<test qual="any" name="family">
+			<string>mono</string>
+		</test>
+		<edit name="family" mode="assign" binding="same">
+			<string>monospace</string>
+		</edit>
+	</match>
+
+	<match target="pattern">
+		<test qual="any" name="family">
+			<string>sans serif</string>
+		</test>
+		<edit name="family" mode="assign" binding="same">
+			<string>sans-serif</string>
+		</edit>
+	</match>
+
+	<match target="pattern">
+		<test qual="any" name="family">
+			<string>sans</string>
+		</test>
+		<edit name="family" mode="assign" binding="same">
+			<string>sans-serif</string>
+		</edit>
+	</match>
+
+	<match target="pattern">
+		<test qual="any" name="family">
+			<string>system ui</string>
+		</test>
+		<edit name="family" mode="assign" binding="same">
+			<string>system-ui</string>
+		</edit>
+	</match>
+
+</fontconfig>
+EOF
+
     ##################################################################################
 
     UPPM_LATEST_RELEASE_TAGNAME="$(cat uppm-latest-release)"
@@ -8359,7 +8416,13 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for item in bash coreutils findutils easyutils gawk gsed grep bsdtar zip git curl tree patchelf jq yq d2
+    if [ "$NATIVE_OS_KIND" = linux ] && [ "$NATIVE_OS_ARCH" = x86_64 ] ; then
+        DOT=dot_static
+    else
+        unset DOT
+    fi
+
+    for item in bash coreutils findutils easyutils gawk gsed grep bsdtar zip git curl tree patchelf jq yq d2 $DOT
     do
         run bin/uppm install "$item"
 
@@ -9482,7 +9545,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.3
+NDKPKG_VERSION=0.8.5
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
@@ -9499,6 +9562,16 @@ NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"
 
 ##################################################################################
 
+UPPM="$NDKPKG_CORE_DIR/bin/uppm"
+
+export UPPM_HOME="$NDKPKG_HOME/uppm"
+
+if [ -n  "$NDKPKG_URL_TRANSFORM" ] ; then
+    export UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
+fi
+
+##################################################################################
+
 # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
 if [ -f "$NDKPKG_CORE_DIR/cacert.pem" ] ; then
     export SSL_CERT_FILE="$NDKPKG_CORE_DIR/cacert.pem"
@@ -9506,12 +9579,10 @@ fi
 
 ##################################################################################
 
-UPPM="$NDKPKG_CORE_DIR/bin/uppm"
-
-export UPPM_HOME="$NDKPKG_HOME/uppm"
-
-if [ -n  "$NDKPKG_URL_TRANSFORM" ] ; then
-    export UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
+# dot_static command use this
+# https://www.freedesktop.org/software/fontconfig/fontconfig-user.html
+if [ -z  "$FONTCONFIG_FILE" ] ; then
+    export FONTCONFIG_FILE="$NDKPKG_CORE_DIR/fonts.conf"
 fi
 
 ##################################################################################
