@@ -9608,7 +9608,7 @@ case $1 in
         cat <<EOF
 ndk-pkg.version: $NDKPKG_VERSION
 ndk-pkg.homedir: $NDKPKG_HOME
-ndk-pkg.exepath: $NDKPKG
+ndk-pkg.exepath: $NDKPKG_PATH
 ndk-pkg.website: https://github.com/leleliu008/ndk-pkg
 EOF
         exit
