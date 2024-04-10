@@ -4815,6 +4815,8 @@ EOF
 
     if   [ "$1" = 'zlib' ] ; then
         sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+    elif [ "$1" = 'texinfo' ] ; then
+        sed_in_place '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
     elif [ "$1" = 'python3' ] ; then
         unset PYTHONHOME
         unset PYTHONPATH
@@ -9556,7 +9558,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.6
+NDKPKG_VERSION=0.8.7
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
