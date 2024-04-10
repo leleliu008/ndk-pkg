@@ -5475,11 +5475,13 @@ $DOT_CONTENT
     # these native packages are not relocatable, we should build them from source locally at build time.
     PACKAGE_DEP_UPP_T2=
 
+    unset PACKAGE_DEP_UPP_OPENSSL
+
     for item in $PACKAGE_DEP_UPP
     do
         case $item in
             perl)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ; PACKAGE_DEP_UPP_OPENSSL=1 ;;
             texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             help2man) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
@@ -6656,15 +6658,24 @@ EOF
         printf '%b\n' "${COLOR_PURPLE}==>${COLOR_OFF} RUSTFLAGS"
         printf '%s\n' "$RUSTFLAGS" | xargs printf '        %s\n'
 
+        # https://docs.rs/openssl/latest/openssl/
+        [ "$PACKAGE_DEP_UPP_OPENSSL" -eq 1 ] && {
+            case "$NATIVE_OS_TYPE-$NATIVE_OS_ARCH" in
+                linux-x86_64)  NATIVE_RUST_TARGET='X86_64_UNKNOWN_LINUX_GNU' ;;
+                macos-x86_64)  NATIVE_RUST_TARGET='X86_64-APPLE-DARWIN'      ;;
+                macos-arm64)   NATIVE_RUST_TARGET='AARCH64-APPLE-DARWIN'     ;;
+            esac
+
+            eval export "${NATIVE_RUST_TARGET}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/openssl'"
+        }
+
         for item in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
             case $item in
                 openssl)
-                    # https://docs.rs/openssl/0.10.35/openssl/
                     export OPENSSL_DIR="$openssl_INSTALL_DIR"
                     ;;
                 openssl@1.1)
-                    # https://docs.rs/openssl/0.10.35/openssl/
                     export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
                     ;;
             esac
@@ -9545,7 +9556,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.5
+NDKPKG_VERSION=0.8.6
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
