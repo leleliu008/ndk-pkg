@@ -278,12 +278,13 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
     - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
     - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
+    - [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)
     - [patchelf](https://github.com/NixOS/patchelf)
     - [tree](https://linux.die.net/man/1/tree)
     - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
-    - [yq](https://mikefarah.gitbook.io/yq/)
     - [jq](https://stedolan.github.io/jq/manual/)
+    - [yq](https://mikefarah.gitbook.io/yq/)
     - [d2](https://github.com/terrastruct/d2)
 
 - **integrate `zsh-completion` script**
@@ -695,13 +696,15 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`gawk`|[Reference](https://www.gnu.org/software/gawk/manual/gawk.html)|
 |`gsed`|[Reference](https://www.gnu.org/software/sed/manual/sed.html)|
 |`grep`|[Reference](https://www.gnu.org/software/grep/manual/grep.html)|
-|`yq`|[Reference](https://mikefarah.gitbook.io/yq/)|
+|`tree`|[Reference](https://linux.die.net/man/1/tree)|
 |`jq`|[Reference](https://stedolan.github.io/jq/manual/)|
+|`yq`|[Reference](https://mikefarah.gitbook.io/yq/)|
+|`d2`|[Reference](https://github.com/terrastruct/d2)|
 |`git`|[Reference](https://git-scm.com/docs/git)|
 |`curl`|[Reference](https://curl.se/docs/manpage.html)|
 |`bsdtar`|[Reference](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)|
-|`tree`|[Reference](https://linux.die.net/man/1/tree)|
 |`pkg-config`|[Reference](https://people.freedesktop.org/~dbn/pkg-config-guide.html)|
+|`patchelf`|[Reference](https://github.com/NixOS/patchelf)|
 |||
 |`echo`|`echo 'your message.'`|
 |`info`|`info 'your information.'`|

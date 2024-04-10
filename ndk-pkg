@@ -7709,7 +7709,7 @@ cargow() {
 }
 
 # run in a subshell
-configure() {
+configure_only() {
     if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
         if run "$PACKAGE_BSCRIPT_DIR"/configure \
             --prefix="$PACKAGE_INSTALL_DIR" \
@@ -7853,9 +7853,13 @@ configure() {
         done
         unset Makefile
     fi
+}
 
-    gmakew clean &&
-    gmakew       &&
+# run in a subshell
+configure() {
+    configure_only "$@"
+    gmakew clean
+    gmakew
     gmakew install
 }
 
@@ -7902,6 +7906,17 @@ gmakew() {
     fi
 }
 
+cmakew_parse_args() {
+    while [ -n "$1" ]
+    do
+        case $1 in
+            -S) shift; PACKAGE_BSCRIPT_DIR="$1" ;;
+            -B) shift; PACKAGE_BCACHED_DIR="$1" ;;
+        esac
+        shift
+    done
+}
+
 # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
 # https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html
 # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_ROOT_PATH.html
@@ -7913,6 +7928,8 @@ gmakew() {
 # https://developer.android.com/ndk/guides/cmake
 # run in a subshell
 cmakew() {
+    cmakew_parse_args "$@"
+
     CMAKE_CONFIG_OPTIONS="-Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=$CMAKE_EXPORT_COMPILE_COMMANDS -DBUILD_TESTING=OFF"
 
     # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
@@ -7984,6 +8001,10 @@ cmakew() {
         fi
 
         CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $PACKAGE_BCACHED_DIR"
+
+        if [ -f "$PACKAGE_BCACHED_DIR/CMakeCache.txt" ] ; then
+            rm  "$PACKAGE_BCACHED_DIR/CMakeCache.txt"
+        fi
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
         run $CMAKE --build   "$PACKAGE_BCACHED_DIR" -- -j$BUILD_NJOBS &&
@@ -9201,7 +9222,7 @@ ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
     show version of this command.
 
 ${COLOR_GREEN}ndk-pkg setup${COLOR_OFF}
-    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, git, curl, bsdtar, zip, tree, jq, yq, d2, etc) used by this shell script.
+    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, tree, git, curl, bsdtar, zip, jq, yq, d2, pkg-config, patchelf, etc) used by this shell script.
 
 ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
     show basic information about this software.
@@ -9558,7 +9579,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.7
+NDKPKG_VERSION=0.8.8
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
