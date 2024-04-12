@@ -8288,7 +8288,7 @@ EOF
 # setup_android_ndk_env [ANDROID_NDK_HOME]
   setup_android_ndk_env() {
     if [ -z "$1" ] ; then
-        UPPM_PACKAGE_NAME_NDK='android-ndk-r26c'
+        UPPM_PACKAGE_NAME_NDK='android-ndk-r26d'
 
         if ! "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" ; then
             ANDROID_NDK_IS_INSTALLED_VIA_UPPM=1
@@ -9579,7 +9579,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.8
+NDKPKG_VERSION=0.8.9
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
