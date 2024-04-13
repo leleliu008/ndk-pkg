@@ -9487,10 +9487,10 @@ Environment variables
 =====================
 
 ${COLOR_GREEN}HOME${COLOR_OFF}
-    This environment variable already have been set on the most operating systems, if not set or set a empty string, you will receive an error message.
+    This environment variable already have been set on the most operating systems, if not set or set a empty string, you may receive an error message.
 
 ${COLOR_GREEN}PATH${COLOR_OFF}
-    This environment variable already have been set on the most operating systems, if not set or set a empty string, you will receive an error message.
+    This environment variable already have been set on the most operating systems, if not set or set a empty string, you may receive an error message.
 
 ${COLOR_GREEN}SSL_CERT_FILE${COLOR_OFF}
     In general, you don't need to set this environment variable, but, if you encounter the reporting ${COLOR_RED}the SSL certificate is invalid${COLOR_OFF}, trying to run below commands in your terminal will do the trick.
@@ -9502,6 +9502,13 @@ ${COLOR_GREEN}GOPROXY${COLOR_OFF}
     Example:
 
     ${COLOR_RED}export GOPROXY='https://goproxy.cn'${COLOR_OFF}
+
+${COLOR_GREEN}NDKPKG_HOME${COLOR_OFF}
+    ndk-pkg would generate all data under ${COLOR_RED}~/.ndk-pkg${COLOR_OFF} directory by default, you could change it by setting this environment variable.
+
+    Example:
+
+    ${COLOR_RED}export NDKPKG_HOME=/path/of/ndk-pkg-home${COLOR_OFF}
 
 ${COLOR_GREEN}NDKPKG_URL_TRANSFORM${COLOR_OFF}
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
@@ -9579,20 +9586,17 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.9
+NDKPKG_VERSION=0.8.10
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
 NDKPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg'
-
-NDKPKG_HOME="$HOME/.ndk-pkg"
 
 NDKPKG_FORMULA_REPO_ROOT="$NDKPKG_HOME/repos.d"
 NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
 NDKPKG_DOWNLOADS_DIR="$NDKPKG_HOME/downloads"
 
 NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
-NDKPKG_CORE_BIN_DIR="$NDKPKG_CORE_DIR/bin"
 
 ##################################################################################
 
@@ -9600,8 +9604,8 @@ UPPM="$NDKPKG_CORE_DIR/bin/uppm"
 
 export UPPM_HOME="$NDKPKG_HOME/uppm"
 
-if [ -n  "$NDKPKG_URL_TRANSFORM" ] ; then
-    export UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
+if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
+    export  UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
 fi
 
 ##################################################################################
@@ -9625,9 +9629,11 @@ fi
 # https://cmake.org/cmake/help/latest/envvar/MACOSX_DEPLOYMENT_TARGET.html
 unset MACOSX_DEPLOYMENT_TARGET
 
-#########################################################################################
+##################################################################################
 
 TIMESTAMP_UNIX="$(date +%s)"
+
+##################################################################################
 
 case $1 in
     ''|--help|-h)
@@ -9698,21 +9704,25 @@ EOF
         ;;
 esac
 
-#########################################################################################
+##################################################################################
 
-if [ -z "$CARGO_HOME" ] ; then
-    export CARGO_HOME="$HOME/.cargo"
-fi
+[ -z  "$CARGO_HOME" ] && {
+    if [ -z "$HOME" ] ; then
+        abort 1 "HOME environment variable is not set."
+    else
+        CARGO_HOME="$HOME/.cargo"
+    fi
+}
 
 bppend_to_PATH "$CARGO_HOME/bin"
 
-# pip install --user <PKG>
-bppend_to_PATH "$HOME/.local/bin"
+##################################################################################
 
-# cpan install to default local location
-bppend_to_PATH "$HOME/perl5/bin"
+if [ -d         "$NDKPKG_CORE_DIR/bin" ] ; then
+    export PATH="$NDKPKG_CORE_DIR/bin:$PATH"
+fi
 
-#########################################################################################
+##################################################################################
 
 if [ -f "$NDKPKG_CORE_DIR/profile" ] ; then
     .   "$NDKPKG_CORE_DIR/profile"
@@ -9720,7 +9730,7 @@ else
     abort 1 "please run ${COLOR_GREEN}$NDKPKG setup${COLOR_OFF} command first, then try again."
 fi
 
-#########################################################################################
+##################################################################################
 
 # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
 if [ -z  "$ACLOCAL_PATH" ] ; then
@@ -9729,9 +9739,7 @@ else
     export ACLOCAL_PATH="$NDKPKG_CORE_DIR/share/aclocal:$ACLOCAL_PATH"
 fi
 
-bppend_to_PATH "$NDKPKG_CORE_BIN_DIR"
-
-#########################################################################################
+##################################################################################
 
 NATIVE_OS_KIND="$(sysinfo kind)"
 NATIVE_OS_TYPE="$(sysinfo type)"
@@ -9750,7 +9758,7 @@ fi
 
 NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
 
-#########################################################################################
+##################################################################################
 
 case $1 in
     ndkinfo)

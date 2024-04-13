@@ -536,11 +536,11 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
 - **HOME**
 
-    This environment variable already have been set on the most operating systems, if not set or set a empty string, you will receive an error message.
+    This environment variable already have been set on the most operating systems, if not set or set a empty string, you may receive an error message.
 
 - **PATH**
 
-    This environment variable already have been set on the most operating systems, if not set or set a empty string, you will receive an error message.
+    This environment variable already have been set on the most operating systems, if not set or set a empty string, you may receive an error message.
 
 - **SSL_CERT_FILE**
 
@@ -583,10 +583,10 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
 - **NDKPKG_HOME**
 
-    If this environment variable is not set or set a empty string, `$HOME/.ndk-pkg` will be used as the default value.
+    If this environment variable is not set or set a empty string, `~/.ndk-pkg` will be used as the default value.
 
     ```bash
-    export NDKPKG_HOME=$HOME/ndk-pkg-home
+    export NDKPKG_HOME=/path/of/ndk-pkg-home
     ```
 
 - **NDKPKG_DEFAULT_TARGET**
