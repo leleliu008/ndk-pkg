@@ -1401,47 +1401,47 @@ filetype_from_url() {
         return 1
     }
 
-    run cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
+    cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
 
-    sed_in_place '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
+    sed -i '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
 
-    sed_in_place "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
+    sed -i "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
 
     grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed_in_place "2i version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
+        sed -i "2i version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
     }
 
     grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed_in_place "/^git-url:/i web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
+        sed -i "/^git-url:/i web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
     }
 
     grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed_in_place "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
+        sed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
     }
 
     grep -q '^binbstd: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed_in_place "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
+        sed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
     }
 
     grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed_in_place "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
+        sed -i "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
     }
 
     [ -n "$PACKAGE_GIT_SHA" ] && {
         grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-            sed_in_place "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
+            sed -i "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
         }
 
         grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-            sed_in_place "3i git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
+            sed -i "3i git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
         }
     }
 
     [ -n "$PACKAGE_DEP_UPP" ] && {
         if grep -q '^dep-upp: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-            sed_in_place "/^dep-upp: /c dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
+            sed -i "/^dep-upp: /c dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
         else
-            sed_in_place "/^bsystem: /i dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
+            sed -i "/^bsystem: /i dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
         fi
     }
 
@@ -1461,6 +1461,10 @@ buildon:
     os-egid: $NATIVE_OS_EGID
 builtfor: $TARGET_PLATFORM_SPEC
 EOF
+
+    if [ "$LOG_LEVEL" -ge 1 ] ; then
+        cat "$PACKAGE_RECEIPT_FILEPATH"
+    fi
 }
 
 # __load_receipt_of_the_given_package <PACKAGE-NAME|PACKAGE-SPEC>
@@ -1644,9 +1648,11 @@ EOF
 
     exec 7> "$PACKAGE_MANIFEST_FILEPATH"
 
-    for dirname in $(find -mindepth 1 -maxdepth 1 -type d -not -name .ndk-pkg -printf '%P\n')
+    for d in *
     do
-        for item in $(find "$dirname" -printf '%y:%p\n')
+        [ -d "$d" ] || continue
+
+        for item in $(find "$d" -printf '%y:%p\n')
         do
             X=$(printf '%s\n' "$item" | cut -c1)
             Y=${item#$X:}
@@ -2277,7 +2283,6 @@ __fetch_resources_of_the_given_package() {
 
 # __logs_the_given_installed_package <PACKAGE-SPEC>
   __logs_the_given_installed_package() {
-    PACKAGE_SPEC=
     PACKAGE_SPEC="$(inspect_package_spec "$1")"
 
     if is_package_installed "$PACKAGE_SPEC" ; then
@@ -2286,21 +2291,19 @@ __fetch_resources_of_the_given_package() {
         abort 1 "package '$PACKAGE_SPEC' is not installed."
     fi
 
-    FILEPATHS=
-    FILEPATHS="$(find "$PACKAGE_INSTALLED_DIR/.ndk-pkg" -type f)"
+    FILEPATHs="$(find "$PACKAGE_INSTALLED_DIR/.ndk-pkg" -type f)"
 
-    for filepath in $FILEPATHS
+    for fp in $FILEPATHs
     do
-        [ -d "$filepath" ] && continue
-
-        case $filepath in
+        case $fp in
+            *.svg)  ;;
             *.png)  ;;
-            *.yml)  run yq . "$filepath" ;;
-            *.json) run jq . "$filepath" ;;
+            *.yml)  run yq . "$fp" ;;
+            *.json) run jq . "$fp" ;;
             *)  if command -v bat > /dev/null ; then
-                    bat  "$filepath"
+                    bat  "$fp"
                 else
-                    less "$filepath"
+                    less "$fp"
                 fi
         esac
     done
@@ -2374,7 +2377,7 @@ __fetch_resources_of_the_given_package() {
             for FILEPATH in $(find "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/bin" -type f)
             do
                 FILEMAGIC=
-                FILEMAGIC="$(head -c 4 "$FILEPATH" | base16-encode)"
+                FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
 
                 if [ "$FILEMAGIC" = '7F454C46' ] ; then
                     # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
@@ -2514,114 +2517,156 @@ __fetch_resources_of_the_given_package() {
     fi
 }
 
-# __create_google_prefab_for_the_given_installed_package <PACKAGE-SPEC>
-  __create_google_prefab_for_the_given_installed_package() {
-    __load_receipt_of_the_given_package "$1"
+# https://developer.android.com/studio/projects/android-library#aar-contents
+# https://google.github.io/prefab/#package-structure
+#
+# zlib-1.2.13.aar
+# ├── AndroidManifest.xml
+# ├── META-INF
+# │   ├── FAQ
+# │   ├── LICENSE
+# │   ├── MANIFEST.txt
+# │   ├── README
+# │   ├── README.ndk-pkg
+# │   └── RECEIPT.yml
+# └── prefab
+#     ├── prefab.json
+#     └── modules
+#         ├── headers
+#         │   └── include
+#         │       ├── zconf.h
+#         │       └── zlib.h
+#         ├── libz.a
+#         │   ├── module.josn
+#         │   ├── include
+#         │   │   ├── zconf.h
+#         │   │   └── zlib.h
+#         │   └── libs
+#         │       ├── android.arm64-v8a
+#         │       │   ├── abi.json
+#         │       │   └── libz.a
+#         │       ├── android.armeabi-v7a
+#         │       │   ├── abi.json
+#         │       │   └── libz.a
+#         │       ├── android.x86
+#         │       │   ├── abi.json
+#         │       │   └── libz.a
+#         │       └── android.x86_64
+#         │           ├── abi.json
+#         │           └── libz.a
+#         └── libz.so
+#             ├── module.josn
+#             ├── include
+#             │   ├── zconf.h
+#             │   └── zlib.h
+#             └── libs
+#                 ├── android.arm64-v8a
+#                 │   ├── abi.json
+#                 │   └── libz.so
+#                 ├── android.armeabi-v7a
+#                 │   ├── abi.json
+#                 │   └── libz.so
+#                 ├── android.x86
+#                 │   ├── abi.json
+#                 │   └── libz.so
+#                 └── android.x86_64
+#                     ├── abi.json
+#                     └── libz.so
+#
+# __export_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>] [--keep-session-dir]
+  __export_google_prefab_aar_for_the_given_installed_packages() {
+    unset PACKAGE_NAME
 
-    PACKAGE_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}"
+    unset TARGET_PLATFORM_VERS
+    unset TARGET_PLATFORM_ABIS
 
-    TARGET_PLATFORM_VERS="$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS"
+    case $1 in
+        android-[1-9][0-9]-*/*)
+            PACKAGE_NAME="${1#*/}"
 
-    case $RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH in
-        armv7a)
-            TARGET_PLATFORM_ABI='armeabi-v7a'
+            if [ -z "$PACKAGE_NAME" ] ; then
+                abort 1 "invalid package spec: $1\n    package name is unspecifed."
+            elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
+                :
+            else
+                abort 1 "invalid package spec: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
+            fi
+
+            TARGET_PLATFORM_SPEC="${1%%/*}"
+            TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
+            TARGET_PLATFORM_ABIS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -c 12- | tr ',' ' ')"
+
+            for TARGET_PLATFORM_ABI in $TARGET_PLATFORM_ABIS
+            do
+                case $TARGET_PLATFORM_ABI in
+                    armeabi-v7a|arm64-v8a|x86|x86_64)
+                        ;;
+                    *)  abort 1 "invalid package spec: $1\n    unsupported abi: $TARGET_PLATFORM_ABI"
+                esac
+            done
             ;;
-        aarch64)
-            TARGET_PLATFORM_ABI='arm64-v8a'
-            ;;
-        i686)
-            TARGET_PLATFORM_ABI='x86'
-            ;;
-        x86_64)
-            TARGET_PLATFORM_ABI='x86_64'
-            ;;
+        *)  abort 1 "invalid package spec: $1"
     esac
 
-    PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALLED_DIR/include"
-    PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib-for-apk"
-
     #########################################################################################
 
-    [ -d "$PACKAGE_INCLUDE_DIR" ] || abort 10 "unable to be exported as google prefab, because there is no C/C++ header files in package $PACKAGE_SPEC"
+    shift
 
-    run install -d prefab/modules/headers
-    run cp -r "$PACKAGE_INCLUDE_DIR" prefab/modules/headers/
+    unset ANDROID_NDK_HOME
 
-    #########################################################################################
+    unset KEEP_SESSION_DIR
 
-    unset PACKAGE_STATIC_LIBRARY_FILENAMES
-    unset PACKAGE_SHARED_LIBRARY_FILENAMES
+    unset OUTPUT_PATH
 
-    if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
-        PACKAGE_STATIC_LIBRARY_FILENAMES="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.a'  -printf '%P\n')"
-        PACKAGE_SHARED_LIBRARY_FILENAMES="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.so' -printf '%P\n')"
-    fi
-
-    PACKAGE_LIBRARY_FILENAMES="$PACKAGE_STATIC_LIBRARY_FILENAMES $PACKAGE_SHARED_LIBRARY_FILENAMES"
-
-    for LIBRARY_FILENAME in $PACKAGE_LIBRARY_FILENAMES
+    while [ -n "$1" ]
     do
-        case $LIBRARY_FILENAME in
-            *.a)  LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.a}"  ; IS_STATIC_LIBRARY=true  ;;
-            *.so) LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}" ; IS_STATIC_LIBRARY=false ;;
+        case $1 in
+            --ndk-home=*)
+                ANDROID_NDK_HOME="${1#*=}"
+                ;;
+            -o) shift
+                OUTPUT_PATH="$1"
+                ;;
+            --keep-session-dir)
+                KEEP_SESSION_DIR=1
+                ;;
         esac
-
-        MODULE_DIR="prefab/modules/$LIBRARY_FILENAME"
-
-        run install -d "$MODULE_DIR"
-
-        cat > "$MODULE_DIR/module.json" <<EOF
-{
-  "export_libraries": [],
-  "android": {
-    "library_name": "$LIBRARY_FILENAME_PREFIX",
-    "export_libraries": []
-  }
-}
-EOF
-
-        run cp -r "$PACKAGE_INCLUDE_DIR" "$MODULE_DIR/"
-
-        ABI_DIR="$MODULE_DIR/libs/android.$TARGET_PLATFORM_ABI"
-
-        run install -d "$ABI_DIR"
-
-        LIBRARY_FILEPATH="$PACKAGE_LIBRARY_DIR/$LIBRARY_FILENAME"
-
-        run cp "$LIBRARY_FILEPATH" "$ABI_DIR"
-
-        STL=none
-
-        # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
-        if [ "$IS_STATIC_LIBRARY" = true ] ; then
-            if   "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
-                abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
-            elif "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
-                STL=c++_shared
-            fi
-        else
-            if "$ANDROID_NDK_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
-                STL=c++_shared
-            elif "$ANDROID_NDK_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
-                # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
-                # https://developer.android.com/ndk/guides/cpp-support
-                abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
-            fi
-        fi
-
-        printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${RECEIPT_PACKAGE_NDKVERS%%.*}" "$TARGET_PLATFORM_VERS" "$TARGET_PLATFORM_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
+        shift
     done
 
     #########################################################################################
 
-    # https://google.github.io/prefab/#package-metadata
-    #
+    PACKAGE_SPEC="android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ABI/$PACKAGE_NAME"
+
+    __load_receipt_of_the_given_package "$PACKAGE_SPEC"
+
+    #########################################################################################
+
+    setup_android_ndk_env "$ANDROID_NDK_HOME"
+
+    #########################################################################################
+
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
+
+    step "create the session directory and change to it"
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
+
+    #########################################################################################
+
+    PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALLED_DIR/include"
+
+    if [ ! -d "$PACKAGE_INCLUDE_DIR" ] ; then
+        abort 10 "unable to be exported as google prefab due to there is no C/C++ header files in package $PACKAGE_SPEC"
+    fi
+
+    #########################################################################################
+
     # For compatibility with CMake, versions must be specified as major[.minor[.patch[.tweak]]] with all components being numeric.
 
-    unset VERSION
-
     if [ -z "$RECEIPT_PACKAGE_VERSION" ] ; then
-        VERSION="$(date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y.%m.%d')"
+        PREFAB_PACKAGE_VERS="$(date -u -d "@$RECEIPT_PACKAGE_BUILTAT" '+%Y.%m.%d')"
     else
         unset SED_E
 
@@ -2645,146 +2690,49 @@ EOF
         # 3.0-11
         # 1.4g
         # 0.15.2e
-        VERSION="$(printf '%s\n' "$RECEIPT_PACKAGE_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
+        PREFAB_PACKAGE_VERS="$(printf '%s\n' "$RECEIPT_PACKAGE_VERSION" | tr +- . | sed -e 's|beta|2|' -e 's|rel||' -e 's|rc|.|' -e 's|^r||' $SED_E)"
 
-        printf '%s\n' "$VERSION" | {
+        printf '%s\n' "$PREFAB_PACKAGE_VERS" | {
             grep -q '[0-9]*' ||
             grep -q '[0-9]*\.[0-9]*' ||
             grep -q '[0-9]*\.[0-9]*\.[0-9]*' ||
             grep -q '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*'
-        } || abort 1 "version[$VERSION] not expected."
+        } || abort 1 "version[$PREFAB_PACKAGE_VERS] not expected."
     fi
 
-    unset DEPENDENCIES
+    #########################################################################################
 
-    for DEPENDENT_PACKAGE_NAME in $RECEIPT_PACKAGE_DEP_PKG
-    do
-        if [ -z "$DEPENDENCIES" ] ; then
-            DEPENDENCIES="\"$DEPENDENT_PACKAGE_NAME\""
-        else
-            DEPENDENCIES="$DEPENDENCIES, \"$DEPENDENT_PACKAGE_NAME\""
-        fi
-    done
+    PREFAB_PACKAGE_NAME="${PACKAGE_NAME%@*}"
 
+    #########################################################################################
+
+    # https://google.github.io/prefab/#package-metadata
+    install -d prefab
     cat > prefab/prefab.json <<EOF
 {
   "schema_version": 2,
-  "name": "$PACKAGE_NAME",
-  "version": "$VERSION",
+  "name": "$PREFAB_PACKAGE_NAME",
+  "version": "$PREFAB_PACKAGE_VERS",
   "dependencies": [ ]
 }
 EOF
-}
-
-# __export_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]
-  __export_google_prefab_aar_for_the_given_installed_packages() {
-    unset PACKAGE_NAME
-
-    unset TARGET_PLATFORM_VERS
-    unset TARGET_PLATFORM_ABIS
-
-    unset SPECIFIED_PACKAGE_SPEC_LIST
-
-    case $1 in
-        android-[1-9][0-9]-*/*)
-            PACKAGE_NAME="${1#*/}"
-
-            if [ -z "$PACKAGE_NAME" ] ; then
-                abort 1 "invalid package spec: $1\n    package name is unspecifed."
-            elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
-                :
-            else
-                abort 1 "invalid package spec: $1\n    package name must match the regular expression pattern: ^[A-Za-z0-9+-_.@]{1,50}$"
-            fi
-
-            TARGET_PLATFORM_SPEC="${1%%/*}"
-            TARGET_PLATFORM_VERS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -d- -f2)"
-            TARGET_PLATFORM_ABIS="$(printf '%s\n' "$TARGET_PLATFORM_SPEC" | cut -c 12- | tr ',' ' ')"
-
-            for TARGET_PLATFORM_ABI in $TARGET_PLATFORM_ABIS
-            do
-                case $TARGET_PLATFORM_ABI in
-                    armeabi-v7a|arm64-v8a|x86|x86_64)
-                        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ABI/$PACKAGE_NAME"
-                        ;;
-                    *)  abort 1 "invalid package spec: $1\n    unsupported abi: $TARGET_PLATFORM_ABI"
-                esac
-            done
-            ;;
-        *)  abort 1 "invalid package spec: $1"
-    esac
 
     #########################################################################################
 
-    shift
-
-    unset ANDROID_NDK_HOME
-
-    unset OUTPUT_FILEPATH
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --ndk-home=*)
-                ANDROID_NDK_HOME="${1#*=}"
-                ;;
-            -o) shift
-                if [ -z "$1" ] ; then
-                    abort 1 "-o option is specified but <OUTPUT-PATH> is unspecified."
-                else
-                    OUTPUT_FILEPATH="$(realpath -s "$1")"
-                fi
-        esac
-        shift
-    done
-
-    #########################################################################################
-
-    setup_android_ndk_env "$ANDROID_NDK_HOME"
-
-    #########################################################################################
-
-    SESSION_DIR="$NDKPKG_HOME/run/$$"
-
-    step "create the session directory and change to it"
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
-
-    #########################################################################################
-
-    for PACKAGE_SPEC in $SPECIFIED_PACKAGE_SPEC_LIST
-    do
-        step "create prefab hierarchial structure for $PACKAGE_SPEC"
-        __create_google_prefab_for_the_given_installed_package "$PACKAGE_SPEC"
-    done
-
-    #########################################################################################
-
-    PREFAB_MODULES="$(find prefab/modules -maxdepth 1 -mindepth 1 -type d -printf '%P ')"
-
-    PREFAB_MODULES="${PREFAB_MODULES% }"
-
-    #########################################################################################
-
-    # https://developer.android.com/studio/projects/android-library#aar-contents
     step "create META-INF"
-    run install -d META-INF
+    run cp -r "$PACKAGE_INSTALLED_DIR/.ndk-pkg" META-INF
     cat > META-INF/README.ndk-pkg <<EOF
 packed by ndk-pkg-$NDKPKG_VERSION in $(date -u -d "@$TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%SZ')
 
 For more details, please refer to https://github.com/leleliu008/ndk-pkg
 EOF
-    run cp -r "$PACKAGE_INSTALLED_DIR/.ndk-pkg"/* META-INF/
 
     #########################################################################################
-
-    PACKAGE_NAME="${PACKAGE_NAME%@*}"
 
     unset JAVA_PACKAGE_NAME
 
     # java package name characters [a-z0-9_.]
-    JAVA_PACKAGE_NAME="$(printf '%s\n' "$PACKAGE_NAME" | tr '+-.' '_' | tr A-Z a-z)"
+    JAVA_PACKAGE_NAME="$(printf '%s\n' "$PREFAB_PACKAGE_NAME" | tr '+-.' '_' | tr A-Z a-z)"
 
     step "create AndroidManifest.xml"
     tee AndroidManifest.xml <<EOF
@@ -2800,65 +2748,179 @@ EOF
 
     #########################################################################################
 
-    AAR_FILENAME="$PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$TARGET_PLATFORM_VERS-$(printf '%s\n' "$TARGET_PLATFORM_ABIS" | tr ' ' ',').aar"
+    step "create the header-only module"
+    run install -d prefab/modules/headers
+    run cp -r "$PACKAGE_INCLUDE_DIR" prefab/modules/headers/
+
+    #########################################################################################
+
+    PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib"
+
+    unset LIBRARIes
+
+    if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
+        LIBRARIes="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 \( -type f -or -type l \) \( -name 'lib*.a' -or -name 'lib*.so' \) -printf '%f:%l\n')"
+    fi
+
+    for LIBRARY in $LIBRARIes
+    do
+        LIBRARY_FILENAME="${LIBRARY%:*}"
+
+        LIBRARY_REALNAME="${LIBRARY#*:}"
+
+        if [ -z "$LIBRARY_REALNAME" ] ; then
+            LIBRARY_REALNAME="$LIBRARY_FILENAME"
+        fi
+
+        case $LIBRARY_FILENAME in
+            *.a)  LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.a}"  ; IS_STATIC_LIBRARY=true  ;;
+            *.so) LIBRARY_FILENAME_PREFIX="${LIBRARY_FILENAME%.so}" ; IS_STATIC_LIBRARY=false ;;
+        esac
+
+        MODULE_DIR="prefab/modules/$LIBRARY_FILENAME"
+
+        step "create module : $LIBRARY_FILENAME"
+
+        run install -d "$MODULE_DIR"
+
+        cat > "$MODULE_DIR/module.json" <<EOF
+{
+  "export_libraries": [],
+  "android": {
+    "library_name": "$LIBRARY_FILENAME_PREFIX",
+    "export_libraries": []
+  }
+}
+EOF
+
+        for TARGET_PLATFORM_ABI in $TARGET_PLATFORM_ABIS
+        do
+            PACKAGE_SPEC="android-$TARGET_PLATFORM_VERS-$TARGET_PLATFORM_ABI/$PACKAGE_NAME"
+
+            __load_receipt_of_the_given_package "$PACKAGE_SPEC"
+
+            PACKAGE_INCLUDE_DIR="$PACKAGE_INSTALLED_DIR/include"
+            PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALLED_DIR/lib"
+
+            LIBRARY_FILEPATH="$PACKAGE_LIBRARY_DIR/$LIBRARY_REALNAME"
+
+            #################################################################
+
+            ABI_DIR="$MODULE_DIR/libs/android.$TARGET_PLATFORM_ABI"
+
+            run install -d "$ABI_DIR"
+
+            run cp -L -r "$PACKAGE_INCLUDE_DIR" "$ABI_DIR/"
+
+            run cp -L "$LIBRARY_FILEPATH" "$ABI_DIR/$LIBRARY_FILENAME"
+
+            #################################################################
+
+            STL=none
+
+            # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
+            if [ "$IS_STATIC_LIBRARY" = true ] ; then
+                if   "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                    abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+                elif "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
+                    STL=c++_shared
+                fi
+            else
+                # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
+                DT_SONAME="$(patchelf --print-soname "$LIBRARY_FILEPATH")"
+
+                if [ -z "$DT_SONAME" ] ; then
+                    abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    DT_SONAME: not set"
+                fi
+
+                if [ "$DT_SONAME" != "$LIBRARY_FILENAME" ] ; then
+                    abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    DT_SONAME: $DT_SONAME"
+                fi
+
+                DT_NEEDED_LIST="$(patchelf --print-needed "$LIBRARY_FILEPATH")"
+
+                for DT_NEEDED in $DT_NEEDED_LIST
+                do
+                    case $DT_NEEDED in
+                        lib*.so)
+                            ;;
+                        *)  abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    DT_NEEDED: $DT_NEEDED"
+                    esac
+                done
+
+                if "$ANDROID_NDK_READELF" -d "$LIBRARY_FILEPATH" | grep -q 'libc++_shared\.so' ; then
+                    STL=c++_shared
+                elif "$ANDROID_NDK_NM" -D "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
+                    # https://softwareengineering.stackexchange.com/questions/262195/whats-wrong-with-statically-linking-the-stl-into-multiple-shared-libraries
+                    # https://developer.android.com/ndk/guides/cpp-support
+                    abort 1 "libc++_static.a has been linked into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+                fi
+            fi
+
+            printf "{\"ndk\": %s, \"api\": %s, \"abi\": \"%s\", \"stl\": \"%s\", \"static\": %s}" "${RECEIPT_PACKAGE_NDKVERS%%.*}" "$TARGET_PLATFORM_VERS" "$TARGET_PLATFORM_ABI" "$STL" "$IS_STATIC_LIBRARY" > "$ABI_DIR/abi.json"
+
+        done
+    done
+
+    #########################################################################################
 
     step "packing the prefab aar file"
-    run zip -9 -r "$AAR_FILENAME" .
+    run zip -9 -r prefab.aar .
 
     step "show size of the prefab aar file"
-    run du -sh    "$AAR_FILENAME"
-
-    step "show session directory in tree-like format"
-    run tree --dirsfirst .
+    run du -sh prefab.aar
 
     ###########################################################################################
 
-    if [ "$NDKPKG_ACTION" = 'deploy' ] ; then
+    if [ "${NDKPKG_ARGS%% *}" = deploy ] ; then
         return 0
     fi
 
-    if [ -z "$OUTPUT_FILEPATH" ] ; then
+    if [ -z "$OUTPUT_PATH" ] ; then
         printf '%b\n' "
-${COLOR_GREEN}Note:${COLOR_OFF}
-    ${COLOR_RED}NOT proceed due to -o <OUTPUT-PATH> option is unspecified.${COLOR_OFF}
+${COLOR_RED}NOT proceed due to -o <OUTPUT-PATH> option is unspecified.${COLOR_OFF}
 
-    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
 
-    cd $SESSION_DIR
-    mv $AAR_FILENAME /somewhere
-    cd -
-    rm -rf $SESSION_DIR
-        "
+cd $SESSION_DIR
+mv prefab.aar /somewhere
+cd -
+rm -rf $SESSION_DIR\n"
         return 0
     fi
 
     ###########################################################################################
 
-    if [ -d "$OUTPUT_FILEPATH" ] ; then
-        OUTPUT_DIR="$OUTPUT_FILEPATH"
-        OUTPUT_FILEPATH="$OUTPUT_FILEPATH/$AAR_FILENAME"
-    else
-        case $OUTPUT_FILEPATH in
-            */)
-                OUTPUT_DIR="$OUTPUT_FILEPATH"
-                OUTPUT_FILEPATH="$OUTPUT_FILEPATH/$AAR_FILENAME"
-                ;;
-            *)
-                OUTPUT_DIR="${OUTPUT_FILEPATH%/*}"
-                OUTPUT_FILENAME="${OUTPUT_FILEPATH##*/}"
-        esac
-    fi
+    OUTPUT_DIR="$(dirname "$OUTPUT_PATH")"
 
     if [ ! -d "$OUTPUT_DIR" ] ; then
         step "create the output directory"
         run install -d "$OUTPUT_DIR"
     fi
 
-    step "move prefab aar file to destination"
-    run mv "$AAR_FILENAME" "$OUTPUT_FILEPATH"
+    ###########################################################################################
 
-    step "delete the session directory"
-    run rm -rf "$SESSION_DIR"
+    step "rename prefab aar"
+    DEFAULT_OUTPUT_FILENAME="$PREFAB_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$TARGET_PLATFORM_VERS-$(printf '%s\n' "$TARGET_PLATFORM_ABIS" | tr ' ' '+').aar"
+    run mv prefab.aar "$DEFAULT_OUTPUT_FILENAME"
+
+    ###########################################################################################
+
+    step "back to origin directory"
+    run cd -
+
+    ###########################################################################################
+
+    step "move prefab aar file to destination"
+    run mv "$SESSION_DIR/$DEFAULT_OUTPUT_FILENAME" "$OUTPUT_PATH"
+
+    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+        echo
+        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is specified."
+    else
+        step "delete the session directory"
+        run rm -rf "$SESSION_DIR"
+    fi
 }
 
 # __deploy_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>/<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [--keep-session-dir] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
@@ -2869,14 +2931,10 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     shift
 
-    unset ANDROID_NDK_HOME
-
     unset DEPLOYED_TO_SONATYPE_OSSRH
     unset DEPLOYED_TO_SPECIFIED_LOCAL_PATH
 
-    unset KEEP_SESSION_DIR
-
-    unset MVN_OPTIONS
+    unset MVN_ARGS
 
     unset DRYRUN
 
@@ -2886,22 +2944,23 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
     do
         case $1 in
             --ndk-home=*)
-                ANDROID_NDK_HOME="${1#*=}"
                 ;;
             --debug)
-                MVN_OPTIONS=-X
+                MVN_ARGS=-X
                 ;;
             --remote)
                 DEPLOYED_TO_SONATYPE_OSSRH=1
                 ;;
             --local=*)
                 DEPLOYED_TO_SPECIFIED_LOCAL_PATH="${1#*=}"
+                if [ -n "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
+                    DEPLOYED_TO_SPECIFIED_LOCAL_PATH="$(realpath -s "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH")"
+                fi
                 ;;
             --dry-run)
                 DRYRUN=1
                 ;;
             --keep-session-dir)
-                KEEP_SESSION_DIR=1
                 ;;
             --groupId=*)
                 GROUPID="${1#*=}"
@@ -2914,126 +2973,11 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 
     #########################################################################################
 
-    [ -z "$GROUPID" ] && GROUPID="com.fpliu.ndk.pkg.prefab.android.$TARGET_PLATFORM_VERS"
-
-    #########################################################################################
-
-    if [ -z "$DEPLOYED_TO_SONATYPE_OSSRH" ] && [ -z "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
-        if [ "$DRYRUN" = 1 ] ; then
-            printf '%b\n' "
-${COLOR_GREEN}Note:${COLOR_OFF}
-    ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
-
-    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
-
-    cd $SESSION_DIR
-    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=true
-    cd -
-    rm -rf $SESSION_DIR
-            "
-            return 0
-        fi
-
-        if command -v mvn > /dev/null ; then
-            MVN_COMMAND=mvn
-        else
-            step "install maven"
-            run uppm install maven
-
-            unset  JAVA_HOME
-            unset MAVEN_HOME
-
-            export JAVA_HOME="$(uppm info jdk17 installed-dir)"
-            export PATH="$JAVA_HOME/bin:$PATH"
-            export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
-
-            MAVEN_HOME="$(uppm info maven installed-dir)"
-
-            MVN_COMMAND="$MAVEN_HOME/bin/mvn"
-        fi
-
-        # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
-        step "deploying the prefab aar to Maven Local Repository"
-        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=true
-
-        if [ "$KEEP_SESSION_DIR" = 1 ] ; then
-            printf '\n'
-            note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
-        else
-            step "delete the session directory"
-            run rm -rf "$SESSION_DIR"
-        fi
-
-        printf '%b\n' "
-${COLOR_YELLOW}
-======================================================
-Use this artifact alongside with Android Gradle Plugin
-======================================================${COLOR_OFF}
-
-${COLOR_GREEN}step1. enable prefab feature for Android Gradle Plugin${COLOR_OFF}
-
-android {
-    buildFeatures {
-        prefab true
-    }
-}
-
-${COLOR_GREEN}step2. enable mavenLocal repository for Gradle${COLOR_OFF}
-
-repositories {
-    mavenLocal()
-}
-
-${COLOR_GREEN}step3. configure dependencies${COLOR_OFF}
-
-${COLOR_PURPLE}For Gradle Groovy DSL:${COLOR_OFF}
-
-dependencies {
-    implementation '$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar'
-}
-
-${COLOR_PURPLE}For Gradle Kotlin DSL:${COLOR_OFF}
-
-dependencies {
-    implementation(\"$GROUPID:$PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar\")
-}
-
-${COLOR_GREEN}step4. find package and link libraries in your Android project's CMakeLists.txt${COLOR_OFF}
-
-${COLOR_PURPLE}This prefab package has $(list_size $PREFAB_MODULES) modules : $PREFAB_MODULES${COLOR_OFF}
-
-find_package($PACKAGE_NAME REQUIRED CONFIG)
-target_link_libraries(app $PACKAGE_NAME::${PREFAB_MODULES%% *})
-
-${COLOR_GREEN}step5. configure C++ standard and STL (optional)${COLOR_OFF}
-
-android {
-    defaultConfig {
-        externalNativeBuild {
-            cmake {
-                arguments '-DANDROID_STL=c++_shared'
-                cppFlags  '-std=c++17'
-            }
-        }
-    }
-}
-
-${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.so, then your Android app should use libc++_shared.so too.${COLOR_OFF}
-"
-        return 0
-    fi
-
-    if [ -n "$DEPLOYED_TO_SONATYPE_OSSRH" ] && [ -n "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
-        abort 1 '--remote and --local=<DIR> can not used as the same time.'
-    fi
-
-    #########################################################################################
-
     # https://central.sonatype.org/publish/release/
     # https://central.sonatype.org/publish/requirements/
     # https://central.sonatype.org/publish/publish-manual/
 
-    if [ -n "$DEPLOYED_TO_SONATYPE_OSSRH" ] ; then
+    if [ "$DEPLOYED_TO_SONATYPE_OSSRH" = 1 ] ; then
         if [ -z "$RECEIPT_PACKAGE_LICENSE" ] ; then
             abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_LICENSE is empty."
         fi
@@ -3041,19 +2985,30 @@ ${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.s
         if [ -z "$RECEIPT_PACKAGE_GIT_URL" ] ; then
             abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_GIT_URL is empty."
         fi
+
+        if [ -n "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
+            abort 1 '--remote and --local=<DIR> can not be used as the same time.'
+        fi
     fi
 
-    step "generating pom.xml"
+    #########################################################################################
+
+    [ -z "$GROUPID" ] && GROUPID="com.fpliu.ndk.pkg.prefab.android.$TARGET_PLATFORM_VERS"
+
+    #########################################################################################
+
+    step "generating POM file"
+
     cat > pom.xml <<EOF
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>$GROUPID</groupId>
-    <artifactId>$PACKAGE_NAME</artifactId>
+    <artifactId>$PREFAB_PACKAGE_NAME</artifactId>
     <version>$RECEIPT_PACKAGE_VERSION</version>
     <packaging>aar</packaging>
 
-    <name>$PACKAGE_NAME</name>
+    <name>$PREFAB_PACKAGE_NAME</name>
     <description>$RECEIPT_PACKAGE_SUMMARY</description>
     <url>$RECEIPT_PACKAGE_WEB_URL</url>
 EOF
@@ -3077,7 +3032,7 @@ EOF
     fi
 
     if [ -z "$RECEIPT_PACKAGE_DEVELOPER" ] ; then
-        RECEIPT_PACKAGE_DEVELOPER="$PACKAGE_NAME developers <unknown>"
+        RECEIPT_PACKAGE_DEVELOPER="$PREFAB_PACKAGE_NAME developers <unknown>"
     fi
 
     printf '\n    <developers>\n' >> pom.xml
@@ -3130,120 +3085,49 @@ EOF
 
     #########################################################################################
 
-    POM_FILE="${AAR_FILENAME%.aar}.pom"
+    POM_FILE="$PREFAB_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION.pom"
 
-    step "rename pom.xml to $POM_FILE"
-    run mv pom.xml "$POM_FILE"
-
-    #########################################################################################
-
-    if [ -n "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
-        cd -
-        DEPLOYED_TO_SPECIFIED_LOCAL_PATH="$(realpath -s "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH")"
-        cd -
-
-        if [ "$DRYRUN" = 1 ] ; then
-            printf '%b\n' "
-${COLOR_GREEN}Note:${COLOR_OFF}
-    ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
-
-    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
-
-    cd $SESSION_DIR
-    mvn $MVN_OPTIONS install:install-file -Dfile=$AAR_FILENAME -DgroupId=$GROUPID -DartifactId=$PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=false -DpomFile=$POM_FILE -DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH
-    cd -
-    rm -rf $SESSION_DIR
-            "
-            return 0
-        fi
-
-        if command -v mvn > /dev/null ; then
-            MVN_COMMAND=mvn
-        else
-            step "install maven"
-            run uppm install maven
-
-            unset  JAVA_HOME
-            unset MAVEN_HOME
-
-            export JAVA_HOME="$(uppm info jdk17 installed-dir)"
-            export PATH="$JAVA_HOME/bin:$PATH"
-            export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
-
-            MAVEN_HOME="$(uppm info maven installed-dir)"
-
-            MVN_COMMAND="$MAVEN_HOME/bin/mvn"
-        fi
-
-        # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
-        step "deploying the prefab aar to Maven Local Repository"
-        run "$MVN_COMMAND" $MVN_OPTIONS install:install-file "-Dfile=$AAR_FILENAME" "-DgroupId=$GROUPID" "-DartifactId=$PACKAGE_NAME" "-Dversion=$RECEIPT_PACKAGE_VERSION" -Dpackaging=aar -DgeneratePom=false "-DpomFile=$POM_FILE" "-DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
-
-        if [ "$KEEP_SESSION_DIR" = 1 ] ; then
-            printf '\n'
-            note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
-        else
-            step "delete the session directory"
-            run rm -rf "$SESSION_DIR"
-        fi
-
-        return 0
-    fi
+    # here we must rename pom.xml to another file name, otherwise it will be treated as a maven project.
+    mv pom.xml "$POM_FILE"
 
     #########################################################################################
 
-    if [ "$DRYRUN" = 1 ] ; then
-        printf '%b\n' "
-${COLOR_GREEN}Note:${COLOR_OFF}
-    ${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
+    if [ "$DEPLOYED_TO_SONATYPE_OSSRH" = 1 ] ; then
+        unset SERVER_ID
+        unset SERVER_URL
+        unset SERVER_USERNAME
+        unset SERVER_PASSWORD
+        unset GPG_PASSPHRASE
 
-    ${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+        step "read config from stdin"
+        while read -r LINE
+        do
+            case $LINE in
+                SERVER_ID=*)        SERVER_ID="${LINE#*=}" ;;
+                SERVER_URL=*)       SERVER_URL="${LINE#*=}" ;;
+                SERVER_USERNAME=*)  SERVER_USERNAME="${LINE#*=}" ;;
+                SERVER_PASSWORD=*)  SERVER_PASSWORD="${LINE#*=}" ;;
+                GPG_PASSPHRASE=*)   GPG_PASSPHRASE="${LINE#*=}" ;;
+            esac
+        done
 
-    cd $SESSION_DIR
-    run mvn --settings settings.xml $MVN_OPTIONS gpg:sign-and-deploy-file -Dfile=$AAR_FILENAME -DgeneratePom=false -DpomFile=$POM_FILE -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 -DrepositoryId=$SERVER_ID -Durl=$SERVER_URL
-    cd -
-    rm -rf $SESSION_DIR
-        "
-        return 0
-    fi
+        [ -z "$SERVER_ID" ]       && abort 1 "SERVER_ID must not be enpty."
+        [ -z "$SERVER_URL" ]      && abort 1 "SERVER_URL must not be enpty."
+        [ -z "$SERVER_USERNAME" ] && abort 1 "SERVER_USERNAME must not be enpty."
+        [ -z "$SERVER_PASSWORD" ] && abort 1 "SERVER_PASSWORD must not be enpty."
+        [ -z "$GPG_PASSPHRASE"  ] && abort 1 "GPG_PASSPHRASE must not be enpty."
 
-    #########################################################################################
+        #########################################################################################
 
-    unset SERVER_ID
-    unset SERVER_URL
-    unset SERVER_USERNAME
-    unset SERVER_PASSWORD
-    unset GPG_PASSPHRASE
+        on_exit_deploy() {
+            rm -f settings.xml
+        }
 
-    step "read config from stdin"
-    while read -r LINE
-    do
-        case $LINE in
-            SERVER_ID=*)        SERVER_ID="${LINE#*=}" ;;
-            SERVER_URL=*)       SERVER_URL="${LINE#*=}" ;;
-            SERVER_USERNAME=*)  SERVER_USERNAME="${LINE#*=}" ;;
-            SERVER_PASSWORD=*)  SERVER_PASSWORD="${LINE#*=}" ;;
-            GPG_PASSPHRASE=*)   GPG_PASSPHRASE="${LINE#*=}" ;;
-        esac
-    done
+        trap on_exit_deploy EXIT
 
-    [ -z "$SERVER_ID" ]       && abort 1 "SERVER_ID must not be enpty."
-    [ -z "$SERVER_URL" ]      && abort 1 "SERVER_URL must not be enpty."
-    [ -z "$SERVER_USERNAME" ] && abort 1 "SERVER_USERNAME must not be enpty."
-    [ -z "$SERVER_PASSWORD" ] && abort 1 "SERVER_PASSWORD must not be enpty."
-    [ -z "$GPG_PASSPHRASE"  ] && abort 1 "GPG_PASSPHRASE must not be enpty."
-
-    #########################################################################################
-
-    on_exit_deploy() {
-        rm -f settings.xml
-    }
-
-    trap on_exit_deploy EXIT
-
-    # https://maven.apache.org/plugins/maven-gpg-plugin/usage.html
-    step "generating settings.xml"
-    cat > settings.xml <<EOF
+        # https://maven.apache.org/plugins/maven-gpg-plugin/usage.html
+        step "generating settings.xml"
+        cat > settings.xml <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -3263,11 +3147,45 @@ ${COLOR_GREEN}Note:${COLOR_OFF}
 </settings>
 EOF
 
+        #########################################################################################
+
+        # There are two maven plugins maven-deploy-plugin and maven-gpg-plugin can be used
+        # maven-gpg-plugin is preferred as it is automatically signed with gpg.
+        #
+        # https://maven.apache.org/plugins/maven-gpg-plugin/sign-and-deploy-file-mojo.html
+        # https://maven.apache.org/plugins/maven-deploy-plugin/deploy-file-mojo.html
+        # https://maven.apache.org/resolver/configuration.html
+
+        MVN_ARGS="$MVN_ARGS --settings settings.xml gpg:sign-and-deploy-file -Dfile=prefab.aar -DgeneratePom=false -DpomFile=$POM_FILE -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 -DrepositoryId=$SERVER_ID -Durl=$SERVER_URL"
+    else
+        # https://maven.apache.org/plugins/maven-install-plugin/install-file-mojo.html
+        MVN_ARGS="$MVN_ARGS install:install-file -Dfile=prefab.aar -DgroupId=$GROUPID -DartifactId=$PREFAB_PACKAGE_NAME -Dversion=$RECEIPT_PACKAGE_VERSION -Dpackaging=aar -DgeneratePom=false -DpomFile=$POM_FILE"
+
+        if [ -n "$DEPLOYED_TO_SPECIFIED_LOCAL_PATH" ] ; then
+            MVN_ARGS="$MVN_ARGS -DlocalRepositoryPath=$DEPLOYED_TO_SPECIFIED_LOCAL_PATH"
+        fi
+    fi
+
     #########################################################################################
 
-    if command -v mvn > /dev/null ; then
-        MVN_COMMAND=mvn
-    else
+    if [ "$DRYRUN" = 1 ] ; then
+        printf '%b\n' "
+${COLOR_RED}NOT proceed due to --dry-run option is specified.${COLOR_OFF}
+
+${COLOR_RED}If you want to continue, please manually execute following commands:${COLOR_OFF}
+
+cd $SESSION_DIR
+run mvn $MVN_ARGS
+cd -
+rm -rf $SESSION_DIR\n"
+        return 0
+    fi
+
+    #########################################################################################
+
+    MVN="$(command -v mvn || true)"
+
+    if [ -z "$MVN" ] ; then
         step "install maven"
         run uppm install maven
 
@@ -3280,39 +3198,93 @@ EOF
 
         MAVEN_HOME="$(uppm info maven installed-dir)"
 
-        MVN_COMMAND="$MAVEN_HOME/bin/mvn"
+        MVN="$MAVEN_HOME/bin/mvn"
     fi
 
     #########################################################################################
 
-    # There are two maven plugins maven-deploy-plugin and maven-gpg-plugin can be used
-    # maven-gpg-plugin is preferred as it is automatically signed with gpg.
-    # 
-    # https://maven.apache.org/plugins/maven-gpg-plugin/sign-and-deploy-file-mojo.html
-    # https://maven.apache.org/plugins/maven-deploy-plugin/deploy-file-mojo.html
-    # https://maven.apache.org/resolver/configuration.html
-
     step "deploying"
-    run "$MVN_COMMAND" \
-        --settings settings.xml \
-        $MVN_OPTIONS \
-        gpg:sign-and-deploy-file \
-        -Dfile=$AAR_FILENAME \
-        -DgeneratePom=false \
-        -DpomFile=$POM_FILE \
-        -Daether.checksums.algorithms=MD5,SHA-1,SHA-256,SHA-512 \
-        -DrepositoryId=$SERVER_ID \
-        -Durl=$SERVER_URL
+    run "$MVN $MVN_ARGS"
+
+    #########################################################################################
+
+    PREFAB_MODULES="$(find prefab/modules -maxdepth 1 -mindepth 1 -type d -printf '%f ')"
 
     #########################################################################################
 
     if [ "$KEEP_SESSION_DIR" = 1 ] ; then
         printf '\n'
-        note "the session dir '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
+        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
     else
         step "delete the session directory"
         run rm -rf "$SESSION_DIR"
     fi
+
+    #########################################################################################
+
+    if [ "$DEPLOYED_TO_SONATYPE_OSSRH" = 1 ] ; then
+        MAVEN_REPO_FUNC=mavenCentral
+    else
+        MAVEN_REPO_FUNC=mavenLocal
+    fi
+
+    #########################################################################################
+
+    printf '%b\n' "
+${COLOR_YELLOW}
+======================================================
+Use this artifact alongside with Android Gradle Plugin
+======================================================${COLOR_OFF}
+
+${COLOR_GREEN}step1. enable prefab feature for Android Gradle Plugin${COLOR_OFF}
+
+android {
+    buildFeatures {
+        prefab true
+    }
+}
+
+${COLOR_GREEN}step2. enable $MAVEN_REPO_FUNC repository for Gradle${COLOR_OFF}
+
+repositories {
+    $MAVEN_REPO_FUNC()
+}
+
+${COLOR_GREEN}step3. configure dependencies${COLOR_OFF}
+
+${COLOR_PURPLE}For Gradle Groovy DSL:${COLOR_OFF}
+
+dependencies {
+    implementation '$GROUPID:$PREFAB_PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar'
+}
+
+${COLOR_PURPLE}For Gradle Kotlin DSL:${COLOR_OFF}
+
+dependencies {
+    implementation(\"$GROUPID:$PREFAB_PACKAGE_NAME:$RECEIPT_PACKAGE_VERSION@aar\")
+}
+
+${COLOR_GREEN}step4. find package and link libraries in your Android project's CMakeLists.txt${COLOR_OFF}
+
+${COLOR_PURPLE}This prefab package has $(list_size $PREFAB_MODULES) modules : $PREFAB_MODULES${COLOR_OFF}
+
+find_package($PREFAB_PACKAGE_NAME REQUIRED CONFIG)
+target_link_libraries(app $PREFAB_PACKAGE_NAME::${PREFAB_MODULES%% *})
+
+${COLOR_GREEN}step5. configure C++ standard and STL (optional)${COLOR_OFF}
+
+android {
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+                cppFlags  '-std=c++17'
+            }
+        }
+    }
+}
+
+${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.so, then your Android app should use libc++_shared.so too.${COLOR_OFF}\n"
 }
 
 # }}}
@@ -6859,28 +6831,26 @@ EOF
 
     #########################################################################################
 
-    step "config ccache"
+    step "set up ccache"
 
     if [ "$CCACHE_ENABLED" = 1 ] ; then
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-cc"
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-c++"
+
+        ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
     else
         note "ccache is disabled, skipped."
-    fi
-
-    if [ "$CCACHE_ENABLED" = 1 ] ; then
-        ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
     fi
 
     #########################################################################################
 
     step "dopatch for target"
 
-    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-        run     cd "$PACKAGE_BSCRIPT_DIR"
-    fi
-
     if [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] ; then
+        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+            run     cd "$PACKAGE_BSCRIPT_DIR"
+        fi
+
         for LINE in $(cat "$PACKAGE_INSTALLING_FIX_DIR/index")
         do
             FILE="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
@@ -6893,6 +6863,10 @@ EOF
     if [ -z "$PACKAGE_DOPATCH" ] ; then
         note "dopatch mapping was not found in formula, skipped."
     else
+        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+            run     cd "$PACKAGE_BSCRIPT_DIR"
+        fi
+
         eval "
 dopatch() {
 $PACKAGE_DOPATCH
@@ -6902,12 +6876,12 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-        run     cd "$PACKAGE_BSCRIPT_DIR"
-    fi
-
     case $PACKAGE_BSYSTEM_MASTER in
         autogen)
+            if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+                run     cd "$PACKAGE_BSCRIPT_DIR"
+            fi
+
             if [ -f configure ] ; then
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
@@ -6921,6 +6895,10 @@ $PACKAGE_DOPATCH
             fi
             ;;
         autotools)
+            if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+                run     cd "$PACKAGE_BSCRIPT_DIR"
+            fi
+
             if [ -f configure ] ; then
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
@@ -6937,7 +6915,7 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    step "preparing"
+    step "prepare for target"
 
     if [ -z "$PACKAGE_PREPARE" ] ; then
         note "prepare mapping was not found in formula, skipped."
@@ -6996,6 +6974,33 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
+    if [ -d  "$PACKAGE_INSTALL_DIR/lib" ] ; then
+        # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
+        # remove Libtool Archive (.la) files
+        find "$PACKAGE_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name 'lib*.la' -exec rm '{}' \;
+    fi
+
+    #########################################################################################
+
+    step "tweak .pc files"
+    __tweak_pc_files
+
+    #########################################################################################
+
+    step "check ELF files"
+    __check_elf_files
+
+    #########################################################################################
+
+    step "strip ELF files"
+
+    for f in $STRIPFILES
+    do
+        run "$STRIP" "$STRIP_ARG" "$f" || true
+    done
+
+    #########################################################################################
+
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
         rm -f "$PACKAGE_INSTALL_DIR/.crates.toml"
         rm -f "$PACKAGE_INSTALL_DIR/.crates2.json"
@@ -7023,38 +7028,18 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'FAQ*'     -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'TODO*'    -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'NEWS*'    -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'THANKS*'  -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'README*'  -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'COPYING*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'LICENSE*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'AUTHORS*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGES*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CHANGELOG*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTORS*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-    find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -iname 'CONTRIBUTING*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-
-    find "$PACKAGE_WORKING_DIR"        -mindepth 1 -maxdepth 1 -name 'dependencies.*' -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
-
-    for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
+    for item in 'FAQ*' 'TODO*' 'NEWS*' 'THANKS*' 'README*' 'COPYING*' 'LICENSE*' 'AUTHORS*' 'CHANGES*' 'CHANGELOG*' 'CONTRIBUTORS*' 'CONTRIBUTING*'
     do
-        if [ -f "$dir/config.log" ] ; then
-            mv  "$dir/config.log" "$PACKAGE_METAINFO_DIR"
-        fi
-    done
-
-    for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
-    do
-        if [ -f "$dir/compile_commands.json" ] ; then
-            mv  "$dir/compile_commands.json" "$PACKAGE_METAINFO_DIR"
-        fi
+        find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 \( -type f -or -type l \) -iname "$item" -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
     done
 
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PKG" ] && {
+        step "install dependency graph files"
+
+        run mv "$PACKAGE_WORKING_DIR/dependencies.*" "$PACKAGE_METAINFO_DIR/"
+
         step "install dependency formulas"
 
         install -d "$PACKAGE_METAINFO_DIR/formula"
@@ -7067,70 +7052,21 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    step "adjust ELF files for ${COLOR_GREEN}$@${COLOR_OFF}"
-    __adjust_elf_files_for_the_given_target $@
+    for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
+    do
+        if [ -f "$dir/config.log" ] ; then
+            mv  "$dir/config.log" "$PACKAGE_METAINFO_DIR/"
+        fi
+    done
 
-    if [ -d "$PACKAGE_INSTALL_DIR/lib" ] ; then
-        step "adjust .la files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __adjust_la_files_for_the_given_target $@
+    #########################################################################################
 
-        step "adjust .pc files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __adjust_pc_files_for_the_given_target $@
-
-        step "install no versioning libraries for ${COLOR_GREEN}$@${COLOR_OFF}"
-
-        PACKAGE_LIBRARY_DIR="$PACKAGE_INSTALL_DIR/lib"
-
-        PACKAGE_LIBRARY_DIR_NOVERSIOING="$PACKAGE_INSTALL_DIR/lib-for-apk"
-
-        run install -d "$PACKAGE_LIBRARY_DIR_NOVERSIOING/cmake/$PACKAGE_NAME"
-
-        find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.a'  -exec cp -v {} "$PACKAGE_LIBRARY_DIR_NOVERSIOING" \;
-        find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f -name 'lib*.so' -exec cp -v {} "$PACKAGE_LIBRARY_DIR_NOVERSIOING" \;
-
-        for SO_FILE_PATH_HAVE_VERSION in $(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name 'lib*.so.*')
-        do
-            SO_FILE_NAME_NO_VERSION=
-            SO_FILE_NAME_NO_VERSION="$(basename "$SO_FILE_PATH_HAVE_VERSION" | sed 's/\(lib.*\.so\)\..*/\1/')"
-
-            if [ ! -f "$PACKAGE_LIBRARY_DIR_NOVERSIOING/$SO_FILE_NAME_NO_VERSION" ] ; then
-                run cp "$SO_FILE_PATH_HAVE_VERSION" "$PACKAGE_LIBRARY_DIR_NOVERSIOING/$SO_FILE_NAME_NO_VERSION"
-            fi
-        done
-
-        cd "$PACKAGE_LIBRARY_DIR_NOVERSIOING"
-
-        step "adjust no versioning .so files for ${COLOR_GREEN}$@${COLOR_OFF}"
-
-        for sofile in $(find . -maxdepth 1 -mindepth 1 -type f -name 'lib*.so' -printf '%P\n')
-        do
-            # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
-
-            DT_SONAME="$(patchelf --print-soname "$sofile")"
-
-            if [ -z "$DT_SONAME" ] ; then
-                abort 1 "unexpected so file: $sofile\n    DT_SONAME: not set"
-            fi
-
-            if [ "$DT_SONAME" != "$sofile" ] ; then
-                abort 1 "unexpected so file: $sofile\n    DT_SONAME: $DT_SONAME"
-            fi
-
-            DT_NEEDED_LIST="$(patchelf --print-needed "$sofile")"
-
-            for DT_NEEDED in $DT_NEEDED_LIST
-            do
-                case $DT_NEEDED in
-                    lib*.so)
-                        ;;
-                    *)  abort 1 "unexpected so file: $sofile\n    DT_NEEDED: $DT_NEEDED"
-                esac
-            done
-        done
-
-        step "create cmake config files for ${COLOR_GREEN}$@${COLOR_OFF}"
-        __create_cmake_config_files_for_the_given_target "$@"
-    fi
+    for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
+    do
+        if [ -f "$dir/compile_commands.json" ] ; then
+            mv  "$dir/compile_commands.json" "$PACKAGE_METAINFO_DIR/"
+        fi
+    done
 
     #########################################################################################
 
@@ -7164,93 +7100,31 @@ $PACKAGE_DOTWEAK
     run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
 }
 
-__create_cmake_config_files_for_the_given_target() {
-    TARGET_CMAKE_CONFIG_FILEPATH="$PACKAGE_LIBRARY_DIR_NOVERSIOING/cmake/$PACKAGE_NAME/${PACKAGE_NAME}Config.cmake"
+__check_elf_files() {
+    unset STRIPFILES
 
-    cat > "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
-# generated by ndk-pkg $NDKPKG_VERSION
+    if [ "$BUILD_TYPE" = release ] ; then
+        DOSTRIP=1
+    else
+        DOSTRIP=0
+    fi
 
-get_filename_component(${PACKAGE_NAME}_INSTALL_DIR "\${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
+    cd "$PACKAGE_INSTALL_DIR"
 
-set(${PACKAGE_NAME}_INCLUDE_DIR "\${${PACKAGE_NAME}_INSTALL_DIR}/include")
-set(${PACKAGE_NAME}_LIBRARY_DIR "\${${PACKAGE_NAME}_INSTALL_DIR}/lib-for-apk")
+    FILEPATHs="$(find -not -name . -type f)"
 
-EOF
+    export IFS='
+'
 
-    unset CMAKE_IMPORTED_TARGETS
-
-    for libfilename in $(find . -maxdepth 1 -mindepth 1 -a \( -name 'lib*.a' -o -name 'lib*.so' \) -printf '%P\n')
+    for FILEPATH in $FILEPATHs
     do
-        case $libfilename in
-            lib*.a)  LIBRARY_TYPE=STATIC ;;
-            lib*.so) LIBRARY_TYPE=SHARED ;;
-            *)       abort 1 "unrecognized library filename: $libfilename"
-        esac
-
-        CMAKE_IMPORTED_TARGET="$PACKAGE_NAME::$libfilename"
-
-        if [ -z "$CMAKE_IMPORTED_TARGETS" ] ; then
-            CMAKE_IMPORTED_TARGETS="$CMAKE_IMPORTED_TARGET"
-        else
-            CMAKE_IMPORTED_TARGETS="$CMAKE_IMPORTED_TARGETS;$CMAKE_IMPORTED_TARGET"
-        fi
-
-        cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
-
-if (NOT TARGET  $CMAKE_IMPORTED_TARGET)
-    add_library($CMAKE_IMPORTED_TARGET STATIC IMPORTED)
-    set_target_properties($CMAKE_IMPORTED_TARGET PROPERTIES
-        IMPORTED_LOCATION             "\${${PACKAGE_NAME}_LIBRARY_DIR}/$libfilename"
-        INTERFACE_INCLUDE_DIRECTORIES "\${${PACKAGE_NAME}_INCLUDE_DIR}"
-    )
-endif()
-EOF
-    done
-
-    cat >> "$TARGET_CMAKE_CONFIG_FILEPATH" << EOF
-
-set(${PACKAGE_NAME}_IMPORTED_TARGETS "$CMAKE_IMPORTED_TARGETS")
-EOF
-
-    cat > "$PACKAGE_LIBRARY_DIR_NOVERSIOING/cmake/$PACKAGE_NAME/${PACKAGE_NAME}ConfigVersion.cmake" << EOF
-# generated by ndk-pkg $NDKPKG_VERSION
-#
-# https://cmake.org/cmake/help/latest/command/find_package.html#config-mode-version-selection
-
-set(PACKAGE_VERSION $PACKAGE_VERSION)
-
-if ("\${PACKAGE_VERSION}" VERSION_LESS "\${PACKAGE_FIND_VERSION}")
-    set(PACKAGE_VERSION_COMPATIBLE FALSE)
-else()
-    set(PACKAGE_VERSION_COMPATIBLE TRUE)
-    if ("\${PACKAGE_VERSION}" VERSION_EQUAL "\${PACKAGE_FIND_VERSION}")
-        set(PACKAGE_VERSION_EXACT TRUE)
-    endif()
-endif()
-EOF
-}
-
-__adjust_elf_files_for_the_given_target() {
-    BASE64_ENCODED_RELATIVE_FILEPATH_LIST=
-    BASE64_ENCODED_RELATIVE_FILEPATH_LIST="$(cd "$PACKAGE_INSTALL_DIR" && find -not -name . -type f -exec base64-encode '{}' \;)"
-
-    for BASE64_ENCODED_RELATIVE_FILEPATH in $BASE64_ENCODED_RELATIVE_FILEPATH_LIST
-    do
-        BASE64_DECODED_RELATIVE_FILEPATH=
-        BASE64_DECODED_RELATIVE_FILEPATH="$(base64-decode "$BASE64_ENCODED_RELATIVE_FILEPATH")"
-
-        FILEPATH="$PACKAGE_INSTALL_DIR/${BASE64_DECODED_RELATIVE_FILEPATH#./}"
-
         [ -w "$FILEPATH" ] || continue
 
-        FILE_HEADER_EXPACT=
-        FILE_HEADER_ACTUAL=
-        FILE_HEADER_ACTUAL="$(head -c 20 "$FILEPATH" | base16-encode)"
+        FILE_HEADER_ACTUAL="$(xxd -u -p -l 20 "$FILEPATH")"
 
         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
         case $FILE_HEADER_ACTUAL in
             7F454C46*)
-                ELF_TYPE=
                 ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
 
                 case $TARGET_PLATFORM_ARCH in
@@ -7265,7 +7139,6 @@ __adjust_elf_files_for_the_given_target() {
                 fi
 
                 # may report: patchelf: cannot find section '.interp'. The input file is most likely statically linked
-                PT_INTERP=
                 PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
 
                 if [ -n  "$PT_INTERP" ] ; then
@@ -7297,45 +7170,27 @@ __adjust_elf_files_for_the_given_target() {
                 if basename "$FILEPATH" | grep -q '^lib.*\.so' ; then
                     :
                 else
-
-                    if [ "$BUILD_TYPE" = release ] ; then
-                        run "$STRIP" $STRIP_ARG "$FILEPATH" || true
+                    if [ "$DOSTRIP" = 1 ] ; then
+                        if [ -z "$STRIPFILES" ] ; then
+                            STRIPFILES="$FILEPATH"
+                        else
+                            STRIPFILES="$FILEPATH $STRIPFILES"
+                        fi
                     fi
                 fi
         esac
     done
+
+    unset IFS
 }
 
-__adjust_la_files_for_the_given_target() {
-    [ -d "$PACKAGE_INSTALL_DIR/lib" ] || {
-        note "no .la files installed, skipped"
-        return 0
-    }
-
-    LA_FILES="$(find "$PACKAGE_INSTALL_DIR/lib" -name '*.la')"
-
-    [ -z "$LA_FILES" ] && {
-        note "no .la files installed, skipped"
-        return 0
-    }
-
-    for lafile in $LA_FILES
-    do
-        sed_in_place 's|-lpthread||g'              "$lafile"
-        sed_in_place 's|-Wl,--strip-debug||g'      "$lafile"
-        sed_in_place "s|-L$NDKPKG_HOME[^' ]*||g"   "$lafile"
-        sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$lafile"
-        sed_in_place "s|--sysroot $SYSROOT||g"     "$lafile"
-    done
-}
-
-__adjust_pc_files_for_the_given_target() {
+__tweak_pc_files() {
     [ -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" ] || {
         note "no .pc files installed, skipped"
         return 0
     }
 
-    PC_FILES="$(find "$PACKAGE_INSTALL_DIR/lib/pkgconfig" -name "*.pc")"
+    PC_FILES="$(find "$PACKAGE_INSTALL_DIR/lib/pkgconfig" -name '*.pc')"
 
     [ -z "$PC_FILES" ] && {
         note "no .pc files installed, skipped"
@@ -7392,32 +7247,32 @@ install_incs() {
 
 install_libs() {
     install -v -d "$PACKAGE_INSTALL_DIR/lib"
-    for item in $@
+    for item in "$@"
     do
         case $item in
-            *.a) install -v -m 644 $item "$PACKAGE_INSTALL_DIR/lib" ;;
-            *)   install -v -m 755 $item "$PACKAGE_INSTALL_DIR/lib" ;;
+            *.a) install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/lib" ;;
+            *)   install -v -m 755 "$item" "$PACKAGE_INSTALL_DIR/lib" ;;
         esac
     done
 }
 
 install_pcfs() {
-    install -v -d        "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
-    install -v -m 644 $@ "$PACKAGE_INSTALL_DIR/lib/pkgconfig"
+    install -v -d          "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
+    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/lib/pkgconfig"
 }
 
 install_bins() {
-    install -v -d        "$PACKAGE_INSTALL_DIR/bin" &&
-    install -v -m 755 $@ "$PACKAGE_INSTALL_DIR/bin"
+    install -v -d          "$PACKAGE_INSTALL_DIR/bin" &&
+    install -v -m 755 "$@" "$PACKAGE_INSTALL_DIR/bin"
 }
 
 install_etcs() {
-    install -v -d        "$PACKAGE_INSTALL_DIR/etc" &&
-    install -v -m 644 $@ "$PACKAGE_INSTALL_DIR/etc"
+    install -v -d          "$PACKAGE_INSTALL_DIR/etc" &&
+    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/etc"
 }
 
 install_mans() {
-    for item in $@
+    for item in "$@"
     do
         unset NUMBER
         NUMBER=$(printf '%s\n' "$item" | cut -c ${#item}-${#item})
@@ -7425,8 +7280,8 @@ install_mans() {
             [1-8]);;
             *)    abort 1 "$item: not a manpage."
         esac
-        install -v -d           "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER" &&
-        install -v -m 644 $item "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER"
+        install -v -d             "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER" &&
+        install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER"
     done
 }
 
@@ -7447,11 +7302,6 @@ install_mans() {
             ;;
         *)  abort 1 "install_completion unsupported shell: $1"
     esac
-}
-
-install_pc_file() {
-    install -v -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
-    cat >         "$PACKAGE_INSTALL_DIR/lib/pkgconfig/$1.pc"
 }
 
 __record_installed_files_of_the_given_package() {
@@ -8456,7 +8306,7 @@ EOF
         unset DOT
     fi
 
-    for item in bash coreutils findutils easyutils gawk gsed grep bsdtar zip git curl tree patchelf jq yq d2 $DOT
+    for item in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd jq yq d2 $DOT
     do
         run bin/uppm install "$item"
 
@@ -9222,7 +9072,7 @@ ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
     show version of this command.
 
 ${COLOR_GREEN}ndk-pkg setup${COLOR_OFF}
-    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, tree, git, curl, bsdtar, zip, jq, yq, d2, pkg-config, patchelf, etc) used by this shell script.
+    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, tree, git, curl, bsdtar, zip, xxd, jq, yq, d2, sysinfo, pkg-config, patchelf, etc) used by this shell script.
 
 ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
     show basic information about this software.
@@ -9397,7 +9247,7 @@ ${COLOR_GREEN}ndk-pkg logs <PACKAGE-SPEC>${COLOR_OFF}
     show logs of the given installed package.
 
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir]${COLOR_OFF}
     pack the given installed package.
 
     <OUTPUT-TYPE> must ends with one of tar.gz tar.xz tar.lz tar.bz2 zip
@@ -9415,7 +9265,7 @@ ${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [--keep-session-dir] [-t <OUTPUT-TYPE>
     If -t <OUTPUT-TYPE> option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
 
 
-${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>] [--keep-session-dir]${COLOR_OFF}
     export the given installed package as google prefab aar.
 
     For details about google prefab, please visit https://google.github.io/prefab/
@@ -9586,7 +9436,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.10
+NDKPKG_VERSION=0.8.11
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'

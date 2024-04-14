@@ -159,7 +159,9 @@ function _ndk_pkg() {
                 export)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_package_names' \
-                        '-o[specify output filepath or directory]:output-path:_files'
+                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
+                        '-o[specify output filepath or directory]:output-path:_files' \
+                        '--keep-session-dir[do not delete the session directory even if successfully exported]'
                     ;;
                 deploy)
                     _arguments \

@@ -280,9 +280,11 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
     - [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)
     - [patchelf](https://github.com/NixOS/patchelf)
+    - [sysinfo](https://github.com/leleliu008/C-examples/tree/master/utils/sysinfo)
     - [tree](https://linux.die.net/man/1/tree)
     - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
+    - [xxd](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)
     - [jq](https://stedolan.github.io/jq/manual/)
     - [yq](https://mikefarah.gitbook.io/yq/)
     - [d2](https://github.com/terrastruct/d2)
@@ -700,11 +702,13 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`jq`|[Reference](https://stedolan.github.io/jq/manual/)|
 |`yq`|[Reference](https://mikefarah.gitbook.io/yq/)|
 |`d2`|[Reference](https://github.com/terrastruct/d2)|
+|`xxd`|[Reference](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)|
 |`git`|[Reference](https://git-scm.com/docs/git)|
 |`curl`|[Reference](https://curl.se/docs/manpage.html)|
 |`bsdtar`|[Reference](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)|
 |`pkg-config`|[Reference](https://people.freedesktop.org/~dbn/pkg-config-guide.html)|
 |`patchelf`|[Reference](https://github.com/NixOS/patchelf)|
+|`sysinfo`|[Reference](https://github.com/leleliu008/C-examples/tree/master/utils/sysinfo)|
 |||
 |`echo`|`echo 'your message.'`|
 |`info`|`info 'your information.'`|
