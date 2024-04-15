@@ -57,8 +57,8 @@ jobs:
     container: alpine:3.19
 
     steps:
-      - run: apt -y update
-      - run: apt -y install curl xz-utils g++ linux-headers-generic
+      - run: apk update
+      - run: apk add curl g++ libc-dev linux-headers
 
       - uses: actions/checkout@v4
 
