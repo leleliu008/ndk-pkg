@@ -3189,16 +3189,16 @@ rm -rf $SESSION_DIR\n"
 
     if [ -z "$MVN" ] ; then
         step "install maven"
-        run uppm install maven
+        run "$UPPM" install maven
 
         unset  JAVA_HOME
         unset MAVEN_HOME
 
-        export JAVA_HOME="$(uppm info jdk17 installed-dir)"
+        export JAVA_HOME="$UPPM_HOME/installed/jdk17"
         export PATH="$JAVA_HOME/bin:$PATH"
         export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
 
-        MAVEN_HOME="$(uppm info maven installed-dir)"
+        MAVEN_HOME="$UPPM_HOME/installed/maven)"
 
         MVN="$MAVEN_HOME/bin/mvn"
     fi
@@ -4363,6 +4363,12 @@ inspect_install_arguments() {
         exec 2>&1
     fi
 
+    #########################################################################################
+
+    # DO NOT use this environment variable
+    # https://cmake.org/cmake/help/latest/envvar/MACOSX_DEPLOYMENT_TARGET.html
+    unset MACOSX_DEPLOYMENT_TARGET
+
     # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
     unset TARGET_ARCH
 }
@@ -5505,7 +5511,7 @@ $DOT_CONTENT
         do
             run "$UPPM" install "$UPPM_PACKAGE_NAME"
 
-            UPPM_PACKAGE_INSTALLED_DIR="$("$UPPM" info-installed "$UPPM_PACKAGE_NAME" --prefix)"
+            UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
             if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
                 PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
@@ -8157,12 +8163,12 @@ EOF
             # https://github.com/microsoft/WSL/issues/8681
             # https://github.com/microsoft/WSL/issues/4071
             if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-                ANDROID_NDK_HOME="$("$UPPM" info-installed "$UPPM_PACKAGE_NAME_NDK" --prefix)"
+                ANDROID_NDK_HOME="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME_NDK"
                 patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang-17"
             fi
         fi
 
-        ANDROID_NDK_HOME="$("$UPPM" info-installed "$UPPM_PACKAGE_NAME_NDK" --prefix)"
+        ANDROID_NDK_HOME="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME_NDK"
     else
         ANDROID_NDK_HOME="$1"
     fi
@@ -8222,63 +8228,17 @@ __setup() {
     # https://curl.se/docs/caextract.html
     wfetch 'https://curl.se/ca/cacert.pem' -o . --no-buffer
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/uppm/master/latest-release' -o uppm-latest-release --no-buffer
+    export SSL_CERT_FILE="$PWD/cacert.pem"
+
+    ##################################################################################
 
     wfetch 'https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf' -o ./ --no-buffer
 
-    ##################################################################################
-
-    cat > fonts.conf <<EOF
-<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
-<fontconfig>
-	<description>custom configuration file</description>
-
-	<dir>$NDKPKG_CORE_DIR</dir>
-
-	<match target="pattern">
-		<test qual="any" name="family">
-			<string>mono</string>
-		</test>
-		<edit name="family" mode="assign" binding="same">
-			<string>monospace</string>
-		</edit>
-	</match>
-
-	<match target="pattern">
-		<test qual="any" name="family">
-			<string>sans serif</string>
-		</test>
-		<edit name="family" mode="assign" binding="same">
-			<string>sans-serif</string>
-		</edit>
-	</match>
-
-	<match target="pattern">
-		<test qual="any" name="family">
-			<string>sans</string>
-		</test>
-		<edit name="family" mode="assign" binding="same">
-			<string>sans-serif</string>
-		</edit>
-	</match>
-
-	<match target="pattern">
-		<test qual="any" name="family">
-			<string>system ui</string>
-		</test>
-		<edit name="family" mode="assign" binding="same">
-			<string>system-ui</string>
-		</edit>
-	</match>
-
-</fontconfig>
-EOF
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/dev/ndk-pkg-core-latest-release-version' -o ndk-pkg-core-latest-release-version --no-buffer
 
     ##################################################################################
 
-    UPPM_LATEST_RELEASE_TAGNAME="$(cat uppm-latest-release)"
-    UPPM_LATEST_RELEASE_VERSION="$(printf '%s\n' "$UPPM_LATEST_RELEASE_TAGNAME" | cut -d+ -f1)"
+    NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
 
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         case $(sw_vers -productVersion | cut -d. -f1) in
@@ -8290,21 +8250,19 @@ EOF
             *)  X='14.0'  ;;
         esac
 
-        UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-macos-${X}-${NATIVE_OS_ARCH}.tar.xz"
+        NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}-macos-${X}-${NATIVE_OS_ARCH}.tar.xz"
     else
-        UPPM_LATEST_RELEASE_ARCHIVE_FILENAME="uppm-${UPPM_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
+        NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
     fi
 
-    wfetch "https://github.com/leleliu008/uppm/releases/download/${UPPM_LATEST_RELEASE_TAGNAME}/${UPPM_LATEST_RELEASE_ARCHIVE_FILENAME}" -o "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME"  --no-buffer
+    wfetch "https://github.com/leleliu008/ndk-pkg/releases/download/ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}/${NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME}" -o "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME" --no-buffer
 
-    run tar xvf "$UPPM_LATEST_RELEASE_ARCHIVE_FILENAME" --strip-components=1 --no-same-owner
+    run tar xvf "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
 
     ##################################################################################
 
-    export SSL_CERT_FILE="$PWD/cacert.pem"
-
-    run bin/uppm env
-    run bin/uppm update
+    run ./uppm env
+    run ./uppm update
 
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
@@ -8315,11 +8273,11 @@ EOF
         unset DOT
     fi
 
-    for item in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd jq yq d2 $DOT
+    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd jq yq d2 $DOT
     do
-        run bin/uppm install "$item"
+        run ./uppm install "$UPPM_PACKAGE_NAME"
 
-        UPPM_PACKAGE_INSTALLED_DIR="$(bin/uppm info-installed "$item" --prefix)"
+        UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
         if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
             UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$UPPM_PACKAGE_INSTALLED_DIR/bin"
@@ -8351,689 +8309,9 @@ EOF
 
     ##################################################################################
 
-    cat > wrapper-native-cc.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-int main(int argc, char * argv[]) {
-    char * const cc = getenv("PROXIED_CC_FOR_BUILD");
-
-    if (cc == NULL) {
-        fprintf(stderr, "PROXIED_CC_FOR_BUILD environment variable is not set.\n");
-        return 1;
-    }
-
-    if (cc[0] == '\0') {
-        fprintf(stderr, "PROXIED_CC_FOR_BUILD environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-
-    char* argv2[argc + 2];
-
-    argv2[0] = cc;
-
-    char * const sysroot = getenv("SYSROOT_FOR_BUILD");
-
-    if (sysroot == NULL || sysroot[0] == '\0') {
-        for (int i = 1; i < argc; i++) {
-            argv2[i] = argv[i];
-        }
-
-        argv2[argc] = NULL;
-    } else {
-        argv2[1] = (char*)"-isysroot";
-        argv2[2] = sysroot;
-
-        for (int i = 1; i < argc; i++) {
-            argv2[i + 2] = argv[i];
-        }
-
-        argv2[argc + 2] = NULL;
-    }
-
-    execv (cc, argv2);
-    perror(cc);
-    return 255;
-}
-EOF
-
-    cat > wrapper-native-c++.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-int main(int argc, char * argv[]) {
-    char * const cxxc = getenv("PROXIED_CXX_FOR_BUILD");
-
-    if (cxxc == NULL) {
-        fprintf(stderr, "PROXIED_CXX_FOR_BUILD environment variable is not set.\n");
-        return 1;
-    }
-
-    if (cxxc[0] == '\0') {
-        fprintf(stderr, "PROXIED_CXX_FOR_BUILD environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-
-    char* argv2[argc + 2];
-
-    argv2[0] = cxxc;
-
-    char * const sysroot = getenv("SYSROOT_FOR_BUILD");
-
-    if (sysroot == NULL || sysroot[0] == '\0') {
-        for (int i = 1; i < argc; i++) {
-            argv2[i] = argv[i];
-        }
-
-        argv2[argc] = NULL;
-    } else {
-        argv2[1] = (char*)"-isysroot";
-        argv2[2] = sysroot;
-
-        for (int i = 1; i < argc; i++) {
-            argv2[i + 2] = argv[i];
-        }
-
-        argv2[argc + 2] = NULL;
-    }
-
-    execv (cxxc, argv2);
-    perror(cxxc);
-    return 255;
-}
-EOF
-
-    cat > wrapper-native-objc.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-int main(int argc, char * argv[]) {
-    char * const objc = getenv("PROXIED_OBJC_FOR_BUILD");
-
-    if (objc == NULL) {
-        fprintf(stderr, "PROXIED_OBJC_FOR_BUILD environment variable is not set.\n");
-        return 1;
-    }
-
-    if (objc[0] == '\0') {
-        fprintf(stderr, "PROXIED_OBJC_FOR_BUILD environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-
-    char* argv2[argc + 2];
-
-    argv2[0] = objc;
-
-    char * const sysroot = getenv("SYSROOT_FOR_BUILD");
-
-    if (sysroot == NULL || sysroot[0] == '\0') {
-        for (int i = 1; i < argc; i++) {
-            argv2[i] = argv[i];
-        }
-
-        argv2[argc] = NULL;
-    } else {
-        argv2[1] = (char*)"-isysroot";
-        argv2[2] = sysroot;
-
-        for (int i = 1; i < argc; i++) {
-            argv2[i + 2] = argv[i];
-        }
-
-        argv2[argc + 2] = NULL;
-    }
-
-    execv (objc, argv2);
-    perror(objc);
-    return 255;
-}
-EOF
+    run "$UPPM_HOME/installed/gsed/bin/gsed" -i "'s/NDKPKG_CORE_DIR/$NDKPKG_CORE_DIR/'" fonts.conf
 
     ##################################################################################
-
-    cat > wrapper-target-cc.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <regex.h>
-
-#define ACTION_COMPILE 1
-#define ACTION_CREATE_SHARED_LIBRARY 2
-#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE 3
-#define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
-
-int main(int argc, char * argv[]) {
-    char * const cc = getenv("ANDROID_NDK_CC");
-
-    if (cc == NULL) {
-        fprintf(stderr, "ANDROID_NDK_CC environment variable is not set.\n");
-        return 1;
-    }
-
-    if (cc[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_CC environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * const TARGET = getenv("ANDROID_TARGET");
-
-    if (TARGET == NULL) {
-        fprintf(stderr, "ANDROID_TARGET environment variable is not set.\n");
-        return 3;
-    }
-
-    if (TARGET[0] == '\0') {
-        fprintf(stderr, "ANDROID_TARGET environment variable value should be a non-empty string.\n");
-        return 4;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * const SYSROOT = getenv("ANDROID_NDK_SYSROOT");
-
-    if (SYSROOT == NULL) {
-        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable is not set.\n");
-        return 5;
-    }
-
-    if (SYSROOT[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable value should be a non-empty string.\n");
-        return 6;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    size_t targetArgLength = strlen(TARGET) + 10U;
-    char   targetArg[targetArgLength];
-
-    int ret = snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
-
-    if (ret < 0) {
-        perror(NULL);
-        return 7;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    size_t sysrootArgLength = strlen(SYSROOT) + 11U;
-    char   sysrootArg[sysrootArgLength];
-
-    ret = snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
-
-    if (ret < 0) {
-        perror(NULL);
-        return 8;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * options[6] = { "-shared", "-static", "--static", "-pie", "-c", "-o" };
-          int    indexes[6] = {    -1,         -1,        -1,       -1,    -1,   -1  };
-
-    for (int i = 1; i < argc; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (strcmp(argv[i], options[j]) == 0) {
-                indexes[j] = i;
-                break;
-            }
-        }
-    }
-
-    int action = 0;
-
-    if (indexes[0] > 0) {
-        // if -shared option is specified, then remove -static , --static , -pie options if they also are specified
-        action = ACTION_CREATE_SHARED_LIBRARY;
-    } else if ((indexes[1] > 0) || (indexes[2] > 0)) {
-        // if -shared option is not specified, but -static or --static option is specified, then remove -pie , -Wl,-Bdynamic option if it also is specified
-        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-    } else if (indexes[3] > 0) {
-        action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    char* argv2[argc + 5];
-
-    char sonameArg[100]; sonameArg[0] = '\0';
-
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-static") == 0) {
-                argv2[i] = (char*)"-fPIC";
-            } else if (strcmp(argv[i], "--static") == 0) {
-                argv2[i] = (char*)"-fPIC";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i] = (char*)"-fPIC";
-            } else {
-                argv2[i] = argv[i];
-            }
-        }
-
-        char * outputFilePath = NULL;
-        char * outputFileName = NULL;
-
-        if (indexes[5] == -1) {
-            // It's rare to see. like -o/a/b/libxx.so.1
-            for (int i = 1; i < argc; i++) {
-                if (strncmp(argv[i], "-o", 2) == 0) {
-                    indexes[5] = i;
-                    outputFilePath = &argv[i][2];
-                    break;
-                }
-            }
-        } else {
-            // if -o <FILE> option is specified.
-            int i = indexes[5] + 1;
-
-            if (i < argc) {
-                outputFilePath = argv[i];
-            }
-        }
-
-        if (outputFilePath != NULL) {
-            int len = 0;
-
-            for (;;) {
-                if (outputFilePath[len] == '\0') {
-                    break;
-                } else {
-                    len++;
-                }
-            }
-
-            for (int i = len - 1; i > 0; i--) {
-                if (outputFilePath[i] == '/') {
-                    outputFileName = outputFilePath + i + 1;
-                    break;
-                }
-            }
-
-            if (outputFileName == NULL) {
-                outputFileName = outputFilePath;
-            }
-
-            regex_t regex;
-
-            if (regcomp(&regex, "^lib.*\\\\.so", 0) != 0) {
-                perror(NULL);
-                regfree(&regex);
-                return 9;
-            }
-
-            regmatch_t regmatch[2];
-
-            if (regexec(&regex, outputFileName, 2, regmatch, 0) == 0) {
-                //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
-                //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
-
-                if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
-                    int n = regmatch[0].rm_eo - regmatch[0].rm_so;
-                    const char * str = &outputFileName[regmatch[0].rm_so];
-
-                    ret = snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
-
-                    if (ret < 0) {
-                        perror(NULL);
-                        regfree(&regex);
-                        return 10;
-                    }
-                }
-            }
-
-            regfree(&regex);
-        }
-    } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-rdynamic") == 0) {
-                argv2[i] = (char*)"-static";
-            } else if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
-                argv2[i] = (char*)"-static";
-            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
-                argv2[i] = (char*)"-static";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i] = (char*)"-static";
-            } else {
-                argv2[i] = argv[i];
-            }
-        }
-    } else {
-        for (int i = 1; i < argc; i++) {
-            argv2[i] = argv[i];
-        }
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    argv2[0]        = cc;
-    argv2[argc]     = targetArg;
-    argv2[argc + 1] = sysrootArg;
-
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
-        argv2[argc + 2] = (char*)"-fPIC";
-
-        if (sonameArg[0] == '\0') {
-            argv2[argc + 3] = NULL;
-        } else {
-            argv2[argc + 3] = sonameArg;
-            argv2[argc + 4] = NULL;
-        }
-    } else {
-        argv2[argc + 2] = NULL;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    execv (cc, argv2);
-    perror(cc);
-    return 255;
-}
-EOF
-
-    ##################################################################################
-
-    cat > wrapper-target-c++.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <regex.h>
-
-#define ACTION_COMPILE 1
-#define ACTION_CREATE_SHARED_LIBRARY 2
-#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE 3
-#define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
-
-int main(int argc, char * argv[]) {
-    char * const cxxc = getenv("ANDROID_NDK_CXX");
-
-    if (cxxc == NULL) {
-        fprintf(stderr, "ANDROID_NDK_CXX environment variable is not set.\n");
-        return 1;
-    }
-
-    if (cxxc[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_CXX environment variable value should be a non-empty string.\n");
-        return 2;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * const TARGET = getenv("ANDROID_TARGET");
-
-    if (TARGET == NULL) {
-        fprintf(stderr, "ANDROID_TARGET environment variable is not set.\n");
-        return 3;
-    }
-
-    if (TARGET[0] == '\0') {
-        fprintf(stderr, "ANDROID_TARGET environment variable value should be a non-empty string.\n");
-        return 4;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * const SYSROOT = getenv("ANDROID_NDK_SYSROOT");
-
-    if (SYSROOT == NULL) {
-        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable is not set.\n");
-        return 5;
-    }
-
-    if (SYSROOT[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable value should be a non-empty string.\n");
-        return 6;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    size_t targetArgLength = strlen(TARGET) + 10U;
-    char   targetArg[targetArgLength];
-
-    int ret = snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
-
-    if (ret < 0) {
-        perror(NULL);
-        return 7;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    size_t sysrootArgLength = strlen(SYSROOT) + 11U;
-    char   sysrootArg[sysrootArgLength];
-
-    ret = snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
-
-    if (ret < 0) {
-        perror(NULL);
-        return 8;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * options[6] = { "-shared", "-static", "--static", "-pie", "-c", "-o" };
-          int    indexes[6] = {    -1,         -1,        -1,       -1,    -1,   -1  };
-
-    for (int i = 1; i < argc; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (strcmp(argv[i], options[j]) == 0) {
-                indexes[j] = i;
-                break;
-            }
-        }
-    }
-
-    int action = 0;
-
-    if (indexes[0] > 0) {
-        // if -shared option is specified, then remove -static , --static , -pie options if they also are specified
-        action = ACTION_CREATE_SHARED_LIBRARY;
-    } else if ((indexes[1] > 0) || (indexes[2] > 0)) {
-        // if -shared option is not specified, but -static or --static option is specified, then remove -pie , -Wl,-Bdynamic option if it also is specified
-        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-    } else if (indexes[3] > 0) {
-        action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    char* argv2[argc + 5];
-
-    char sonameArg[100]; sonameArg[0] = '\0';
-
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-static") == 0) {
-                argv2[i] = (char*)"-fPIC";
-            } else if (strcmp(argv[i], "--static") == 0) {
-                argv2[i] = (char*)"-fPIC";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i] = (char*)"-fPIC";
-            } else {
-                argv2[i] = argv[i];
-            }
-        }
-
-        char * outputFilePath = NULL;
-        char * outputFileName = NULL;
-
-        if (indexes[5] == -1) {
-            // It's rare to see. like -o/a/b/libxx.so.1
-            for (int i = 1; i < argc; i++) {
-                if (strncmp(argv[i], "-o", 2) == 0) {
-                    indexes[5] = i;
-                    outputFilePath = &argv[i][2];
-                    break;
-                }
-            }
-        } else {
-            // if -o <FILE> option is specified.
-            int i = indexes[5] + 1;
-
-            if (i < argc) {
-                outputFilePath = argv[i];
-            }
-        }
-
-        if (outputFilePath != NULL) {
-            int len = 0;
-
-            for (;;) {
-                if (outputFilePath[len] == '\0') {
-                    break;
-                } else {
-                    len++;
-                }
-            }
-
-            for (int i = len - 1; i > 0; i--) {
-                if (outputFilePath[i] == '/') {
-                    outputFileName = outputFilePath + i + 1;
-                    break;
-                }
-            }
-
-            if (outputFileName == NULL) {
-                outputFileName = outputFilePath;
-            }
-
-            regex_t regex;
-
-            if (regcomp(&regex, "^lib.*\\\\.so", 0) != 0) {
-                perror(NULL);
-                regfree(&regex);
-                return 9;
-            }
-
-            regmatch_t regmatch[2];
-
-            if (regexec(&regex, outputFileName, 2, regmatch, 0) == 0) {
-                //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
-                //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
-
-                if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
-                    int n = regmatch[0].rm_eo - regmatch[0].rm_so;
-                    const char * str = &outputFileName[regmatch[0].rm_so];
-
-                    ret = snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
-
-                    if (ret < 0) {
-                        perror(NULL);
-                        regfree(&regex);
-                        return 10;
-                    }
-                }
-            }
-
-            regfree(&regex);
-        }
-    } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "-rdynamic") == 0) {
-                argv2[i] = (char*)"-static";
-            } else if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
-                argv2[i] = (char*)"-static";
-            } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
-                argv2[i] = (char*)"-static";
-            } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i] = (char*)"-static";
-            } else {
-                argv2[i] = argv[i];
-            }
-        }
-    } else {
-        for (int i = 1; i < argc; i++) {
-            argv2[i] = argv[i];
-        }
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    argv2[0]        = cxxc;
-    argv2[argc]     = targetArg;
-    argv2[argc + 1] = sysrootArg;
-
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
-        argv2[argc + 2] = (char*)"-fPIC";
-
-        if (sonameArg[0] == '\0') {
-            argv2[argc + 3] = NULL;
-        } else {
-            argv2[argc + 3] = sonameArg;
-            argv2[argc + 4] = NULL;
-        }
-    } else {
-        argv2[argc + 2] = NULL;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    execv (cxxc, argv2);
-    perror(cxxc);
-    return 255;
-}
-EOF
-
-    ##################################################################################
-
-    run cc -std=c99 -Os -o wrapper-native-cc   wrapper-native-cc.c
-    run cc -std=c99 -Os -o wrapper-native-c++  wrapper-native-c++.c
-    run cc -std=c99 -Os -o wrapper-native-objc wrapper-native-objc.c
-
-    run cc -std=c99 -Os -o wrapper-target-cc   wrapper-target-cc.c
-    run cc -std=c99 -Os -o wrapper-target-c++  wrapper-target-c++.c
-
-    #########################################################################################
-
-    cat > sed-in-place.c <<EOF
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-int main(int argc, char* argv[]) {
-    char * const sed = getenv("SED");
-
-    if (sed == NULL || sed[0] == '\0') {
-        fprintf(stderr, "SED environment variable was not set.\n");
-        return 1;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    char* argv2[argc + 2];
-
-    argv2[0] = sed;
-    argv2[1] = (char*)"-i";
-
-    for (int i = 1; i < argc; i++) {
-        argv2[i + 1] = argv[i];
-    }
-
-    argv2[argc + 1] = NULL;
-
-    for (int i = 0; argv2[i] != NULL; i++) {
-        fprintf(stderr, "%s ", argv2[i]);
-    }
-    fprintf(stderr, "\n");
-
-    execv (sed, argv2);
-    perror(sed);
-    return 255;
-}
-EOF
-
-    run cc -std=c99 -o sed-in-place sed-in-place.c
-
-    #########################################################################################
 
     if [ -d        "$NDKPKG_CORE_DIR" ] ; then
         run rm -rf "$NDKPKG_CORE_DIR"
@@ -9445,7 +8723,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.11
+NDKPKG_VERSION=0.8.12
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
@@ -9459,7 +8737,7 @@ NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
 
 ##################################################################################
 
-UPPM="$NDKPKG_CORE_DIR/bin/uppm"
+UPPM="$NDKPKG_CORE_DIR/uppm"
 
 export UPPM_HOME="$NDKPKG_HOME/uppm"
 
@@ -9481,12 +8759,6 @@ fi
 if [ -z  "$FONTCONFIG_FILE" ] ; then
     export FONTCONFIG_FILE="$NDKPKG_CORE_DIR/fonts.conf"
 fi
-
-##################################################################################
-
-# DO NOT use this environment variable
-# https://cmake.org/cmake/help/latest/envvar/MACOSX_DEPLOYMENT_TARGET.html
-unset MACOSX_DEPLOYMENT_TARGET
 
 ##################################################################################
 
@@ -9624,6 +8896,7 @@ case $1 in
         shift
         ndkinfo "$@"
         ;;
+
     sysinfo)
         shift
         sysinfo
@@ -9692,10 +8965,12 @@ case $1 in
         shift
         __upgrade_self "$NDKPKG_UPGRAGE_URL" "$@"
         ;;
+
     upgrade)
         shift
         __upgrade_packages "$@"
         ;;
+
     integrate)
         shift
         case $1 in
@@ -9706,6 +8981,7 @@ case $1 in
             *)  abort 1 "ndk-pkg integrate $1: not support."
         esac
         ;;
+
     homepage) shift;  __show_or_open_homepage_of_the_given_package "$@" ;;
     depends)  shift; __show_packages_depended_by_the_given_package "$@" ;;
     fetch)    shift;        __fetch_resources_of_the_given_package "$@" ;;
