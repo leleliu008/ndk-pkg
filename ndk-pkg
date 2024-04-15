@@ -3198,7 +3198,7 @@ rm -rf $SESSION_DIR\n"
         export PATH="$JAVA_HOME/bin:$PATH"
         export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
 
-        MAVEN_HOME="$UPPM_HOME/installed/maven)"
+        MAVEN_HOME="$UPPM_HOME/installed/maven"
 
         MVN="$MAVEN_HOME/bin/mvn"
     fi
