@@ -8309,7 +8309,7 @@ EOF
 
     ##################################################################################
 
-    run "$UPPM_HOME/installed/gsed/bin/gsed" -i "'s/NDKPKG_CORE_DIR/$NDKPKG_CORE_DIR/'" fonts.conf
+    run "$UPPM_HOME/installed/gsed/bin/gsed" -i "'s|NDKPKG_CORE_DIR|$NDKPKG_CORE_DIR|'" fonts.conf
 
     ##################################################################################
 
