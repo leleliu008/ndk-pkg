@@ -1,203 +1,100 @@
-name: publish ndk-pkg bundle
+name: publish ndk-pkg core
 
 on:
   workflow_dispatch:
+    inputs:
+      release-version:
+        description: input a release version to be published
+        required: true
 
 jobs:
 
-  prepare:
-    runs-on: ubuntu-latest
-
-    steps:
-      - id:  prepare
-        run: |
-          printf 'UTS=%s\n' "$(date -u +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
-
-    outputs:
-      uts: ${{ steps.prepare.outputs.UTS }}
-
-
   macos:
-    needs: prepare
-
-    runs-on: macos-12
+    runs-on: macos-14
 
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['11.0', '12.0', '13.0']
+        target-version: ['10.15', '11.0', '12.0', '13.0', '14.0']
         target-arch: [x86_64, arm64]
-
-    steps:
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/xcpkg/master/xcpkg
-      - run: chmod a+x xcpkg
-      - run: ./xcpkg setup
-      - run: ./xcpkg update
-
-      - run: ./xcpkg install      uppm:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install      bash:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install coreutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install findutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install easyutils:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install      gawk:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install      gsed:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install      grep:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install      gtar:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install      gzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install      lzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install     unzip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install       zip:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install        xz:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install     bzip2:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install        jq:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install        yq:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install       git:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install      curl:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install      tree:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install  patchelf:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install    figlet:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-      - run: ./xcpkg install    lolcat:${{ matrix.target-version }}:${{ matrix.target-arch }} --link-type=static-preferred --install-lib=static
-
-      - run: install -d out/libexec
-
-      - run: cp -r -v ~/.xcpkg/installed/uppm:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/bash:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/coreutils:*/* out/
-      - run: cp -r -v ~/.xcpkg/installed/findutils:*/* out/
-      - run: cp -r -v ~/.xcpkg/installed/easyutils:*/* out/
-      - run: cp -r -v ~/.xcpkg/installed/gawk:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/gsed:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/grep:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/gtar:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/gzip:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/lzip:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/unzip:*/*     out/
-      - run: cp -r -v ~/.xcpkg/installed/zip:*/*       out/
-      - run: cp -r -v ~/.xcpkg/installed/xz:*/*        out/
-      - run: cp -r -v ~/.xcpkg/installed/bzip2:*/*     out/
-      - run: cp -r -v ~/.xcpkg/installed/jq:*/*        out/
-      - run: cp -r -v ~/.xcpkg/installed/yq:*/*        out/
-      - run: cp -r -v ~/.xcpkg/installed/git:*/*       out/
-      - run: cp -r -v ~/.xcpkg/installed/curl:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/tree:*/*      out/
-      - run: cp -r -v ~/.xcpkg/installed/patchelf:*/*  out/
-      - run: cp -r -v ~/.xcpkg/installed/figlet:*/*    out/
-      - run: cp -r -v ~/.xcpkg/installed/lolcat:*/*    out/
-
-      - run: cc -o out/libexec/wrapper-native-cc  wrapper-native-cc.c
-      - run: cc -o out/libexec/wrapper-native-c++ wrapper-native-c++.c
-      - run: cc -o out/libexec/wrapper-target-cc  wrapper-native-cc.c
-      - run: cc -o out/libexec/wrapper-target-c++ wrapper-native-c++.c
-
-      - run: mv -v ndk-pkg out/bin/
-      - run: install -d -v out/share/zsh/vendor-completions
-      - run: mv -v ndk-pkg-zsh-completion share/zsh/vendor-completions/
-
-      - run: |
-          DIRNAME="ndk-pkg-bundle-${{ needs.prepare.outputs.UTS }}-macos${{ matrix.target-version }}-${{ matrix.target-arch }}"
-          mv out "$DIRNAME"
-          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ndk-pkg-bundle-macos${{ matrix.target-version }}-${{ matrix.target-arch }}-tar-xz
-          path: ndk-pkg-bundle-*.tar.xz
-
-
-  linux:
-    needs: [prepare, macos]
-
-    runs-on: ubuntu-latest
-
-    container: alpine:3.16
-
-    env:
-      GH_TOKEN: ${{ github.token }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - run: apt -y update
-      - run: apt -y install curl xz-utils g++ gfortran linux-headers-generic
+      - run: install -d out/
 
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/bin/ppkg
-      - run: chmod a+x ppkg
-      - run: ./ppkg setup
-      - run: ./ppkg update
-
-      - run: ./ppkg install uppm      --link-type=static-only --install-lib=static
-      - run: ./ppkg install bash      --link-type=static-only --install-lib=static
-      - run: ./ppkg install coreutils --link-type=static-only --install-lib=static
-      - run: ./ppkg install findutils --link-type=static-only --install-lib=static
-      - run: ./ppkg install easyutils --link-type=static-only --install-lib=static
-      - run: ./ppkg install gawk      --link-type=static-only --install-lib=static
-      - run: ./ppkg install gsed      --link-type=static-only --install-lib=static
-      - run: ./ppkg install grep      --link-type=static-only --install-lib=static
-      - run: ./ppkg install gtar      --link-type=static-only --install-lib=static
-      - run: ./ppkg install gzip      --link-type=static-only --install-lib=static
-      - run: ./ppkg install lzip      --link-type=static-only --install-lib=static
-      - run: ./ppkg install unzip     --link-type=static-only --install-lib=static
-      - run: ./ppkg install zip       --link-type=static-only --install-lib=static
-      - run: ./ppkg install xz        --link-type=static-only --install-lib=static
-      - run: ./ppkg install bzip2     --link-type=static-only --install-lib=static
-      - run: ./ppkg install jq        --link-type=static-only --install-lib=static
-      - run: ./ppkg install yq        --link-type=static-only --install-lib=static
-      - run: ./ppkg install git       --link-type=static-only --install-lib=static
-      - run: ./ppkg install curl      --link-type=static-only --install-lib=static
-      - run: ./ppkg install tree      --link-type=static-only --install-lib=static
-      - run: ./ppkg install patchelf  --link-type=static-only --install-lib=static
-      - run: ./ppkg install figlet    --link-type=static-only --install-lib=static
-      - run: ./ppkg install lolcat    --link-type=static-only --install-lib=static
-
-      - run: install -d out/libexec
-
-      - run: cp -r -v ~/.ppkg/installed/uppm/*      out/
-      - run: cp -r -v ~/.ppkg/installed/bash/*      out/
-      - run: cp -r -v ~/.ppkg/installed/coreutils/* out/
-      - run: cp -r -v ~/.ppkg/installed/findutils/* out/
-      - run: cp -r -v ~/.ppkg/installed/easyutils/* out/
-      - run: cp -r -v ~/.ppkg/installed/gawk/*      out/
-      - run: cp -r -v ~/.ppkg/installed/gsed/*      out/
-      - run: cp -r -v ~/.ppkg/installed/grep/*      out/
-      - run: cp -r -v ~/.ppkg/installed/gtar/*      out/
-      - run: cp -r -v ~/.ppkg/installed/gzip/*      out/
-      - run: cp -r -v ~/.ppkg/installed/lzip/*      out/
-      - run: cp -r -v ~/.ppkg/installed/unzip/*     out/
-      - run: cp -r -v ~/.ppkg/installed/zip/*       out/
-      - run: cp -r -v ~/.ppkg/installed/xz/*        out/
-      - run: cp -r -v ~/.ppkg/installed/bzip2/*     out/
-      - run: cp -r -v ~/.ppkg/installed/jq/*        out/
-      - run: cp -r -v ~/.ppkg/installed/yq/*        out/
-      - run: cp -r -v ~/.ppkg/installed/git/*       out/
-      - run: cp -r -v ~/.ppkg/installed/curl/*      out/
-      - run: cp -r -v ~/.ppkg/installed/tree/*      out/
-      - run: cp -r -v ~/.ppkg/installed/patchelf/*  out/
-      - run: cp -r -v ~/.ppkg/installed/figlet/*    out/
-      - run: cp -r -v ~/.ppkg/installed/lolcat/*    out/
-
-      - run: cc -static -o out/libexec/wrapper-native-cc  wrapper-native-cc.c
-      - run: cc -static -o out/libexec/wrapper-native-c++ wrapper-native-c++.c
-      - run: cc -static -o out/libexec/wrapper-target-cc  wrapper-native-cc.c
-      - run: cc -static -o out/libexec/wrapper-target-c++ wrapper-native-c++.c
-
-      - run: mv -v ndk-pkg out/bin/
-      - run: install -d -v out/share/zsh/vendor-completions
-      - run: mv -v ndk-pkg-zsh-completion share/zsh/vendor-completions/
+      - run: mv fonts.conf out/
 
       - run: |
-          DIRNAME="ndk-pkg-bundle-${{ needs.prepare.outputs.UTS }}-linux-x86_64"
+          for item in *.c
+          do
+            clang -std=c99 -Os -flto -Wl,-s -o "out/${item%.c}" "$item"
+          done
+
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/xcpkg/master/xcpkg
+      - run: chmod a+x xcpkg
+      - run: ./xcpkg setup
+      - run: ./xcpkg update
+      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.1 --link-type=static-most
+      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.1 -o .
+
+      - run: tar vxf uppm*.tar.xz -C out --strip-components=2
+
+      - run: |
+          DIRNAME="ndk-pkg-core-${{ inputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}"
           mv out "$DIRNAME"
           tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ndk-pkg-bundle-linux-x86_64-tar-xz
-          path: ndk-pkg-bundle-*.tar.xz
+          name: ndk-pkg-core-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
+          path: ndk-pkg-core-*.tar.xz
+
+
+  linux:
+    runs-on: ubuntu-latest
+
+    container: alpine:3.19
+
+    steps:
+      - run: apt -y update
+      - run: apt -y install curl xz-utils g++ linux-headers-generic
+
+      - uses: actions/checkout@v4
+
+      - run: install -d out/
+
+      - run: mv fonts.conf out/
+
+      - run: |
+          for item in *.c
+          do
+            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
+          done
+
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+      - run: chmod a+x ppkg
+      - run: ./ppkg setup
+      - run: ./ppkg update
+      - run: ./ppkg install uppm@0.15.1 --link-type=static-full
+      - run: ./ppkg pack    uppm@0.15.1 -o .
+
+      - run: tar vxf uppm*.tar.xz -C out --strip-components=2
+
+      - run: |
+          DIRNAME="ndk-pkg-core-${{ inputs.release-version }}-linux-x86_64"
+          mv out "$DIRNAME"
+          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ndk-pkg-core-linux-x86_64.tar.xz
+          path: ndk-pkg-core-*.tar.xz
 
 
   publish:
 
-    needs: [prepare, linux]
+    needs: [macos, linux]
 
     runs-on: ubuntu-latest
 
@@ -207,38 +104,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: ndk-pkg-bundle---macos11.0-x86_64-tar-xz
+          pattern: '*'
           path: .
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: ndk-pkg-bundle---macos12.0-x86_64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: ndk-pkg-bundle---macos13.0-x86_64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: ndk-pkg-bundle---macos11.0-arm64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: ndk-pkg-bundle---macos12.0-arm64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: ndk-pkg-bundle---macos13.0-arm64-tar-xz
-          path: .
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: ndk-pkg-bundle---linux-x86_64-tar-xz
-          path: .
+          merge-multiple: true
 
       - run: ls -a
 
@@ -247,7 +115,7 @@ jobs:
           git -c init.defaultBranch=master init
           git remote add origin ${{ github.repositoryUrl }}
 
-          SHA256SUM="$(sha256sum ndk-pkg-bundle-*.tar.xz)"
+          SHA256SUM="$(sha256sum ndk-pkg-core-*.tar.xz)"
 
           cat > notes.md <<EOF
           sha256sum:
@@ -257,4 +125,4 @@ jobs:
           \`\`\`
           EOF
 
-          gh release create bundle-${{ needs.prepare.outputs.UTS }} ndk-pkg-bundle-*.tar.xz --title bundle-${{ needs.prepare.outputs.UTS }} --notes-file notes.md
+          gh release create ndk-pkg-core-${{ inputs.release-version }} ndk-pkg-core-*.tar.xz --title ndk-pkg-core-${{ inputs.release-version }} --notes-file notes.md
