@@ -38,7 +38,11 @@ jobs:
       - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.1 --link-type=static-most
       - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.1 -o .
 
-      - run: tar vxf uppm*.tar.xz -C out --strip-components=2
+      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
+      - run: mv out/bin/uppm out/
+      - run: rm -rf out/bin
+      - run: rm -rf out/shared
+      - run: rm -rf out/.xcpkg
 
       - run: |
           DIRNAME="ndk-pkg-core-${{ inputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}"
@@ -58,7 +62,7 @@ jobs:
 
     steps:
       - run: apk update
-      - run: apk add curl g++ libc-dev linux-headers
+      - run: apk add curl xz g++ libc-dev linux-headers
 
       - uses: actions/checkout@v4
 
@@ -79,7 +83,11 @@ jobs:
       - run: ./ppkg install uppm@0.15.1 --link-type=static-full
       - run: ./ppkg pack    uppm@0.15.1 -o .
 
-      - run: tar vxf uppm*.tar.xz -C out --strip-components=2
+      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
+      - run: mv out/bin/uppm out/
+      - run: rm -rf out/bin
+      - run: rm -rf out/shared
+      - run: rm -rf out/.ppkg
 
       - run: |
           DIRNAME="ndk-pkg-core-${{ inputs.release-version }}-linux-x86_64"
