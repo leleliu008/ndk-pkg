@@ -26,9 +26,15 @@ jobs:
       - run: mv fonts.conf out/
 
       - run: |
+          set -ex
+
+          CC="$(xcrun --sdk macosx --find clang)"
+          SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
+          CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=${{ matrix.target-version }} -arch ${{ matrix.target-arch }} -Qunused-arguments"
+
           for item in *.c
           do
-            clang -std=c99 -Os -flto -Wl,-s -o "out/${item%.c}" "$item"
+            $CC $CFLAGS -std=c99 -Os -flto -Wl,-s -o "out/${item%.c}" "$item"
           done
 
       - run: curl -LO https://raw.githubusercontent.com/leleliu008/xcpkg/master/xcpkg
