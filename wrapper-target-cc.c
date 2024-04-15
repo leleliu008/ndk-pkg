@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
+
 #include <unistd.h>
-#include <regex.h>
 
 #define ACTION_COMPILE 1
 #define ACTION_CREATE_SHARED_LIBRARY 2
@@ -162,35 +163,24 @@ int main(int argc, char * argv[]) {
                 outputFileName = outputFilePath;
             }
 
-            regex_t regex;
+            char * p = strstr(outputFileName, ".so");
 
-            if (regcomp(&regex, "^lib.*\\.so", 0) != 0) {
-                perror(NULL);
-                regfree(&regex);
-                return 9;
-            }
+            if (p != NULL) {
+                ptrdiff_t n = p - outputFileName + 3;
 
-            regmatch_t regmatch[2];
+                char s[n + 1];
 
-            if (regexec(&regex, outputFileName, 2, regmatch, 0) == 0) {
-                //printf("regmatch[0].rm_so=%d\n", regmatch[0].rm_so);
-                //printf("regmatch[0].rm_eo=%d\n", regmatch[0].rm_eo);
+                strncpy(s, outputFileName, n);
 
-                if ((regmatch[0].rm_so >= 0) && (regmatch[0].rm_eo > regmatch[0].rm_so)) {
-                    int n = regmatch[0].rm_eo - regmatch[0].rm_so;
-                    const char * str = &outputFileName[regmatch[0].rm_so];
+                s[n] = '\0';
 
-                    ret = snprintf(sonameArg, n + 13, "-Wl,-soname,%s", str);
+                ret = snprintf(sonameArg, n + 13, "-Wl,-soname,%s", s);
 
-                    if (ret < 0) {
-                        perror(NULL);
-                        regfree(&regex);
-                        return 10;
-                    }
+                if (ret < 0) {
+                    perror(NULL);
+                    return 10;
                 }
             }
-
-            regfree(&regex);
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
         for (int i = 1; i < argc; i++) {

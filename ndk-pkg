@@ -6638,8 +6638,8 @@ EOF
         [ "$PACKAGE_DEP_UPP_OPENSSL" -eq 1 ] && {
             case "$NATIVE_OS_TYPE-$NATIVE_OS_ARCH" in
                 linux-x86_64)  NATIVE_RUST_TARGET='X86_64_UNKNOWN_LINUX_GNU' ;;
-                macos-x86_64)  NATIVE_RUST_TARGET='X86_64-APPLE-DARWIN'      ;;
-                macos-arm64)   NATIVE_RUST_TARGET='AARCH64-APPLE-DARWIN'     ;;
+                macos-x86_64)  NATIVE_RUST_TARGET='X86_64_APPLE_DARWIN'      ;;
+                macos-arm64)   NATIVE_RUST_TARGET='AARCH64_APPLE_DARWIN'     ;;
             esac
 
             eval export "${NATIVE_RUST_TARGET}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/openssl'"
