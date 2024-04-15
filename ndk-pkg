@@ -4612,8 +4612,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
             ;;
         libffi)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676'
+            NATIVE_PACKAGE_SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e'
             NATIVE_PACKAGE_DEPENDENCIES=
             NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers'
@@ -4918,6 +4918,13 @@ __install_the_given_package() {
    
     step "load formula"
     __load_formula_of_the_given_package "$PACKAGE_NAME" "$PACKAGE_FORMULA_FILEPATH"
+
+    #########################################################################################
+
+    if [ "$LINK_TYPE" = 'static-full' ] && [ "$PACKAGE_SFSLINK" = 0 ] ; then
+        LINK_TYPE='static-most'
+        note "user request to create fully statically linked executable, but package '$PACKAGE_NAME' DO NOT support it, so we will downgrade to mostly statically linked executable."
+    fi
 
     #########################################################################################
 
