@@ -41,7 +41,7 @@ jobs:
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
       - run: rm -rf out/bin
-      - run: rm -rf out/shared
+      - run: rm -rf out/share
       - run: rm -rf out/.xcpkg
 
       - run: |
@@ -86,7 +86,7 @@ jobs:
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
       - run: rm -rf out/bin
-      - run: rm -rf out/shared
+      - run: rm -rf out/share
       - run: rm -rf out/.ppkg
 
       - run: |
@@ -118,19 +118,17 @@ jobs:
 
       - run: ls -a
 
+      # to avaid: failed to run git: fatal: not a git repository (or any of the parent directories): .git
+      - run: git -c init.defaultBranch=master init
+      - run: git remote add origin ${{ github.repositoryUrl }}
+
       - run: |
-          # to avaid: failed to run git: fatal: not a git repository (or any of the parent directories): .git
-          git -c init.defaultBranch=master init
-          git remote add origin ${{ github.repositoryUrl }}
-
-          SHA256SUM="$(sha256sum ndk-pkg-core-*.tar.xz)"
-
           cat > notes.md <<EOF
           sha256sum:
 
           \`\`\`
-          $SHA256SUM
+          $(sha256sum ndk-pkg-core-*.tar.xz)
           \`\`\`
           EOF
 
-          gh release create ndk-pkg-core-${{ inputs.release-version }} ndk-pkg-core-*.tar.xz --title ndk-pkg-core-${{ inputs.release-version }} --notes-file notes.md
+      - run: gh release create ndk-pkg-core-${{ inputs.release-version }} ndk-pkg-core-*.tar.xz --title ndk-pkg-core-${{ inputs.release-version }} --notes-file notes.md
