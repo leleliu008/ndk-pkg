@@ -6891,12 +6891,21 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
+    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
+        run     cd "$PACKAGE_BSCRIPT_DIR"
+    fi
+
+    #########################################################################################
+
+    # https://github.com/golang/go/issues/65568
+    if [ -f go.mod ] ; then
+        sed_in_place 's|^go 1.22$|go 1.22.0|' go.mod
+    fi
+
+    #########################################################################################
+
     case $PACKAGE_BSYSTEM_MASTER in
         autogen)
-            if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-                run     cd "$PACKAGE_BSCRIPT_DIR"
-            fi
-
             if [ -f configure ] ; then
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
@@ -6910,10 +6919,6 @@ $PACKAGE_DOPATCH
             fi
             ;;
         autotools)
-            if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-                run     cd "$PACKAGE_BSCRIPT_DIR"
-            fi
-
             if [ -f configure ] ; then
                 CONFIGURE_FILE_LAST_MODIFIED_TIMESTAMP="$(stat --format=%Y configure)"
 
@@ -6935,10 +6940,6 @@ $PACKAGE_DOPATCH
     if [ -z "$PACKAGE_PREPARE" ] ; then
         note "prepare mapping was not found in formula, skipped."
     else
-        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run     cd "$PACKAGE_BSCRIPT_DIR"
-        fi
-
         eval "
 prepare() {
 $PACKAGE_PREPARE
@@ -6992,7 +6993,7 @@ $PACKAGE_DOTWEAK
     if [ -d  "$PACKAGE_INSTALL_DIR/lib" ] ; then
         # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
         # remove Libtool Archive (.la) files
-        find "$PACKAGE_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name 'lib*.la' -exec rm '{}' \;
+        find "$PACKAGE_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm '{}' \;
     fi
 
     #########################################################################################
@@ -8723,7 +8724,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.12
+NDKPKG_VERSION=0.8.13
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
