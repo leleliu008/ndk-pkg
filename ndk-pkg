@@ -1078,6 +1078,8 @@ filetype_from_url() {
     PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_INCLUDE="$(yq '.include | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_SYMLINK="$(yq '.symlink | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_SFSLINK="$(yq '.sfslink | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -2829,6 +2831,9 @@ EOF
                 # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
                 DT_SONAME="$(patchelf --print-soname "$LIBRARY_FILEPATH")"
 
+                # On Android, a so file must have the DT_SONAME
+                # https://github.com/android/ndk/issues/1865
+                # https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md
                 if [ -z "$DT_SONAME" ] ; then
                     abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    DT_SONAME: not set"
                 fi
@@ -2842,9 +2847,10 @@ EOF
                 for DT_NEEDED in $DT_NEEDED_LIST
                 do
                     case $DT_NEEDED in
+                        # besure DT_NEEDED entries all are filenames, not filepaths
                         lib*.so)
                             ;;
-                        *)  abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    DT_NEEDED: $DT_NEEDED"
+                        *)  abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    invalid DT_NEEDED: $DT_NEEDED"
                     esac
                 done
 
@@ -4917,6 +4923,14 @@ __install_the_given_package() {
 
     #########################################################################################
 
+    if [ "$TARGET_PLATFORM_NBIT" -eq 64 ] ; then
+        ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker64'
+    else
+        ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker'
+    fi
+
+    #########################################################################################
+
     PACKAGE_FORMULA_FILEPATH="$SESSION_DIR/$PACKAGE_NAME.yml"
 
     step "view formula"
@@ -5135,7 +5149,7 @@ EOF
           CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -Os"
         CXXFLAGS_FOR_BUILD="$CXXFLAGS_FOR_BUILD -Os"
        OBJCFLAGS_FOR_BUILD="$OBJCFLAGS_FOR_BUILD -Os"
-         LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-S"
+         LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-s"
     fi
 
     export    CFLAGS_FOR_BUILD
@@ -6206,7 +6220,7 @@ EOF
         PPFLAGS="$PPFLAGS -DNDEBUG"
         CCFLAGS="$CCFLAGS -Os"
         XXFLAGS="$XXFLAGS -Os"
-        LDFLAGS="$LDFLAGS -Wl,-S"
+        LDFLAGS="$LDFLAGS -Wl,-s"
     fi
 
     ##############################################
@@ -7008,15 +7022,6 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    step "strip ELF files"
-
-    for f in $STRIPFILES
-    do
-        run "$STRIP" "$STRIP_ARG" "$f" || true
-    done
-
-    #########################################################################################
-
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
         rm -f "$PACKAGE_INSTALL_DIR/.crates.toml"
         rm -f "$PACKAGE_INSTALL_DIR/.crates2.json"
@@ -7117,14 +7122,6 @@ $PACKAGE_DOTWEAK
 }
 
 __check_elf_files() {
-    unset STRIPFILES
-
-    if [ "$BUILD_TYPE" = release ] ; then
-        DOSTRIP=1
-    else
-        DOSTRIP=0
-    fi
-
     cd "$PACKAGE_INSTALL_DIR"
 
     FILEPATHs="$(find -not -name . -type f)"
@@ -7134,7 +7131,7 @@ __check_elf_files() {
 
     for FILEPATH in $FILEPATHs
     do
-        [ -w "$FILEPATH" ] || continue
+        [ -e "$FILEPATH" ] || continue
 
         FILE_HEADER_ACTUAL="$(xxd -u -p -l 20 "$FILEPATH")"
 
@@ -7154,45 +7151,65 @@ __check_elf_files() {
                     abort 1 "ELF file header mismatch: $FILEPATH\n    expect : $FILE_HEADER_EXPACT\n    actual : $FILE_HEADER_ACTUAL"
                 fi
 
-                # may report: patchelf: cannot find section '.interp'. The input file is most likely statically linked
-                PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+                #####################################################################
 
-                if [ -n  "$PT_INTERP" ] ; then
-                    if [ "$TARGET_PLATFORM_NBIT" -eq 64 ] ; then
-                        ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker64'
-                    else
-                        ANDROID_DYNAMIC_LINKER_PATH='/system/bin/linker'
-                    fi
+                # 03 means it is a shared library or dynamically linked executable
+                if [ "$ELF_TYPE" = '03' ] ; then
+                    # patchelf would report a error if there is no '.interp' section in a ELF file
+                    PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
 
-                    if [ "$PT_INTERP" != "$ANDROID_DYNAMIC_LINKER_PATH" ] ; then
-                        abort 1 "ELF file PT_INTERP mismatch: $FILEPATH\n    expect : $ANDROID_DYNAMIC_LINKER_PATH\n    actual : $PT_INTERP"
-                    fi
+                    if [ -n  "$PT_INTERP" ] ; then
+                        if [ "$PT_INTERP" != "$ANDROID_DYNAMIC_LINKER_PATH" ] ; then
+                            abort 1 "ELF file PT_INTERP mismatch: $FILEPATH\n    expect : $ANDROID_DYNAMIC_LINKER_PATH\n    actual : $PT_INTERP"
+                        fi
 
-                    DT_SONAME=
-                    DT_SONAME="$(patchelf --print-soname "$FILEPATH")"
-
-                    if [ -z "$DT_SONAME" ] ; then
-                        # In general, a shared library would not have the .interp section.
-                        # a dynamically linked executable always have the .interp section.
-                        #
                         # https://source.android.com/security/enhancements/enhancements50
-                        # Android 5.0 and later only support position-independent executables (-fPIE)
+                        # Android 5.0 and later, a dynamically linked executable must be a PIE(Position Independent Executable)
                         if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
-                            abort 1 "invalid ELF file: $FILEPATH. Android 5.0 and later requires dynamically linked executable to support PIE (position-independent executables)."
+                            abort 1 "invalid ELF file: $FILEPATH\n    Android 5.0 and later requires dynamically linked executable to support PIE (position-independent executables)."
                         fi
-                    fi
-                fi
 
-                if basename "$FILEPATH" | grep -q '^lib.*\.so' ; then
-                    :
-                else
-                    if [ "$DOSTRIP" = 1 ] ; then
-                        if [ -z "$STRIPFILES" ] ; then
-                            STRIPFILES="$FILEPATH"
-                        else
-                            STRIPFILES="$FILEPATH $STRIPFILES"
+                        # A dynamically linked executable always have the .interp section.
+                        # In general, a shared library would not have the .interp section, but that is not always the case, for example, libcap/lib/libpsx.so is not only a library but also a executable.
+                        case "${FILEPATH##*/}" in
+                            *.so)
+                                IS_SHARED_LIBRAY=1 ;;
+                            *.so.*)
+                                IS_SHARED_LIBRAY=1 ;;
+                            *)  IS_SHARED_LIBRAY=0 ;;
+                        esac
+                    else
+                        IS_SHARED_LIBRAY=1
+                    fi
+
+                    #####################################################################
+
+                    if [ "$IS_SHARED_LIBRAY" = 1 ] ; then
+                        # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
+                        DT_SONAME="$(patchelf --print-soname "$FILEPATH")"
+
+                        # On Android, a so file must have the DT_SONAME
+                        # https://github.com/android/ndk/issues/1865
+                        # https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md
+                        if [ -z "$DT_SONAME" ] ; then
+                            abort 1 "invalid .so file: $FILEPATH\n    no DT_SONAME was set in .dynamic section"
                         fi
                     fi
+
+                    #####################################################################
+
+                    # a \n-separated list
+                    DT_NEEDED_LIST="$(patchelf --print-needed "$FILEPATH")"
+
+                    for DT_NEEDED in $DT_NEEDED_LIST
+                    do
+                        case $DT_NEEDED in
+                            # besure DT_NEEDED entries all are filenames, not filepaths
+                            lib*.so)
+                                ;;
+                            *)  abort 1 "unexpected ELF file: $FILEPATH\n    invalid DT_NEEDED: $DT_NEEDED"
+                        esac
+                    done
                 fi
         esac
     done
@@ -8724,7 +8741,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.13
+NDKPKG_VERSION=0.8.14
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'

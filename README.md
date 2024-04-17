@@ -1,6 +1,6 @@
 # ndk-pkg
 
-A package manager for [Android NDK](https://developer.android.google.cn/ndk) to build projects that are written in C/C++/Rust/Golang.
+A package builder/manager for [Android NDK](https://developer.android.google.cn/ndk) to build projects that are written in C, C++, Rust, Golang, etc
 
 ## Caveats
 
@@ -146,22 +146,23 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 ```text
 ~/.ndk-pkg
 ├── core
+│   ├── SourceCodePro-Light.otf
 │   ├── cacert.pem
+│   ├── fonts.conf
+│   ├── ndk-pkg-core-2024.05.15-linux-x86_64.tar.xz
+│   ├── ndk-pkg-core-latest-release-version
 │   ├── profile
 │   ├── sed-in-place
-│   ├── sed-in-place.c
 │   ├── uppm
-│   ├── uppm-0.15.0-linux-x86_64.tar.xz
-│   ├── uppm-latest-release
-│   ├── wrapper-native-c++
-│   ├── wrapper-native-c++.c
 │   ├── wrapper-native-cc
-│   ├── wrapper-native-cc.c
+│   ├── wrapper-native-c++
 │   ├── wrapper-native-objc
-│   ├── wrapper-native-objc.c
-│   ├── wrapper-target-c++
 │   ├── wrapper-target-cc
-│   └── wrapper-target-cc.c
+│   ├── wrapper-target-c++
+│   ├── zig-cc
+│   ├── zig-c++
+│   ├── zig-ar
+│   └── zig-ranlib
 ├── downloads
 │   ├── 8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313.tgz
 │   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz
@@ -171,28 +172,24 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 │   │   ├── f39a5f7836ac7ca1e04de14c8103e663d0b375a524a40e537258747e2deb3c0b
 │   │   │   ├── include
 │   │   │   ├── lib
-│   │   │   ├── lib-for-apk
 │   │   │   └── share
 │   │   └── zlib -> f39a5f7836ac7ca1e04de14c8103e663d0b375a524a40e537258747e2deb3c0b
 │   ├── android-33-armeabi-v7a
 │   │   ├── cc9b367d5068ef6b8aaaee38ec2a25691da35e02757c7e0d83aff3775aef3323
 │   │   │   ├── include
 │   │   │   ├── lib
-│   │   │   ├── lib-for-apk
 │   │   │   └── share
 │   │   └── zlib -> cc9b367d5068ef6b8aaaee38ec2a25691da35e02757c7e0d83aff3775aef3323
 │   ├── android-33-x86
 │   │   ├── a0718632fe829426c1d946e6658cc7586da0039e99d5a140d1e402a6b4a4e2f3
 │   │   │   ├── include
 │   │   │   ├── lib
-│   │   │   ├── lib-for-apk
 │   │   │   └── share
 │   │   └── zlib -> a0718632fe829426c1d946e6658cc7586da0039e99d5a140d1e402a6b4a4e2f3
 │   └── android-33-x86_64
 │       ├── c099047714d4ce1402d66346da88d14f25c313b0d4c879520198426ebc2f36fe
 │       │   ├── include
 │       │   ├── lib
-│       │   ├── lib-for-apk
 │       │   └── share
 │       └── zlib -> c099047714d4ce1402d66346da88d14f25c313b0d4c879520198426ebc2f36fe
 ├── native
@@ -206,6 +203,95 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 │       │   ├── share
 │       │   └── receipt.txt
 │       └── automake -> 30b5043e2c5513343152506e5b1e14436ddbb654f7edf69167df05f117fcdb16
+├── uppm
+│   ├── downloads
+│   │   ├── fe6b6f7db67a20ccca0385ae38c4aafc7b2bfedc98f9d86880dfeb127a56c012.txz
+│   │   └── ff66b70c830a38d331d44f6c25a37b582471def9a161c93902bac7bea3098319.tgz
+│   ├── installed
+│   │   ├── android-ndk-r26d
+│   │   │   ├── CHANGELOG.md
+│   │   │   ├── NOTICE
+│   │   │   ├── NOTICE.toolchain
+│   │   │   ├── README.md
+│   │   │   ├── build
+│   │   │   ├── meta
+│   │   │   ├── ndk-build
+│   │   │   ├── ndk-gdb
+│   │   │   ├── ndk-lldb
+│   │   │   ├── ndk-stack
+│   │   │   ├── ndk-which
+│   │   │   ├── prebuilt
+│   │   │   ├── python-packages
+│   │   │   ├── shader-tools
+│   │   │   ├── simpleperf
+│   │   │   ├── source.properties
+│   │   │   ├── sources
+│   │   │   ├── toolchains
+│   │   │   └── wrap.sh
+│   │   ├── bash
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── bsdtar
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── coreutils
+│   │   │   ├── bin
+│   │   │   ├── libexec
+│   │   │   └── share
+│   │   ├── curl
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── d2
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── dot_static
+│   │   │   └── bin
+│   │   ├── findutils
+│   │   │   ├── bin
+│   │   │   ├── libexec
+│   │   │   ├── share
+│   │   │   └── var
+│   │   ├── gawk
+│   │   │   ├── bin
+│   │   │   ├── etc
+│   │   │   ├── libexec
+│   │   │   └── share
+│   │   ├── git
+│   │   │   ├── bin
+│   │   │   ├── libexec
+│   │   │   └── share
+│   │   ├── grep
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── gsed
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── jq
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── patchelf
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── pkg-config
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── sysinfo
+│   │   │   └── bin
+│   │   ├── tree
+│   │   │   ├── bin
+│   │   │   └── share
+│   │   ├── xxd
+│   │   │   └── bin
+│   │   ├── yq
+│   │   │   └── bin
+│   │   └── zip
+│   │       ├── bin
+│   │       └── share
+│   └── repos.d
+│       └── official-core
+│           ├── LICENSE
+│           ├── README.md
+│           └── formula
 ├── repos.d
 │   └── official-core
 │       ├── formula
