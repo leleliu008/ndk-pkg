@@ -919,6 +919,7 @@ filetype_from_url() {
     unset PACKAGE_NAME
     unset PACKAGE_NAME_UPPERCASE_UNDERSCORE
 
+    unset PACKAGE_PKGTYPE
     unset PACKAGE_SUMMARY
     unset PACKAGE_WEB_URL
 
@@ -1039,6 +1040,7 @@ filetype_from_url() {
 
     PACKAGE_API_MIN="$(yq '.api-min | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
+    PACKAGE_PKGTYPE="$(yq '.pkgtype | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1375,6 +1377,9 @@ filetype_from_url() {
     [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] && {
         PACKAGE_BINBSTD=1
         PACKAGE_BUILD_IN_BSCRIPT_DIR=1
+
+        # https://github.com/golang/go/issues/59942
+        PACKAGE_SFSLINK=0
     }
 
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
@@ -6270,13 +6275,6 @@ EOF
 
     ##############################################
 
-    # https://github.com/madler/zlib/issues/856
-    if [ "$ANDROID_NDK_VERSION_MAJOR" -ge 26 ] ; then
-        LDFLAGS="$LDFLAGS -Wl,--undefined-version"
-    fi
-
-    ##############################################
-
     for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
     do
         DEPENDENT_PACKAGE_NAME_UNDERSCORE=$(printf '%s\n' "$DEPENDENT_PACKAGE_NAME" | tr '@+-.' '_')
@@ -7838,6 +7836,23 @@ cmakew() {
         run $CMAKE --build   "$PACKAGE_BCACHED_DIR" -- -j$BUILD_NJOBS &&
         run $CMAKE --install "$PACKAGE_BCACHED_DIR"
     else
+        unset CMAKE_PROJECT_INCLUDE
+
+        if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+            # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
+            CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
+
+            # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
+            case $REQUEST_TO_CREATE_EXE_TYPE in
+                fsle) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'       > "$CMAKE_PROJECT_INCLUDE" ;;
+                msle) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
+            esac
+
+            if [ "$LOG_LEVEL" -gt 0 ] ; then
+                run cat "$CMAKE_PROJECT_INCLUDE"
+            fi
+        fi
+
         case $PROFILE in
             debug)   CMAKE_BUILD_TYPE=Debug   ;;
             release) CMAKE_BUILD_TYPE=Release ;;
@@ -7948,16 +7963,13 @@ EOF
             rm  "$PACKAGE_BCACHED_DIR/CMakeCache.txt"
         fi
 
-        run "$CMAKE" \
-            -Wno-dev \
-            -DCMAKE_INSTALL_LIBDIR="$PACKAGE_INSTALL_DIR/lib" \
-            -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" \
-            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
-            -DCMAKE_VERBOSE_MAKEFILE="$CMAKE_VERBOSE_MAKEFILE" \
-            -DCMAKE_COLOR_MAKEFILE="$CMAKE_COLOR_MAKEFILE" \
-            -DBUILD_TESTING=OFF \
-            -S "$PACKAGE_BSCRIPT_DIR" \
-            -B "$PACKAGE_BCACHED_DIR" "$@" &&
+        CMAKE_CONFIG_OPTIONS="-Wno-dev -DBUILD_TESTING=OFF -DCMAKE_INSTALL_LIBDIR='$PACKAGE_INSTALL_DIR/lib' -DCMAKE_INSTALL_PREFIX='$PACKAGE_INSTALL_DIR' -DCMAKE_TOOLCHAIN_FILE='$CMAKE_TOOLCHAIN_FILE' -DCMAKE_VERBOSE_MAKEFILE='$CMAKE_VERBOSE_MAKEFILE' -DCMAKE_COLOR_MAKEFILE='$CMAKE_COLOR_MAKEFILE'"
+
+        if [ -n "$CMAKE_PROJECT_INCLUDE" ] ; then
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_PROJECT_INCLUDE=$CMAKE_PROJECT_INCLUDE"
+        fi
+
+        run "$CMAKE" "$CMAKE_CONFIG_OPTIONS" -S "$PACKAGE_BSCRIPT_DIR" -B "$PACKAGE_BCACHED_DIR" "$@" &&
         run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR" -- "-j$BUILD_NJOBS" &&
         run "$CMAKE" --install "$PACKAGE_BCACHED_DIR"
     fi
