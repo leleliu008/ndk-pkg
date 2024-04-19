@@ -469,14 +469,14 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ```bash
     ndk-pkg install curl
     ndk-pkg install android-33-arm64-v8a/curl
-    ndk-pkg install android-33-arm64-v8a/curl --link-type=static-full
+    ndk-pkg install android-33-arm64-v8a/curl --exe=fsle
     ```
 
 - **reinstall packages**
 
     ```bash
     ndk-pkg reinstall curl
-    ndk-pkg reinstall android-33-arm64-v8a/curl --link-type=static-full
+    ndk-pkg reinstall android-33-arm64-v8a/curl --exe=fsle
     ```
 
 - **uninstall packages**
@@ -490,7 +490,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
     ```bash
     ndk-pkg upgrade curl
-    ndk-pkg upgrade android-33-arm64-v8a/curl --link-type=static-full
+    ndk-pkg upgrade android-33-arm64-v8a/curl --exe=fsle
     ```
 
 - **upgrade this software**
@@ -758,7 +758,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
 |`symlink`|optional|whether to symlink installed files to `$NDKPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
-|`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ndk-pkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--link-type=static-full` install option is given.|
+|`sfslink`|optional|whether to support fully statically linked executables. value shall be `0` or `1`. default value is `1`. If `0` is given, `ndk-pkg` would not add `--static` and `-static` options to `LDFLAGS` even if `--exe=fsle` install option is given.|
 ||||
 |`api-min`|optional|specify which minimum Android SDK API level is supported for this package.|
 ||||

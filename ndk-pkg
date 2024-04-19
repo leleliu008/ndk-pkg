@@ -2332,7 +2332,7 @@ __fetch_resources_of_the_given_package() {
     do
         case $1 in
             --keep-session-dir)
-                KEEP_SESSION_DIR=1
+                REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
             -t) shift
 
@@ -2510,7 +2510,7 @@ __fetch_resources_of_the_given_package() {
     step "move the packed file to output directory"
     run mv "packed.$OUTPUT_TYPE" "$OUTPUT_FILEPATH"
 
-    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+    if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
         echo
         note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is specified."
     else
@@ -2616,9 +2616,9 @@ __fetch_resources_of_the_given_package() {
 
     unset ANDROID_NDK_HOME
 
-    unset KEEP_SESSION_DIR
-
     unset OUTPUT_PATH
+
+    unset REQUEST_TO_KEEP_SESSION_DIR
 
     while [ -n "$1" ]
     do
@@ -2630,7 +2630,7 @@ __fetch_resources_of_the_given_package() {
                 OUTPUT_PATH="$1"
                 ;;
             --keep-session-dir)
-                KEEP_SESSION_DIR=1
+                REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
         esac
         shift
@@ -2920,7 +2920,7 @@ rm -rf $SESSION_DIR\n"
     step "move prefab aar file to destination"
     run mv "$SESSION_DIR/$DEFAULT_OUTPUT_FILENAME" "$OUTPUT_PATH"
 
-    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+    if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
         echo
         note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is specified."
     else
@@ -3220,7 +3220,7 @@ rm -rf $SESSION_DIR\n"
 
     #########################################################################################
 
-    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+    if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
         printf '\n'
         note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
     else
@@ -3989,7 +3989,7 @@ __reinstall_the_given_packages() {
 
     #########################################################################################
 
-    if [ "$KEEP_SESSION_DIR" != 1 ] ; then
+    if [ "$REQUEST_TO_KEEP_SESSION_DIR" != 1 ] ; then
         rm -rf "$SESSION_DIR"
     fi
 }
@@ -4133,7 +4133,7 @@ __upgrade_packages() {
 
     #########################################################################################
 
-    if [ "$KEEP_SESSION_DIR" != 1 ] ; then
+    if [ "$REQUEST_TO_KEEP_SESSION_DIR" != 1 ] ; then
         rm -rf "$SESSION_DIR"
     fi
 }
@@ -4266,28 +4266,32 @@ __upgrade_packages() {
 }
 
 inspect_install_arguments() {
-    DRYRUN=0
-
-    CCACHE_ENABLED=0
-
     LOG_LEVEL_QUIET=0
     LOG_LEVEL_NORMAL=1
     LOG_LEVEL_VERBOSE=2
     LOG_LEVEL_VERY_VERBOSE=3
 
-    LOG_LEVEL=$LOG_LEVEL_NORMAL
+    LOG_LEVEL=1
 
     BUILD_NJOBS=$NATIVE_OS_NCPU
 
-    BUILD_TYPE=release
+    DRYRUN=0
 
-    LINK_TYPE=static-most
+    unset PROFILE
 
-    KEEP_SESSION_DIR=0
+    unset ENABLE_LTO
 
-    UPGRADE_IF_COULD_BE=0
+    unset ENABLE_STRIP
 
-    EXPORT_COMPILE_COMMANDS_JSON=0
+    unset ENABLE_CCACHE
+
+    unset REQUEST_TO_UPGRADE_IF_COULD_BE
+
+    unset REQUEST_TO_CREATE_EXE_TYPE
+
+    unset REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
+
+    unset REQUEST_TO_KEEP_SESSION_DIR
 
     unset SPECIFIED_PACKAGE_LIST
 
@@ -4307,39 +4311,46 @@ inspect_install_arguments() {
                 LOG_LEVEL="$LOG_LEVEL_QUIET"
                 ;;
             --disable-ccache)
-                CCACHE_ENABLED=0
+                ENABLE_CCACHE=0
                 ;;
             --upgrade)
-                UPGRADE_IF_COULD_BE=1
+                REQUEST_TO_UPGRADE_IF_COULD_BE=1
                 ;;
             --dry-run)
                 DRYRUN=1
                 ;;
             --keep-session-dir)
-                KEEP_SESSION_DIR=1
+                REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
             --export-compile-commands-json)
-                EXPORT_COMPILE_COMMANDS_JSON=1
+                REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON=1
                 ;;
-            --build-type=*)
-                BUILD_TYPE="${1#*=}"
-                case $BUILD_TYPE in
-                    debug|release) ;;
-                    '') abort 1 "--build-type=<VALUE>, VALUE must be non-empty." ;;
-                    *)  abort 1 "--build-type=<VALUE>, VALUE must be one of debug|release"
-                esac
+            --profile=*)
+                PROFILE="${1#*=}"
                 ;;
-            --link-type=*)
-                LINK_TYPE="${1#*=}"
-                case $LINK_TYPE in
-                    static-only|shared-only|static-most|shared-most) ;;
-                    '') abort 1 "--link-type=<VALUE>, VALUE must be non-empty." ;;
-                    *)  abort 1 "--link-type=<VALUE>, VALUE must be one of static-only|shared-only|static-most|shared-most"
+            --exe=*)
+                REQUEST_TO_CREATE_EXE_TYPE="${1#*=}"
+                case $REQUEST_TO_CREATE_EXE_TYPE in
+                    pie|fsle|msle) ;;
+                    *)  abort 1 "--exe=<VALUE>, VALUE must be one of pie, fsle, msle"
                 esac
                 ;;
             --jobs=*)
                 BUILD_NJOBS="${1#*=}"
                 is_integer "$BUILD_NJOBS" || abort 1 "--jobs=INTEGER argument's value must be an integer."
+                ;;
+            --enable-lto)
+                ENABLE_LTO=1
+                ;;
+            --enable-strip)
+                ENABLE_STRIP=all
+                ;;
+            --enable-strip=*)
+                ENABLE_STRIP="${1#*=}"
+                case $ENABLE_STRIP in
+                    no|all|debug|unneeded) ;;
+                    *)  abort 1 "--strip=<VALUE>, VALUE must be one of no, all, debug, unneeded"
+                esac
                 ;;
             --ndk-home=*)
                 ANDROID_NDK_HOME="${1#*=}"
@@ -4367,6 +4378,21 @@ inspect_install_arguments() {
     if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
         exec 2>&1
+    fi
+
+    #########################################################################################
+
+    if [ -z "$PROFILE" ] ; then
+        PROFILE=release
+    fi
+
+    #########################################################################################
+
+    if [ -z "$ENABLE_STRIP" ] ; then
+        case $PROFILE in
+            debug)   ENABLE_STRIP=no  ;;
+            release) ENABLE_STRIP=all ;;
+        esac
     fi
 
     #########################################################################################
@@ -4514,7 +4540,7 @@ __install_the_given_packages() {
 
     #########################################################################################
 
-    if [ "$KEEP_SESSION_DIR" != 1 ] ; then
+    if [ "$REQUEST_TO_KEEP_SESSION_DIR" != 1 ] ; then
         rm -rf "$SESSION_DIR"
     fi
 }
@@ -4941,9 +4967,9 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    if [ "$LINK_TYPE" = 'static-full' ] && [ "$PACKAGE_SFSLINK" = 0 ] ; then
-        LINK_TYPE='static-most'
-        note "user request to create fully statically linked executable, but package '$PACKAGE_NAME' DO NOT support it, so we will downgrade to mostly statically linked executable."
+    if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] && [ "$PACKAGE_SFSLINK" = 0 ] ; then
+        REQUEST_TO_CREATE_EXE_TYPE=msle
+        note "user request to create fully statically linked executables, but package '$PACKAGE_NAME' DO NOT support it, so we will downgrade to create mostly statically linked executables."
     fi
 
     #########################################################################################
@@ -4991,14 +5017,14 @@ NDKPKG              = $NDKPKG
 NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
 
           LOG_LEVEL = $LOG_LEVEL
-          LINK_TYPE = $LINK_TYPE
-         BUILD_TYPE = $BUILD_TYPE
+            PROFILE = $PROFILE
         BUILD_NJOBS = $BUILD_NJOBS
 
              DRYRUN = $DRYRUN
-     CCACHE_ENABLED = $CCACHE_ENABLED
-   KEEP_SESSION_DIR = $KEEP_SESSION_DIR
-EXPORT_COMPILE_COMMANDS_JSON = $EXPORT_COMPILE_COMMANDS_JSON
+      ENABLE_CCACHE = $ENABLE_CCACHE
+REQUEST_TO_CREATE_EXE_TYPE  = $REQUEST_TO_CREATE_EXE_TYPE
+REQUEST_TO_KEEP_SESSION_DIR = $REQUEST_TO_KEEP_SESSION_DIR
+REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON = $REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
 EOF
 
     #########################################################################################
@@ -5145,7 +5171,7 @@ EOF
          LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-v"
     fi
 
-    if [ "$BUILD_TYPE" = release ] ; then
+    if [ "$PROFILE" = release ] ; then
           CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -Os"
         CXXFLAGS_FOR_BUILD="$CXXFLAGS_FOR_BUILD -Os"
        OBJCFLAGS_FOR_BUILD="$OBJCFLAGS_FOR_BUILD -Os"
@@ -5254,13 +5280,13 @@ EOF
         fi
 
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
-        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
+        if [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
             export CMAKE_EXPORT_COMPILE_COMMANDS=ON
         else
             export CMAKE_EXPORT_COMPILE_COMMANDS=OFF
         fi
 
-        case $BUILD_TYPE in
+        case $PROFILE in
             debug)   CMAKE_BUILD_TYPE=Debug   ;;
             release) CMAKE_BUILD_TYPE=Release ;;
         esac
@@ -5501,11 +5527,11 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    if [ "$PACKAGE_USE_BSYSTEM_GMAKE" = 1 ] && [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
+    if [ "$PACKAGE_USE_BSYSTEM_GMAKE" = 1 ] && [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
         PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 bear"
     fi
 
-    if [ "$CCACHE_ENABLED" = 1 ] ; then
+    if [ "$ENABLE_CCACHE" = 1 ] ; then
         PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 ccache"
     fi
 
@@ -5741,7 +5767,7 @@ $DOT_CONTENT
         printf '\n'
     }
 
-    [ "$CCACHE_ENABLED" = 1 ] && {
+    [ "$ENABLE_CCACHE" = 1 ] && {
         CCACHE=$(command -v ccache) || abort 1 "command not found: ccache"
         run "$CCACHE"    --version
         printf '\n'
@@ -6154,10 +6180,10 @@ EOF
 
     step "config CFLAGS CXXFLAGS CPPFLAGS LDFLAGS"
 
-    CCFLAGS="--sysroot $SYSROOT -Qunused-arguments -fPIC"
-    XXFLAGS="--sysroot $SYSROOT -Qunused-arguments -fPIC"
-    PPFLAGS="--sysroot $SYSROOT -Qunused-arguments -include $NDKPKG_COMMON_H_FILEPATH"
-    LDFLAGS="--sysroot $SYSROOT -Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+    CCFLAGS="-Qunused-arguments -fPIC"
+    XXFLAGS="-Qunused-arguments -fPIC"
+    PPFLAGS="-Qunused-arguments -include $NDKPKG_COMMON_H_FILEPATH"
+    LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
 
     CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
     XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
@@ -6204,8 +6230,8 @@ EOF
 
     ##############################################
 
-    if [ "$LINK_TYPE" = 'static-only' ] ; then
-        LDFLAGS="$LDFLAGS -static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker"
+    if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] ; then
+        LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker $LDFLAG"
     fi
 
     ##############################################
@@ -6216,12 +6242,24 @@ EOF
         LDFLAGS="$LDFLAGS -Wl,-v"
     fi
 
-    if [ "$BUILD_TYPE" = release ] ; then
+    if [ "$PROFILE" = release ] ; then
         PPFLAGS="$PPFLAGS -DNDEBUG"
         CCFLAGS="$CCFLAGS -Os"
         XXFLAGS="$XXFLAGS -Os"
-        LDFLAGS="$LDFLAGS -Wl,-s"
     fi
+
+    ##############################################
+
+    if [ "$ENABLE_LTO" = 1 ] ; then
+        LDFLAGS="$LDFLAGS -flto"
+    fi
+
+    ##############################################
+
+    case $ENABLE_STRIP in
+        all)   LDFLAGS="$LDFLAGS -Wl,-s" ;;
+        debug) LDFLAGS="$LDFLAGS -Wl,-S" ;;
+    esac
 
     ##############################################
 
@@ -6505,13 +6543,13 @@ EOF
         fi
 
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_EXPORT_COMPILE_COMMANDS.html
-        if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
+        if [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
             export CMAKE_EXPORT_COMPILE_COMMANDS=ON
         else
             export CMAKE_EXPORT_COMPILE_COMMANDS=OFF
         fi
 
-        case $BUILD_TYPE in
+        case $PROFILE in
             debug)   CMAKE_BUILD_TYPE=Debug   ;;
             release) CMAKE_BUILD_TYPE=Release ;;
         esac
@@ -6546,6 +6584,10 @@ EOF
     if [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] ; then
         step "config environment variables for cargo and rustc"
 
+        if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] ; then
+            run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
+        fi
+
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
 
@@ -6570,12 +6612,6 @@ EOF
 
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
         export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib"
-
-        if [ "$LINK_TYPE" = 'static-only' ] ; then
-            run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
-
-            RUSTFLAGS="$RUSTFLAGS -Clink-arg=-static -Clink-arg=-ffunction-sections -Clink-arg=-fdata-sections -Clink-arg=-Wl,--gc-sections -Clink-arg=-Wl,--no-dynamic-linker"
-        fi
 
         for LDFLAG in $LDFLAGS
         do
@@ -6755,7 +6791,7 @@ EOF
             x86_64)  export GOARCH=amd64 ;;
         esac
 
-        if [ "$LINK_TYPE" = 'static-only' ] ; then
+        if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] ; then
             run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
         fi
     fi
@@ -6826,43 +6862,11 @@ EOF
         run "echo 'INPUT($LIBCLANG_RT_BUILTINS_FILEPATH -l:libunwind.a)' > '$PACKAGE_WORKING_DIR/lib/libgcc.a'"
     fi
 
-    #if [ "$LINK_TYPE" = 'static-only' ] ; then
-        #run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libc.a)'  > '$PACKAGE_WORKING_DIR/lib/libc.a'"
-        #run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libm.a)'  > '$PACKAGE_WORKING_DIR/lib/libm.a'"
-        #run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libz.a)'  > '$PACKAGE_WORKING_DIR/lib/libz.a'"
-        #run "echo 'INPUT($SYSTEM_LIBRARY_DIR/libdl.a)' > '$PACKAGE_WORKING_DIR/lib/libdl.a'"
-    #fi
-
-    #########################################################################################
-
-    [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] && {
-        step "create symlinks for dependent libraries"
-
-        case $LINK_TYPE in
-            static-only|static-most) LINK_LIBRARY_TYPE='a'  ;;
-            shared-only|shared-most) LINK_LIBRARY_TYPE='so' ;;
-        esac
-
-        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-        do
-            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
-
-            [ -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] || continue
-
-            for f in $(find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name "lib*.$LINK_LIBRARY_TYPE" -printf '%P\n')
-            do
-                cp -v "$DEPENDENT_PACKAGE_LIBRARY_DIR/$f" "$PACKAGE_WORKING_DIR/lib/$f"
-            done
-        done
-
-        unset LINK_LIBRARY_TYPE
-    }
-
     #########################################################################################
 
     step "set up ccache"
 
-    if [ "$CCACHE_ENABLED" = 1 ] ; then
+    if [ "$ENABLE_CCACHE" = 1 ] ; then
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-cc"
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-c++"
 
@@ -7104,7 +7108,7 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    [ "$CCACHE_ENABLED" = 1 ] && {
+    [ "$ENABLE_CCACHE" = 1 ] && {
         step "show ccache statistics summary"
         note "Before Build:"
         run  cat "$PACKAGE_WORKING_DIR/ccache-s.txt"
@@ -7112,7 +7116,7 @@ $PACKAGE_DOTWEAK
         run  ccache -s
     }
 
-    [ "$KEEP_SESSION_DIR" != 1 ] && {
+    [ "$REQUEST_TO_KEEP_SESSION_DIR" != 1 ] && {
         step "delete the working directory"
         run rm -rf "$PACKAGE_WORKING_DIR"
     }
@@ -7238,7 +7242,7 @@ __tweak_pc_files() {
         sed_in_place "s|-I$NDKPKG_HOME[^' ]*||g"   "$pcfile"
         sed_in_place "s|-L$NDKPKG_HOME[^' ]*||g"   "$pcfile"
         sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
-        sed_in_place "s|--sysroot $SYSROOT||"      "$pcfile"
+        sed_in_place "s|--sysroot=$SYSROOT||"      "$pcfile"
 
         if grep -q 'Libs.private:' "$pcfile" ; then
             LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
@@ -7433,12 +7437,12 @@ gow() {
         GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
     fi
 
-    if [ "$BUILD_TYPE" = release ] ; then
+    if [ "$PROFILE" = release ] ; then
         GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -s -w"
     fi
 
     if [ "$NATIVE_OS_KIND" != darwin ] ; then
-        if [ "$LINK_TYPE" = static-only ] && [ "$CGO_ENABLED" -eq 1 ] ; then
+        if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] && [ "$CGO_ENABLED" -eq 1 ] ; then
             GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
         fi
     fi
@@ -7782,7 +7786,7 @@ gmakew() {
         GMAKE_OPTIONS="$GMAKE_OPTIONS --debug V=1"
     fi
 
-    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
+    if [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
         run bear -- $GMAKE $GMAKE_OPTIONS $*
     else
         run         $GMAKE $GMAKE_OPTIONS $*
@@ -7813,29 +7817,38 @@ cmakew_parse_args() {
 cmakew() {
     cmakew_parse_args "$@"
 
-    CMAKE_CONFIG_OPTIONS="-Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=$CMAKE_EXPORT_COMPILE_COMMANDS -DBUILD_TESTING=OFF"
-
-    # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_FIND_DEBUG_MODE=TRUE"
-    fi
-
     if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
+        CMAKE_CONFIG_OPTIONS="-Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=$CMAKE_EXPORT_COMPILE_COMMANDS -DBUILD_TESTING=OFF"
+
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
+        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_FIND_DEBUG_MODE=TRUE"
+        fi
+
         CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX='$PACKAGE_INSTALL_DIR' -S $PACKAGE_BSCRIPT_DIR -B $PACKAGE_BCACHED_DIR"
 
         run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
         run $CMAKE --build   "$PACKAGE_BCACHED_DIR" -- -j$BUILD_NJOBS &&
         run $CMAKE --install "$PACKAGE_BCACHED_DIR"
     else
-        case $BUILD_TYPE in
-            debug)   CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_BUILD_TYPE=Debug"   ;;
-            release) CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_BUILD_TYPE=Release" ;;
+        case $PROFILE in
+            debug)   CMAKE_BUILD_TYPE=Debug   ;;
+            release) CMAKE_BUILD_TYPE=Release ;;
         esac
 
-        if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_VERBOSE_MAKEFILE=OFF -DCMAKE_COLOR_MAKEFILE=OFF"
+        if [ "$LOG_LEVEL" -eq 0 ] ; then
+            CMAKE_VERBOSE_MAKEFILE=OFF
+            CMAKE_COLOR_MAKEFILE=OFF
         else
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON  -DCMAKE_COLOR_MAKEFILE=ON"
+            CMAKE_VERBOSE_MAKEFILE=ON
+            CMAKE_COLOR_MAKEFILE=ON
+        fi
+
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
+        if [ "$LOG_LEVEL" -ge 3 ] ; then
+            CMAKE_FIND_DEBUG_MODE=ON
+        else
+            CMAKE_FIND_DEBUG_MODE=OFF
         fi
 
         case $TARGET_PLATFORM_ARCH in
@@ -7845,53 +7858,101 @@ cmakew() {
             x86_64)  CMAKE_SYSTEM_PROCESSOR=x86_64  ;;
         esac
 
-        # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
-        CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
+        CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/android.toolchain.cmake"
 
-        # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
-        case $LINK_TYPE in
-            static-only) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'          > "$CMAKE_PROJECT_INCLUDE" ;;
-            static-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-only) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so")\n'         > "$CMAKE_PROJECT_INCLUDE" ;;
-            shared-most) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")\n'    > "$CMAKE_PROJECT_INCLUDE" ;;
-        esac
+        echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+
+        cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
+message(STATUS "CMake command: \${CMAKE_COMMAND}")
+message(STATUS "CMake version: \${CMAKE_VERSION}")
+
+if ("\${BUILD_SHARED_LIBS}" STREQUAL "")
+    set(BUILD_SHARED_LIBS Release)
+endif()
+
+set(ANDROID_ABI "${TARGET_PLATFORM_ABI}")
+set(ANDROID_PLATFORM "android-${TARGET_PLATFORM_VERS}")
+set(ANDROID_TOOLCHAIN clang)
+set(ANDROID_ARM_NEON TRUE)
+set(ANDROID_STL c++_shared)
+include(${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake)
+
+message(STATUS "CMAKE_HOST_SYSTEM_NAME: \${CMAKE_HOST_SYSTEM_NAME}")
+message(STATUS "     CMAKE_SYSTEM_NAME: \${CMAKE_SYSTEM_NAME}")
+
+set(CMAKE_BUILD_TYPE  $CMAKE_BUILD_TYPE)
+
+set(CMAKE_C_COMPILER "$CC")
+set(CMAKE_C_FLAGS "$CPPFLAGS $CFLAGS")
+
+set(CMAKE_CXX_COMPILER "$CXX")
+set(CMAKE_CXX_FLAGS "$CPPFLAGS $CXXFLAGS")
+
+set(CMAKE_ASM_COMPILER "$CC")
+
+set(CMAKE_SHARED_LINKER_FLAGS "$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')")
+set(CMAKE_EXE_LINKER_FLAGS    "$LDFLAGS")
+
+set(CMAKE_C_COMPILER_AR     "$AR")
+set(CMAKE_C_COMPILER_RANLIB "$RANLIB")
+
+set(CMAKE_CXX_COMPILER_AR     "$AR")
+set(CMAKE_CXX_COMPILER_RANLIB "$RANLIB")
+
+set(CMAKE_AR      "$AR")
+set(CMAKE_RANLIB  "$RANLIB")
+
+set(CMAKE_LINKER  "$LD")
+
+set(CMAKE_NM      "$NM")
+set(CMAKE_READELF "$READELF")
+
+set(CMAKE_OBJCOPY "$OBJCOPY")
+set(CMAKE_OBJDUMP "$OBJDUMP")
+
+set(CMAKE_STRIP   "$STRIP")
+
+set(CMAKE_ADDR2LINE "$ADDR2LINE")
+
+if ("\${CMAKE_EXE_LINKER_FLAGS}" MATCHES ".*-static.*")
+    set(CMAKE_SKIP_INSTALL_RPATH ON)
+endif()
+
+set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
+set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+EOF
+
+        if [ "$ENABLE_CCACHE" = 1 ] ; then
+            cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
+set(NDK_CCACHE "$CCACHE")
+EOF
+        fi
 
         if [ "$LOG_LEVEL" -gt 0 ] ; then
-            run cat "$CMAKE_PROJECT_INCLUDE"
+            if command -v bat > /dev/null ; then
+                run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
+            else
+                run cat "$CMAKE_TOOLCHAIN_FILE"
+            fi
         fi
-
-        CMAKE_SHARED_LINKER_FLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-
-        CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS
-        -DCMAKE_TOOLCHAIN_FILE='$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake'
-        -DCMAKE_PROJECT_INCLUDE='$CMAKE_PROJECT_INCLUDE'
-        -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR
-        -DCMAKE_FIND_ROOT_PATH='$CMAKE_FIND_ROOT_PATH'
-        -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
-        -DCMAKE_INSTALL_PREFIX='$PACKAGE_INSTALL_DIR'
-        -DCMAKE_C_FLAGS='$CFLAGS $CPPFLAGS'
-        -DCMAKE_CXX_FLAGS='$CXXFLAGS $CPPFLAGS'
-        -DCMAKE_SHARED_LINKER_FLAGS='$CMAKE_SHARED_LINKER_FLAGS'
-        -DCMAKE_EXE_LINKER_FLAGS='$LDFLAGS'
-        -DANDROID_TOOLCHAIN=clang
-        -DANDROID_ABI=$TARGET_PLATFORM_ABI
-        -DANDROID_ARM_NEON=TRUE
-        -DANDROID_STL=c++_shared
-        -DANDROID_PLATFORM=$TARGET_PLATFORM_VERS"
-
-        if [ "$CCACHE_ENABLED" = 1 ] ; then
-            CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DNDK_CCACHE=$CCACHE"
-        fi
-
-        CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -S $PACKAGE_BSCRIPT_DIR -B $PACKAGE_BCACHED_DIR"
 
         if [ -f "$PACKAGE_BCACHED_DIR/CMakeCache.txt" ] ; then
             rm  "$PACKAGE_BCACHED_DIR/CMakeCache.txt"
         fi
 
-        run $CMAKE $CMAKE_CONFIG_OPTIONS $@ &&
-        run $CMAKE --build   "$PACKAGE_BCACHED_DIR" -- -j$BUILD_NJOBS &&
-        run $CMAKE --install "$PACKAGE_BCACHED_DIR"
+        run "$CMAKE" \
+            -Wno-dev \
+            -DCMAKE_INSTALL_LIBDIR="$PACKAGE_INSTALL_DIR/lib" \
+            -DCMAKE_INSTALL_PREFIX="$PACKAGE_INSTALL_DIR" \
+            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+            -DCMAKE_VERBOSE_MAKEFILE="$CMAKE_VERBOSE_MAKEFILE" \
+            -DCMAKE_COLOR_MAKEFILE="$CMAKE_COLOR_MAKEFILE" \
+            -DBUILD_TESTING=OFF \
+            -S "$PACKAGE_BSCRIPT_DIR" \
+            -B "$PACKAGE_BCACHED_DIR" "$@" &&
+        run "$CMAKE" --build   "$PACKAGE_BCACHED_DIR" -- "-j$BUILD_NJOBS" &&
+        run "$CMAKE" --install "$PACKAGE_BCACHED_DIR"
     fi
 }
 
@@ -7922,7 +7983,7 @@ xmakew() {
     fi
 
     if [ -z "$XMAKE_CONFIG_OPTION_MODE" ] ; then
-        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --mode=$BUILD_TYPE"
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --mode=$PROFILE"
     fi
 
     if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
@@ -7975,7 +8036,7 @@ cpp = '$CXX'
 ar = '$AR'
 strip = '$STRIP'
 cmake = '$CMAKE'
-pkgconfig = '$PKG_CONFIG'
+pkg-config = '$PKG_CONFIG'
 
 [built-in options]
 c_args = $(to_meson_array $CFLAGS $CPPFLAGS)
@@ -7984,13 +8045,9 @@ cpp_args = $(to_meson_array $CXXFLAGS $CPPFLAGS)
 cpp_link_args = $(to_meson_array $LDFLAGS)
 EOF
 
-    MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$BUILD_TYPE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD --cross-file=$MESON_CROSS_FILE -Dlibdir=lib"
+    MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$PROFILE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD --cross-file=$MESON_CROSS_FILE -Dlibdir=lib"
 
     MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
-
-    case $LINK_TYPE in
-        static-only|static-most) MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
-    esac
 
     MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
     MESON_INSTALL_ARGS="-C $PACKAGE_BCACHED_DIR"
@@ -8023,18 +8080,18 @@ to_meson_array() {
 ndk_build() {
     # https://developer.android.com/ndk/downloads/revision_history#expandable-33
     # Android NDK r7 (November 2011)
-    if [ "$CCACHE_ENABLED" = 1 ] ; then
+    if [ "$ENABLE_CCACHE" = 1 ] ; then
         export NDK_CCACHE=$CCACHE
     fi
 
     NDK_BUILD_ARGS="NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=Android.mk APP_PLATFORM=android-$TARGET_PLATFORM_VERS APP_STRIP_MODE=-S"
 
-    case $BUILD_TYPE in
+    case $PROFILE in
         debug)   NDK_BUILD_ARGS="$NDK_BUILD_ARGS NDK_DEBUG=1" ;;
         release) NDK_BUILD_ARGS="$NDK_BUILD_ARGS NDK_DEBUG=0" ;;
     esac
 
-    if [ "$EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
+    if [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] ; then
         NDK_BUILD_ARGS="$NDK_BUILD_ARGS GEN_COMPILE_COMMANDS_DB=true"
     fi
 
@@ -8313,7 +8370,7 @@ __setup() {
     UPPM_PACKAGE_EXEFIND_PATH="${UPPM_PACKAGE_EXEFIND_PATH#':'}"
     UPPM_PACKAGE_ACLOCAL_PATH="${UPPM_PACKAGE_ACLOCAL_PATH#':'}"
 
-    cat > profile <<EOF
+    cat > env.sh <<EOF
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
@@ -8502,13 +8559,17 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
         ${COLOR_BLUE}-vv${COLOR_OFF}
             very verbose mode. many many messages will be output to terminal.
 
-        ${COLOR_BLUE}--build-type=<debug|release>${COLOR_OFF}
-            specify the build type.
+        ${COLOR_BLUE}--profile=<debug|release>${COLOR_OFF}
+            specify the build profile.
 
-        ${COLOR_BLUE}--link-type=<static-only|static-most|shared-only|shared-most>${COLOR_OFF}
-            specify the link strategy.
+        ${COLOR_BLUE}--exe=<fsle|msle|pie>${COLOR_OFF}
+            specify the executable linking strategy.
 
-            a fully  statically linked executable is a executable that without any additional library dependencies even the standard C library.
+             pie is short for Position Independent Executable
+            fsle is short for  Fully Statically Linked Executable
+            msle is short for Mostly Statically Linked Executable
+
+            a  fully statically linked executable is a executable that without any additional library dependencies even   the standard C library.
             a mostly statically linked executable is a executable that without any additional library dependencies except the standard C library.
 
             a fully  statically linked executable is easy to distribute to all version of Android devices.
@@ -8873,8 +8934,8 @@ fi
 
 ##################################################################################
 
-if [ -f "$NDKPKG_CORE_DIR/profile" ] ; then
-    .   "$NDKPKG_CORE_DIR/profile"
+if [ -f "$NDKPKG_CORE_DIR/env.sh" ] ; then
+    .   "$NDKPKG_CORE_DIR/env.sh"
 else
     abort 1 "please run ${COLOR_GREEN}$NDKPKG setup${COLOR_OFF} command first, then try again."
 fi

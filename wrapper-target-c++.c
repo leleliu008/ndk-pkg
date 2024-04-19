@@ -4,10 +4,13 @@
 #include <string.h>
 
 #include <unistd.h>
+#include <sys/stat.h>
 
-#define ACTION_COMPILE 1
-#define ACTION_CREATE_SHARED_LIBRARY 2
-#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE 3
+#define ACTION_PREPROCESS            1
+#define ACTION_COMPILE               2
+#define ACTION_ASSEMBLE              3
+#define ACTION_CREATE_SHARED_LIBRARY 4
+#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE  3
 #define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
 
 int main(int argc, char * argv[]) {
@@ -77,27 +80,35 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    const char * options[6] = { "-shared", "-static", "--static", "-pie", "-c", "-o" };
-          int    indexes[6] = {    -1,         -1,        -1,       -1,    -1,   -1  };
+    const char * actions[8] = { "-E", "-S", "-c", "-shared", "-static", "--static", "-pie" };
+          int    indexes[8] = {  -1,   -1,   -1,      -1,        -1,         -1,      -1,  };
 
     for (int i = 1; i < argc; i++) {
         for (int j = 0; j < 6; j++) {
-            if (strcmp(argv[i], options[j]) == 0) {
+            if (strcmp(argv[i], actions[j]) == 0) {
                 indexes[j] = i;
                 break;
             }
         }
     }
 
+    /////////////////////////////////////////////////////////////////
+
     int action = 0;
 
     if (indexes[0] > 0) {
-        // if -shared option is specified, then remove -static , --static , -pie options if they also are specified
-        action = ACTION_CREATE_SHARED_LIBRARY;
-    } else if ((indexes[1] > 0) || (indexes[2] > 0)) {
-        // if -shared option is not specified, but -static or --static option is specified, then remove -pie , -Wl,-Bdynamic option if it also is specified
-        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
+        action = ACTION_PREPROCESS;
+    } else if (indexes[1] > 0) {
+        action = ACTION_COMPILE;
+    } else if (indexes[2] > 0) {
+        action = ACTION_ASSEMBLE;
     } else if (indexes[3] > 0) {
+        action = ACTION_CREATE_SHARED_LIBRARY;
+    } else if (indexes[4] > 0) {
+        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
+    } else if (indexes[5] > 0) {
+        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
+    } else if (indexes[6] > 0) {
         action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
     }
 
@@ -108,6 +119,9 @@ int main(int argc, char * argv[]) {
     char sonameArg[100]; sonameArg[0] = '\0';
 
     if (action == ACTION_CREATE_SHARED_LIBRARY) {
+        // remove -static , --static , -pie options if they also are specified
+        int oIndex = -1;
+
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "-static") == 0) {
                 argv2[i] = (char*)"-fPIC";
@@ -116,6 +130,10 @@ int main(int argc, char * argv[]) {
             } else if (strcmp(argv[i], "-pie") == 0) {
                 argv2[i] = (char*)"-fPIC";
             } else {
+                if (strcmp(argv[i], "-o") == 0) {
+                    oIndex = i;
+                }
+
                 argv2[i] = argv[i];
             }
         }
@@ -123,7 +141,7 @@ int main(int argc, char * argv[]) {
         char * outputFilePath = NULL;
         char * outputFileName = NULL;
 
-        if (indexes[5] == -1) {
+        if (oIndex == -1) {
             // It's rare to see. like -o/a/b/libxx.so.1
             for (int i = 1; i < argc; i++) {
                 if (strncmp(argv[i], "-o", 2) == 0) {
@@ -134,7 +152,7 @@ int main(int argc, char * argv[]) {
             }
         } else {
             // if -o <FILE> option is specified.
-            int i = indexes[5] + 1;
+            int i = oIndex + 1;
 
             if (i < argc) {
                 outputFilePath = argv[i];
@@ -183,6 +201,7 @@ int main(int argc, char * argv[]) {
             }
         }
     } else if (action == ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE) {
+        // remove -pie , -Wl,-Bdynamic option if it also is specified
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "-rdynamic") == 0) {
                 argv2[i] = (char*)"-static";
@@ -192,13 +211,73 @@ int main(int argc, char * argv[]) {
                 argv2[i] = (char*)"-static";
             } else if (strcmp(argv[i], "-pie") == 0) {
                 argv2[i] = (char*)"-static";
+            } else if (argv[i][0] == '/') {
+                int len = 0;
+
+                int slashIndex = -1;
+
+                for (int j = 0; ; j++) {
+                    if (argv[i][j] == '\0') {
+                        len = j;
+                        break;
+                    } else if (argv[i][j] == '/') {
+                        slashIndex = j;
+                    }
+                }
+
+                const char * filename = argv[i] + slashIndex + 1;
+
+                if (strcmp(filename, "libm.so") == 0) {
+                    argv[i][0] = '-';
+                    argv[i][1] = 'l';
+                    argv[i][2] = 'm';
+                    argv[i][3] = '\0';
+                } else {
+                    if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
+                        argv[i][len - 2] = 'a';
+                        argv[i][len - 1] = '\0';
+
+                        struct stat st;
+
+                        if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                            argv[i][len - 2] = 's';
+                            argv[i][len - 1] = 'o';
+                        }
+                    }
+                }
+
+                argv2[i] = argv[i];
             } else {
                 argv2[i] = argv[i];
             }
         }
     } else {
-        for (int i = 1; i < argc; i++) {
-            argv2[i] = argv[i];
+        const char * NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE = getenv("NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE");
+
+        if (NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE != NULL && strcmp(NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE, "1") == 0) {
+            for (int i = 1; i < argc; i++) {
+                if (argv[i][0] == '/') {
+                    int len = strlen(argv[i]);
+
+                    if ((argv[i][len - 3] = '.') && (argv[i][len - 2] = 's') && (argv[i][len - 1] = 'o')) {
+                        argv[i][len - 2] = 'a';
+                        argv[i][len - 1] = '\0';
+
+                        struct stat st;
+
+                        if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                            argv[i][len - 2] = 's';
+                            argv[i][len - 1] = 'o';
+                        }
+                    }
+                } else {
+                    argv2[i] = argv[i];
+                }
+            }
+        } else {
+            for (int i = 1; i < argc; i++) {
+                argv2[i] = argv[i];
+            }
         }
     }
 
@@ -219,6 +298,16 @@ int main(int argc, char * argv[]) {
         }
     } else {
         argv2[argc + 2] = NULL;
+    }
+
+    /////////////////////////////////////////////////////////////////
+
+    for (int i = 0; ;i++) {
+        if (argv2[i] == NULL) {
+            break;
+        } else {
+            fprintf(stderr, "%s\n", argv2[i]);
+        }
     }
 
     /////////////////////////////////////////////////////////////////
