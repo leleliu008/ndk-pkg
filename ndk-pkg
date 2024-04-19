@@ -1018,9 +1018,6 @@ filetype_from_url() {
 
     unset PACKAGE_SYMLINK
 
-    # whether to support to create fully statically linked executables
-    unset PACKAGE_SFSLINK
-
     unset PACKAGE_PATCHES
     unset PACKAGE_RESLIST
 
@@ -1081,7 +1078,6 @@ filetype_from_url() {
 
     PACKAGE_INCLUDE="$(yq '.include | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_SYMLINK="$(yq '.symlink | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_SFSLINK="$(yq '.sfslink | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1377,9 +1373,6 @@ filetype_from_url() {
     [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] && {
         PACKAGE_BINBSTD=1
         PACKAGE_BUILD_IN_BSCRIPT_DIR=1
-
-        # https://github.com/golang/go/issues/59942
-        PACKAGE_SFSLINK=0
     }
 
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
@@ -4979,9 +4972,33 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] && [ "$PACKAGE_SFSLINK" = 0 ] ; then
-        REQUEST_TO_CREATE_EXE_TYPE=msle
-        note "user request to create fully statically linked executables, but package '$PACKAGE_NAME' DO NOT support it, so we will downgrade to create mostly statically linked executables."
+    if [ -z "$PACKAGE_PKGTYPE" ] ; then
+        case $PACKAGE_NAME in
+            lib*)
+                PACKAGE_PKGTYPE=lib
+                ;;
+               *)
+                # https://github.com/golang/go/issues/59942
+                if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
+                    PACKAGE_PKGTYPE=pie
+                else
+                    PACKAGE_PKGTYPE=exe
+                fi
+        esac
+    fi
+
+    #########################################################################################
+
+    if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] ; then
+        if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
+            REQUEST_TO_CREATE_EXE_TYPE=msle
+            note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is a golang project and not supposed to create fully statically linked executables, so we will downgrade to create mostly statically linked executables. For more details, please read https://github.com/golang/go/issues/59942\n"
+        fi
+
+        if [ "$PACKAGE_PKGTYPE" = 'exe+lib' ] ; then
+            REQUEST_TO_CREATE_EXE_TYPE=msle
+            note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create both executables and libraries, so we will downgrade to create mostly statically linked executables."
+        fi
     fi
 
     #########################################################################################
@@ -6192,8 +6209,9 @@ EOF
 
     step "config CFLAGS CXXFLAGS CPPFLAGS LDFLAGS"
 
-    CCFLAGS="-Qunused-arguments -fPIC"
-    XXFLAGS="-Qunused-arguments -fPIC"
+    # https://gcc.gnu.org/onlinedocs/gcc-4.3.6/gcc/Warning-Options.html
+    CCFLAGS="-Qunused-arguments -fPIC -Wall -Werror=incompatible-library-redeclaration"
+    XXFLAGS="-Qunused-arguments -fPIC -Wall -Werror=incompatible-library-redeclaration"
     PPFLAGS="-Qunused-arguments -include $NDKPKG_COMMON_H_FILEPATH"
     LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
 
@@ -6243,7 +6261,9 @@ EOF
     ##############################################
 
     if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] ; then
-        LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker $LDFLAG"
+        if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+            LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker $LDFLAGS"
+        fi
     fi
 
     ##############################################
@@ -7616,6 +7636,10 @@ configure_only() {
             return 1
         fi
     else
+        # https://www.gnu.org/software/autoconf/manual/autoconf-2.71/html_node/Generic-Functions.html
+
+        export ac_cv_func_ffsl=yes
+        export ac_cv_func_wcslen=yes
         export ac_cv_func_faccessat=yes
         export ac_cv_func_sigsetmask=no
 
@@ -7626,6 +7650,69 @@ configure_only() {
         # https://android.googlesource.com/platform/bionic/+/master/docs/32-bit-abi.md#is-32_bit-on-lp32-y2038
         if [ "$TARGET_PLATFORM_NBIT" -eq 32 ] ; then
             export ac_year2038_required=no
+        fi
+
+        # string.h  void* _Nonnull memset_explicit(void* _Nonnull __dst, int __ch, size_t __n) __INTRODUCED_IN(34);
+        if [ "$TARGET_PLATFORM_VERS" -lt 34 ] ; then
+            export ac_cv_func_memset_explicit=no
+        fi
+
+        # malloc.h  void* _Nullable reallocarray(void* _Nullable __ptr, size_t __item_count, size_t __item_size) __BIONIC_ALLOC_SIZE(2, 3) __wur __INTRODUCED_IN(29);
+        if [ "$TARGET_PLATFORM_VERS" -lt 29 ] ; then
+            export ac_cv_func_reallocarray=no
+        fi
+
+        # extern void* _Nonnull (*volatile _Nonnull __malloc_hook)(size_t __byte_count, const void* _Nonnull __caller) __INTRODUCED_IN(28);
+        # spawn.h  int posix_spawnp(pid_t* _Nullable __pid, const char* _Nonnull __file, const posix_spawn_file_actions_t _Nullable * _Nullable __actions, const posix_spawnattr_t _Nullable * _Nullable __attr, char* const _Nonnull __argv[_Nonnull], char* const _Nullable __env[_Nullable]) __INTRODUCED_IN(28);
+        if [ "$TARGET_PLATFORM_VERS" -ge 28 ] ; then
+            export ac_cv_func___malloc_hook=yes
+            export ac_cv_func_posix_spawnp=yes
+            export ac_cv_func_posix_spawn_file_actions_init=yes
+            export ac_cv_func_posix_spawn_file_actions_addclose=yes
+            export ac_cv_func_posix_spawn_file_actions_adddup2=yes
+            export ac_cv_func_posix_spawn_file_actions_destroy=yes
+        else
+            export ac_cv_func___malloc_hook=no
+            export ac_cv_func_posix_spawnp=no
+            export ac_cv_func_posix_spawn_file_actions_init=no
+            export ac_cv_func_posix_spawn_file_actions_addclose=no
+            export ac_cv_func_posix_spawn_file_actions_adddup2=no
+            export ac_cv_func_posix_spawn_file_actions_destroy=no
+        fi
+
+        # stdio_ext.h  void __fseterr(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
+        if [ "$TARGET_PLATFORM_VERS" -lt 28 ] ; then
+            export ac_cv_func___fseterr=no
+        fi
+
+        # sys/time.h  int futimesat(int __dir_fd, const char* __BIONIC_COMPLICATED_NULLNESS __path, const struct timeval __times[_Nullable 2]) __INTRODUCED_IN(26);
+        # sys/time.h  int lutimes(const char* _Nonnull __path, const struct timeval __times[_Nullable 2]) __INTRODUCED_IN(26);
+        # langinfo.h  char* _Nonnull nl_langinfo(nl_item __item) __INTRODUCED_IN(26);
+        if [ "$TARGET_PLATFORM_VERS" -ge 26 ] ; then
+            export ac_cv_func_futimesat=yes
+            export ac_cv_func_futimes=yes
+            export ac_cv_func_lutimes=yes
+            export ac_cv_func_nl_langinfo=yes
+        else
+            export ac_cv_func_futimesat=no
+            export ac_cv_func_futimes=no
+            export ac_cv_func_lutimes=no
+            export ac_cv_func_nl_langinfo=no
+        fi
+
+        # grp.h  int getgrnam_r(const char* _Nonnull __name, struct group* __BIONIC_COMPLICATED_NULLNESS __group, char* _Nonnull __buf, size_t __n, struct group* _Nullable *_Nonnull __result) __INTRODUCED_IN(24);
+        # grp.h  int getgrgid_r(gid_t __gid, struct group* __group, char* __buf, size_t __n, struct group** __result) __INTRODUCED_IN(24);
+        if [ "$TARGET_PLATFORM_VERS" -ge 24 ] ; then
+            export ac_cv_func_getgrnam_r=yes
+            export ac_cv_func_getgrgid_r=yes
+        else
+            export ac_cv_func_getgrnam_r=no
+            export ac_cv_func_getgrgid_r=no
+        fi
+
+        if [ "$TARGET_PLATFORM_VERS" -lt 23 ] ; then
+            export ac_cv_func_mempcpy=no
+            export ac_cv_func_wmempcpy=no
         fi
 
         CONFIGURE_ARG_ENABLE_NLS=0
@@ -8821,7 +8908,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.8.14
+NDKPKG_VERSION=0.8.15
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
