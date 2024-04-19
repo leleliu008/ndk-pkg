@@ -4382,6 +4382,13 @@ inspect_install_arguments() {
 
     #########################################################################################
 
+    case $REQUEST_TO_CREATE_EXE_TYPE in
+        '') REQUEST_TO_CREATE_EXE_TYPE=pie ;;
+        msle) export NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1 ;;
+    esac
+
+    #########################################################################################
+
     if [ -z "$PROFILE" ] ; then
         PROFILE=release
     fi

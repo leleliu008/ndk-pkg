@@ -87,7 +87,22 @@ int main(int argc, char * argv[]) {
         for (int j = 0; j < 6; j++) {
             if (strcmp(argv[i], actions[j]) == 0) {
                 indexes[j] = i;
-                break;
+
+                if (indexes[0] > 0) {
+                    break;
+                }
+
+                if (indexes[1] > 0) {
+                    break;
+                }
+
+                if (indexes[2] > 0) {
+                    break;
+                }
+
+                if (indexes[3] > 0) {
+                    break;
+                }
             }
         }
     }
