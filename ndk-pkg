@@ -4998,11 +4998,20 @@ __install_the_given_package() {
                 note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is a golang project and not supposed to create fully statically linked executables, so we will downgrade to create mostly statically linked executables. For more details, please read https://github.com/golang/go/issues/59942\n"
             elif [ "$PACKAGE_PKGTYPE" = 'exe+lib' ] ; then
                 export NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-                note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create both executables and libraries, so we will downgrade to create mostly statically linked executables."
+                note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create both executables and libraries, so we will downgrade to create mostly statically linked executables. For more details, please read https://github.com/android/ndk/issues/2017"
             elif [ "$PACKAGE_PKGTYPE" = exe ] ; then
                 PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
             fi
     esac
+
+    #########################################################################################
+
+    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        if [ "$TARGET_PLATFORM_VERS" -ne "$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL" ] ; then
+            TARGET_PLATFORM_VERS="$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL"
+            abort 1 "You are requesting to create fully statically linked executables, but NDK only provide the libc.a for the latest Android API level $ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL. That's to say you're supposed to use Android API level $ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL to compile with this package. For more details, please read https://github.com/android/ndk/issues/2017"
+        fi
+    fi
 
     #########################################################################################
 
@@ -7012,6 +7021,17 @@ $PACKAGE_DOBUILD
 
     run cd "$PACKAGE_INSTALL_DIR" || abort 1 "nothing is installed."
 
+    #########################################################################################
+
+    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        if [ "$TARGET_PLATFORM_VERS" -ne "$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL" ] ; then
+            rm -rf include/
+            rm -rf lib/
+        fi
+    fi
+
+    #########################################################################################
+
     [ -z "$(ls)" ]                && abort 1 "nothing is installed."
 
     #########################################################################################
@@ -7696,13 +7716,14 @@ configure_only() {
             export ac_cv_func_reallocarray=no
         fi
 
-        # unistd.h  int syncfs(int __fd) __INTRODUCED_IN(28);
-        # sys/random.h  ssize_t getrandom(void* _Nonnull __buffer, size_t __buffer_size, unsigned int __flags) __wur __INTRODUCED_IN(28);
+        # unistd.h     int syncfs(int __fd) __INTRODUCED_IN(28);
+        # sys/random.h ssize_t getrandom(void* _Nonnull __buffer, size_t __buffer_size, unsigned int __flags) __wur __INTRODUCED_IN(28);
         # stdio_ext.h  void __fseterr(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
         # stdio_ext.h  int __freading(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
         # stdio_ext.h  int __fwriting(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
-        # extern void* _Nonnull (*volatile _Nonnull __malloc_hook)(size_t __byte_count, const void* _Nonnull __caller) __INTRODUCED_IN(28);
-        # spawn.h  int posix_spawnp(pid_t* _Nullable __pid, const char* _Nonnull __file, const posix_spawn_file_actions_t _Nullable * _Nullable __actions, const posix_spawnattr_t _Nullable * _Nullable __attr, char* const _Nonnull __argv[_Nonnull], char* const _Nullable __env[_Nullable]) __INTRODUCED_IN(28);
+        # stdio.h      size_t fwrite_unlocked(const void* _Nonnull __buf, size_t __size, size_t __count, FILE* _Nonnull __fp) __INTRODUCED_IN(28);
+        # extern       void* _Nonnull (*volatile _Nonnull __malloc_hook)(size_t __byte_count, const void* _Nonnull __caller) __INTRODUCED_IN(28);
+        # spawn.h      int posix_spawnp(pid_t* _Nullable __pid, const char* _Nonnull __file, const posix_spawn_file_actions_t _Nullable * _Nullable __actions, const posix_spawnattr_t _Nullable * _Nullable __attr, char* const _Nonnull __argv[_Nonnull], char* const _Nullable __env[_Nullable]) __INTRODUCED_IN(28);
         if [ "$TARGET_PLATFORM_VERS" -ge 28 ] ; then
             export ac_cv_func_syncfs=yes
             export ac_cv_func_getrandom=yes
@@ -7710,6 +7731,7 @@ configure_only() {
             export ac_cv_func___freading=yes
             export ac_cv_func___fwriting=yes
             export ac_cv_func___malloc_hook=yes
+            export ac_cv_func_fwrite_unlocked=yes
             export ac_cv_func_posix_spawnp=yes
             export ac_cv_func_posix_spawn_file_actions_init=yes
             export ac_cv_func_posix_spawn_file_actions_addclose=yes
@@ -7722,6 +7744,7 @@ configure_only() {
             export ac_cv_func___freading=no
             export ac_cv_func___fwriting=no
             export ac_cv_func___malloc_hook=no
+            export ac_cv_func_fwrite_unlocked=no
             export ac_cv_func_posix_spawnp=no
             export ac_cv_func_posix_spawn_file_actions_init=no
             export ac_cv_func_posix_spawn_file_actions_addclose=no
