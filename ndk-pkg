@@ -4285,11 +4285,11 @@ inspect_install_arguments() {
 
     unset REQUEST_TO_UPGRADE_IF_COULD_BE
 
-    unset REQUEST_TO_CREATE_EXE_TYPE
-
     unset REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
 
     unset REQUEST_TO_KEEP_SESSION_DIR
+
+    unset REQUESTED_EXETYPE
 
     unset SPECIFIED_PACKAGE_LIST
 
@@ -4327,8 +4327,8 @@ inspect_install_arguments() {
                 PROFILE="${1#*=}"
                 ;;
             --exe=*)
-                REQUEST_TO_CREATE_EXE_TYPE="${1#*=}"
-                case $REQUEST_TO_CREATE_EXE_TYPE in
+                REQUESTED_EXETYPE="${1#*=}"
+                case $REQUESTED_EXETYPE in
                     pie|fsle|msle) ;;
                     *)  abort 1 "--exe=<VALUE>, VALUE must be one of pie, fsle, msle"
                 esac
@@ -4380,10 +4380,9 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    case $REQUEST_TO_CREATE_EXE_TYPE in
-        '') REQUEST_TO_CREATE_EXE_TYPE=pie ;;
-        msle) export NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1 ;;
-    esac
+    if [ -z "$REQUESTED_EXETYPE" ] ; then
+        REQUESTED_EXETYPE=pie
+    fi
 
     #########################################################################################
 
@@ -4989,17 +4988,19 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] ; then
-        if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
-            REQUEST_TO_CREATE_EXE_TYPE=msle
-            note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is a golang project and not supposed to create fully statically linked executables, so we will downgrade to create mostly statically linked executables. For more details, please read https://github.com/golang/go/issues/59942\n"
-        fi
-
-        if [ "$PACKAGE_PKGTYPE" = 'exe+lib' ] ; then
-            REQUEST_TO_CREATE_EXE_TYPE=msle
-            note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create both executables and libraries, so we will downgrade to create mostly statically linked executables."
-        fi
-    fi
+    case $REQUESTED_EXETYPE in
+        msle)   export NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1 ;;
+        fsle)
+            if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
+                export NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
+                note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is a golang project and not supposed to create fully statically linked executables, so we will downgrade to create mostly statically linked executables. For more details, please read https://github.com/golang/go/issues/59942\n"
+            elif [ "$PACKAGE_PKGTYPE" = 'exe+lib' ] ; then
+                export NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
+                note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create both executables and libraries, so we will downgrade to create mostly statically linked executables."
+            elif [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+            fi
+    esac
 
     #########################################################################################
 
@@ -5051,7 +5052,7 @@ NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
 
              DRYRUN = $DRYRUN
       ENABLE_CCACHE = $ENABLE_CCACHE
-REQUEST_TO_CREATE_EXE_TYPE  = $REQUEST_TO_CREATE_EXE_TYPE
+REQUESTED_EXETYPE  = $REQUESTED_EXETYPE
 REQUEST_TO_KEEP_SESSION_DIR = $REQUEST_TO_KEEP_SESSION_DIR
 REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON = $REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
 EOF
@@ -6260,10 +6261,8 @@ EOF
 
     ##############################################
 
-    if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] ; then
-        if [ "$PACKAGE_PKGTYPE" = exe ] ; then
-            LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker $LDFLAGS"
-        fi
+    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker $LDFLAGS"
     fi
 
     ##############################################
@@ -6609,7 +6608,7 @@ EOF
     if [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] ; then
         step "config environment variables for cargo and rustc"
 
-        if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] ; then
+        if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
             run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
         fi
 
@@ -6815,10 +6814,6 @@ EOF
             i686)    export GOARCH=386   ;;
             x86_64)  export GOARCH=amd64 ;;
         esac
-
-        if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] ; then
-            run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
-        fi
     fi
 
     #########################################################################################
@@ -7467,7 +7462,7 @@ gow() {
     fi
 
     if [ "$NATIVE_OS_KIND" != darwin ] ; then
-        if [ "$REQUEST_TO_CREATE_EXE_TYPE" = fsle ] && [ "$CGO_ENABLED" -eq 1 ] ; then
+        if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] && [ "$CGO_ENABLED" -eq 1 ] ; then
             GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
         fi
     fi
@@ -7638,6 +7633,7 @@ configure_only() {
     else
         # https://www.gnu.org/software/autoconf/manual/autoconf-2.71/html_node/Generic-Functions.html
 
+        export ac_cv_func_pow=yes
         export ac_cv_func_ffsl=yes
         export ac_cv_func_wcslen=yes
         export ac_cv_func_faccessat=yes
@@ -7653,18 +7649,24 @@ configure_only() {
         fi
 
         # string.h  void* _Nonnull memset_explicit(void* _Nonnull __dst, int __ch, size_t __n) __INTRODUCED_IN(34);
-        if [ "$TARGET_PLATFORM_VERS" -lt 34 ] ; then
+        if [ "$TARGET_PLATFORM_VERS" -ge 34 ] ; then
+            export ac_cv_func_memset_explicit=yes
+        else
             export ac_cv_func_memset_explicit=no
         fi
 
         # malloc.h  void* _Nullable reallocarray(void* _Nullable __ptr, size_t __item_count, size_t __item_size) __BIONIC_ALLOC_SIZE(2, 3) __wur __INTRODUCED_IN(29);
-        if [ "$TARGET_PLATFORM_VERS" -lt 29 ] ; then
+        if [ "$TARGET_PLATFORM_VERS" -ge 29 ] ; then
+            export ac_cv_func_reallocarray=yes
+        else
             export ac_cv_func_reallocarray=no
         fi
 
+        # stdio_ext.h  void __fseterr(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
         # extern void* _Nonnull (*volatile _Nonnull __malloc_hook)(size_t __byte_count, const void* _Nonnull __caller) __INTRODUCED_IN(28);
         # spawn.h  int posix_spawnp(pid_t* _Nullable __pid, const char* _Nonnull __file, const posix_spawn_file_actions_t _Nullable * _Nullable __actions, const posix_spawnattr_t _Nullable * _Nullable __attr, char* const _Nonnull __argv[_Nonnull], char* const _Nullable __env[_Nullable]) __INTRODUCED_IN(28);
         if [ "$TARGET_PLATFORM_VERS" -ge 28 ] ; then
+            export ac_cv_func___fseterr=yes
             export ac_cv_func___malloc_hook=yes
             export ac_cv_func_posix_spawnp=yes
             export ac_cv_func_posix_spawn_file_actions_init=yes
@@ -7672,6 +7674,7 @@ configure_only() {
             export ac_cv_func_posix_spawn_file_actions_adddup2=yes
             export ac_cv_func_posix_spawn_file_actions_destroy=yes
         else
+            export ac_cv_func___fseterr=no
             export ac_cv_func___malloc_hook=no
             export ac_cv_func_posix_spawnp=no
             export ac_cv_func_posix_spawn_file_actions_init=no
@@ -7680,24 +7683,26 @@ configure_only() {
             export ac_cv_func_posix_spawn_file_actions_destroy=no
         fi
 
-        # stdio_ext.h  void __fseterr(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
-        if [ "$TARGET_PLATFORM_VERS" -lt 28 ] ; then
-            export ac_cv_func___fseterr=no
-        fi
-
         # sys/time.h  int futimesat(int __dir_fd, const char* __BIONIC_COMPLICATED_NULLNESS __path, const struct timeval __times[_Nullable 2]) __INTRODUCED_IN(26);
         # sys/time.h  int lutimes(const char* _Nonnull __path, const struct timeval __times[_Nullable 2]) __INTRODUCED_IN(26);
         # langinfo.h  char* _Nonnull nl_langinfo(nl_item __item) __INTRODUCED_IN(26);
+        # pwd.h  struct passwd* getpwent(void) __INTRODUCED_IN(26);
         if [ "$TARGET_PLATFORM_VERS" -ge 26 ] ; then
             export ac_cv_func_futimesat=yes
             export ac_cv_func_futimes=yes
             export ac_cv_func_lutimes=yes
             export ac_cv_func_nl_langinfo=yes
+            export ac_cv_func_setpwent=yes
+            export ac_cv_func_getpwent=yes
+            export ac_cv_func_endpwent=yes
         else
             export ac_cv_func_futimesat=no
             export ac_cv_func_futimes=no
             export ac_cv_func_lutimes=no
             export ac_cv_func_nl_langinfo=no
+            export ac_cv_func_setpwent=no
+            export ac_cv_func_getpwent=no
+            export ac_cv_func_endpwent=no
         fi
 
         # grp.h  int getgrnam_r(const char* _Nonnull __name, struct group* __BIONIC_COMPLICATED_NULLNESS __group, char* _Nonnull __buf, size_t __n, struct group* _Nullable *_Nonnull __result) __INTRODUCED_IN(24);
@@ -7710,7 +7715,10 @@ configure_only() {
             export ac_cv_func_getgrgid_r=no
         fi
 
-        if [ "$TARGET_PLATFORM_VERS" -lt 23 ] ; then
+        if [ "$TARGET_PLATFORM_VERS" -ge 23 ] ; then
+            export ac_cv_func_mempcpy=yes
+            export ac_cv_func_wmempcpy=yes
+        else
             export ac_cv_func_mempcpy=no
             export ac_cv_func_wmempcpy=no
         fi
@@ -7930,7 +7938,7 @@ cmakew() {
             CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
 
             # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
-            case $REQUEST_TO_CREATE_EXE_TYPE in
+            case $REQUESTED_EXETYPE in
                 fsle) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'       > "$CMAKE_PROJECT_INCLUDE" ;;
                 msle) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
             esac
