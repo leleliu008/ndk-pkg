@@ -4407,6 +4407,8 @@ inspect_install_arguments() {
 
     # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
     unset TARGET_ARCH
+
+    unset LIBS
 }
 
 __install_the_given_packages() {
@@ -7633,11 +7635,26 @@ configure_only() {
     else
         # https://www.gnu.org/software/autoconf/manual/autoconf-2.71/html_node/Generic-Functions.html
 
+        export ac_cv_search_log=-lm
+        export ac_cv_search_ceil=-lm
+
+        export ac_cv_lib_m_sqrt=yes
+
         export ac_cv_func_pow=yes
         export ac_cv_func_ffsl=yes
+        export ac_cv_func_memset=yes
+        export ac_cv_func_strchr=yes
+        export ac_cv_func_stpcpy=yes
+        export ac_cv_func_strtol=yes
+        export ac_cv_func_strdup=yes
+        export ac_cv_func_strndup=yes
         export ac_cv_func_wcslen=yes
+        export ac_cv_func_isblank=yes
+        export ac_cv_func_strerror=yes
+        export ac_cv_func_snprintf=yes
         export ac_cv_func_faccessat=yes
         export ac_cv_func_sigsetmask=no
+        export ac_cv_func_strcasecmp=yes
 
         export ac_cv_func_malloc_0_nonnull=yes
         export ac_cv_func_calloc_0_nonnull=yes
@@ -7662,11 +7679,17 @@ configure_only() {
             export ac_cv_func_reallocarray=no
         fi
 
+        # sys/random.h  ssize_t getrandom(void* _Nonnull __buffer, size_t __buffer_size, unsigned int __flags) __wur __INTRODUCED_IN(28);
         # stdio_ext.h  void __fseterr(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
+        # stdio_ext.h  int __freading(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
+        # stdio_ext.h  int __fwriting(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
         # extern void* _Nonnull (*volatile _Nonnull __malloc_hook)(size_t __byte_count, const void* _Nonnull __caller) __INTRODUCED_IN(28);
         # spawn.h  int posix_spawnp(pid_t* _Nullable __pid, const char* _Nonnull __file, const posix_spawn_file_actions_t _Nullable * _Nullable __actions, const posix_spawnattr_t _Nullable * _Nullable __attr, char* const _Nonnull __argv[_Nonnull], char* const _Nullable __env[_Nullable]) __INTRODUCED_IN(28);
         if [ "$TARGET_PLATFORM_VERS" -ge 28 ] ; then
+            export ac_cv_func_getrandom=yes
             export ac_cv_func___fseterr=yes
+            export ac_cv_func___freading=yes
+            export ac_cv_func___fwriting=yes
             export ac_cv_func___malloc_hook=yes
             export ac_cv_func_posix_spawnp=yes
             export ac_cv_func_posix_spawn_file_actions_init=yes
@@ -7674,7 +7697,10 @@ configure_only() {
             export ac_cv_func_posix_spawn_file_actions_adddup2=yes
             export ac_cv_func_posix_spawn_file_actions_destroy=yes
         else
+            export ac_cv_func_getrandom=no
             export ac_cv_func___fseterr=no
+            export ac_cv_func___freading=no
+            export ac_cv_func___fwriting=no
             export ac_cv_func___malloc_hook=no
             export ac_cv_func_posix_spawnp=no
             export ac_cv_func_posix_spawn_file_actions_init=no
@@ -7683,6 +7709,7 @@ configure_only() {
             export ac_cv_func_posix_spawn_file_actions_destroy=no
         fi
 
+        # stdio.h     char* _Nonnull ctermid(char* _Nullable __buf) __INTRODUCED_IN(26);
         # sys/time.h  int futimesat(int __dir_fd, const char* __BIONIC_COMPLICATED_NULLNESS __path, const struct timeval __times[_Nullable 2]) __INTRODUCED_IN(26);
         # sys/time.h  int lutimes(const char* _Nonnull __path, const struct timeval __times[_Nullable 2]) __INTRODUCED_IN(26);
         # langinfo.h  char* _Nonnull nl_langinfo(nl_item __item) __INTRODUCED_IN(26);
@@ -7691,18 +7718,20 @@ configure_only() {
             export ac_cv_func_futimesat=yes
             export ac_cv_func_futimes=yes
             export ac_cv_func_lutimes=yes
-            export ac_cv_func_nl_langinfo=yes
+            export ac_cv_func_ctermid=yes
             export ac_cv_func_setpwent=yes
             export ac_cv_func_getpwent=yes
             export ac_cv_func_endpwent=yes
+            export ac_cv_func_nl_langinfo=yes
         else
             export ac_cv_func_futimesat=no
             export ac_cv_func_futimes=no
             export ac_cv_func_lutimes=no
-            export ac_cv_func_nl_langinfo=no
+            export ac_cv_func_ctermid=no
             export ac_cv_func_setpwent=no
             export ac_cv_func_getpwent=no
             export ac_cv_func_endpwent=no
+            export ac_cv_func_nl_langinfo=no
         fi
 
         # grp.h  int getgrnam_r(const char* _Nonnull __name, struct group* __BIONIC_COMPLICATED_NULLNESS __group, char* _Nonnull __buf, size_t __n, struct group* _Nullable *_Nonnull __result) __INTRODUCED_IN(24);
@@ -7715,12 +7744,15 @@ configure_only() {
             export ac_cv_func_getgrgid_r=no
         fi
 
+        # stdio_ext.h  int __fsetlocking(FILE* _Nonnull __fp, int __type) __INTRODUCED_IN(23);
         if [ "$TARGET_PLATFORM_VERS" -ge 23 ] ; then
             export ac_cv_func_mempcpy=yes
             export ac_cv_func_wmempcpy=yes
+            export ac_cv_func___fsetlocking=yes
         else
             export ac_cv_func_mempcpy=no
             export ac_cv_func_wmempcpy=no
+            export ac_cv_func___fsetlocking=no
         fi
 
         CONFIGURE_ARG_ENABLE_NLS=0
@@ -7978,8 +8010,6 @@ cmakew() {
         esac
 
         CMAKE_TOOLCHAIN_FILE="$PACKAGE_WORKING_DIR/android.toolchain.cmake"
-
-        echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
 
         cat > "$CMAKE_TOOLCHAIN_FILE" <<EOF
 message(STATUS "CMake command: \${CMAKE_COMMAND}")
