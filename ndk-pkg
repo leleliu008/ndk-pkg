@@ -7644,6 +7644,7 @@ configure_only() {
         export ac_cv_func_ffsl=yes
         export ac_cv_func_memset=yes
         export ac_cv_func_strchr=yes
+        export ac_cv_func_strstr=yes
         export ac_cv_func_stpcpy=yes
         export ac_cv_func_strtol=yes
         export ac_cv_func_strdup=yes
@@ -7655,6 +7656,7 @@ configure_only() {
         export ac_cv_func_faccessat=yes
         export ac_cv_func_sigsetmask=no
         export ac_cv_func_strcasecmp=yes
+        export ac_cv_func_vsnprintf=yes
 
         export ac_cv_func_malloc_0_nonnull=yes
         export ac_cv_func_calloc_0_nonnull=yes
@@ -7748,13 +7750,16 @@ configure_only() {
         fi
 
         # stdio_ext.h  int __fsetlocking(FILE* _Nonnull __fp, int __type) __INTRODUCED_IN(23);
+        # string.h     char* _Nonnull strerror_l(int __errno_value, locale_t _Nonnull __l) __INTRODUCED_IN(23);
         if [ "$TARGET_PLATFORM_VERS" -ge 23 ] ; then
             export ac_cv_func_mempcpy=yes
             export ac_cv_func_wmempcpy=yes
+            export ac_cv_func_strerror_l=yes
             export ac_cv_func___fsetlocking=yes
         else
             export ac_cv_func_mempcpy=no
             export ac_cv_func_wmempcpy=no
+            export ac_cv_func_strerror_l=no
             export ac_cv_func___fsetlocking=no
         fi
 
