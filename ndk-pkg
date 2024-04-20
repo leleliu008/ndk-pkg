@@ -7666,10 +7666,13 @@ configure_only() {
         fi
 
         # string.h  void* _Nonnull memset_explicit(void* _Nonnull __dst, int __ch, size_t __n) __INTRODUCED_IN(34);
+        # stdio_ext.h  size_t __freadahead(FILE* _Nonnull __fp) __INTRODUCED_IN(34);
         if [ "$TARGET_PLATFORM_VERS" -ge 34 ] ; then
             export ac_cv_func_memset_explicit=yes
+            export ac_cv_func___freadahead=yes
         else
             export ac_cv_func_memset_explicit=no
+            export ac_cv_func___freadahead=no
         fi
 
         # malloc.h  void* _Nullable reallocarray(void* _Nullable __ptr, size_t __item_count, size_t __item_size) __BIONIC_ALLOC_SIZE(2, 3) __wur __INTRODUCED_IN(29);
