@@ -7642,10 +7642,15 @@ configure_only() {
 
         export ac_cv_func_pow=yes
         export ac_cv_func_ffsl=yes
+        export ac_cv_func_free=yes
+        export ac_cv_func_calloc=yes
+        export ac_cv_func_malloc=yes
+        export ac_cv_func_realloc=yes
         export ac_cv_func_memset=yes
         export ac_cv_func_strchr=yes
         export ac_cv_func_strstr=yes
         export ac_cv_func_stpcpy=yes
+        export ac_cv_func_strcpy=yes
         export ac_cv_func_strtol=yes
         export ac_cv_func_strdup=yes
         export ac_cv_func_strndup=yes
@@ -7677,6 +7682,13 @@ configure_only() {
             export ac_cv_func___freadahead=no
         fi
 
+        # sys/stat.h int statx(int __dir_fd, const char* _Nonnull __path, int __flags, unsigned __mask, struct statx* _Nonnull __buf) __INTRODUCED_IN(30);
+        if [ "$TARGET_PLATFORM_VERS" -ge 30 ] ; then
+            export ac_cv_func_statx=yes
+        else
+            export ac_cv_func_statx=no
+        fi
+
         # malloc.h  void* _Nullable reallocarray(void* _Nullable __ptr, size_t __item_count, size_t __item_size) __BIONIC_ALLOC_SIZE(2, 3) __wur __INTRODUCED_IN(29);
         if [ "$TARGET_PLATFORM_VERS" -ge 29 ] ; then
             export ac_cv_func_reallocarray=yes
@@ -7684,6 +7696,7 @@ configure_only() {
             export ac_cv_func_reallocarray=no
         fi
 
+        # unistd.h  int syncfs(int __fd) __INTRODUCED_IN(28);
         # sys/random.h  ssize_t getrandom(void* _Nonnull __buffer, size_t __buffer_size, unsigned int __flags) __wur __INTRODUCED_IN(28);
         # stdio_ext.h  void __fseterr(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
         # stdio_ext.h  int __freading(FILE* _Nonnull __fp) __INTRODUCED_IN(28);
@@ -7691,6 +7704,7 @@ configure_only() {
         # extern void* _Nonnull (*volatile _Nonnull __malloc_hook)(size_t __byte_count, const void* _Nonnull __caller) __INTRODUCED_IN(28);
         # spawn.h  int posix_spawnp(pid_t* _Nullable __pid, const char* _Nonnull __file, const posix_spawn_file_actions_t _Nullable * _Nullable __actions, const posix_spawnattr_t _Nullable * _Nullable __attr, char* const _Nonnull __argv[_Nonnull], char* const _Nullable __env[_Nullable]) __INTRODUCED_IN(28);
         if [ "$TARGET_PLATFORM_VERS" -ge 28 ] ; then
+            export ac_cv_func_syncfs=yes
             export ac_cv_func_getrandom=yes
             export ac_cv_func___fseterr=yes
             export ac_cv_func___freading=yes
@@ -7702,6 +7716,7 @@ configure_only() {
             export ac_cv_func_posix_spawn_file_actions_adddup2=yes
             export ac_cv_func_posix_spawn_file_actions_destroy=yes
         else
+            export ac_cv_func_syncfs=no
             export ac_cv_func_getrandom=no
             export ac_cv_func___fseterr=no
             export ac_cv_func___freading=no
@@ -7751,14 +7766,20 @@ configure_only() {
 
         # stdio_ext.h  int __fsetlocking(FILE* _Nonnull __fp, int __type) __INTRODUCED_IN(23);
         # string.h     char* _Nonnull strerror_l(int __errno_value, locale_t _Nonnull __l) __INTRODUCED_IN(23);
+        # stdlib.h     int mkostemp(char* _Nonnull __template, int __flags) __INTRODUCED_IN(23);
+        # stdio.h      FILE* _Nullable fmemopen(void* _Nullable __buf, size_t __size, const char* _Nonnull __mode) __INTRODUCED_IN(23);
         if [ "$TARGET_PLATFORM_VERS" -ge 23 ] ; then
             export ac_cv_func_mempcpy=yes
             export ac_cv_func_wmempcpy=yes
+            export ac_cv_func_mkostemp=yes
+            export ac_cv_func_fmemopen=yes
             export ac_cv_func_strerror_l=yes
             export ac_cv_func___fsetlocking=yes
         else
             export ac_cv_func_mempcpy=no
             export ac_cv_func_wmempcpy=no
+            export ac_cv_func_mkostemp=no
+            export ac_cv_func_fmemopen=no
             export ac_cv_func_strerror_l=no
             export ac_cv_func___fsetlocking=no
         fi
