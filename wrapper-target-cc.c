@@ -250,6 +250,12 @@ int main(int argc, char * argv[]) {
                     argv[i][1] = 'l';
                     argv[i][2] = 'm';
                     argv[i][3] = '\0';
+                } else if (strcmp(filename, "libdl.so") == 0) {
+                    argv[i][0] = '-';
+                    argv[i][1] = 'l';
+                    argv[i][2] = 'd';
+                    argv[i][3] = 'l';
+                    argv[i][4] = '\0';
                 } else {
                     if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
                         argv[i][len - 2] = 'a';
@@ -277,7 +283,7 @@ int main(int argc, char * argv[]) {
                 if (argv[i][0] == '/') {
                     int len = strlen(argv[i]);
 
-                    if ((argv[i][len - 3] = '.') && (argv[i][len - 2] = 's') && (argv[i][len - 1] = 'o')) {
+                    if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
                         argv[i][len - 2] = 'a';
                         argv[i][len - 1] = '\0';
 

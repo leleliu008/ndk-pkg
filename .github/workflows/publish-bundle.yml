@@ -2,14 +2,27 @@ name: publish ndk-pkg core
 
 on:
   workflow_dispatch:
-    inputs:
-      release-version:
-        description: input a release version to be published
-        required: true
 
 jobs:
 
+  base:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - id:  calculate-release-version
+        run: |
+          RELEASE_VERSION="$(date +%Y.%m.%d)"
+
+          printf 'RELEASE_VERSION=%s\n' "$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      release-version: ${{ steps.calculate-release-version.outputs.RELEASE_VERSION }}
+
+
   macos:
+    needs: base
+
     runs-on: macos-14
 
     strategy:
@@ -41,8 +54,8 @@ jobs:
       - run: chmod a+x xcpkg
       - run: ./xcpkg setup
       - run: ./xcpkg update
-      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.1 --link-type=static-most
-      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.1 -o .
+      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.2 --link-type=static-most
+      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.2 -o .
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
@@ -51,7 +64,7 @@ jobs:
       - run: rm -rf out/.xcpkg
 
       - run: |
-          DIRNAME="ndk-pkg-core-${{ inputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}"
+          DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}"
           mv out "$DIRNAME"
           tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
 
@@ -62,6 +75,8 @@ jobs:
 
 
   linux:
+    needs: base
+
     runs-on: ubuntu-latest
 
     container: alpine:3.19
@@ -86,8 +101,8 @@ jobs:
       - run: chmod a+x ppkg
       - run: ./ppkg setup
       - run: ./ppkg update
-      - run: ./ppkg install uppm@0.15.1 --link-type=static-full
-      - run: ./ppkg pack    uppm@0.15.1 -o .
+      - run: ./ppkg install uppm@0.15.2 --link-type=static-full
+      - run: ./ppkg pack    uppm@0.15.2 -o .
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
@@ -96,7 +111,7 @@ jobs:
       - run: rm -rf out/.ppkg
 
       - run: |
-          DIRNAME="ndk-pkg-core-${{ inputs.release-version }}-linux-x86_64"
+          DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64"
           mv out "$DIRNAME"
           tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
 
@@ -108,7 +123,7 @@ jobs:
 
   publish:
 
-    needs: [macos, linux]
+    needs: [base, macos, linux]
 
     runs-on: ubuntu-latest
 
@@ -137,4 +152,4 @@ jobs:
           \`\`\`
           EOF
 
-      - run: gh release create ndk-pkg-core-${{ inputs.release-version }} ndk-pkg-core-*.tar.xz --title ndk-pkg-core-${{ inputs.release-version }} --notes-file notes.md
+      - run: gh release create ndk-pkg-core-${{ needs.base.outputs.release-version }} ndk-pkg-core-*.tar.xz --title ndk-pkg-core-${{ needs.base.outputs.release-version }} --notes-file notes.md

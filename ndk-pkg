@@ -6225,11 +6225,6 @@ EOF
 
     #########################################################################################
 
-    TARGET_TRIPLE2=$(printf '%s\n' "$TARGET_TRIPLE" | sed 's/armv7a/arm/')
-
-    SYSTEM_INCLUDE_DIR="$SYSROOT/usr/include"
-    SYSTEM_LIBRARY_DIR="$SYSROOT/usr/lib/$TARGET_TRIPLE2"
-
     NDKPKG_COMMON_H_FILEPATH="$PACKAGE_INSTALLING_INC_DIR/ndk-pkg-common.h"
 
     #########################################################################################
@@ -7298,7 +7293,7 @@ __tweak_pc_files() {
         sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
         sed_in_place "s|-I$NDKPKG_HOME[^' ]*||g"   "$pcfile"
         sed_in_place "s|-L$NDKPKG_HOME[^' ]*||g"   "$pcfile"
-        sed_in_place "s|-L$SYSTEM_LIBRARY_DIR||g"  "$pcfile"
+        sed_in_place "s|-L$SYSROOT[^' ]*||g"       "$pcfile"
         sed_in_place "s|--sysroot=$SYSROOT||"      "$pcfile"
 
         if grep -q 'Libs.private:' "$pcfile" ; then
