@@ -6225,8 +6225,8 @@ EOF
     step "config CFLAGS CXXFLAGS CPPFLAGS LDFLAGS"
 
     # https://gcc.gnu.org/onlinedocs/gcc-4.3.6/gcc/Warning-Options.html
-    CCFLAGS="-Qunused-arguments -fPIC -Wall -Werror=incompatible-library-redeclaration"
-    XXFLAGS="-Qunused-arguments -fPIC -Wall -Werror=incompatible-library-redeclaration"
+    CCFLAGS="-Qunused-arguments -fPIC -Wall"
+    XXFLAGS="-Qunused-arguments -fPIC -Wall"
     PPFLAGS="-Qunused-arguments -include $NDKPKG_COMMON_H_FILEPATH"
     LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
 
