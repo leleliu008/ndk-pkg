@@ -285,9 +285,9 @@ int main(int argc, char * argv[]) {
                             argv[i][len - 1] = 'o';
                         }
                     }
-                } else {
-                    argv2[i] = argv[i];
                 }
+
+                argv2[i] = argv[i];
             }
         } else {
             for (int i = 1; i < argc; i++) {

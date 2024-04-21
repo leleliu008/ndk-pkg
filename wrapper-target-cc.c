@@ -135,9 +135,9 @@ int main(int argc, char * argv[]) {
     char sonameArg[100]; sonameArg[0] = '\0';
 
     if (action == ACTION_CREATE_SHARED_LIBRARY) {
-        // remove -static , --static , -pie options if they also are specified
         int oIndex = -1;
 
+        // remove -static , --static , -pie options if they also are specified
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "-static") == 0) {
                 argv2[i] = (char*)"-fPIC";
@@ -288,9 +288,9 @@ int main(int argc, char * argv[]) {
                             argv[i][len - 1] = 'o';
                         }
                     }
-                } else {
-                    argv2[i] = argv[i];
                 }
+
+                argv2[i] = argv[i];
             }
         } else {
             for (int i = 1; i < argc; i++) {
