@@ -127,6 +127,7 @@ int main(int argc, char * argv[]) {
         action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
     }
 
+    fprintf(stderr, "action=%d\n", action);
     /////////////////////////////////////////////////////////////////
 
     char* argv2[argc + 5];
@@ -134,9 +135,9 @@ int main(int argc, char * argv[]) {
     char sonameArg[100]; sonameArg[0] = '\0';
 
     if (action == ACTION_CREATE_SHARED_LIBRARY) {
-        // remove -static , --static , -pie options if they also are specified
         int oIndex = -1;
 
+        // remove -static , --static , -pie options if they also are specified
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "-static") == 0) {
                 argv2[i] = (char*)"-fPIC";
@@ -241,6 +242,8 @@ int main(int argc, char * argv[]) {
                 }
 
                 const char * filename = argv[i] + slashIndex + 1;
+
+                fprintf(stderr, "filename=%s\n", filename);
 
                 if (strcmp(filename, "libm.so") == 0) {
                     argv[i][0] = '-';
