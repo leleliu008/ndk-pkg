@@ -7910,6 +7910,11 @@ configure_only() {
             CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"
         fi
 
+        # https://android.googlesource.com/platform/bionic/+/master/docs/32-bit-abi.md#is-32_bit-on-lp32-y2038
+        if [ "$TARGET_PLATFORM_NBIT" = 32 ] ; then
+            CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-year2038"
+        fi
+
         CONFIGURE_ENVS="$CONFIGURE_ENVS --with-pic
             CC='$CC'
             CFLAGS='$CFLAGS'
