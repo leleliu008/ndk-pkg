@@ -276,9 +276,9 @@ int main(int argc, char * argv[]) {
             }
         }
     } else {
-        const char * NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE = getenv("NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE");
+        const char * PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE = getenv("PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE");
 
-        if (NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE != NULL && strcmp(NDKPKG_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE, "1") == 0) {
+        if (PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE != NULL && strcmp(PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE, "1") == 0) {
             for (int i = 1; i < argc; i++) {
                 if (argv[i][0] == '/') {
                     int len = strlen(argv[i]);
