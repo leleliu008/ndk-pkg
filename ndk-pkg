@@ -4993,6 +4993,9 @@ __install_the_given_package() {
 
     #########################################################################################
 
+    unset PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
+    unset PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
+
     case $PACKAGE_PKGTYPE in
         exe)
             case $REQUEST_EXETYPE in
@@ -5019,12 +5022,6 @@ __install_the_given_package() {
                       note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create dynamically linked executables, so we will downgrade to create mostly statically linked executables."
             esac
             ;;
-        exe+lib)
-            case $REQUEST_EXETYPE in
-                msle) export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1 ;;
-                fsle) export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-                      note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create both executables and libraries, so we will downgrade to create mostly statically linked executables. For more details, please read https://github.com/android/ndk/issues/2017"
-            esac
     esac
 
     #########################################################################################
@@ -8280,7 +8277,7 @@ EOF
 
     MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
 
-    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
         MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
     fi
 
@@ -8800,12 +8797,14 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
         ${COLOR_BLUE}--exe=<fsle|msle|pie>${COLOR_OFF}
             specify the executable linking strategy.
 
-             pie is short for Position Independent Executable
+            This option only affects the packge whose type is exe or pie.
+
             fsle is short for  Fully Statically Linked Executable
             msle is short for Mostly Statically Linked Executable
+             pie is short for Position Independent Executable
 
-            a  fully statically linked executable is a executable that without any additional library dependencies even   the standard C library.
-            a mostly statically linked executable is a executable that without any additional library dependencies except the standard C library.
+            a  fully statically linked executable is a executable that without any additional libraries to be loaded at runtime.
+            a mostly statically linked executable is a executable that without any additional libraries except libc.so, libm.so, libdl.so, liblog.so, etc.
 
             a fully  statically linked executable is easy to distribute to all version of Android devices.
             a mostly statically linked executable is easy to distribute to one version of Android devices.
