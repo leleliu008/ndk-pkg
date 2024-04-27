@@ -6343,7 +6343,7 @@ EOF
     do
         # https://android.googlesource.com/platform/bionic/+/master/docs/status.md
 
-        case DEPENDENT_PACKAGE_NAME in
+        case $DEPENDENT_PACKAGE_NAME in
             libexecinfo)
                 if [ "$TARGET_PLATFORM_VERS" -lt 33 ] ; then
                     # https://android.googlesource.com/platform/bionic/+/master/libc/include/execinfo.h
