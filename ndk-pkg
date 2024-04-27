@@ -8759,7 +8759,7 @@ ${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <d2|dot|box|svg|png>] [-o <OUTP
 
     If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>
 
-    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.
+    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .d2|.dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.
 
     If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
 
@@ -8793,6 +8793,16 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
 
         ${COLOR_BLUE}--profile=<debug|release>${COLOR_OFF}
             specify the build profile.
+
+            debug:
+                  CFLAGS: -O0 -g
+                CXXFLAGS: -O0 -g
+
+            release:
+                  CFLAGS: -Os
+                CXXFLAGS: -Os
+                CPPFLAGS: -DNDEBUG
+                 LDFLAGS: -flto -Wl,-s
 
         ${COLOR_BLUE}--exe=<fsle|msle|pie>${COLOR_OFF}
             specify the executable linking strategy.
