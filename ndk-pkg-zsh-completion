@@ -190,8 +190,8 @@ function _ndk_pkg() {
                         '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[do not actually install the package]' \
                         '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
-                        '--build-type=-[specify build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-preferred shared-preferred)' \
+                        '--profile=-[specify build profile]:build-profile:(debug release)' \
+                        '--exe=-[specify exe linking strategy]:link-type:(fsle msle pie)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
@@ -206,8 +206,8 @@ function _ndk_pkg() {
                         '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
-                        '--build-type=-[specify build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-preferred shared-preferred)' \
+                        '--profile=-[specify build profile]:build-profile:(debug release)' \
+                        '--exe=-[specify exe linking strategy]:link-type:(fsle msle pie)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
@@ -222,8 +222,8 @@ function _ndk_pkg() {
                         '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
-                        '--build-type=-[specify build type]:build-type:(debug release)' \
-                        '--link-type=-[link static or shared library]:link-type:(static-only shared-only static-preferred shared-preferred)' \
+                        '--profile=-[specify build profile]:build-profile:(debug release)' \
+                        '--exe=-[specify exe linking strategy]:link-type:(fsle msle pie)' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
