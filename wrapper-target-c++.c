@@ -6,12 +6,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#define ACTION_PREPROCESS            1
-#define ACTION_COMPILE               2
-#define ACTION_ASSEMBLE              3
-#define ACTION_CREATE_SHARED_LIBRARY 4
-#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE  3
-#define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 4
+#define ACTION_PREPROCESS                           1
+#define ACTION_COMPILE                              2
+#define ACTION_ASSEMBLE                             3
+#define ACTION_CREATE_SHARED_LIBRARY                4
+#define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE  5
+#define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 6
 
 int main(int argc, char * argv[]) {
     char * const cxxc = getenv("ANDROID_NDK_CXX");
