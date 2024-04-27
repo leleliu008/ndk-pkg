@@ -6290,23 +6290,26 @@ EOF
         LDFLAGS="$LDFLAGS -Wl,-v"
     fi
 
-    if [ "$PROFILE" = release ] ; then
-        PPFLAGS="$PPFLAGS -DNDEBUG"
-        CCFLAGS="$CCFLAGS -Os"
-        XXFLAGS="$XXFLAGS -Os"
-    fi
-
     ##############################################
 
-    if [ "$ENABLE_LTO" = 1 ] ; then
-        LDFLAGS="$LDFLAGS -flto"
-    fi
+    case $PROFILE in
+        debug)
+            CCFLAGS="$CCFLAGS -O0 -g"
+            XXFLAGS="$XXFLAGS -O0 -g"
+            ;;
+        release)
+            PPFLAGS="$PPFLAGS -DNDEBUG"
+            CCFLAGS="$CCFLAGS -Os"
+            XXFLAGS="$XXFLAGS -Os"
 
-    ##############################################
+            if [ "$ENABLE_LTO" = 1 ] ; then
+                LDFLAGS="$LDFLAGS -flto"
+            fi
 
-    case $ENABLE_STRIP in
-        all)   LDFLAGS="$LDFLAGS -Wl,-s" ;;
-        debug) LDFLAGS="$LDFLAGS -Wl,-S" ;;
+            case $ENABLE_STRIP in
+                all)   LDFLAGS="$LDFLAGS -Wl,-s" ;;
+                debug) LDFLAGS="$LDFLAGS -Wl,-S" ;;
+            esac
     esac
 
     ##############################################
@@ -9046,7 +9049,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.9.0
+NDKPKG_VERSION=0.9.1
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
