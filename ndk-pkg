@@ -6281,7 +6281,7 @@ EOF
             CCFLAGS="$CCFLAGS -Os"
             XXFLAGS="$XXFLAGS -Os"
 
-            if [ "$ENABLE_LTO" = 1 ] ; then
+            if [ -z "$ENABLE_LTO" ] || [ "$ENABLE_LTO" = 1 ] ; then
                 LDFLAGS="$LDFLAGS -flto"
             fi
 
@@ -9025,7 +9025,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.9.2
+NDKPKG_VERSION=0.9.3
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
