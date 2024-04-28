@@ -2314,7 +2314,7 @@ __fetch_resources_of_the_given_package() {
 # {{{ ndk-pkg pack
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--keep-session-dir]
+# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--exclude=<PATH>] [--keep-session-dir]
 # __pack_the_given_installed_package    autoconf     -t tar.xz
   __pack_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
@@ -2326,11 +2326,13 @@ __fetch_resources_of_the_given_package() {
     unset OUTPUT_PATH
     unset OUTPUT_TYPE
 
+    unset EXCLUDES
+
     while [ -n "$1" ]
     do
         case $1 in
             --keep-session-dir)
-                REQUEST_TO_KEEP_SESSION_DIR=1
+                KEEP_SESSION_DIR=1
                 ;;
             -t) shift
 
@@ -2352,6 +2354,12 @@ __fetch_resources_of_the_given_package() {
                     OUTPUT_PATH="$1"
                 fi
                 ;;
+            --exclude=*)
+                EXCLUDE="${1#*=}"
+                if [ -n "$EXCLUDE" ] ; then
+                    EXCLUDES="$EXCLUDES $EXCLUDE"
+                fi
+                ;;
             *)  abort 1 "$NDKPKG pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
         esac
         shift
@@ -2359,10 +2367,31 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=0
+    SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-    if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/lib" ] ; then
-        for FILEPATH in $(find "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/lib" -type f)
+    run rm -rf     "$SESSION_DIR"
+    run install -d "$SESSION_DIR"
+    run cd         "$SESSION_DIR"
+
+    if [ -z "$EXCLUDES" ] ; then
+        run ln -s "$PACKAGE_INSTALLED_DIR" packed
+    else
+        run install -d packed
+
+        run cp -r "$PACKAGE_INSTALLED_DIR/." packed/
+
+        for EXCLUDE in $EXCLUDES
+        do
+            run rm -rf "packed/$EXCLUDE"
+        done
+    fi
+
+    ###########################################################################################
+
+    unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
+
+    if [ -d packed/lib ] ; then
+        for FILEPATH in $(find packed/lib -type f)
         do
             case $FILEPATH in
                 */lib*.a)   OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
@@ -2372,16 +2401,14 @@ __fetch_resources_of_the_given_package() {
         done
     fi
 
-    if [ -z "$PACKED_DIR_NAME" ] ; then
-        if [ -d "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/bin" ] ; then
-            for FILEPATH in $(find "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME/bin" -type f)
+    if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
+        if [ -d packed/bin ] ; then
+            for FILEPATH in $(find packed/bin -type f)
             do
-                FILEMAGIC=
                 FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
 
                 if [ "$FILEMAGIC" = '7F454C46' ] ; then
                     # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                    PT_INTERP=
                     PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
 
                     if [ -n "$PT_INTERP" ] ; then
@@ -2393,8 +2420,8 @@ __fetch_resources_of_the_given_package() {
         fi
     fi
 
-    if [ -z "$PACKED_DIR_NAME" ] ; then
-        for FILEPATH in $(find "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME" -type f -a -name "*.a")
+    if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
+        for FILEPATH in $(find packed -type f -name '*.a' -print -quit)
         do
             OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
         done
@@ -2408,111 +2435,63 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    unset OUTPUT_DIR
-    unset OUTPUT_FILEPATH
+    if [ -z "$OUTPUT_TYPE" ] ; then
+        case $OUTPUT_PATH in
+            *.tar.gz|*.tgz)
+                OUTPUT_TYPE=tar.gz
+                ;;
+            *.tar.xz|*.txz)
+                OUTPUT_TYPE=tar.xz
+                ;;
+            *.tar.lz|*.tlz)
+                OUTPUT_TYPE=tar.lz
+                ;;
+            *.tar.bz2|*.tbz2)
+                OUTPUT_TYPE=tar.bz2
+                ;;
+            *.zip)
+                OUTPUT_TYPE=zip
+                ;;
+            *.7z)
+                OUTPUT_TYPE=7z
+                ;;
+            *)  OUTPUT_TYPE=tar.xz
+        esac
+    fi
+
+    ###########################################################################################
+
+    OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_TYPE"
+
+    run mv packed "$PACKED_DIR_NAME"
+
+    run bsdtar cvaf "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg"
+
+    run du -sh "$OUTPUT_FILENAME"
+
+    run cd -
+
+    ###########################################################################################
 
     case $OUTPUT_PATH in
-        '')
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='tar.xz'
-            fi
-
-            OUTPUT_DIR="$PWD"
-            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
+        '') OUTPUT_PATH=.
             ;;
-        .|./)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='tar.xz'
-            fi
+        */*)
+            OUTPUT_DIR="${OUTPUT_PATH%/*}"
 
-            OUTPUT_DIR="$PWD"
-            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
-            ;;
-        ..|../)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='tar.xz'
-            fi
-
-            OUTPUT_DIR="$PWD/.."
-            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
-            ;;
-        */)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                OUTPUT_TYPE='tar.xz'
-            fi
-
-            case $OUTPUT_PATH in
-                /*) OUTPUT_DIR="$OUTPUT_PATH" ;;
-                *)  OUTPUT_DIR="$PWD/$OUTPUT_PATH"
-            esac
-
-            OUTPUT_FILEPATH="$OUTPUT_DIR/$PACKED_DIR_NAME.$OUTPUT_TYPE"
-            ;;
-        *)
-            if [ -z "$OUTPUT_TYPE" ] ; then
-                case $OUTPUT_PATH in
-                    *.tar.gz|*.tgz)
-                        OUTPUT_TYPE=tar.gz
-                        ;;
-                    *.tar.xz|*.txz)
-                        OUTPUT_TYPE=tar.xz
-                        ;;
-                    *.tar.lz|*.tlz)
-                        OUTPUT_TYPE=tar.lz
-                        ;;
-                    *.tar.bz2|*.tbz2)
-                        OUTPUT_TYPE=tar.bz2
-                        ;;
-                    *.zip)
-                        OUTPUT_TYPE=zip
-                        ;;
-                    *.7z)
-                        OUTPUT_TYPE=7z
-                        ;;
-                    *)  OUTPUT_TYPE=tar.xz
-                esac
-            fi
-
-            case $OUTPUT_PATH in
-                /*) OUTPUT_DIR="${OUTPUT_PATH%/*}"
-                    OUTPUT_FILEPATH="$OUTPUT_PATH"
-                    ;;
-                *)  OUTPUT_DIR="$PWD/$(dirname "$OUTPUT_PATH")"
-                    OUTPUT_FILEPATH="$PWD/$OUTPUT_PATH"
-            esac
+            [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
     esac
 
     ###########################################################################################
 
-    SESSION_DIR="$NDKPKG_HOME/run/$$"
+    run mv "$SESSION_DIR/$OUTPUT_FILENAME" "$OUTPUT_PATH"
 
-    step "create the session directory and change to it"
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
+    ###########################################################################################
 
-    step "make link refer to installed package root directory"
-    run ln -s "$NDKPKG_PACKAGE_INSTALLED_ROOT/$RECEIPT_PACKAGE_BUILTFOR_PLATFORM/$RECEIPT_PACKAGE_PKGNAME" "$PACKED_DIR_NAME"
-
-    step "packing"
-    run bsdtar cvaf "packed.$OUTPUT_TYPE" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg"
-
-    step "show size of packed file"
-    run "du -sh "packed.$OUTPUT_TYPE" | cut -f1"
-
-    if [ ! -d "$OUTPUT_DIR" ] ; then
-        step "create output directory"
-        run install -d "$OUTPUT_DIR"
-    fi
-
-    step "move the packed file to output directory"
-    run mv "packed.$OUTPUT_TYPE" "$OUTPUT_FILEPATH"
-
-    if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
+    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
         echo
         note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is specified."
     else
-        step "delete the session directory"
         run rm -rf "$SESSION_DIR"
     fi
 }
@@ -8855,7 +8834,7 @@ ${COLOR_GREEN}ndk-pkg logs <PACKAGE-SPEC>${COLOR_OFF}
     show logs of the given installed package.
 
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [--keep-session-dir]${COLOR_OFF}
     pack the given installed package.
 
     <OUTPUT-TYPE> must ends with one of tar.gz tar.xz tar.lz tar.bz2 zip
@@ -8871,6 +8850,8 @@ ${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] 
     If -o <OUTPUT-PATH> option is unspecified, <OUTPUT-PATH> would be assigned to ./<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
 
     If -t <OUTPUT-TYPE> option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
+
+    <PATH> is relative to installed root directory.
 
 
 ${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>] [--keep-session-dir]${COLOR_OFF}
@@ -9044,7 +9025,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.9.1
+NDKPKG_VERSION=0.9.2
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
