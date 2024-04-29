@@ -910,17 +910,39 @@ filetype_from_url() {
 
 # __load_formula_of_the_given_package <PACKAGE-NAME> [FORMULA-FILEPATH]
   __load_formula_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__load_formula_of_the_given_package <PACKAGE-NAME> [FORMULA-FILEPATH], <PACKAGE-NAME> is unspecified."
+    if [ -z "$1" ] ; then
+        abort 1 "__load_formula_of_the_given_package <PACKAGE-NAME> [FORMULA-FILEPATH], <PACKAGE-NAME> is unspecified."
+    else
+        PACKAGE_NAME="$1"
+        PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')
+    fi
 
-    unset PACKAGE_FORMULA_FILEPATH
+    #########################################################################################
 
-    unset PACKAGE_FORMULA_LOADED
+    if [ -z "$2" ] ; then
+        PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
 
-    unset PACKAGE_NAME
-    unset PACKAGE_NAME_UPPERCASE_UNDERSCORE
+        if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
+            abort 1 "package '$1' is not available."
+        fi
+    else
+        PACKAGE_FORMULA_FILEPATH="$2"
+    fi
+
+    #########################################################################################
 
     unset PACKAGE_PKGTYPE
+
     unset PACKAGE_SUMMARY
+
+    unset PACKAGE_LICENSE
+
+    unset PACKAGE_VERSION
+    unset PACKAGE_VERSION_MAJOR
+    unset PACKAGE_VERSION_MINOR
+    unset PACKAGE_VERSION_PATCH
+    unset PACKAGE_VERSION_TWEAK
+
     unset PACKAGE_WEB_URL
 
     unset PACKAGE_GIT_URL
@@ -950,15 +972,32 @@ filetype_from_url() {
     unset PACKAGE_RES_FILETYPE
     unset PACKAGE_RES_FILEPATH
 
-    unset PACKAGE_VERSION
-    unset PACKAGE_VERSION_MAJOR
-    unset PACKAGE_VERSION_MINOR
-    unset PACKAGE_VERSION_PATCH
-    unset PACKAGE_VERSION_TWEAK
+    # space-separated    perl modules that are depended by this package when installing, which will be installed via cpan
+    unset PACKAGE_DEP_PLM
 
-    unset PACKAGE_DEVELOPER
+    # space-separated python packages that are depended by this package when installing, which will be installed via pip3
+    unset PACKAGE_DEP_PYM
 
-    unset PACKAGE_LICENSE
+    # space-separated   uppm packages that are depended by this package when installing, which will be installed via uppm
+    unset PACKAGE_DEP_UPP
+
+    # space-separated ndk-pkg packages that are depended by this package when installing and/or runtime, which will be installed via ndk-pkg
+    unset PACKAGE_DEP_PKG
+
+    unset PACKAGE_PPFLAGS
+    unset PACKAGE_CCFLAGS
+    unset PACKAGE_XXFLAGS
+    unset PACKAGE_LDFLAGS
+
+    unset PACKAGE_ONREADY
+    unset PACKAGE_DO12345
+    unset PACKAGE_DOPATCH
+    unset PACKAGE_PREPARE
+    unset PACKAGE_DOBUILD
+    unset PACKAGE_DOTWEAK
+
+    unset PACKAGE_PATCHES
+    unset PACKAGE_RESLIST
 
     unset PACKAGE_BSYSTEM
     unset PACKAGE_BSYSTEM_MASTER
@@ -976,62 +1015,19 @@ filetype_from_url() {
     unset PACKAGE_USE_BSYSTEM_CONFIGURE
     unset PACKAGE_USE_BSYSTEM_NDK_BUILD
 
-    # package support min sdk api level
-    unset PACKAGE_API_MIN
-
-    # dir relative to $PACKAGE_WORKING_DIR/src, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
+    # directory relative to $PACKAGE_WORKING_DIR/src, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
     unset PACKAGE_BSCRIPT
 
-    # if build in build script dir, otherwise build in build dir
+    # whether to build in build script directory, otherwise build in build dir
     unset PACKAGE_BINBSTD
-    unset PACKAGE_BUILD_IN_BSCRIPT_DIR
 
-    # if build in parallel
-    unset PACKAGE_BUILD_IN_PARALLEL
+    # whether to build in parallel
     unset PACKAGE_PARALLEL
 
-    # space-separated    perl modules that are depended by this package when installing and/or runtime, which will be installed via cpan
-    unset PACKAGE_DEP_PLM
+    unset PACKAGE_DEVELOPER
 
-    # space-separated python packages that are depended by this package when installing and/or runtime, which will be installed via pip3
-    unset PACKAGE_DEP_PYM
-
-    # space-separated   ndk-pkg packages that are depended by this package when installing and/or runtime, which will be installed via uppm
-    unset PACKAGE_DEP_UPP
-
-    # space-separated   ndk-pkg packages that are depended by this package when installing and/or runtime, which will be installed via ndk-pkg
-    unset PACKAGE_DEP_PKG
-
-    unset PACKAGE_PPFLAGS
-    unset PACKAGE_CCFLAGS
-    unset PACKAGE_XXFLAGS
-    unset PACKAGE_LDFLAGS
-
-    unset PACKAGE_INCLUDE
-
-    unset PACKAGE_ONREADY
-    unset PACKAGE_DO12345
-    unset PACKAGE_DOPATCH
-    unset PACKAGE_PREPARE
-    unset PACKAGE_DOBUILD
-    unset PACKAGE_DOTWEAK
-
-    unset PACKAGE_SYMLINK
-
-    unset PACKAGE_PATCHES
-    unset PACKAGE_RESLIST
-
-    #########################################################################################
-
-    if [ -z "$2" ] ; then
-        PACKAGE_FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
-    else
-        PACKAGE_FORMULA_FILEPATH="$2"
-    fi
-
-    if [ -z "$PACKAGE_FORMULA_FILEPATH" ] ; then
-        abort 1 "package '$1' is not available."
-    fi
+    # package support min sdk api level
+    unset PACKAGE_API_MIN
 
     #########################################################################################
 
@@ -1076,13 +1072,6 @@ filetype_from_url() {
     PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_INCLUDE="$(yq '.include | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_SYMLINK="$(yq '.symlink | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-
-    PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-
-    PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-
     PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1093,55 +1082,15 @@ filetype_from_url() {
     PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RESLIST="$(yq '.reslist | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    #########################################################################################
+    PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    if [ -z "$PACKAGE_BSYSTEM" ] && [ -n "$PACKAGE_DOBUILD" ] ; then
-        for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_DOBUILD" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
-        do
-            case "$FirstWordOfLineInInstallActions" in
-                configure)    PACKAGE_BSYSTEM=configure ; break ;;
-                cmakew)       PACKAGE_BSYSTEM=cmake ; break ;;
-                xmakew)       PACKAGE_BSYSTEM=xmake ; break ;;
-                mesonw)       PACKAGE_BSYSTEM=meson ; break ;;
-                gmakew)       PACKAGE_BSYSTEM=gmake ; break ;;
-                cargow)       PACKAGE_BSYSTEM=cargo ; break ;;
-                go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
-            esac
-        done
-    fi
-
-    PACKAGE_BSYSTEM_MASTER="${PACKAGE_BSYSTEM%%' '*}"
+    PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     #########################################################################################
 
-    PACKAGE_NAME="$1"
-    PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')
-
-    if [ -n "$PACKAGE_GIT_NTH" ] ; then
-        is_integer "$PACKAGE_GIT_NTH" || abort "the value of git-nth mapping should be an integer."
+    if [ -z "$PACKAGE_SUMMARY" ] ; then
+        abort 1 "summary mapping not found in $PACKAGE_FORMULA_FILEPATH"
     fi
-
-    if [ -n "$PACKAGE_API_MIN" ] ; then
-        is_integer "$PACKAGE_API_MIN" || abort "the value of api-min mapping should be an integer."
-    fi
-
-    if [ -z "$PACKAGE_BINBSTD" ] ; then
-        PACKAGE_BINBSTD=0
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=0
-    else
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=$PACKAGE_BINBSTD
-    fi
-
-    if [ -z "$PACKAGE_PARALLEL" ] ; then
-        PACKAGE_PARALLEL=1
-        PACKAGE_BUILD_IN_PARALLEL=1
-    else
-        PACKAGE_BUILD_IN_PARALLEL="$PACKAGE_PARALLEL"
-    fi
-
-    [ -z "$PACKAGE_SYMLINK" ] && PACKAGE_SYMLINK=1
-
-    [ -z "$PACKAGE_SUMMARY" ] && abort 1 "summary mapping not found in $PACKAGE_FORMULA_FILEPATH"
 
     if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
         abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
@@ -1153,6 +1102,14 @@ filetype_from_url() {
 
     if [ -n "$PACKAGE_RES_URL" ] && [ -n "$PACKAGE_RESLIST" ] ; then
         abort 1 "res-url and reslist mapping shouldn't be used together in $PACKAGE_FORMULA_FILEPATH"
+    fi
+
+    if [ -n "$PACKAGE_GIT_NTH" ] ; then
+        is_integer "$PACKAGE_GIT_NTH" || abort "the value of git-nth mapping should be an integer."
+    fi
+
+    if [ -n "$PACKAGE_API_MIN" ] ; then
+        is_integer "$PACKAGE_API_MIN" || abort "the value of api-min mapping should be an integer."
     fi
 
     #########################################################################################
@@ -1287,6 +1244,29 @@ filetype_from_url() {
 
     #########################################################################################
 
+    if [     -z "$PACKAGE_BSYSTEM" ] ; then
+        if [ -z "$PACKAGE_DOBUILD" ] ; then
+            abort 1 "neither bsystem nor install mapping was found in $PACKAGE_FORMULA_FILEPATH"
+        else
+            for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_DOBUILD" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
+            do
+                case "$FirstWordOfLineInInstallActions" in
+                    configure)    PACKAGE_BSYSTEM=configure ; break ;;
+                    cmakew)       PACKAGE_BSYSTEM=cmake ; break ;;
+                    xmakew)       PACKAGE_BSYSTEM=xmake ; break ;;
+                    mesonw)       PACKAGE_BSYSTEM=meson ; break ;;
+                    gmakew)       PACKAGE_BSYSTEM=gmake ; break ;;
+                    cargow)       PACKAGE_BSYSTEM=cargo ; break ;;
+                    go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
+                esac
+            done
+        fi
+    fi
+
+    PACKAGE_BSYSTEM_MASTER="${PACKAGE_BSYSTEM%%' '*}"
+
+    #########################################################################################
+
     for BSTSTEM in $PACKAGE_BSYSTEM
     do
         case $BSTSTEM in
@@ -1309,27 +1289,6 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for BSTSTEM in $PACKAGE_BSYSTEM
-    do
-        case $BSTSTEM in
-            ndk-build)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake" ;;
-            autogen)     PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake" ;;
-            autotools)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake" ;;
-            configure)   PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"        ;;
-            cmake-gmake) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake gmake"  ;;
-            cmake-ninja) PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
-            cmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"  ;;
-            xmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"  ;;
-            meson)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
-            ninja)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"  ;;
-            gmake)       PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"  ;;
-            rake)        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"   ;;
-            go)          PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang" ;;
-        esac
-    done
-
-    #########################################################################################
-
     [ -z "$PACKAGE_DOBUILD" ] && {
         case $PACKAGE_BSYSTEM_MASTER in
             autogen)   PACKAGE_DOBUILD='configure' ;;
@@ -1342,7 +1301,6 @@ filetype_from_url() {
             gmake)     PACKAGE_DOBUILD='gmakew clean && gmakew && gmakew install' ;;
             cargo)     PACKAGE_DOBUILD='cargow install' ;;
             go)        PACKAGE_DOBUILD='gow' ;;
-            *)         abort 1 "install mapping not found in $PACKAGE_FORMULA_FILEPATH"
         esac
     }
 
@@ -1352,42 +1310,44 @@ filetype_from_url() {
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"
     fi
 
+    [ -n "$PACKAGE_DEP_PYM" ]                && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
+    [ -n "$PACKAGE_DEP_PLM" ]                && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake"
+
+    [ "$PACKAGE_USE_BSYSTEM_NDK_BUILD" = 1 ] && PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM gmake"
+    [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake"
+    [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake"
+    [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
+    [ "$PACKAGE_USE_BSYSTEM_MESON"     = 1 ] && PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
+    [ "$PACKAGE_USE_BSYSTEM_CMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake"
+    [ "$PACKAGE_USE_BSYSTEM_GMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
+    [ "$PACKAGE_USE_BSYSTEM_XMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"
+    [ "$PACKAGE_USE_BSYSTEM_NINJA"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"
+    [ "$PACKAGE_USE_BSYSTEM_RAKE"      = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"
+    [ "$PACKAGE_USE_BSYSTEM_GO"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
+
     #########################################################################################
 
-    [ "$PACKAGE_USE_BSYSTEM_MESON" = 1 ] && {
-        PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
-    }
+    [ "$PACKAGE_USE_BSYSTEM_GO"    = 1 ] && PACKAGE_BINBSTD=1
+    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && PACKAGE_BINBSTD=1
+    [ "$PACKAGE_USE_BSYSTEM_XMAKE" = 1 ] && PACKAGE_BINBSTD=1
 
-    [ -n "$PACKAGE_DEP_PYM" ] && {
-        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
-    }
+    if [ -z  "$PACKAGE_BINBSTD" ] ; then
+        if [ "$PACKAGE_BSYSTEM_MASTER" = gmake ] ; then
+            PACKAGE_BINBSTD=1
+        else
+            PACKAGE_BINBSTD=0
+        fi
+    fi
 
-    [ -n "$PACKAGE_DEP_PLM" ] && {
-        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake"
-    }
+    #########################################################################################
 
-    [ "$PACKAGE_BUILD_IN_PARALLEL" = 0 ] && {
-        BUILD_NJOBS=1
-    }
+    if [ -z "$PACKAGE_PARALLEL" ] ; then
+        PACKAGE_PARALLEL=1
+    fi
 
-    [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] && {
-        PACKAGE_BINBSTD=1
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=1
-    }
-
-    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
-        PACKAGE_BINBSTD=1
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=1
-    }
-
-    [ "$PACKAGE_USE_BSYSTEM_XMAKE" = 1 ] && {
-        PACKAGE_BINBSTD=1
-        PACKAGE_BUILD_IN_BSCRIPT_DIR=1
-    }
+    #########################################################################################
 
     PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
-
-    PACKAGE_FORMULA_LOADED=1
 }
 
 # }}}
@@ -1515,7 +1475,6 @@ EOF
     unset RECEIPT_PACKAGE_BSCRIPT
     unset RECEIPT_PACKAGE_DOPATCH
     unset RECEIPT_PACKAGE_INSTALL
-    unset RECEIPT_PACKAGE_SYMLINK
 
     unset RECEIPT_PACKAGE_BUILTBY
     unset RECEIPT_PACKAGE_BUILTAT
@@ -1580,8 +1539,6 @@ EOF
     RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_INSTALL="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-
-    RECEIPT_PACKAGE_SYMLINK="$(yq '.symlink | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_API_MIN="$(yq '.api-min | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_NDKVERS="$(yq '.ndkvers | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1855,9 +1812,8 @@ __search_packages() {
         --arg xxflags "$PACKAGE_XXFLAGS" \
         --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
-        --arg include2 "$PACKAGE_INCLUDE" \
         --arg api_min "$PACKAGE_API_MIN" \
-        --arg parallel $PACKAGE_BUILD_IN_PARALLEL \
+        --arg parallel $PACKAGE_PARALLEL \
         --arg developer "$PACKAGE_DEVELOPER" \
 '{
     "pkgname":$pkgname,
@@ -1890,7 +1846,6 @@ __search_packages() {
     "xxflags":$xxflags,
     "ppflags":$ppflags,
     "ldflags":$ldflags,
-    "include":$include2,
     "api-min":$api_min,
     "parallel":$parallel,
     "developer":$developer,
@@ -1942,7 +1897,7 @@ ccflags: $PACKAGE_CCFLAGS
 xxflags: $PACKAGE_XXFLAGS
 ldflags: $PACKAGE_LDFLAGS
 api-min: $PACKAGE_API_MIN
-parallel: $PACKAGE_BUILD_IN_PARALLEL
+parallel: $PACKAGE_PARALLEL
 EOF
     } | yq eval '. | with_entries(select(.value != null))'
 
@@ -2006,8 +1961,6 @@ PACKAGE_USE_BSYSTEM_CARGO
 PACKAGE_USE_BSYSTEM_AUTOGENSH
 PACKAGE_USE_BSYSTEM_AUTOTOOLS
 PACKAGE_USE_BSYSTEM_CONFIGURE
-PACKAGE_BUILD_IN_BSCRIPT_DIR
-PACKAGE_BUILD_IN_PARALLEL
 PACKAGE_DEP_PKG
 PACKAGE_DEP_UPP
 PACKAGE_DEP_PYM
@@ -2016,9 +1969,9 @@ PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
 PACKAGE_PPFLAGS
 PACKAGE_LDFLAGS
-PACKAGE_INCLUDE
 PACKAGE_API_MIN
 PACKAGE_FORMULA_FILEPATH
+PACKAGE_PARALLEL
 PACKAGE_DEVELOPER
 EOF
 }
@@ -2034,10 +1987,6 @@ EOF
             ;;
         --json)
             __info_the_given_available_package_as_json "$1"
-            ;;
-        include)
-            __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_INCLUDE"
             ;;
         onready)
             __load_formula_of_the_given_package "$1"
@@ -5005,7 +4954,7 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    if [ "$PACKAGE_BUILD_IN_PARALLEL" = 0 ] ; then
+    if [ "$PACKAGE_PARALLEL" = 0 ] ; then
         BUILD_NJOBS=1
     fi
 
@@ -6108,7 +6057,7 @@ EOF
 
                 run install -d "$PACKAGE_BCACHED_DIR"
 
-                if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = 1 ] ; then
+                if [ "$PACKAGE_BINBSTD" = 1 ] ; then
                     run cd "$PACKAGE_BSCRIPT_DIR"
                 else
                     run cd "$PACKAGE_BCACHED_DIR"
@@ -6277,9 +6226,22 @@ EOF
             XXFLAGS="$XXFLAGS -O0 -g"
             ;;
         release)
-            PPFLAGS="$PPFLAGS -DNDEBUG"
             CCFLAGS="$CCFLAGS -Os"
             XXFLAGS="$XXFLAGS -Os"
+
+            unset _U_NDEBUG_OPT_IS_SET
+
+            for item in $PACKAGE_PPFLAGS
+            do
+                [ "$item" = '-UNDEBUG' ] && {
+                    _U_NDEBUG_OPT_IS_SET=1
+                    break
+                }
+            done
+
+            if [ "$_U_NDEBUG_OPT_IS_SET" != 1 ] ; then
+                PPFLAGS="$PPFLAGS -DNDEBUG"
+            fi
 
             if [ -z "$ENABLE_LTO" ] || [ "$ENABLE_LTO" = 1 ] ; then
                 LDFLAGS="$LDFLAGS -flto"
@@ -6845,8 +6807,6 @@ EOF
     #define fseeko    fseek
 #endif
 
-$PACKAGE_INCLUDE
-
 #endif
 EOF
 
@@ -6998,7 +6958,7 @@ $PACKAGE_PREPARE
 
     step "install for target"
 
-    if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" = 1 ] ; then
+    if [ "$PACKAGE_BINBSTD" = 1 ] ; then
         run cd "$PACKAGE_BSCRIPT_DIR"
     else
         run cd "$PACKAGE_BCACHED_DIR"
@@ -7964,7 +7924,7 @@ gmakew() {
     fi
 
     if [ "$GMAKE_OPTION_SET_C" != 1 ] ; then
-        if [ "$PACKAGE_BUILD_IN_BSCRIPT_DIR" != 1 ] ; then
+        if [ "$PACKAGE_BINBSTD" != 1 ] ; then
             GMAKE_OPTIONS="$GMAKE_OPTIONS -C $PACKAGE_BCACHED_DIR"
         fi
     fi
@@ -9025,7 +8985,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.9.3
+NDKPKG_VERSION=0.9.4
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
