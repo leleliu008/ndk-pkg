@@ -4218,7 +4218,7 @@ inspect_install_arguments() {
 
     unset REQUEST_TO_KEEP_SESSION_DIR
 
-    unset REQUEST_EXETYPE
+    unset REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
 
     unset SPECIFIED_PACKAGE_LIST
 
@@ -4255,12 +4255,8 @@ inspect_install_arguments() {
             --profile=*)
                 PROFILE="${1#*=}"
                 ;;
-            --exe=*)
-                REQUEST_EXETYPE="${1#*=}"
-                case $REQUEST_EXETYPE in
-                    pie|fsle|msle) ;;
-                    *)  abort 1 "--exe=<VALUE>, VALUE must be one of pie, fsle, msle"
-                esac
+            --fsle)
+                REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
                 ;;
             --jobs=*)
                 BUILD_NJOBS="${1#*=}"
@@ -4305,12 +4301,6 @@ inspect_install_arguments() {
     if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
         exec 2>&1
-    fi
-
-    #########################################################################################
-
-    if [ -z "$REQUEST_EXETYPE" ] ; then
-        REQUEST_EXETYPE=pie
     fi
 
     #########################################################################################
@@ -4923,35 +4913,24 @@ __install_the_given_package() {
     #########################################################################################
 
     unset PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
-    unset PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
 
-    case $PACKAGE_PKGTYPE in
-        exe)
-            case $REQUEST_EXETYPE in
-                msle)
-                    export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-                    ;;
-                fsle)
-                    if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
-                        export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-                        note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is a golang project and not supposed to create fully statically linked executables, so we will downgrade to create mostly statically linked executables. For more details, please read https://github.com/golang/go/issues/59942\n"
-                    else
-                        PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+    if [ "$REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
+            note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is a golang project and not supposed to create fully statically linked executables, so we will downgrade to create mostly statically linked executables. For more details, please read https://github.com/golang/go/issues/59942\n"
+        else
+            case $PACKAGE_PKGTYPE in
+                exe)
+                    PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
 
-                        if [ "$TARGET_PLATFORM_VERS" -ne "$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL" ] ; then
-                            abort 1 "You are requesting to create fully statically linked executables, but NDK only provide the libc.a for the latest Android API level $ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL. That's to say you're supposed to use Android API level $ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL to compile with this package. For more details, please read https://github.com/android/ndk/issues/2017"
-                        fi
+                    if [ "$TARGET_PLATFORM_VERS" -ne "$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL" ] ; then
+                        abort 1 "You are requesting to create fully statically linked executables, but NDK only provide the libc.a for the latest Android API level $ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL. That's to say you're supposed to use Android API level $ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL to compile with this package. For more details, please read https://github.com/android/ndk/issues/2017"
                     fi
+                    ;;
+                pie)
+                    note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create dynamically linked executables, so we will downgrade to create mostly statically linked executables."
             esac
-            ;;
-        pie)
-            case $REQUEST_EXETYPE in
-                msle) export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1 ;;
-                fsle) export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-                      note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create dynamically linked executables, so we will downgrade to create mostly statically linked executables."
-            esac
-            ;;
-    esac
+        fi
+    fi
 
     #########################################################################################
 
@@ -5003,9 +4982,9 @@ NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
 
              DRYRUN = $DRYRUN
       ENABLE_CCACHE = $ENABLE_CCACHE
-REQUEST_EXETYPE  = $REQUEST_EXETYPE
 REQUEST_TO_KEEP_SESSION_DIR = $REQUEST_TO_KEEP_SESSION_DIR
 REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON = $REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
+REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE = $REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
 EOF
 
     #########################################################################################
@@ -6576,10 +6555,6 @@ EOF
     if [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] ; then
         step "config environment variables for cargo and rustc"
 
-        if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-            run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
-        fi
-
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
 
@@ -6842,6 +6817,10 @@ EOF
     run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/libpthread.a'"
     run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/librt.a'"
 
+    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        run "echo '!<arch>' > '$PACKAGE_WORKING_DIR/lib/liblog.a'"
+    fi
+
     if [ "$ANDROID_NDK_VERSION_MAJOR" -ge 23 ] ; then
         # https://github.com/rust-windowing/android-ndk-rs/issues/149
         if [ "$TARGET_PLATFORM_ARCH" = 'x86_64' ] ; then
@@ -6855,7 +6834,7 @@ EOF
     #########################################################################################
 
     if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
-        if [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
             step "copy dependent libraries to linker first search dir"
 
             for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
@@ -8093,20 +8072,19 @@ cmakew() {
     else
         unset CMAKE_PROJECT_INCLUDE
 
-        if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+        if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
             # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
             CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
 
             # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_LIBRARY_SUFFIXES.html
-            case $REQUEST_EXETYPE in
-                fsle) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'       > "$CMAKE_PROJECT_INCLUDE" ;;
-                msle) printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n' > "$CMAKE_PROJECT_INCLUDE" ;;
-            esac
+            if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+                printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")\n'       > "$CMAKE_PROJECT_INCLUDE"
+            else
+                printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n' > "$CMAKE_PROJECT_INCLUDE"
+            fi
 
             if [ "$LOG_LEVEL" -gt 0 ] ; then
-                if [ -n "$CMAKE_PROJECT_INCLUDE" ] && [ -f "$CMAKE_PROJECT_INCLUDE" ] ; then
-                    run cat "$CMAKE_PROJECT_INCLUDE"
-                fi
+                run cat "$CMAKE_PROJECT_INCLUDE"
             fi
         fi
 
@@ -8323,7 +8301,7 @@ EOF
 
     MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
 
-    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+    if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
         MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
     fi
 
@@ -8587,7 +8565,7 @@ __setup() {
 
     wfetch 'https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf' -o ./ --no-buffer
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' -o ndk-pkg-core-latest-release-version --no-buffer
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/dev/ndk-pkg-core-latest-release-version' -o ndk-pkg-core-latest-release-version --no-buffer
 
     ##################################################################################
 
@@ -8850,14 +8828,12 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
                 CPPFLAGS: -DNDEBUG
                  LDFLAGS: -flto -Wl,-s
 
-        ${COLOR_BLUE}--exe=<fsle|msle|pie>${COLOR_OFF}
-            specify the executable linking strategy.
+        ${COLOR_BLUE}--fsle${COLOR_OFF}
+            create Fully Statically Linked Executables
 
-            This option only affects the packge whose type is exe or pie.
+            If this option is not given, ndk-pkg will create Mostly Statically Linked Executables
 
-            fsle is short for  Fully Statically Linked Executable
-            msle is short for Mostly Statically Linked Executable
-             pie is short for Position Independent Executable
+            This option only affects the package whose type is exe or pie.
 
             a  fully statically linked executable is a executable that without any additional libraries to be loaded at runtime.
             a mostly statically linked executable is a executable that without any additional libraries except libc.so, libm.so, libdl.so, liblog.so, etc.
@@ -9094,7 +9070,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.9.5
+NDKPKG_VERSION=0.10.0
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'

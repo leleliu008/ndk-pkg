@@ -469,14 +469,14 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ```bash
     ndk-pkg install curl
     ndk-pkg install android-33-arm64-v8a/curl
-    ndk-pkg install android-33-arm64-v8a/curl --exe=fsle
+    ndk-pkg install android-33-arm64-v8a/curl --fsle
     ```
 
 - **reinstall packages**
 
     ```bash
     ndk-pkg reinstall curl
-    ndk-pkg reinstall android-33-arm64-v8a/curl --exe=fsle
+    ndk-pkg reinstall android-33-arm64-v8a/curl --fsle
     ```
 
 - **uninstall packages**
@@ -490,7 +490,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
     ```bash
     ndk-pkg upgrade curl
-    ndk-pkg upgrade android-33-arm64-v8a/curl --exe=fsle
+    ndk-pkg upgrade android-33-arm64-v8a/curl --fsle
     ```
 
 - **upgrade this software**
@@ -715,7 +715,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 
 |KEY|required?|overview|
 |-|-|-|
-|`pkgtype`|optional|indicates what type of this package. value shall be any one of `exe`, `pie`, `lib`, `exe+lib`.<br>To `exe` type package, `ndk-pkg` would add `--static -static` options to `LDFLAGS` if `--exe=fsle` install option is given.<br>To `pie` type package, it means that it doesn't support fully statically linking, it is supposed to be dynamically linked.<br>If this mapping is not present, `ndk-pkg` will determine the package type by package name, if a package name starts/ends with `lib`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
+|`pkgtype`|optional|indicates what type of this package. value shall be any one of `exe`, `pie`, `lib`, `exe+lib`.<br>To `exe` type package, `ndk-pkg` would add `--static -static` options to `LDFLAGS` if `--fsle` install option is given.<br>To `pie` type package, it means that it doesn't support fully statically linking, it is supposed to be dynamically linked.<br>If this mapping is not present, `ndk-pkg` will determine the package type by package name, if a package name starts/ends with `lib`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
 |`summary`|required|describe this package in one sentence.|
 |`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
 |`version`|optional|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|

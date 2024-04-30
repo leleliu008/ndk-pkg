@@ -278,32 +278,24 @@ int main(int argc, char * argv[]) {
             }
         }
     } else {
-        const char * PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE = getenv("PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE");
+        for (int i = 1; i < argc; i++) {
+            if (argv[i][0] == '/') {
+                int len = strlen(argv[i]);
 
-        if (PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE != NULL && strcmp(PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE, "1") == 0) {
-            for (int i = 1; i < argc; i++) {
-                if (argv[i][0] == '/') {
-                    int len = strlen(argv[i]);
+                if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
+                    argv[i][len - 2] = 'a';
+                    argv[i][len - 1] = '\0';
 
-                    if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
-                        argv[i][len - 2] = 'a';
-                        argv[i][len - 1] = '\0';
+                    struct stat st;
 
-                        struct stat st;
-
-                        if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
-                            argv[i][len - 2] = 's';
-                            argv[i][len - 1] = 'o';
-                        }
+                    if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                        argv[i][len - 2] = 's';
+                        argv[i][len - 1] = 'o';
                     }
                 }
+            }
 
-                argv2[i] = argv[i];
-            }
-        } else {
-            for (int i = 1; i < argc; i++) {
-                argv2[i] = argv[i];
-            }
+            argv2[i] = argv[i];
         }
     }
 

@@ -191,7 +191,7 @@ function _ndk_pkg() {
                         '--dry-run[do not actually install the package]' \
                         '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
                         '--profile=-[specify build profile]:build-profile:(debug release)' \
-                        '--exe=-[specify exe linking strategy]:link-type:(fsle msle pie)' \
+                        '--fsle[create fully statically linked executables]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
@@ -207,7 +207,7 @@ function _ndk_pkg() {
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
                         '--profile=-[specify build profile]:build-profile:(debug release)' \
-                        '--exe=-[specify exe linking strategy]:link-type:(fsle msle pie)' \
+                        '--fsle[create fully statically linked executables]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
@@ -223,7 +223,7 @@ function _ndk_pkg() {
                         '--dry-run[dry-run]' \
                         '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
                         '--profile=-[specify build profile]:build-profile:(debug release)' \
-                        '--exe=-[specify exe linking strategy]:link-type:(fsle msle pie)' \
+                        '--fsle[create fully statically linked executables]' \
                         '--export-compile-commands-json[generates compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
                         + '(verbose_level)' \
