@@ -5458,7 +5458,6 @@ $DOT_CONTENT
 
         if [ -n "$DOT" ] ; then
             run "$DOT" -Tsvg -o "$PACKAGE_WORKING_DIR/dependencies.svg" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
-            run "$DOT" -Tpng -o "$PACKAGE_WORKING_DIR/dependencies.png" "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT" || true
         else
             D2="$(command -v d2 || true)"
 
@@ -7021,6 +7020,9 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
+    unset PACKAGE_DEPENDENT_SHARED_LIBS
+    unset PACKAGE_EXECUTABLE_RPATH_LIST
+
     step "check ELF files"
     __check_elf_files
 
@@ -7030,17 +7032,6 @@ $PACKAGE_DOTWEAK
         rm -f "$PACKAGE_INSTALL_DIR/.crates.toml"
         rm -f "$PACKAGE_INSTALL_DIR/.crates2.json"
     }
-
-    #########################################################################################
-
-    # reassigned to make sure it has the right value, becsuse it may be changed in dopatch and install block.
-
-    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
-    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
-    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
-    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
-    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
 
     #########################################################################################
 
@@ -7060,6 +7051,36 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
+    [ -n "$PACKAGE_EXECUTABLE_RPATH_LIST" ] && {
+        step "set rpath for executables"
+
+        PACKAGE_EXECUTABLE_RPATH_LIST="$(printf '%s\n' $PACKAGE_EXECUTABLE_RPATH_LIST | sort | uniq)"
+
+        for f in $PACKAGE_EXECUTABLE_RPATH_LIST
+        do
+            DIRNAME="${f%/*}"
+            RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" .ndk-pkg/dependences/lib)"
+            run patchelf --set-rpath "\\\$ORIGIN/$RELATIVE_PATH" "$f"
+        done
+    }
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEPENDENT_SHARED_LIBS" ] && {
+        step "install dependent shared libraries"
+
+        PACKAGE_DEPENDENT_SHARED_LIBS_DIR="$PACKAGE_METAINFO_DIR/dependencies/lib"
+
+        install -d -v "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR"
+
+        for f in $PACKAGE_DEPENDENT_SHARED_LIBS
+        do
+            cp -L -v "$f" "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/"
+        done
+    }
+
+    #########################################################################################
+
     [ -n "$PACKAGE_DEP_PKG" ] && {
         step "install dependency graph files"
 
@@ -7067,11 +7088,11 @@ $PACKAGE_DOTWEAK
 
         step "install dependency formulas"
 
-        install -d "$PACKAGE_METAINFO_DIR/formula"
+        install -d "$PACKAGE_METAINFO_DIR/dependencies"
 
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            cp "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINFO_DIR/formula/"
+            cp "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINFO_DIR/dependencies/"
         done
     }
 
@@ -7198,27 +7219,93 @@ __check_elf_files() {
                         if [ -z "$DT_SONAME" ] ; then
                             abort 1 "invalid .so file: $FILEPATH\n    no DT_SONAME was set in .dynamic section"
                         fi
+
+                        IS_EXECUTABLE=0
+                    else
+                        IS_EXECUTABLE=1
                     fi
 
                     #####################################################################
 
-                    # a \n-separated list
-                    DT_NEEDED_LIST="$(patchelf --print-needed "$FILEPATH")"
-
-                    for DT_NEEDED in $DT_NEEDED_LIST
-                    do
-                        case $DT_NEEDED in
-                            # besure DT_NEEDED entries all are filenames, not filepaths
-                            lib*.so)
-                                ;;
-                            *)  abort 1 "unexpected ELF file: $FILEPATH\n    invalid DT_NEEDED: $DT_NEEDED"
-                        esac
-                    done
+                    __check_DT_NEEDED "$FILEPATH" "$IS_EXECUTABLE"
                 fi
         esac
     done
 
     unset IFS
+}
+
+# __check_DT_NEEDED <ELF-FILE-PATH> <IS-EXECUTABLE>
+  __check_DT_NEEDED() {
+    # a \n-separated list
+    DT_NEEDED_LIST="$(patchelf --print-needed "$1")"
+
+    for DT_NEEDED in $DT_NEEDED_LIST
+    do
+        case $DT_NEEDED in
+            libc.so)
+                ;;
+            libm.so)
+                ;;
+            libdl.so)
+                ;;
+            liblog.so)
+                ;;
+            libandroid.so)
+                ;;
+            libmediandk.so)
+                ;;
+            libjnigraphics.so)
+                ;;
+            libOpenSLES.so)
+                ;;
+            libOpenMAXAL.so)
+                ;;
+            libEGL.so)
+                ;;
+            libGLESv1_CM.so)
+                ;;
+            libGLESv2.so)
+                ;;
+            libGLESv3.so)
+                ;;
+            libc++_shared.so)
+                ;;
+            lib*.so)
+                DT_NEEDED_SEARCH_PACKAGES="$PACKAGE_NAME $RECURSIVE_DEPENDENT_PACKAGE_NAMES"
+
+                DT_NEEDED_SEARCH_PACKAGES="$(printf '%s\n' "$DT_NEEDED_SEARCH_PACKAGES" | tr ' ' '\n')"
+
+                unset DT_NEEDED_FILEPATH
+
+                for DEPENDENT_PACKAGE_NAME in $DT_NEEDED_SEARCH_PACKAGES
+                do
+                    DT_NEEDED_FILEPATH="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$DT_NEEDED"
+
+                    if [ -e "$DT_NEEDED_FILEPATH" ] ; then
+                        break
+                    else
+                        unset DT_NEEDED_FILEPATH
+                    fi
+                done
+
+                if [ -z "$DT_NEEDED_FILEPATH" ] ; then
+                    abort 1 "NEEDED: $DT_NEEDED not found for ELF file: $1"
+                else
+                    if [ "$2" = 1 ] ; then
+                        PACKAGE_EXECUTABLE_RPATH_LIST="$PACKAGE_EXECUTABLE_RPATH_LIST
+$1"
+                    fi
+
+                    PACKAGE_DEPENDENT_SHARED_LIBS="$PACKAGE_DEPENDENT_SHARED_LIBS
+$DT_NEEDED_FILEPATH"
+
+                    __check_DT_NEEDED "$DT_NEEDED_FILEPATH" 0
+                fi
+                ;;
+            *)  abort 1 "unexpected ELF file: $1\n    invalid DT_NEEDED: $DT_NEEDED"
+        esac
+    done
 }
 
 __tweak_pc_files() {
@@ -8985,7 +9072,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.9.4
+NDKPKG_VERSION=0.9.5
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
