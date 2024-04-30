@@ -2449,7 +2449,7 @@ __fetch_resources_of_the_given_package() {
 # https://developer.android.com/studio/projects/android-library#aar-contents
 # https://google.github.io/prefab/#package-structure
 #
-# zlib-1.2.13.aar
+# libz-1.2.13.aar
 # ├── AndroidManifest.xml
 # ├── META-INF
 # │   ├── FAQ
@@ -4493,7 +4493,7 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
             ;;
-        zlib)
+        libz)
             NATIVE_PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
             NATIVE_PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
             NATIVE_PACKAGE_DEPENDENCIES=
@@ -4580,7 +4580,7 @@ __install_the_given_packages() {
         sqlite3)
             NATIVE_PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3450200.tar.gz'
             NATIVE_PACKAGE_SRC_SHA='bc9067442eedf3dd39989b5c5cfbfff37ae66cc9c99274e0c3052dc4d4a8f6ae'
-            NATIVE_PACKAGE_DEPENDENCIES='zlib'
+            NATIVE_PACKAGE_DEPENDENCIES='libz'
             NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
             ;;
@@ -4601,14 +4601,14 @@ __install_the_given_packages() {
         ruby)
             NATIVE_PACKAGE_SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
             NATIVE_PACKAGE_SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
-            NATIVE_PACKAGE_DEPENDENCIES='zlib libyaml libffi'
+            NATIVE_PACKAGE_DEPENDENCIES='libz libyaml libffi'
             NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --enable-shared --disable-docs'
             ;;
         python3)
             NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz'
             NATIVE_PACKAGE_SRC_SHA='c049bf317e877cbf9fce8c3af902436774ecef5249a29d10984ca3a37f7f4736'
-            NATIVE_PACKAGE_DEPENDENCIES='zlib libbz2 liblzma gdbm expat sqlite3 libffi openssl perl'
+            NATIVE_PACKAGE_DEPENDENCIES='libz libbz2 liblzma gdbm expat sqlite3 libffi openssl perl'
             NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS="--with-system-expat --with-system-ffi --with-openssl=$NATIVE_PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
             ;;
@@ -4760,7 +4760,7 @@ EOF
 
     run cd src
 
-    if   [ "$1" = 'zlib' ] ; then
+    if   [ "$1" = 'libz' ] ; then
         sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
     elif [ "$1" = 'texinfo' ] ; then
         sed_in_place '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
@@ -4768,8 +4768,8 @@ EOF
         unset PYTHONHOME
         unset PYTHONPATH
 
-        export ZLIB_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/zlib/include"
-        export ZLIB_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/zlib/lib -lz"
+        export ZLIB_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/libz/include"
+        export ZLIB_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/libz/lib -lz"
 
         export BZIP2_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/include"
         export BZIP2_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/lib -lbz2"
@@ -5500,7 +5500,7 @@ $DOT_CONTENT
             libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            zlib)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+            libz)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
             *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
         esac
     done
@@ -7250,11 +7250,15 @@ __check_elf_files() {
                 ;;
             libdl.so)
                 ;;
+            libomp.so)
+                ;;
             liblog.so)
                 ;;
             libandroid.so)
                 ;;
             libmediandk.so)
+                ;;
+            libcamera2ndk.so)
                 ;;
             libjnigraphics.so)
                 ;;
@@ -7270,7 +7274,11 @@ __check_elf_files() {
                 ;;
             libGLESv3.so)
                 ;;
+            libstdc++.so)
+                ;;
             libc++_shared.so)
+                ;;
+            libclang_rt.*.so)
                 ;;
             lib*.so)
                 DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
@@ -8864,10 +8872,10 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
             do not delete the session directory even if this package is successfully installed.
 
     USAGE-EXAMPLES:
-        ndk-pkg install android-21-arm64-v8a/zlib
-        ndk-pkg install android-21-arm64-v8a,armeabi-v7a/zlib
-        ndk-pkg install android-21-arm64-v8a,armeabi-v7a,x86_64/zlib
-        ndk-pkg install android-21-arm64-v8a,armeabi-v7a,x86_64,x86/zlib
+        ndk-pkg install android-21-arm64-v8a/libz
+        ndk-pkg install android-21-arm64-v8a,armeabi-v7a/libz
+        ndk-pkg install android-21-arm64-v8a,armeabi-v7a,x86_64/libz
+        ndk-pkg install android-21-arm64-v8a,armeabi-v7a,x86_64,x86/libz
 
 ${COLOR_GREEN}ndk-pkg reinstall android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     reinstall the given packages.
