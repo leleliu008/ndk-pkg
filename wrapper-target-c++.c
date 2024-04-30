@@ -109,7 +109,7 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    int action = 0;
+    int action;
 
     if (indexes[0] > 0) {
         action = ACTION_PREPROCESS;
@@ -125,6 +125,8 @@ int main(int argc, char * argv[]) {
         action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
     } else if (indexes[6] > 0) {
         action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
+    } else {
+        action = 0;
     }
 
     fprintf(stderr, "action=%d\n", action);

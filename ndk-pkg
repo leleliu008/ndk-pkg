@@ -4675,7 +4675,7 @@ EOF
     NATIVE_PACKAGE_SRC_FILENAME="$NATIVE_PACKAGE_SRC_SHA$NATIVE_PACKAGE_SRC_FILETYPE"
     NATIVE_PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$NATIVE_PACKAGE_SRC_FILENAME"
 
-    NATIVE_PACKAGE_WORKING_DIR="$PACKAGE_WORKING_DIR/native/$1"
+    NATIVE_PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
 
     #########################################################################################
 
@@ -5210,6 +5210,10 @@ EOF
 
     #########################################################################################
 
+    PKG_CONFIG_PATH_FOR_BUILD="$NDKPKG_CORE_DIR/lib"
+
+    #########################################################################################
+
     if [ "$PACKAGE_USE_BSYSTEM_CMAKE" = 1 ] ; then
         step "config environment variables for cmake for native build"
 
@@ -5569,6 +5573,14 @@ $DOT_CONTENT
 
             if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
                 LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
+            fi
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib/pkgconfig" ] ; then
+                PKG_CONFIG_PATH_FOR_BUILD="$NATIVE_PACKAGE_INSTALLED_DIR/lib/pkgconfig:$PKG_CONFIG_PATH_FOR_BUILD"
+            fi
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/share/pkgconfig" ] ; then
+                PKG_CONFIG_PATH_FOR_BUILD="$NATIVE_PACKAGE_INSTALLED_DIR/share/pkgconfig:$PKG_CONFIG_PATH_FOR_BUILD"
             fi
 
             if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
@@ -6727,6 +6739,10 @@ EOF
         # https://github.com/rust-lang/pkg-config-rs
         export TARGET_PKG_CONFIG_ALLOW_CROSS=1
 
+        export HOST_PKG_CONFIG_PATH="$PKG_CONFIG_PATH_FOR_BUILD"
+        export HOST_PKG_CONFIG_LIBDIR="$NDKPKG_CORE_DIR/lib"
+
+        unset PKG_CONFIG_SYSROOT_DIR
 
         # https://libraries.io/cargo/cmake
         # https://crates.io/crates/cmake
@@ -6838,17 +6854,19 @@ EOF
 
     #########################################################################################
 
-    if [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] && [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
-        step "copy dependent libraries to linker first search dir"
+    if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
+        if [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+            step "copy dependent libraries to linker first search dir"
 
-        for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
-        do
-            DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
+            for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
+            do
+                DEPENDENT_PACKAGE_LIBRARY_DIR="$DEPENDENT_PACKAGE_INSTALL_DIR/lib"
 
-            if [  -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
-                find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name 'lib*.a' -exec cp -L -v '{}' "$PACKAGE_WORKING_DIR/lib/" \;
-            fi
-        done
+                if [  -d "$DEPENDENT_PACKAGE_LIBRARY_DIR" ] ; then
+                    find "$DEPENDENT_PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -name 'lib*.a' -exec cp -L -v '{}' "$PACKAGE_WORKING_DIR/lib/" \;
+                fi
+            done
+        fi
     fi
 
     #########################################################################################
@@ -6977,20 +6995,11 @@ $PACKAGE_DOBUILD
 
     #########################################################################################
 
-    run cd "$PACKAGE_INSTALL_DIR" || abort 1 "nothing is installed."
+    [   -d "$PACKAGE_INSTALL_DIR" ] || abort 1 "nothing was installed."
 
-    #########################################################################################
+    run cd "$PACKAGE_INSTALL_DIR"
 
-    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-        if [ "$TARGET_PLATFORM_VERS" -ne "$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL" ] ; then
-            rm -rf include/
-            rm -rf lib/
-        fi
-    fi
-
-    #########################################################################################
-
-    [ -z "$(ls)" ]                && abort 1 "nothing is installed."
+    [ -z "$(ls)" ]                  && abort 1 "nothing was installed."
 
     #########################################################################################
 
