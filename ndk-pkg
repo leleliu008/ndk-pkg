@@ -8831,9 +8831,7 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
         ${COLOR_BLUE}--fsle${COLOR_OFF}
             create Fully Statically Linked Executables
 
-            If this option is not given, ndk-pkg will create Mostly Statically Linked Executables
-
-            This option only affects the package whose type is exe or pie.
+            This option only affects the package whose type is exe. If this option is not given, ndk-pkg will create Mostly Statically Linked Executables
 
             a  fully statically linked executable is a executable that without any additional libraries to be loaded at runtime.
             a mostly statically linked executable is a executable that without any additional libraries except libc.so, libm.so, libdl.so, liblog.so, etc.
