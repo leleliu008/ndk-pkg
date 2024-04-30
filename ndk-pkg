@@ -7272,22 +7272,26 @@ __check_elf_files() {
             libc++_shared.so)
                 ;;
             lib*.so)
-                DT_NEEDED_SEARCH_PACKAGES="$PACKAGE_NAME $RECURSIVE_DEPENDENT_PACKAGE_NAMES"
+                DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
 
-                DT_NEEDED_SEARCH_PACKAGES="$(printf '%s\n' "$DT_NEEDED_SEARCH_PACKAGES" | tr ' ' '\n')"
+                if [ ! -e "$DT_NEEDED_FILEPATH" ] ; then
+                    unset DT_NEEDED_FILEPATH
 
-                unset DT_NEEDED_FILEPATH
+                    if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
+                        RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" | tr ' ' '\n')"
 
-                for DEPENDENT_PACKAGE_NAME in $DT_NEEDED_SEARCH_PACKAGES
-                do
-                    DT_NEEDED_FILEPATH="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$DT_NEEDED"
+                        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES2
+                        do
+                            DT_NEEDED_FILEPATH="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$DT_NEEDED"
 
-                    if [ -e "$DT_NEEDED_FILEPATH" ] ; then
-                        break
-                    else
-                        unset DT_NEEDED_FILEPATH
+                            if [ -e "$DT_NEEDED_FILEPATH" ] ; then
+                                break
+                            else
+                                unset DT_NEEDED_FILEPATH
+                            fi
+                        done
                     fi
-                done
+                fi
 
                 if [ -z "$DT_NEEDED_FILEPATH" ] ; then
                     abort 1 "NEEDED: $DT_NEEDED not found for ELF file: $1"
