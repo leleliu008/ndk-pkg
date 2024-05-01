@@ -7017,8 +7017,18 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    unset PACKAGE_DEPENDENT_SHARED_LIBS
-    unset PACKAGE_EXECUTABLE_RPATH_LIST
+    PACKAGE_METAINFO_DIR="$PACKAGE_INSTALL_DIR/.ndk-pkg"
+
+    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINFO_DIR/MANIFEST.txt"
+    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINFO_DIR/RECEIPT.yml"
+
+    PACKAGE_DEPENDENT_SHARED_LIBS_DIR="$PACKAGE_METAINFO_DIR/dependencies/lib"
+
+    install -d "$PACKAGE_METAINFO_DIR"
+
+    #########################################################################################
+
+    unset PACKAGE_NEED_SET_RPATH_EXECUTABLES
 
     step "check ELF files"
     __check_elf_files
@@ -7032,15 +7042,6 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    PACKAGE_METAINFO_DIR="$PACKAGE_INSTALL_DIR/.ndk-pkg"
-
-    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINFO_DIR/MANIFEST.txt"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINFO_DIR/RECEIPT.yml"
-
-    install -d "$PACKAGE_METAINFO_DIR"
-
-    #########################################################################################
-
     for item in 'FAQ*' 'TODO*' 'NEWS*' 'THANKS*' 'README*' 'COPYING*' 'LICENSE*' 'AUTHORS*' 'CHANGES*' 'CHANGELOG*' 'CONTRIBUTORS*' 'CONTRIBUTING*'
     do
         find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 \( -type f -or -type l \) -iname "$item" -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
@@ -7048,31 +7049,16 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    [ -n "$PACKAGE_EXECUTABLE_RPATH_LIST" ] && {
+    [ -n "$PACKAGE_NEED_SET_RPATH_EXECUTABLES" ] && {
         step "set rpath for executables"
 
-        PACKAGE_EXECUTABLE_RPATH_LIST="$(printf '%s\n' $PACKAGE_EXECUTABLE_RPATH_LIST | sort | uniq)"
+        PACKAGE_NEED_SET_RPATH_EXECUTABLES="$(printf '%s\n' $PACKAGE_NEED_SET_RPATH_EXECUTABLES | sort | uniq)"
 
-        for f in $PACKAGE_EXECUTABLE_RPATH_LIST
+        for f in $PACKAGE_NEED_SET_RPATH_EXECUTABLES
         do
             DIRNAME="${f%/*}"
             RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" .ndk-pkg/dependences/lib)"
             run patchelf --set-rpath "\\\$ORIGIN/$RELATIVE_PATH" "$f"
-        done
-    }
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_DEPENDENT_SHARED_LIBS" ] && {
-        step "install dependent shared libraries"
-
-        PACKAGE_DEPENDENT_SHARED_LIBS_DIR="$PACKAGE_METAINFO_DIR/dependencies/lib"
-
-        install -d -v "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR"
-
-        for f in $PACKAGE_DEPENDENT_SHARED_LIBS
-        do
-            cp -L -v "$f" "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/"
         done
     }
 
@@ -7279,7 +7265,15 @@ __check_elf_files() {
             lib*.so)
                 DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
 
-                if [ ! -e "$DT_NEEDED_FILEPATH" ] ; then
+                if [ -e "$DT_NEEDED_FILEPATH" ] ; then
+                    if [ !      -d    "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR" ] ; then
+                        install -d -v "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR"
+                    fi
+
+                    if [ ! -e "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/$DT_NEEDED" ] ; then
+                        ln -srv "$DT_NEEDED_FILEPATH" "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/$DT_NEEDED"
+                    fi
+                else
                     unset DT_NEEDED_FILEPATH
 
                     if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
@@ -7290,6 +7284,18 @@ __check_elf_files() {
                             DT_NEEDED_FILEPATH="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$DT_NEEDED"
 
                             if [ -e "$DT_NEEDED_FILEPATH" ] ; then
+                                if [ !      -d    "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR" ] ; then
+                                    install -d -v "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR"
+                                fi
+
+                                if [ ! -e "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/$DT_NEEDED" ] ; then
+                                    cp -L -v "$DT_NEEDED_FILEPATH" "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/"
+                                fi
+
+                                if [ "$2" = 1 ] ; then
+                                    PACKAGE_NEED_SET_RPATH_EXECUTABLES="$PACKAGE_NEED_SET_RPATH_EXECUTABLES $1"
+                                fi
+
                                 break
                             else
                                 unset DT_NEEDED_FILEPATH
@@ -7301,14 +7307,6 @@ __check_elf_files() {
                 if [ -z "$DT_NEEDED_FILEPATH" ] ; then
                     abort 1 "NEEDED: $DT_NEEDED not found for ELF file: $1"
                 else
-                    if [ "$2" = 1 ] ; then
-                        PACKAGE_EXECUTABLE_RPATH_LIST="$PACKAGE_EXECUTABLE_RPATH_LIST
-$1"
-                    fi
-
-                    PACKAGE_DEPENDENT_SHARED_LIBS="$PACKAGE_DEPENDENT_SHARED_LIBS
-$DT_NEEDED_FILEPATH"
-
                     __check_DT_NEEDED "$DT_NEEDED_FILEPATH" 0
                 fi
                 ;;
@@ -9076,7 +9074,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.10.1
+NDKPKG_VERSION=0.10.2
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
