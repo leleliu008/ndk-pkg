@@ -14,14 +14,14 @@
 #define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 6
 
 int main(int argc, char * argv[]) {
-    char * const cxxc = getenv("ANDROID_NDK_CXX");
+    char * const compiler = getenv("ANDROID_NDK_CXX");
 
-    if (cxxc == NULL) {
+    if (compiler == NULL) {
         fprintf(stderr, "ANDROID_NDK_CXX environment variable is not set.\n");
         return 1;
     }
 
-    if (cxxc[0] == '\0') {
+    if (compiler[0] == '\0') {
         fprintf(stderr, "ANDROID_NDK_CXX environment variable value should be a non-empty string.\n");
         return 2;
     }
@@ -136,7 +136,11 @@ int main(int argc, char * argv[]) {
 
     char sonameArg[100]; sonameArg[0] = '\0';
 
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
+    if (action == ACTION_PREPROCESS || action == ACTION_COMPILE || action == ACTION_ASSEMBLE) {
+        for (int i = 1; i < argc; i++) {
+            argv2[i] = argv[i];
+        }
+    } else if (action == ACTION_CREATE_SHARED_LIBRARY) {
         int oIndex = -1;
 
         // remove -static , --static , -pie options if they also are specified
@@ -278,30 +282,38 @@ int main(int argc, char * argv[]) {
             }
         }
     } else {
-        for (int i = 1; i < argc; i++) {
-            if (argv[i][0] == '/') {
-                int len = strlen(argv[i]);
+        const char * msle = getenv("PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE");
 
-                if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
-                    argv[i][len - 2] = 'a';
-                    argv[i][len - 1] = '\0';
+        if (msle != NULL && strcmp(msle, "1") == 0) {
+            for (int i = 1; i < argc; i++) {
+                if (argv[i][0] == '/') {
+                    int len = strlen(argv[i]);
 
-                    struct stat st;
+                    if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
+                        argv[i][len - 2] = 'a';
+                        argv[i][len - 1] = '\0';
 
-                    if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
-                        argv[i][len - 2] = 's';
-                        argv[i][len - 1] = 'o';
+                        struct stat st;
+
+                        if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                            argv[i][len - 2] = 's';
+                            argv[i][len - 1] = 'o';
+                        }
                     }
                 }
-            }
 
-            argv2[i] = argv[i];
+                argv2[i] = argv[i];
+            }
+        } else {
+            for (int i = 1; i < argc; i++) {
+                argv2[i] = argv[i];
+            }
         }
     }
 
     /////////////////////////////////////////////////////////////////
 
-    argv2[0]        = cxxc;
+    argv2[0]        = compiler;
     argv2[argc]     = targetArg;
     argv2[argc + 1] = sysrootArg;
 
@@ -330,7 +342,7 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    execv (cxxc, argv2);
-    perror(cxxc);
+    execv (compiler, argv2);
+    perror(compiler);
     return 255;
 }
