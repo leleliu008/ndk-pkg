@@ -8571,7 +8571,7 @@ __setup() {
 
     wfetch 'https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf' -o ./ --no-buffer
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/dev/ndk-pkg-core-latest-release-version' -o ndk-pkg-core-latest-release-version --no-buffer
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' -o ndk-pkg-core-latest-release-version --no-buffer
 
     ##################################################################################
 
