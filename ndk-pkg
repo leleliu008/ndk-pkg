@@ -8400,7 +8400,7 @@ ndkinfo() {
     if [ "$NATIVE_OS_KIND" = darwin ] ; then
         ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
     else
-        ANDROID_NDK_TOOLCHAIN_HOST_TAG="$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
+        ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_OS_ARCH"
     fi
 
     ANDROID_NDK_TOOLCHAIN_ROOT="$1/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG"
@@ -8490,12 +8490,24 @@ EOF
 # setup_android_ndk_env [ANDROID_NDK_HOME]
   setup_android_ndk_env() {
     if [ -z "$1" ] ; then
-        UPPM_PACKAGE_NAME_NDK='android-ndk-r26d'
+        if [ "$NATIVE_OS_KIND" = android ] ; then
+            # use comunity compiled Android NDK for aarch64-linux right now, I might compile my own at some point.
+            # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
+            ANDROID_NDK_REVISION='r26b'
+        else
+            ANDROID_NDK_REVISION='r26d'
+        fi
+
+        UPPM_PACKAGE_NAME_NDK="android-ndk-$ANDROID_NDK_REVISION"
 
         if ! "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" ; then
             ANDROID_NDK_IS_INSTALLED_VIA_UPPM=1
-            warn "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK will be installed via uppm."
-            run "$UPPM" install  "$UPPM_PACKAGE_NAME_NDK"
+
+            warn "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK ($ANDROID_NDK_REVISION) will be installed via uppm."
+
+            run "$UPPM" env
+            run "$UPPM" update
+            run "$UPPM" install "$UPPM_PACKAGE_NAME_NDK"
 
             # https://github.com/microsoft/WSL/issues/8681
             # https://github.com/microsoft/WSL/issues/4071
@@ -9074,7 +9086,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.10.3
+NDKPKG_VERSION=0.10.4
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
@@ -9094,6 +9106,11 @@ export UPPM_HOME="$NDKPKG_HOME/uppm"
 
 if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
     export  UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
+fi
+
+if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
+    LV="$(getprop ro.build.version.sdk)"
+    export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/fpliu1214/uppm-package-repository-android-$LV-aarch64"
 fi
 
 ##################################################################################
@@ -9343,6 +9360,8 @@ case $1 in
     logs) shift; __logs_the_given_installed_package "$@" ;;
     pack) shift; __pack_the_given_installed_package "$@" ;;
     tree) shift; __tree_the_given_installed_package "$@" ;;
+
+    uppm) shift; "$UPPM" "$@" ;;
 
     *)  abort 1 "unrecognized argument: $1"
 esac
