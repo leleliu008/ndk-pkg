@@ -121,9 +121,51 @@ jobs:
           path: ndk-pkg-core-*.tar.xz
 
 
+  android:
+    needs: base
+
+    runs-on: ubuntu-latest
+
+    container: fpliu/ndk-pkg
+
+    steps:
+      - run: ndk-pkg setup
+      - run: ndk-pkg update
+      - run: ndk-pkg install uppm@0.15.2 ndk-pkg-core --fsle
+      - run: ndk-pkg pack    uppm@0.15.2  -o .
+      - run: ndk-pkg pack    ndk-pkg-core -o .
+
+      - name: repack
+        run: |
+          set -ex
+
+          for item in *.tar.xz
+          do
+            tar vxf "$item" -C out --strip-components=1
+            rm -v   "$item"
+          done
+
+          mv out/bin/* out/
+
+          rm -rf out/bin
+          rm -rf out/share
+
+          DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-android-aarch64"
+
+          mv out "$DIRNAME"
+
+          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ndk-pkg-core-android-aarch64.tar.xz
+          path: ndk-pkg-core-*.tar.xz
+
+
+
   publish:
 
-    needs: [base, macos, linux]
+    needs: [base, macos, linux, android]
 
     runs-on: ubuntu-latest
 
