@@ -8615,7 +8615,8 @@ __setup() {
             ;;
         linux)
             if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
-                NATIVE_OS_TYPE=android
+                LV="$(getprop ro.build.version.sdk)"
+                NATIVE_OS_TYPE="android-$LV"
             else
                 NATIVE_OS_TYPE=linux
             fi
