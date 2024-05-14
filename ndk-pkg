@@ -8617,6 +8617,7 @@ __setup() {
             if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
                 LV="$(getprop ro.build.version.sdk)"
                 NATIVE_OS_TYPE="android-$LV"
+                NATIVE_OS_ARCH=arm64-v8a
             else
                 NATIVE_OS_TYPE=linux
             fi
@@ -8640,10 +8641,10 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    if [ "$NATIVE_OS_KIND" = linux ] && [ "$NATIVE_OS_ARCH" = x86_64 ] ; then
+    unset DOT
+
+    if [ "$NATIVE_OS_KIND" = linux ] ; then
         DOT=dot_static
-    else
-        unset DOT
     fi
 
     for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd jq yq d2 $DOT
