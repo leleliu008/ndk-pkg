@@ -8597,28 +8597,37 @@ __setup() {
 
     wfetch 'https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf' -o ./ --no-buffer
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' -o ndk-pkg-core-latest-release-version --no-buffer
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' -o ./ --no-buffer
+
+    ##################################################################################
+
+    case $NATIVE_OS_KIND in
+        darwin)
+            NATIVE_OS_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
+
+            if [ "$NATIVE_OS_VERS_MAJOR" -le 10 ] ; then
+                NATIVE_OS_TYPE='macos-10.15'
+            elif [ "$NATIVE_OS_VERS_MAJOR" -ge 14 ] ; then
+                NATIVE_OS_TYPE='macos-14.0'
+            else
+                NATIVE_OS_TYPE="macos-$NATIVE_OS_VERS_MAJOR.0"
+            fi
+            ;;
+        linux)
+            if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
+                NATIVE_OS_TYPE=android
+            else
+                NATIVE_OS_TYPE=linux
+            fi
+    esac
 
     ##################################################################################
 
     NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
+    NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}-${NATIVE_OS_TYPE}-${NATIVE_OS_ARCH}.tar.xz"
+    NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL="https://github.com/leleliu008/ndk-pkg/releases/download/ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}/${NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME}"
 
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
-        case $(sw_vers -productVersion | cut -d. -f1) in
-            10) X='10.15' ;;
-            11) X='11.0'  ;;
-            12) X='12.0'  ;;
-            13) X='13.0'  ;;
-            14) X='14.0'  ;;
-            *)  X='14.0'  ;;
-        esac
-
-        NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}-macos-${X}-${NATIVE_OS_ARCH}.tar.xz"
-    else
-        NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}-${NATIVE_OS_KIND}-${NATIVE_OS_ARCH}.tar.xz"
-    fi
-
-    wfetch "https://github.com/leleliu008/ndk-pkg/releases/download/ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}/${NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME}" -o "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME" --no-buffer
+    wfetch "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL" -o ./ --no-buffer
 
     run tar xvf "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
 
