@@ -8184,7 +8184,7 @@ set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 EOF
 
-        NASM="$(command -v nasm)"
+        NASM="$(command -v nasm || command -v yasm || true)"
 
         if [ -n "$NASM" ] ; then
             cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
