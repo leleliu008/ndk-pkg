@@ -8184,6 +8184,14 @@ set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 EOF
 
+        NASM="$(command -v nasm)"
+
+        if [ -n "$NASM" ] ; then
+            cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
+set(CMAKE_ASM_NASM_COMPILER "$NASM")
+EOF
+        fi
+
         if [ "$ENABLE_CCACHE" = 1 ] ; then
             cat >> "$CMAKE_TOOLCHAIN_FILE" <<EOF
 set(NDK_CCACHE "$CCACHE")
@@ -8498,26 +8506,32 @@ EOF
             ANDROID_NDK_REVISION='r26d'
         fi
 
-        UPPM_PACKAGE_NAME_NDK="android-ndk-$ANDROID_NDK_REVISION"
+        ANDROID_NDK_PKG="android-ndk-$ANDROID_NDK_REVISION"
 
-        if ! "$UPPM" is-installed "$UPPM_PACKAGE_NAME_NDK" ; then
-            ANDROID_NDK_IS_INSTALLED_VIA_UPPM=1
+        ANDROID_NDK_HOME="$UPPM_HOME/installed/$ANDROID_NDK_PKG"
 
+        if ! "$UPPM" is-installed "$ANDROID_NDK_PKG" ; then
             warn "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK ($ANDROID_NDK_REVISION) will be installed via uppm."
 
             run "$UPPM" env
             run "$UPPM" update
-            run "$UPPM" install "$UPPM_PACKAGE_NAME_NDK"
+            run "$UPPM" install "$ANDROID_NDK_PKG"
 
-            # https://github.com/microsoft/WSL/issues/8681
-            # https://github.com/microsoft/WSL/issues/4071
-            if [ "$NATIVE_OS_KIND" = linux ] && grep -q -i Microsoft /proc/version ; then
-                ANDROID_NDK_HOME="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME_NDK"
-                patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang-17"
-            fi
+            case $NATIVE_OS_KIND in
+                linux)
+                    # https://github.com/microsoft/WSL/issues/8681
+                    # https://github.com/microsoft/WSL/issues/4071
+                    if grep -q -i Microsoft /proc/version ; then
+                        patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang-17"
+                    fi
+                    ;;
+                darwin)
+                    # https://github.com/android/ndk/issues/1549
+                    # remove the yasm shipped with Android NDK and use our own
+                    rm -rf "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/yasm"
+                    ;;
+            esac
         fi
-
-        ANDROID_NDK_HOME="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME_NDK"
     else
         ANDROID_NDK_HOME="$1"
     fi
