@@ -1349,6 +1349,22 @@ filetype_from_url() {
     #########################################################################################
 
     PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
+
+    #########################################################################################
+
+    if [ -z "$PACKAGE_PKGTYPE" ] ; then
+        case $PACKAGE_NAME in
+            lib*)   PACKAGE_PKGTYPE=lib ;;
+            *lib)   PACKAGE_PKGTYPE=lib ;;
+               *)
+                # https://github.com/golang/go/issues/59942
+                if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
+                    PACKAGE_PKGTYPE=pie
+                else
+                    PACKAGE_PKGTYPE=exe
+                fi
+        esac
+    fi
 }
 
 # }}}
@@ -1368,8 +1384,12 @@ filetype_from_url() {
 
     sed -i "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
 
+    grep -q '^pkgtype: ' "$PACKAGE_RECEIPT_FILEPATH" || {
+        sed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" "$PACKAGE_RECEIPT_FILEPATH"
+    }
+
     grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed -i "2i version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
+        sed -i "/^pkgtype:/a version: $PACKAGE_PKGTYPE" "$PACKAGE_RECEIPT_FILEPATH"
     }
 
     grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || {
@@ -1440,6 +1460,7 @@ EOF
     PACKAGE_RECEIPT_FILEPATH="$PACKAGE_INSTALLED_DIR/.ndk-pkg/RECEIPT.yml"
 
     unset RECEIPT_PACKAGE_PKGNAME
+    unset RECEIPT_PACKAGE_PKGTYPE
     unset RECEIPT_PACKAGE_SUMMARY
     unset RECEIPT_PACKAGE_VERSION
     unset RECEIPT_PACKAGE_LICENSE
@@ -1494,6 +1515,7 @@ EOF
 
 
     RECEIPT_PACKAGE_PKGNAME="$(yq '.pkgname | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_PKGTYPE="$(yq '.pkgname | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1696,9 +1718,53 @@ is_package_available() {
 
 # }}}
 ##############################################################################
-# {{{ ndk-pkg ls-available
+# {{{ ndk-pkg ls-available [-v] [--yaml | --json]
 
 __list_available_packages() {
+    unset OUTPUT_MODE
+    unset OUTPUT_TYPE
+
+    for arg in $@
+    do
+        case $arg in
+            -v)     OUTPUT_MODE=full ;;
+            --json) OUTPUT_TYPE=json ;;
+            --yaml) OUTPUT_TYPE=yaml ;;
+            *) abort 1 "unrecognized argument: $arg"
+        esac
+    done
+
+    if [ -z "$OUTPUT_MODE" ] ; then
+        __list_available_package_names
+    else
+        AVAILABLE_PACKAGE_NAMES="$(__list_available_package_names)"
+
+        [ -z "$AVAILABLE_PACKAGE_NAMES" ] && return 0
+
+        case $OUTPUT_TYPE in
+            yaml|'')
+                for PKGNAME in $AVAILABLE_PACKAGE_NAMES
+                do
+                    printf '%s\n' '==='
+                    __info_the_given_available_package_as_yaml "$PKGNAME"
+                done
+                ;;
+            json)
+                printf '%s\n' '['
+
+                for PKGNAME in $AVAILABLE_PACKAGE_NAMES
+                do
+                    printf '%s\n' ','
+                    __info_the_given_available_package_as_json "$PKGNAME"
+                done
+
+                printf '%s\n' ']'
+                ;;
+        esac
+    fi
+}
+
+__list_available_package_names() {
     [ -d "$NDKPKG_FORMULA_REPO_ROOT" ] || return 0
 
     {
@@ -1713,12 +1779,6 @@ __list_available_packages() {
 
         for FORMULA_REPOSITORY_NAME in $AVAILABLE_FORMULA_REPOSITORY_NAMES
         do
-            FORMULA_SEARCH_DIR="$NDKPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$NATIVE_OS_TYPE"
-
-            if [ -d  "$FORMULA_SEARCH_DIR" ] ; then
-                find "$FORMULA_SEARCH_DIR" -maxdepth 1 -type f -name '*.yml' -exec basename {} .yml \; || return 1
-            fi
-
             FORMULA_SEARCH_DIR="$NDKPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula"
 
             if [ -d  "$FORMULA_SEARCH_DIR" ] ; then
@@ -1778,6 +1838,7 @@ __search_packages() {
 
     jq  --null-input \
         --arg pkgname "$PACKAGE_NAME" \
+        --arg pkgtype "$PACKAGE_PKGTYPE" \
         --arg version "$PACKAGE_VERSION" \
         --arg summary "$PACKAGE_SUMMARY" \
         --arg license "$PACKAGE_LICENSE" \
@@ -1818,6 +1879,7 @@ __search_packages() {
         --arg developer "$PACKAGE_DEVELOPER" \
 '{
     "pkgname":$pkgname,
+    "pkgtype":$pkgtype,
     "version":$version,
     "license":$license,
     "summary":$summary,
@@ -1870,6 +1932,7 @@ __search_packages() {
     {
     cat <<EOF
 pkgname: $PACKAGE_NAME
+pkgtype: $PACKAGE_PKGTYPE
 version: $PACKAGE_VERSION
 license: $PACKAGE_LICENSE
 summary: $PACKAGE_SUMMARY
@@ -1918,6 +1981,7 @@ EOF
         printf "%s='%s'\n" "${PACKAGE_NAME_UPPERCASE_UNDERSCORE}_${KEY}" "$(eval echo \$$KEY)"
     done <<EOF
 PACKAGE_NAME
+PACKAGE_PKGTYPE
 PACKAGE_SUMMARY
 PACKAGE_LICENSE
 PACKAGE_VERSION
@@ -4889,26 +4953,6 @@ __install_the_given_package() {
    
     step "load formula"
     __load_formula_of_the_given_package "$PACKAGE_NAME" "$PACKAGE_FORMULA_FILEPATH"
-
-    #########################################################################################
-
-    if [ -z "$PACKAGE_PKGTYPE" ] ; then
-        case $PACKAGE_NAME in
-            lib*)
-                PACKAGE_PKGTYPE=lib
-                ;;
-            *lib)
-                PACKAGE_PKGTYPE=lib
-                ;;
-               *)
-                # https://github.com/golang/go/issues/59942
-                if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
-                    PACKAGE_PKGTYPE=pie
-                else
-                    PACKAGE_PKGTYPE=exe
-                fi
-        esac
-    fi
 
     #########################################################################################
 
@@ -8720,7 +8764,7 @@ ICAgICB8X19fLyAK'
     fi
 
     printf '%b\n' "
-${COLOR_GREEN}A package manager for Android NDK to build C/C++/Rust/Go project.${COLOR_OFF}
+${COLOR_GREEN}A package builder/manager for Android NDK to build projects written in C, C++, Rust, Golang, etc.${COLOR_OFF}
 
 ${COLOR_GREEN}ndk-pkg <ACTION> [ARGUMENT...]${COLOR_OFF}
 
@@ -8789,7 +8833,7 @@ ${COLOR_GREEN}ndk-pkg info-installed <PACKAGE-SPEC> [--json | --yaml | <KEY>]${C
     show information of the given installed package.
 
 
-${COLOR_GREEN}ndk-pkg ls-available${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg ls-available [-v] [--json | --yaml]${COLOR_OFF}
     list all the available packages.
 
 ${COLOR_GREEN}ndk-pkg ls-installed${COLOR_OFF}
@@ -9285,38 +9329,8 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native/$NATIVE_OS_KIND-$NATIVE_OS_AR
 ##################################################################################
 
 case $1 in
-    ndkinfo)
-        shift
-        ndkinfo "$@"
-        ;;
-
-    sysinfo)
-        shift
-        sysinfo
-        ;;
-
-    info-available) shift; __info_the_given_available_package "$@" ;;
-    info-installed) shift; __info_the_given_installed_package "$@" ;;
-
-    ls-available) shift; __list_available_packages ;;
-    ls-installed) shift; __list_installed_packages ;;
-    ls-outdated)  shift; __list__outdated_packages ;;
-
-    is-available) shift; is_package_available "$@" ;;
-
-    is-installed)
-        shift
-        PACKAGE_SPEC=
-        PACKAGE_SPEC="$(inspect_package_spec "$1")"
-        is_package_installed "$PACKAGE_SPEC"
-        ;;
-
-    is-outdated)
-        shift
-        PACKAGE_SPEC=
-        PACKAGE_SPEC="$(inspect_package_spec "$1")"
-        is_package__outdated "$PACKAGE_SPEC"
-        ;;
+    ndkinfo) shift; ndkinfo "$@" ;;
+    sysinfo) shift; sysinfo "$@" ;;
 
     update)            shift; __sync_available_formula_repositories "$@" ;;
     formula-repo-list) shift; __list_available_formula_repositories "$@" ;;
@@ -9346,23 +9360,49 @@ case $1 in
         __delete_a_formula_repository "$@"
         ;;
 
-    cleanup) shift; __cleanup ;;
+    info-available) shift; __info_the_given_available_package "$@" ;;
+    info-installed) shift; __info_the_given_installed_package "$@" ;;
+
+    ls-available) shift; __list_available_packages "$@" ;;
+    ls-installed) shift; __list_installed_packages "$@" ;;
+    ls-outdated)  shift; __list__outdated_packages "$@" ;;
+
+    is-available) shift; is_package_available "$@" ;;
+
+    is-installed)
+        shift
+        PACKAGE_SPEC=
+        PACKAGE_SPEC="$(inspect_package_spec "$1")"
+        is_package_installed "$PACKAGE_SPEC"
+        ;;
+
+    is-outdated)
+        shift
+        PACKAGE_SPEC=
+        PACKAGE_SPEC="$(inspect_package_spec "$1")"
+        is_package__outdated "$PACKAGE_SPEC"
+        ;;
 
     search)  shift; __search_packages "$*" ;;
+
+    depends) shift; __show_packages_depended_by_the_given_package "$@" ;;
+    fetch)   shift;        __fetch_resources_of_the_given_package "$@" ;;
 
     install) shift;   __install_the_given_packages "$@" ;;
   reinstall) shift; __reinstall_the_given_packages "$@" ;;
   uninstall) shift; __uninstall_the_given_packages "$@" ;;
 
-    upgrade-self)
-        shift
-        __upgrade_self "$NDKPKG_UPGRAGE_URL" "$@"
-        ;;
+    upgrade) shift; __upgrade_packages "$@" ;;
 
-    upgrade)
-        shift
-        __upgrade_packages "$@"
-        ;;
+    upgrade-self)
+             shift; __upgrade_self "$NDKPKG_UPGRAGE_URL" "$@" ;;
+
+    logs) shift; __logs_the_given_installed_package "$@" ;;
+    tree) shift; __tree_the_given_installed_package "$@" ;;
+    pack) shift; __pack_the_given_installed_package "$@" ;;
+
+    export) shift; __export_google_prefab_aar_for_the_given_installed_packages "$@" ;;
+    deploy) shift; __deploy_google_prefab_aar_for_the_given_installed_packages "$@" ;;
 
     integrate)
         shift
@@ -9375,16 +9415,7 @@ case $1 in
         esac
         ;;
 
-    homepage) shift;  __show_or_open_homepage_of_the_given_package "$@" ;;
-    depends)  shift; __show_packages_depended_by_the_given_package "$@" ;;
-    fetch)    shift;        __fetch_resources_of_the_given_package "$@" ;;
-
-    export) shift; __export_google_prefab_aar_for_the_given_installed_packages "$@" ;;
-    deploy) shift; __deploy_google_prefab_aar_for_the_given_installed_packages "$@" ;;
-
-    logs) shift; __logs_the_given_installed_package "$@" ;;
-    pack) shift; __pack_the_given_installed_package "$@" ;;
-    tree) shift; __tree_the_given_installed_package "$@" ;;
+    cleanup) shift; __cleanup ;;
 
     uppm) shift; "$UPPM" "$@" ;;
 

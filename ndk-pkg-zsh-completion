@@ -133,12 +133,12 @@ function _ndk_pkg() {
                 info-available)
                     _arguments \
                         '1:package-name:_ndk_pkg_available_packages' \
-                        '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-sha src-ft src-fp fix-url fix-sha fix-ft fix-fp res-url res-sha res-ft res-fp dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min)'
+                        '2:key:(--yaml --json pkgtype summary version license web-url git-url git-sha git-ref git-nth src-url src-sha src-ft src-fp fix-url fix-sha fix-ft fix-fp res-url res-sha res-ft res-fp dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min)'
                     ;;
                 info-installed)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '2:key:(--yaml --json summary version license web-url git-url git-sha git-ref git-nth src-url src-sha src-ft src-fp fix-url fix-sha fix-ft fix-fp res-url res-sha res-ft res-fp dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min --prefix --files builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc)'
+                        '2:key:(--yaml --json pkgtype summary version license web-url git-url git-sha git-ref git-nth src-url src-sha src-ft src-fp fix-url fix-sha fix-ft fix-fp res-url res-sha res-ft res-fp dep-pkg dep-upp dep-pym dep-plm ppflags ccflags xxflags ldflags bscript binbstd bsystem dopatch install parallel developer api-min --prefix --files builtat builtat-rfc-3339 builtat-iso-8601 builtat-rfc-3339-utc builtat-iso-8601-utc)'
                     ;;
                 fetch)
                     _arguments ':package-name:_ndk_pkg_available_packages'

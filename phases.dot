@@ -1,6 +1,6 @@
 digraph {
     rankdir="LR"
-    start -> dofetch -> onready -> do12345 -> dopatch -> prepare -> dobuild -> install -> dotweak -> end
+    start -> dofetch -> onready -> do12345 -> dopatch -> prepare -> install -> dotweak -> end
     do12345 [shape="box"; style="dashed"];
     start [fillcolor="green";style=filled]
     end [fillcolor="green";style=filled]
