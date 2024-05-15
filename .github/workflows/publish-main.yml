@@ -1,9 +1,7 @@
-name: publish ndk-pkg
+name: publish ndk-pkg main
 
 on:
   workflow_dispatch:
-    #schedule:
-    #- cron: '0 1 * * *'
 
 jobs:
   publish:
