@@ -1741,11 +1741,17 @@ __list_available_packages() {
 
         [ -z "$AVAILABLE_PACKAGE_NAMES" ] && return 0
 
+        IS_FIRST_ELEMENT=1
+
         case $OUTPUT_TYPE in
             yaml|'')
                 for PKGNAME in $AVAILABLE_PACKAGE_NAMES
                 do
-                    printf '%s\n' '==='
+                    if [ "$IS_FIRST_ELEMENT" = 1 ] ; then
+                        unset IS_FIRST_ELEMENT
+                    else
+                        printf '%s\n' '---'
+                    fi
                     __info_the_given_available_package_as_yaml "$PKGNAME"
                 done
                 ;;
@@ -1754,7 +1760,11 @@ __list_available_packages() {
 
                 for PKGNAME in $AVAILABLE_PACKAGE_NAMES
                 do
-                    printf '%s\n' ','
+                    if [ "$IS_FIRST_ELEMENT" = 1 ] ; then
+                        unset IS_FIRST_ELEMENT
+                    else
+                        printf '%s\n' ','
+                    fi
                     __info_the_given_available_package_as_json "$PKGNAME"
                 done
 
