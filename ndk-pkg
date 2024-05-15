@@ -667,7 +667,7 @@ EOF
     if [ -d    "$NDKPKG_HOME/repos.d/$1" ] ; then
         rm -rf "$NDKPKG_HOME/repos.d/$1"
     else
-        warn "'$1' named formula repository does not exist."
+        abort 1 "'$1' named formula repository does not exist."
     fi
 }
 
@@ -1389,7 +1389,7 @@ filetype_from_url() {
     }
 
     grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed -i "/^pkgtype:/a version: $PACKAGE_PKGTYPE" "$PACKAGE_RECEIPT_FILEPATH"
+        sed -i "/^pkgtype:/a version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
     }
 
     grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || {
@@ -1515,7 +1515,7 @@ EOF
 
 
     RECEIPT_PACKAGE_PKGNAME="$(yq '.pkgname | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_PKGTYPE="$(yq '.pkgname | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_PKGTYPE="$(yq '.pkgtype | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -7106,7 +7106,11 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    unset PACKAGE_NEED_SET_RPATH_EXECUTABLES
+    # executable that need to be set rpath : $ORIGIN/../lib
+    unset PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1
+
+    # executable that need to be set rpath : $ORIGIN/../.ndk-pkg/dependencies/lib
+    unset PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2
 
     step "check ELF files"
     __check_elf_files
@@ -7127,12 +7131,25 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    [ -n "$PACKAGE_NEED_SET_RPATH_EXECUTABLES" ] && {
+    [ -n "$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1" ] && {
         step "set rpath for executables"
 
-        PACKAGE_NEED_SET_RPATH_EXECUTABLES="$(printf '%s\n' $PACKAGE_NEED_SET_RPATH_EXECUTABLES | sort | uniq)"
+        PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1="$(printf '%s\n' $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1 | sort | uniq)"
 
-        for f in $PACKAGE_NEED_SET_RPATH_EXECUTABLES
+        for f in $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1
+        do
+            DIRNAME="${f%/*}"
+            RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" lib)"
+            run patchelf --set-rpath "\\\$ORIGIN/$RELATIVE_PATH" "$f"
+        done
+    }
+
+    [ -n "$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2" ] && {
+        step "set rpath for executables"
+
+        PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2="$(printf '%s\n' $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2 | sort | uniq)"
+
+        for f in $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2
         do
             DIRNAME="${f%/*}"
             RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" .ndk-pkg/dependencies/lib)"
@@ -7344,12 +7361,8 @@ __check_elf_files() {
                 DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
 
                 if [ -e "$DT_NEEDED_FILEPATH" ] ; then
-                    if [ !      -d    "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR" ] ; then
-                        install -d -v "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR"
-                    fi
-
-                    if [ ! -e "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/$DT_NEEDED" ] ; then
-                        ln -srv "$DT_NEEDED_FILEPATH" "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/$DT_NEEDED"
+                    if [ "$2" = 1 ] ; then
+                        PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1="$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1 $1"
                     fi
                 else
                     unset DT_NEEDED_FILEPATH
@@ -7371,7 +7384,7 @@ __check_elf_files() {
                                 fi
 
                                 if [ "$2" = 1 ] ; then
-                                    PACKAGE_NEED_SET_RPATH_EXECUTABLES="$PACKAGE_NEED_SET_RPATH_EXECUTABLES $1"
+                                    PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2="$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2 $1"
                                 fi
 
                                 break
@@ -8589,7 +8602,7 @@ EOF
         ANDROID_NDK_HOME="$UPPM_HOME/installed/$ANDROID_NDK_PKG"
 
         if ! "$UPPM" is-installed "$ANDROID_NDK_PKG" ; then
-            warn "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK ($ANDROID_NDK_REVISION) will be installed via uppm."
+            note "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK ($ANDROID_NDK_REVISION) will be installed via uppm."
 
             run "$UPPM" env
             run "$UPPM" update
