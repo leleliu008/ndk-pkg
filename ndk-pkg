@@ -1826,12 +1826,36 @@ __list__outdated_packages() {
 
 # }}}
 ##############################################################################
-# {{{ ndk-pkg search
+# {{{ ndk-pkg search <REGULAR-EXPRESSION-PATTERN> [-v]
 
 __search_packages() {
     [ -z "$1" ] && abort 1 "please specify a regular express partten."
 
-    __list_available_packages | grep "$1"
+    AVAILABLE_PACKAGE_NAMES_ALL="$(__list_available_package_names)"
+
+    [ -z "$AVAILABLE_PACKAGE_NAMES_ALL" ] && return 0
+
+    AVAILABLE_PACKAGE_NAMES_FILTERED="$(printf '%s\n' $AVAILABLE_PACKAGE_NAMES_ALL | grep "$1" || true)"
+
+    [ -z "$AVAILABLE_PACKAGE_NAMES_FILTERED" ] && return 0
+
+    case $2 in
+        '') printf '%s\n' $AVAILABLE_PACKAGE_NAMES_FILTERED ;;
+        -v) IS_FIRST_ELEMENT=1
+
+            for PKGNAME in $AVAILABLE_PACKAGE_NAMES_FILTERED
+            do
+                if [ "$IS_FIRST_ELEMENT" = 1 ] ; then
+                    unset IS_FIRST_ELEMENT
+                else
+                    printf '%s\n' '---'
+                fi
+
+                __info_the_given_available_package_as_yaml "$PKGNAME"
+            done
+            ;;
+        *)  abort 1 "unrecognzied argument: $2"
+    esac
 }
 
 # }}}
@@ -8863,7 +8887,7 @@ ${COLOR_GREEN}ndk-pkg is-outdated  <PACKAGE-SPEC>${COLOR_OFF}
     check if the given package is outdated.
 
 
-${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN>${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN> [-v]${COLOR_OFF}
     search all available packages whose name matches the given regular expression pattern.
 
 
@@ -9393,7 +9417,7 @@ case $1 in
         is_package__outdated "$PACKAGE_SPEC"
         ;;
 
-    search)  shift; __search_packages "$*" ;;
+    search)  shift; __search_packages "$@" ;;
 
     depends) shift; __show_packages_depended_by_the_given_package "$@" ;;
     fetch)   shift;        __fetch_resources_of_the_given_package "$@" ;;
