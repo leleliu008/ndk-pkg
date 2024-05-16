@@ -4849,7 +4849,7 @@ EOF
 
     wfetch "$NATIVE_PACKAGE_SRC_URL" --sha256="$NATIVE_PACKAGE_SRC_SHA" -o "$NATIVE_PACKAGE_SRC_FILEPATH"
 
-    run bsdtar xvf "$NATIVE_PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner -C src
+    run bsdtar xf "$NATIVE_PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner -C src
 
     run cd src
 
@@ -8159,8 +8159,8 @@ EOF
             fi
         fi
 
-        if [ -f "$PACKAGE_BCACHED_DIR/CMakeCache.txt" ] ; then
-            rm  "$PACKAGE_BCACHED_DIR/CMakeCache.txt"
+        if [   -f "$PACKAGE_BCACHED_DIR/CMakeCache.txt" ] ; then
+            rm -f "$PACKAGE_BCACHED_DIR/CMakeCache.txt"
         fi
 
         CMAKE_CONFIG_OPTIONS="-Wno-dev -DBUILD_TESTING=OFF -DCMAKE_INSTALL_LIBDIR='$PACKAGE_INSTALL_DIR/lib' -DCMAKE_INSTALL_PREFIX='$PACKAGE_INSTALL_DIR' -DCMAKE_TOOLCHAIN_FILE='$CMAKE_TOOLCHAIN_FILE' -DCMAKE_VERBOSE_MAKEFILE='$CMAKE_VERBOSE_MAKEFILE' -DCMAKE_COLOR_MAKEFILE='$CMAKE_COLOR_MAKEFILE'"
@@ -8557,6 +8557,8 @@ __setup() {
 
     ##################################################################################
 
+    unset ANDROID
+
     case $NATIVE_OS_KIND in
         darwin)
             NATIVE_OS_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
@@ -8571,6 +8573,7 @@ __setup() {
             ;;
         linux)
             if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
+                ANDROID=1
                 LV="$(getprop ro.build.version.sdk)"
                 NATIVE_OS_TYPE="android-$LV"
                 NATIVE_OS_ARCH=arm64-v8a
@@ -8605,7 +8608,11 @@ __setup() {
 
     for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd jq yq d2 $DOT
     do
-        run ./uppm install "$UPPM_PACKAGE_NAME"
+        if [ "$ANDROID" = 1 ] && [ "$UPPM_PACKAGE_NAME" = git ] ; then
+            run proot --link2symlink ./uppm install "$UPPM_PACKAGE_NAME"
+        else
+            run ./uppm install "$UPPM_PACKAGE_NAME"
+        fi
 
         UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
@@ -9067,7 +9074,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.10.5
+NDKPKG_VERSION=0.10.6
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
@@ -9092,6 +9099,11 @@ fi
 if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
     LV="$(getprop ro.build.version.sdk)"
     export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/fpliu1214/uppm-package-repository-android-$LV-aarch64"
+
+    bsdtar() {
+        # https://github.com/termux/termux-packages/issues/1054
+        proot --link2symlink "$UPPM_HOME/installed/bsdtar/bin/bsdatr" "$@"
+    }
 fi
 
 ##################################################################################
