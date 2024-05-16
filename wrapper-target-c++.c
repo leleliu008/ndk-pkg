@@ -129,7 +129,6 @@ int main(int argc, char * argv[]) {
         action = 0;
     }
 
-    fprintf(stderr, "action=%d\n", action);
     /////////////////////////////////////////////////////////////////
 
     char* argv2[argc + 5];
@@ -332,11 +331,17 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    for (int i = 0; ;i++) {
-        if (argv2[i] == NULL) {
-            break;
-        } else {
-            fprintf(stderr, "%s\n", argv2[i]);
+    const char * verbose = getenv("NDKPKG_VERBOSE");
+
+    if (verbose != NULL && strcmp(verbose, "1") == 0) {
+        fprintf(stderr, "action=%d\n", action);
+
+        for (int i = 0; ;i++) {
+            if (argv2[i] == NULL) {
+                break;
+            } else {
+                fprintf(stderr, "%s\n", argv2[i]);
+            }
         }
     }
 
