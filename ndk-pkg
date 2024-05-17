@@ -988,7 +988,10 @@ filetype_from_url() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
+    unset PACKAGE_ONSTART
     unset PACKAGE_ONREADY
+    unset PACKAGE_ONFINAL
+
     unset PACKAGE_DO12345
     unset PACKAGE_DOPATCH
     unset PACKAGE_PREPARE
@@ -1073,7 +1076,10 @@ filetype_from_url() {
     PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
+    PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_ONFINAL="$(yq '.onfinal | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
     PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1494,8 +1500,18 @@ EOF
 
     unset RECEIPT_PACKAGE_BSYSTEM
     unset RECEIPT_PACKAGE_BSCRIPT
+
+    unset RECEIPT_PACKAGE_ONSTART
+    unset RECEIPT_PACKAGE_ONREADY
+    unset RECEIPT_PACKAGE_ONFINAL
+
+    unset RECEIPT_PACKAGE_DO12345
     unset RECEIPT_PACKAGE_DOPATCH
-    unset RECEIPT_PACKAGE_INSTALL
+    unset RECEIPT_PACKAGE_PREPARE
+    unset RECEIPT_PACKAGE_DOBUILD
+    unset RECEIPT_PACKAGE_DOTWEAK
+
+    unset RECEIPT_PACKAGE_CAVEATS
 
     unset RECEIPT_PACKAGE_BUILTBY
     unset RECEIPT_PACKAGE_BUILTAT
@@ -1556,11 +1572,14 @@ EOF
     RECEIPT_PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
+    RECEIPT_PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_ONFINAL="$(yq '.onfinal | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
     RECEIPT_PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_INSTALL="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1904,7 +1923,9 @@ __search_packages() {
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
+        --arg onstart "$PACKAGE_ONSTART" \
         --arg onready "$PACKAGE_ONREADY" \
+        --arg onfinal "$PACKAGE_ONFINAL" \
         --arg do12345 "$PACKAGE_DO12345" \
         --arg dopatch "$PACKAGE_DOPATCH" \
         --arg prepare "$PACKAGE_PREPARE" \
@@ -1955,7 +1976,9 @@ __search_packages() {
     "api-min":$api_min,
     "parallel":$parallel,
     "developer":$developer,
+    "onstart":$onstart,
     "onready":$onready,
+    "onfinal":$onfinal,
     "do12345":$do12345,
     "dopatch":$dopatch,
     "prepare":$prepare,
@@ -2098,9 +2121,17 @@ EOF
         --json)
             __info_the_given_available_package_as_json "$1"
             ;;
+        onstart)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_ONSTART"
+            ;;
         onready)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_ONREADY"
+            ;;
+        onfinal)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_ONFINAL"
             ;;
         do12345)
             __load_formula_of_the_given_package "$1"
@@ -5155,6 +5186,20 @@ EOF
 
     #########################################################################################
 
+    step "onstart"
+
+    if [ -z "$PACKAGE_ONSTART" ] ; then
+        note "onstart mapping was not found in formula, skipped."
+    else
+        eval "
+onstart() {
+$PACKAGE_ONSTART
+}"
+        onstart
+    fi
+
+    #########################################################################################
+
     step "locate C/C++ toolchain for native build"
 
     # https://www.real-world-systems.com/docs/xcrun.1.html
@@ -7100,6 +7145,26 @@ $PACKAGE_DOTWEAK
         step "show installed files in tree-like format"
         run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
     fi
+
+    #########################################################################################
+
+    step "onfinal"
+
+    if [ -z "$PACKAGE_ONFINAL" ] ; then
+        note "onfinal mapping was not found in formula, skipped."
+    else
+        if [ "$PWD" != "$PACKAGE_INSTALL_DIR" ] ; then
+            run     cd "$PACKAGE_INSTALL_DIR"
+        fi
+
+        eval "
+onfinal() {
+$PACKAGE_ONFINAL
+}"
+        onfinal
+    fi
+
+    #########################################################################################
 
     printf '\n%b\n' "${COLOR_PURPLE}<<< Installation ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} end${COLOR_OFF}"
 
@@ -9096,7 +9161,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.10.7
+NDKPKG_VERSION=0.10.8
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'

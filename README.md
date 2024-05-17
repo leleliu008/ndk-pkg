@@ -760,13 +760,16 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 ||||
 |`api-min`|optional|specify which minimum Android SDK API level is supported for this package.|
 ||||
-|`onready`|optional|POSIX shell code to be run when all are ready. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`onstart`|optional|POSIX shell code to be run when a package formula is loaded. `pwd` is `$PACKAGE_WORKING_DIR`|
+|`onready`|optional|POSIX shell code to be run when a package's need resources all are ready. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`onfinal`|optional|POSIX shell code to be run when a package is succeffully installed. `pwd` is `$PACKAGE_INSTALL_DIR`|
+||||
 |`do12345`|optional|POSIX shell code to be run for native build. It is only meaningful when requesting for cross building.|
 |`dopatch`|optional|POSIX shell code to be run to apply patches manually. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`prepare`|optional|POSIX shell code to be run to do some additional preparation. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`. `pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
 |`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing. `pwd` is `$PACKAGE_INSTALL_DIR`|
-|`caveats`|optional|multiple lines of text to be displayed after installation.|
+|`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
 |phases|
 |-|
