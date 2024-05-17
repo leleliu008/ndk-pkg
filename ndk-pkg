@@ -9366,7 +9366,15 @@ case $1 in
 
     cleanup) shift; __cleanup ;;
 
-    uppm) shift; "$UPPM" "$@" ;;
+    run)
+        shift
+
+        case $1 in
+            uppm) shift; "$UPPM" "$@" ;;
+            '')   abort 1 'no command is supplied to run.' ;;
+            *)    "$@"
+        esac
+        ;;
 
     *)  abort 1 "unrecognized argument: $1"
 esac
