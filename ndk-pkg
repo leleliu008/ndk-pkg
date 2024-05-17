@@ -4965,7 +4965,7 @@ __install_the_given_package_onexit() {
 
 # Note: this function must run in a subshell
 __install_the_given_package() {
-    printf '%b\n' "${COLOR_PURPLE}>>> Installation ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} start >>>${COLOR_OFF}"
+    printf '%b\n' "${COLOR_PURPLE}>>> Installation ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} start${COLOR_OFF}"
 
     unset PACKAGE_WORKING_DIR
 
@@ -7101,7 +7101,11 @@ $PACKAGE_DOTWEAK
         run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
     fi
 
-    printf '\n%b\n' "${COLOR_PURPLE}<<< Installation ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} end <<<${COLOR_OFF}"
+    printf '\n%b\n' "${COLOR_PURPLE}<<< Installation ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} end${COLOR_OFF}"
+
+    if [ -n "$PACKAGE_CAVEATS" ] ; then
+        printf '\n%b\n' "${COLOR_YELLOW}🔥  Caveats:\n\n$PACKAGE_CAVEATS${COLOR_OFF}" >&2
+    fi
 }
 
 __check_elf_files() {
