@@ -50,6 +50,8 @@ jobs:
             $CC $CFLAGS -std=c99 -Os -flto -Wl,-s -o "out/${item%.c}" "$item"
           done
 
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+
       - run: curl -LO https://raw.githubusercontent.com/leleliu008/xcpkg/master/xcpkg
       - run: chmod a+x xcpkg
       - run: ./xcpkg setup
@@ -62,6 +64,7 @@ jobs:
       - run: rm -rf out/bin
       - run: rm -rf out/share
       - run: rm -rf out/.xcpkg
+      - run: mv *.otf out/
 
       - run: |
           DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}"
@@ -97,6 +100,8 @@ jobs:
             gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
           done
 
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+
       - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
       - run: chmod a+x ppkg
       - run: ./ppkg setup
@@ -109,6 +114,7 @@ jobs:
       - run: rm -rf out/bin
       - run: rm -rf out/share
       - run: rm -rf out/.ppkg
+      - run: mv *.otf out/
 
       - run: |
           DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64"
@@ -137,11 +143,13 @@ jobs:
       - run: ndk-pkg setup
       - run: ndk-pkg update
 
-      - run: ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.2
+      - run: ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.3
       - run: ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core
 
-      - run: ndk-pkg pack    android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.2  -o .
+      - run: ndk-pkg pack    android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.3  -o .
       - run: ndk-pkg pack    android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core -o .
+
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
 
       - name: repack
         run: |
@@ -156,6 +164,7 @@ jobs:
           done
 
           mv out/bin/* out/
+          mv *.otf out/
 
           rm -rf out/bin
           rm -rf out/share
