@@ -1283,8 +1283,8 @@ filetype_from_url() {
             autogen)     PACKAGE_USE_BSYSTEM_AUTOGENSH=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
             autotools)   PACKAGE_USE_BSYSTEM_AUTOTOOLS=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
             configure)   PACKAGE_USE_BSYSTEM_CONFIGURE=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
-            cmake-gmake) PACKAGE_USE_BSYSTEM_CMAKE=1     ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
-            cmake-ninja) PACKAGE_USE_BSYSTEM_CMAKE=1     ; PACKAGE_USE_BSYSTEM_NINJA=1 ;;
+            cmake+gmake) PACKAGE_USE_BSYSTEM_CMAKE=1     ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
+            cmake+ninja) PACKAGE_USE_BSYSTEM_CMAKE=1     ; PACKAGE_USE_BSYSTEM_NINJA=1 ;;
             cmake)       PACKAGE_USE_BSYSTEM_CMAKE=1     ; PACKAGE_USE_BSYSTEM_NINJA=1 ;;
             xmake)       PACKAGE_USE_BSYSTEM_XMAKE=1     ;;
             meson)       PACKAGE_USE_BSYSTEM_MESON=1     ; PACKAGE_USE_BSYSTEM_NINJA=1 ;;
