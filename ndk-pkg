@@ -9163,6 +9163,11 @@ ndk-pkg.homedir: $NDKPKG_HOME
 ndk-pkg.exepath: $NDKPKG_PATH
 ndk-pkg.website: https://github.com/leleliu008/ndk-pkg
 EOF
+        if [ -n "$UPPM" ] ; then
+            printf '\n'
+            "$UPPM" env
+        fi
+
         exit
         ;;
     setup)
