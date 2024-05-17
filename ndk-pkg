@@ -3528,7 +3528,7 @@ case \$1 in
         printf '%s\n' "\$1" | sed 's|githubusercontent|gitmirror|'
         ;;
     https://github.com/*)
-        printf 'https://hub.gitmirror.com/%s\n' "\$1"
+        printf 'https://mirror.ghproxy.com/%s\n' "\$1"
         ;;
     '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ; exit 1 ;;
     *)  printf '%s\n' "\$1"
