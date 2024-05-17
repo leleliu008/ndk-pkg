@@ -766,6 +766,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`prepare`|optional|POSIX shell code to be run to do some additional preparation. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`. `pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
 |`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing. `pwd` is `$PACKAGE_INSTALL_DIR`|
+|`caveats`|optional|multiple lines of text to be displayed after installation.|
 
 |phases|
 |-|

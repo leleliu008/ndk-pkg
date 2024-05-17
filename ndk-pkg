@@ -998,6 +998,8 @@ filetype_from_url() {
     unset PACKAGE_PATCHES
     unset PACKAGE_RESLIST
 
+    unset PACKAGE_CAVEATS
+
     unset PACKAGE_BSYSTEM
     unset PACKAGE_BSYSTEM_MASTER
 
@@ -1080,6 +1082,8 @@ filetype_from_url() {
 
     PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RESLIST="$(yq '.reslist | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1508,6 +1512,7 @@ EOF
     unset RECEIPT_PACKAGE_API_MIN
     unset RECEIPT_PACKAGE_NDKVERS
 
+    #########################################################################################
 
     RECEIPT_PACKAGE_PKGNAME="$(yq '.pkgname | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_PKGTYPE="$(yq '.pkgtype | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1558,6 +1563,8 @@ EOF
     RECEIPT_PACKAGE_INSTALL="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
+    RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
     RECEIPT_PACKAGE_API_MIN="$(yq '.api-min | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_NDKVERS="$(yq '.ndkvers | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
@@ -1570,6 +1577,18 @@ EOF
 
     RECEIPT_PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
+    #########################################################################################
+
+    [ -z "$RECEIPT_PACKAGE_PKGNAME" ] && abort 1 "receipt scheme error. pkgname mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_PKGTYPE" ] && abort 1 "receipt scheme error. pkgtype mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_VERSION" ] && abort 1 "receipt scheme error. version mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_SUMMARY" ] && abort 1 "receipt scheme error. summary mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_WEB_URL" ] && abort 1 "receipt scheme error. web-url mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_BUILTBY" ] && abort 1 "receipt scheme error. builtby mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+    [ -z "$RECEIPT_PACKAGE_BUILTAT" ] && abort 1 "receipt scheme error. builtat mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
+
+    [ "${#RECEIPT_PACKAGE_BUILTAT}" -eq 10 ] || abort 1 "receipt scheme error. builtat mapping's value length must be 10."
+
     if [ "${PACKAGE_SPEC#*/}" != "$RECEIPT_PACKAGE_PKGNAME" ] ; then
         error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_PKGNAME does not identical with your request: ${PACKAGE_SPEC#*/}"
         return 1
@@ -1579,6 +1598,8 @@ EOF
         error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_BUILTFOR does not identical with your request: ${PACKAGE_SPEC%/*}"
         return 1
     fi
+
+    #########################################################################################
 
     RECEIPT_PACKAGE_BUILTFOR_PLATFORM="$RECEIPT_PACKAGE_BUILTFOR"
 
@@ -1601,14 +1622,6 @@ EOF
     RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS="$(printf '%s\n' "$RECEIPT_PACKAGE_BUILTFOR" | cut -d- -f2)"
 
     RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME=android
-
-    [ -z "$RECEIPT_PACKAGE_BUILTBY" ] && abort 1 "receipt scheme error. builtby mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
-    [ -z "$RECEIPT_PACKAGE_BUILTAT" ] && abort 1 "receipt scheme error. builtat mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
-    [ -z "$RECEIPT_PACKAGE_VERSION" ] && abort 1 "receipt scheme error. version mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
-    [ -z "$RECEIPT_PACKAGE_SUMMARY" ] && abort 1 "receipt scheme error. summary mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
-    [ -z "$RECEIPT_PACKAGE_WEB_URL" ] && abort 1 "receipt scheme error. web-url mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
-
-    [ "${#RECEIPT_PACKAGE_BUILTAT}" -eq 10 ] || abort 1 "receipt scheme error. builtat mapping's value length must be 10."
 }
 
 # }}}
@@ -1897,6 +1910,7 @@ __search_packages() {
         --arg prepare "$PACKAGE_PREPARE" \
         --arg install "$PACKAGE_DOBUILD" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
+        --arg caveats "$PACKAGE_CAVEATS" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
         --arg ccflags "$PACKAGE_CCFLAGS" \
@@ -1946,7 +1960,8 @@ __search_packages() {
     "dopatch":$dopatch,
     "prepare":$prepare,
     "install":$install,
-    "dotweak":$dotweak
+    "dotweak":$dotweak,
+    "caveats":$caveats
 }' | jq 'with_entries(select(.value != ""))'
 }
 
@@ -1956,6 +1971,12 @@ __search_packages() {
 
     if [ -z "$PACKAGE_WEB_URL" ] ; then
         PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
+    fi
+
+    if is_package_installed "$1" ; then
+        PACKAGE_INSTALLED=yes
+    else
+        PACKAGE_INSTALLED=no
     fi
 
     {
@@ -1991,14 +2012,9 @@ xxflags: $PACKAGE_XXFLAGS
 ldflags: $PACKAGE_LDFLAGS
 api-min: $PACKAGE_API_MIN
 parallel: $PACKAGE_PARALLEL
+installed: $PACKAGE_INSTALLED
 EOF
     } | yq eval '. | with_entries(select(.value != null))'
-
-    if is_package_installed "$1" ; then
-        yq eval --null-input '.installed = "yes"'
-    else
-        yq eval --null-input '.installed = "no"'
-    fi
 }
 
 # __info_the_given_available_package_as_shell <PACKAGE-NAME>
@@ -2105,6 +2121,10 @@ EOF
         dotweak)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOTWEAK"
+            ;;
+        caveats)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_CAVEATS"
             ;;
         developer)
             __load_formula_of_the_given_package "$1"
@@ -9074,7 +9094,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.10.6
+NDKPKG_VERSION=0.10.7
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
