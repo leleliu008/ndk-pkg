@@ -4945,7 +4945,7 @@ __install_the_given_package_onexit() {
 
 # Note: this function must run in a subshell
 __install_the_given_package() {
-    printf '%b\n' "${COLOR_PURPLE}>>>>>> Installing ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} >>>>>>${COLOR_OFF}"
+    printf '%b\n' "${COLOR_PURPLE}>>> Installation ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} start >>>${COLOR_OFF}"
 
     unset PACKAGE_WORKING_DIR
 
@@ -7081,7 +7081,7 @@ $PACKAGE_DOTWEAK
         run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
     fi
 
-    printf '\n%b\n' "${COLOR_PURPLE}<<<<<< Installed ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} <<<<<<${COLOR_OFF}"
+    printf '\n%b\n' "${COLOR_PURPLE}<<< Installation ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} end <<<${COLOR_OFF}"
 }
 
 __check_elf_files() {
@@ -9102,7 +9102,7 @@ if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
 
     bsdtar() {
         # https://github.com/termux/termux-packages/issues/1054
-        proot --link2symlink "$UPPM_HOME/installed/bsdtar/bin/bsdatr" "$@"
+        proot --link2symlink "$UPPM_HOME/installed/bsdtar/bin/bsdtar" "$@"
     }
 fi
 
