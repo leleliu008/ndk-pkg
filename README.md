@@ -753,22 +753,22 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`ppflags`|optional|append to `CPPFLAGS`|
 |`ldflags`|optional|append to `LDFLAGS`|
 ||||
-|`bsystem`|optional|build system name.<br>values can be some of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `ndk-build`|
+|`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `ndk-build`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
-|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory. value shall be `0` or `1`. default value is `0`.|
-|`symlink`|optional|whether to symlink installed files to `$NDKPKG_HOME/symlinked/*`. value shall be `0` or `1`. default value is `1`.|
+|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
+|`symlink`|optional|whether to symlink installed files to `$NDKPKG_HOME/symlinked/*`.<br>value shall be `0` or `1`. default value is `1`.|
 ||||
 |`api-min`|optional|specify which minimum Android SDK API level is supported for this package.|
 ||||
-|`onstart`|optional|POSIX shell code to be run when this package's formula is loaded. `pwd` is `$PACKAGE_WORKING_DIR`|
-|`onready`|optional|POSIX shell code to be run when this package's needed resources all are ready. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`onfinal`|optional|POSIX shell code to be run when this package is successfully installed. `pwd` is `$PACKAGE_INSTALL_DIR`|
+|`onstart`|optional|POSIX shell code to be run when this package's formula is loaded.<br>`pwd` is `$PACKAGE_WORKING_DIR`|
+|`onready`|optional|POSIX shell code to be run when this package's needed resources all are ready.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`onfinal`|optional|POSIX shell code to be run when this package is successfully installed.<br>`pwd` is `$PACKAGE_INSTALL_DIR`|
 ||||
 |`do12345`|optional|POSIX shell code to be run for native build. It is only meaningful when requesting for cross building.|
-|`dopatch`|optional|POSIX shell code to be run to apply patches manually. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`prepare`|optional|POSIX shell code to be run to do some additional preparation. `pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`. `pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
-|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing. `pwd` is `$PACKAGE_INSTALL_DIR`|
+|`dopatch`|optional|POSIX shell code to be run to apply patches manually.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`prepare`|optional|POSIX shell code to be run to do some additional preparation.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
+|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing.<br>`pwd` is `$PACKAGE_INSTALL_DIR`|
 ||||
 |`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
