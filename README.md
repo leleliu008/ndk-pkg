@@ -753,7 +753,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`ppflags`|optional|append to `CPPFLAGS`|
 |`ldflags`|optional|append to `LDFLAGS`|
 ||||
-|`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `ndk-build`|
+|`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `rake` `ndk-build`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
 |`symlink`|optional|whether to symlink installed files to `$NDKPKG_HOME/symlinked/*`.<br>value shall be `0` or `1`. default value is `1`.|
@@ -764,7 +764,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`onready`|optional|POSIX shell code to be run when this package's needed resources all are ready.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`onfinal`|optional|POSIX shell code to be run when this package is successfully installed.<br>`pwd` is `$PACKAGE_INSTALL_DIR`|
 ||||
-|`do12345`|optional|POSIX shell code to be run for native build. It is only meaningful when requesting for cross building.|
+|`do12345`|optional|POSIX shell code to be run for native build.<br>It is only meaningful when requesting for cross building.<br>It is running in a separated process.|
 |`dopatch`|optional|POSIX shell code to be run to apply patches manually.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`prepare`|optional|POSIX shell code to be run to do some additional preparation.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR`|
 |`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
