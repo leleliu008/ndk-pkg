@@ -772,7 +772,22 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 ||||
 |`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
-|phases|
+|bystem sytem name|build script file name|
+|-|-|
+|`meson`|`meson.build`|
+|`cmake`|`CMakeLists.txt`|
+|`gmake`|`GNUMakefile` or `Makefile`|
+|`ninja`|`build.ninja`|
+|`xmake`|`xmake.lua`|
+|`cargo`|`Cargo.toml`|
+|`go`|`go.mod`|
+|`rake`|`Rakefile`|
+|`autogen`|`autogen.sh`|
+|`autotools`|`configure.ac`|
+|`configure`|`configure`|
+|`ndk-build`|`Android.mk`|
+
+|phases of a package's installation|
 |-|
 |![phases](phases.svg)|
 
