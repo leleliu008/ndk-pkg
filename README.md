@@ -760,15 +760,15 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 ||||
 |`api-min`|optional|specify which minimum Android SDK API level is supported for this package.|
 ||||
-|`onstart`|optional|POSIX shell code to be run when this package's formula is loaded.<br>`pwd` is `$PACKAGE_WORKING_DIR`|
-|`onready`|optional|POSIX shell code to be run when this package's needed resources all are ready.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`onfinal`|optional|POSIX shell code to be run when this package is successfully installed.<br>`pwd` is `$PACKAGE_INSTALL_DIR`|
+|`onstart`|optional|POSIX shell code to be run when this package's formula is loaded.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
+|`onready`|optional|POSIX shell code to be run when this package's needed resources all are ready.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`onfinal`|optional|POSIX shell code to be run when this package is successfully installed.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
 ||||
 |`do12345`|optional|POSIX shell code to be run for native build.<br>It is only meaningful when requesting for cross building.<br>It is running in a separated process.|
-|`dopatch`|optional|POSIX shell code to be run to apply patches manually.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`prepare`|optional|POSIX shell code to be run to do some additional preparation.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR`|
-|`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`.<br>`pwd` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
-|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing.<br>`pwd` is `$PACKAGE_INSTALL_DIR`|
+|`dopatch`|optional|POSIX shell code to be run to apply patches manually.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`prepare`|optional|POSIX shell code to be run to do some additional preparation.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
+|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
 ||||
 |`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
