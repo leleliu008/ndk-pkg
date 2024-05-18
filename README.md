@@ -772,7 +772,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 ||||
 |`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
-|bystem sytem name|build script file name|
+|build system name|build script file name|
 |-|-|
 |`meson`|`meson.build`|
 |`cmake`|`CMakeLists.txt`|
