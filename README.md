@@ -42,7 +42,7 @@ In this way, you don't need to care about other things than:
 
 For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-manually-build>
 
-## Using ndk-pkg via [Docker](https://www.docker.com/) or [Podman](https://podman.io/)
+## Using ndk-pkg via [Docker](https://www.docker.com/)
 
 **step1. create the ndk-pkg docker container**
 
@@ -76,6 +76,8 @@ If all goes well, then next you can start to install packages whatever you want,
 ```bash
 docker exec -it ndk-pkg ndk-pkg install android-34-arm64-v8a/curl
 ```
+
+**Note:** you can use `podman` instead of `docker`
 
 ## Install ndk-pkg via cURL
 

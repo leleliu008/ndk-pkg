@@ -49,7 +49,7 @@ note() {
 }
 
 warn() {
-    printf '%b\n' "${COLOR_YELLOW}🔥  $*${COLOR_OFF}" >&2
+    printf '%b\n' "${COLOR_YELLOW}⚠️  $*${COLOR_OFF}" >&2
 }
 
 success() {
@@ -74,10 +74,7 @@ step() {
 }
 
 run() {
-    if [ "$RUN_VERBOSE" = 1 ] ; then
-        echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
-    fi
-
+    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
     eval "$@"
 }
 
@@ -108,7 +105,7 @@ bppend_to_ACLOCAL_PATH() {
 }
 
 sed_in_place() {
-    if [ "$RUN_VERBOSE" = 1 ] ; then
+    if [ "${SED_VERBOSE:-0}" = 1 ] ; then
         if [ -z "$SED" ] ; then
             SED="$(command -v gsed || command -v sed)" || abort 1 "command not found: gsed"
         fi
@@ -4467,6 +4464,7 @@ inspect_install_arguments() {
 
     unset ANDROID_NDK_HOME
 
+    unset NDKPKG_VERBOSE
 
     while [ -n "$1" ]
     do
@@ -4539,20 +4537,19 @@ inspect_install_arguments() {
 
     SPECIFIED_PACKAGE_SPEC_LIST=${SPECIFIED_PACKAGE_SPEC_LIST#' '}
 
+    #########################################################################################
+
     setup_android_ndk_env "$ANDROID_NDK_HOME"
+
+    #########################################################################################
 
     if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
         exec 2>&1
-        unset RUN_VERBOSE
-        unset NDKPKG_VERBOSE
     else
         if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-            RUN_VERBOSE=1
             export NDKPKG_VERBOSE=1
-        else
-            unset RUN_VERBOSE
-            unset NDKPKG_VERBOSE
+            SED_VERBOSE=1
         fi
     fi
 
@@ -6785,7 +6782,7 @@ $PACKAGE_DO12345
         done
 
         # https://docs.rs/openssl/latest/openssl/
-        [ "$PACKAGE_DEP_UPP_OPENSSL" -eq 1 ] && {
+        [ "$PACKAGE_DEP_UPP_OPENSSL" = 1 ] && {
             case "$NATIVE_OS_TYPE-$NATIVE_OS_ARCH" in
                 linux-x86_64)  NATIVE_RUST_TARGET='X86_64_UNKNOWN_LINUX_GNU' ;;
                 macos-x86_64)  NATIVE_RUST_TARGET='X86_64_APPLE_DARWIN'      ;;
@@ -7300,7 +7297,7 @@ $PACKAGE_ONFINAL
     printf '\n%b\n' "${COLOR_PURPLE}<<< Installation ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} end${COLOR_OFF}"
 
     if [ -n "$PACKAGE_CAVEATS" ] ; then
-        printf '\n%b\n' "${COLOR_YELLOW}🔥  Caveats:\n\n$PACKAGE_CAVEATS${COLOR_OFF}" >&2
+        printf '\n%b\n' "${COLOR_YELLOW}⚠️  Caveats:\n\n$PACKAGE_CAVEATS${COLOR_OFF}" >&2
     fi
 }
 
@@ -7762,7 +7759,9 @@ cargow() {
             CARGO_BUILD_ARGS="$@"
 
             if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
-                CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
+                if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+                    CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
+                fi
             fi
 
             if [ -z "$CARGO_BUILD_ARG_RELEASE" ] ; then
@@ -7797,8 +7796,10 @@ cargow() {
 
             CARGO_INSTALL_ARGS="$@"
 
-            if [ -z "$CARGO_INSTALL_ARG_VV" ] ; then
-                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
+            if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
+                if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+                    CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
+                fi
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_TARGET" ] ; then
@@ -7841,7 +7842,9 @@ cargow() {
             CARGO_CINSTALL_ARGS="$@"
 
             if [ -z "$CARGO_CINSTALL_ARG_Q" ] && [ -z "$CARGO_CINSTALL_ARG_V" ] && [ -z "$CARGO_CINSTALL_ARG_VV" ] ; then
-                CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS -vv"
+                if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+                    CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS -vv"
+                fi
             fi
 
             if [ -z "$CARGO_CINSTALL_ARG_DEBUG" ] && [ -z "$CARGO_CINSTALL_ARG_RELEASE" ] ; then
@@ -9292,7 +9295,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.10.9
+NDKPKG_VERSION=0.10.10
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
@@ -9342,8 +9345,6 @@ fi
 ##################################################################################
 
 TIMESTAMP_UNIX="$(date +%s)"
-
-RUN_VERBOSE=1
 
 ##################################################################################
 
