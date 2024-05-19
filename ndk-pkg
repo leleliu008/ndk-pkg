@@ -2269,6 +2269,105 @@ EOF
     esac
 }
 
+# __info_the_given_installed_package_as_json <PACKAGE-NAME|PACKAGE_SPEC>
+  __info_the_given_installed_package_as_json() {
+    __load_receipt_of_the_given_package "$1"
+
+    jq  --null-input \
+        --arg pkgname "$RECEIPT_PACKAGE_PKGNAME" \
+        --arg pkgtype "$RECEIPT_PACKAGE_PKGTYPE" \
+        --arg version "$RECEIPT_PACKAGE_VERSION" \
+        --arg summary "$RECEIPT_PACKAGE_SUMMARY" \
+        --arg license "$RECEIPT_PACKAGE_LICENSE" \
+        --arg web_url "$RECEIPT_PACKAGE_WEB_URL" \
+        --arg git_url "$RECEIPT_PACKAGE_GIT_URL" \
+        --arg git_sha "$RECEIPT_PACKAGE_GIT_SHA" \
+        --arg git_ref "$RECEIPT_PACKAGE_GIT_REF" \
+        --arg git_nth "$RECEIPT_PACKAGE_GIT_NTH" \
+        --arg src_url "$RECEIPT_PACKAGE_SRC_URL" \
+        --arg src_uri "$RECEIPT_PACKAGE_SRC_URI" \
+        --arg src_sha "$RECEIPT_PACKAGE_SRC_SHA" \
+        --arg fix_url "$RECEIPT_PACKAGE_FIX_URL" \
+        --arg fix_uri "$RECEIPT_PACKAGE_FIX_URI" \
+        --arg fix_sha "$RECEIPT_PACKAGE_FIX_SHA" \
+        --arg res_url "$RECEIPT_PACKAGE_RES_URL" \
+        --arg res_uri "$RECEIPT_PACKAGE_RES_URI" \
+        --arg res_sha "$RECEIPT_PACKAGE_RES_SHA" \
+        --arg patches "$RECEIPT_PACKAGE_PATCHES" \
+        --arg reslist "$RECEIPT_PACKAGE_RESLIST" \
+        --arg dep_pkg "$RECEIPT_PACKAGE_DEP_PKG" \
+        --arg dep_upp "$RECEIPT_PACKAGE_DEP_UPP" \
+        --arg dep_pym "$RECEIPT_PACKAGE_DEP_PYM" \
+        --arg dep_plm "$RECEIPT_PACKAGE_DEP_PLM" \
+        --arg onstart "$RECEIPT_PACKAGE_ONSTART" \
+        --arg onready "$RECEIPT_PACKAGE_ONREADY" \
+        --arg onfinal "$RECEIPT_PACKAGE_ONFINAL" \
+        --arg do12345 "$RECEIPT_PACKAGE_DO12345" \
+        --arg dopatch "$RECEIPT_PACKAGE_DOPATCH" \
+        --arg prepare "$RECEIPT_PACKAGE_PREPARE" \
+        --arg install "$RECEIPT_PACKAGE_DOBUILD" \
+        --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
+        --arg caveats "$RECEIPT_PACKAGE_CAVEATS" \
+        --arg bsystem "$RECEIPT_PACKAGE_BSYSTEM" \
+        --arg binbstd "$RECEIPT_PACKAGE_BINBSTD" \
+        --arg ccflags "$RECEIPT_PACKAGE_CCFLAGS" \
+        --arg xxflags "$RECEIPT_PACKAGE_XXFLAGS" \
+        --arg ppflags "$RECEIPT_PACKAGE_PPFLAGS" \
+        --arg ldflags "$RECEIPT_PACKAGE_LDFLAGS" \
+        --arg parallel $RECEIPT_PACKAGE_PARALLEL \
+        --arg developer "$RECEIPT_PACKAGE_DEVELOPER" \
+        --arg builtby "$RECEIPT_PACKAGE_BUILTBY" \
+        --arg builtat "$RECEIPT_PACKAGE_BUILTAT" \
+        --arg builtfor "$RECEIPT_PACKAGE_BUILTFOR" \
+'{
+    "pkgname":$pkgname,
+    "pkgtype":$pkgtype,
+    "version":$version,
+    "license":$license,
+    "summary":$summary,
+    "web-url":$web_url,
+    "git-url":$git_url,
+    "git-sha":$git_sha,
+    "git-ref":$git_ref,
+    "git-nth":$git_nth,
+    "src-url":$src_url,
+    "src-uri":$src_uri,
+    "src-sha":$src_sha,
+    "fix-url":$fix_url,
+    "fix-uri":$fix_uri,
+    "fix-sha":$fix_sha,
+    "res-url":$res_url,
+    "res-uri":$res_uri,
+    "res-sha":$res_sha,
+    "patches":$patches,
+    "reslist":$reslist,
+    "dep-pkg":$dep_pkg,
+    "dep-upp":$dep_upp,
+    "dep-pym":$dep_pym,
+    "dep-plm":$dep_plm,
+    "bsystem":$bsystem,
+    "binbstd":$binbstd,
+    "ccflags":$ccflags,
+    "xxflags":$xxflags,
+    "ppflags":$ppflags,
+    "ldflags":$ldflags,
+    "parallel":$parallel,
+    "developer":$developer,
+    "onstart":$onstart,
+    "onready":$onready,
+    "onfinal":$onfinal,
+    "do12345":$do12345,
+    "dopatch":$dopatch,
+    "prepare":$prepare,
+    "install":$install,
+    "dotweak":$dotweak,
+    "caveats":$caveats,
+    "builtby":$builtby,
+    "builtat":$builtat,
+    "builtfor":$builtfor
+}' | jq 'with_entries(select(.value != ""))'
+}
+
 # }}}
 ##############################################################################
 # {{{ ndk-pkg fetch
@@ -6751,6 +6850,38 @@ $PACKAGE_DO12345
 set(ANDROID_ABI "${TARGET_PLATFORM_ABI}")
 set(ANDROID_PLATFORM "android-${TARGET_PLATFORM_VERS}")
 include(${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake)
+
+set(CMAKE_C_COMPILER "$CC")
+set(CMAKE_C_FLAGS "$CPPFLAGS $CFLAGS")
+
+set(CMAKE_CXX_COMPILER "$CXX")
+set(CMAKE_CXX_FLAGS "$CPPFLAGS $CXXFLAGS")
+
+set(CMAKE_ASM_COMPILER "$CC")
+
+set(CMAKE_SHARED_LINKER_FLAGS "$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')")
+set(CMAKE_EXE_LINKER_FLAGS    "$LDFLAGS")
+
+set(CMAKE_C_COMPILER_AR     "$AR")
+set(CMAKE_C_COMPILER_RANLIB "$RANLIB")
+
+set(CMAKE_CXX_COMPILER_AR     "$AR")
+set(CMAKE_CXX_COMPILER_RANLIB "$RANLIB")
+
+set(CMAKE_AR      "$AR")
+set(CMAKE_RANLIB  "$RANLIB")
+
+set(CMAKE_LINKER  "$LD")
+
+set(CMAKE_NM      "$NM")
+set(CMAKE_READELF "$READELF")
+
+set(CMAKE_OBJCOPY "$OBJCOPY")
+set(CMAKE_OBJDUMP "$OBJDUMP")
+
+set(CMAKE_STRIP   "$STRIP")
+
+set(CMAKE_ADDR2LINE "$ADDR2LINE")
 EOF
     fi
 
@@ -9161,7 +9292,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.10.8
+NDKPKG_VERSION=0.10.9
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
