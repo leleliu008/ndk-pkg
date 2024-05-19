@@ -53,7 +53,7 @@ warn() {
 }
 
 success() {
-    printf '%b\n' "${COLOR_GREEN}[✔] $*${COLOR_OFF}" >&2
+    printf '%b\n' "${COLOR_GREEN}✅️  $*${COLOR_OFF}" >&2
 }
 
 error() {
@@ -4543,14 +4543,13 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    if [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
+      if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
+        export NDKPKG_VERBOSE=1
+    elif [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        SED_VERBOSE=1
+    elif [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
         exec 1>/dev/null
         exec 2>&1
-    else
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-            export NDKPKG_VERBOSE=1
-            SED_VERBOSE=1
-        fi
     fi
 
     #########################################################################################
@@ -7294,7 +7293,7 @@ $PACKAGE_ONFINAL
 
     #########################################################################################
 
-    printf '\n%b\n' "${COLOR_PURPLE}<<< Installation ${COLOR_OFF}${COLOR_GREEN}${1}${COLOR_OFF}${COLOR_PURPLE} end${COLOR_OFF}"
+    printf '\n%b\n' "${COLOR_PURPLE}✅️  ${COLOR_OFF}${COLOR_GREEN}${1} was successfully installed.${COLOR_OFF}${COLOR_PURPLE}${COLOR_OFF}"
 
     if [ -n "$PACKAGE_CAVEATS" ] ; then
         printf '\n%b\n' "${COLOR_YELLOW}⚠️  Caveats:\n\n$PACKAGE_CAVEATS${COLOR_OFF}" >&2
