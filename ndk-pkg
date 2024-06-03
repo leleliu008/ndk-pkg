@@ -126,63 +126,6 @@ git() {
     fi
 }
 
-# https://equa.space/sh/lolcat/
-lolcat_awk() {
-    awk -v angle=45 -v angle_phase=40 -v reverse=0 -v offset=195 -v offset_phase=0 -v width=100 -v width_phase=8 "$@" '
-    function put_rgb(color) {
-        printf "\033[%s38;2;%d;%d;%dm", reverse ? "7;" : "", int(color[1] * 255), int(color[2] * 255), int(color[3] * 255);
-    }
-
-    function hsv_to_rgb(hsv, rgb, c, h2, x) {
-        c = hsv[2] * hsv[3];
-        h2 = hsv[1] * 6;
-        x = c * (1 - ((h2 % 2) - 1 > 0 ? (h2 % 2) - 1 : 1 - (h2 % 2)));
-        if (int(h2) % 6 == 0) {
-            rgb[1] = c; rgb[2] = x; rgb[3] = 0;
-        } else if (int(h2) % 6 == 1) {
-            rgb[1] = x; rgb[2] = c; rgb[3] = 0;
-        } else if (int(h2) % 6 == 2) {
-            rgb[1] = 0; rgb[2] = c; rgb[3] = x;
-        } else if (int(h2) % 6 == 3) {
-            rgb[1] = 0; rgb[2] = x; rgb[3] = c;
-        } else if (int(h2) % 6 == 4) {
-            rgb[1] = x; rgb[2] = 0; rgb[3] = c;
-        } else if (int(h2) % 6 == 5) {
-            rgb[1] = c; rgb[2] = 0; rgb[3] = x;
-        }
-
-        rgb[1] += hsv[2] - c;
-        rgb[2] += hsv[2] - c;
-        rgb[3] += hsv[2] - c;
-    }
-
-    BEGIN {
-        srand();
-        if (offset == "") offset = rand() * 360;
-    }
-
-    {
-        y = NR - 1;
-        for (x = 0; x < length($0); x++) {
-            for (i = 0; i < 3; i++) {
-                mult_x = cos((angle + i * angle_phase) / 57.2976);
-                mult_y = sin((angle + i * angle_phase) / 57.2976);
-                hsv[1] = (((x * mult_x + y * mult_y) / (width + width_phase * i)) % 1 + 1 + (offset + offset_phase * i) / 360) % 1;
-                hsv[2] = 0.8;
-                hsv[3] = 0.9;
-
-                hsv_to_rgb(hsv, trgb);
-                rgb[i + 1] = trgb[i + 1];
-            }
-
-            put_rgb(rgb);
-            printf("%s", substr($0, x + 1, 1));
-        }
-        print "\033[0m";
-    }
-    '
-}
-
 # }}}
 ##############################################################################
 # {{{ wfetch
@@ -1447,6 +1390,7 @@ buildon:
     os-euid: $NATIVE_OS_EUID
     os-egid: $NATIVE_OS_EGID
 builtfor: $TARGET_PLATFORM_SPEC
+profile: $PROFILE
 EOF
 }
 
@@ -4852,8 +4796,8 @@ __install_the_given_packages() {
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS="--with-system-expat --with-system-ffi --with-openssl=$NATIVE_PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
             ;;
         perl-XML-Parser)
-            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.46.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='d331332491c51cccfb4cb94ffc44f9cd73378e618498d4a37df9e043661c515d'
+            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
+            NATIVE_PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
             NATIVE_PACKAGE_DEPENDENCIES='perl expat'
             NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
             NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
@@ -6700,85 +6644,19 @@ $PACKAGE_DO12345
         #########################################################################
 
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-        export RUSTFLAGS="-Clinker=$CC -Clink-arg=-L$PACKAGE_WORKING_DIR/lib"
+        export RUSTFLAGS="-Clinker=$CC"
 
         for LDFLAG in $LDFLAGS
         do
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LDFLAG"
         done
 
-        #########################################################################
-
-        if [ "$TARGET_PLATFORM_ARCH" = "x86_64" ] || [ "$TARGET_PLATFORM_ARCH" = "i686" ] ; then
+        if [ "$TARGET_PLATFORM_ARCH" = x86_64 ] || [ "$TARGET_PLATFORM_ARCH" = i686 ] ; then
             LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
-            export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LIBCLANG_RT_BUILTINS_FILEPATH"
+            RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LIBCLANG_RT_BUILTINS_FILEPATH"
         fi
 
         #########################################################################
-
-        for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
-        do
-            if [ "$DEPENDENT_PACKAGE_NAME" = libgetloadavg ] ; then
-                if [ "$TARGET_PLATFORM_VERS" -lt 29 ] ; then
-                    # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#157
-                    # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getloadavg.cpp
-                    # int getloadavg(double __averages[], int __n) __INTRODUCED_IN(29);
-                    # CPPFLAGS="$CPPFLAGS -include $libgetloadavg_INCLUDE_DIR/getloadavg.h"
-                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libgetloadavg_LIBRARY_DIR/libgetloadavg.a"
-                fi
-            fi
-
-            if [ "$DEPENDENT_PACKAGE_NAME" = libglob ] ; then
-                # https://pubs.opengroup.org/onlinepubs/9699919799/functions/glob.html
-                # https://android.googlesource.com/platform/bionic/+/master/libc/include/glob.h
-                if [ "$TARGET_PLATFORM_VERS" -lt 28 ] ; then
-                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libglob_LIBRARY_DIR/libglob.a"
-                fi
-            fi
-
-            if [ "$DEPENDENT_PACKAGE_NAME" = liblanginfo ] ; then
-                # https://pubs.opengroup.org/onlinepubs/9699919799/functions/nl_langinfo.html
-                # https://android.googlesource.com/platform/bionic/+/master/libc/include/langinfo.h
-                if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
-                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$liblanginfo_LIBRARY_DIR/liblanginfo.a"
-                fi
-            fi
-
-            if [ "$DEPENDENT_PACKAGE_NAME" = libmblen ] ; then
-                # https://android.googlesource.com/platform/bionic/+/master/libc/include/stdlib.h#163
-                # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/mblen.cpp
-                # int mblen(const char* __s, size_t __n) __INTRODUCED_IN_NO_GUARD_FOR_NDK(26);
-                if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
-                    CPPFLAGS="$CPPFLAGS -include $libmblen_INCLUDE_DIR/mblen.h"
-                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libmblen_LIBRARY_DIR/libmblen.a"
-                fi
-            fi
-
-            if [ "$DEPENDENT_PACKAGE_NAME" = libgetdomainname ] ; then
-                # https://android.googlesource.com/platform/bionic/+/master/libc/include/unistd.h#313
-                # https://android.googlesource.com/platform/bionic/+/master/libc/bionic/getdomainname.cpp
-                # int getdomainname(char* __buf, size_t __buf_size) __INTRODUCED_IN(26);
-                if [ "$TARGET_PLATFORM_VERS" -lt 26 ] ; then
-                    # CPPFLAGS="$CPPFLAGS -include $libgetdomainname_INCLUDE_DIR/getdomainname.h"
-                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libgetdomainname_LIBRARY_DIR/libgetdomainname.a"
-                fi
-            fi
-
-            if [ "$DEPENDENT_PACKAGE_NAME" = libstrchrnul ] ; then
-                # https://android.googlesource.com/platform/bionic/+/master/libc/include/string.h#68
-                # char* strchrnul(char* __s, int __ch) __RENAME(strchrnul) __attribute_pure__ __INTRODUCED_IN(24);
-                if [ "$TARGET_PLATFORM_VERS" -lt 24 ] ; then
-                    # CPPFLAGS="$CPPFLAGS -include $libstrchrnul_INCLUDE_DIR/strchrnul.h"
-                    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libstrchrnul_LIBRARY_DIR/libstrchrnul.a"
-                fi
-            fi
-
-            if [ "$DEPENDENT_PACKAGE_NAME" = libgetdtablesize ] ; then
-                # CPPFLAGS="$CPPFLAGS -include $libgetdtablesize_INCLUDE_DIR/getdtablesize.h"
-                # https://android.googlesource.com/platform/bionic/+/72dc1c22dc6a92dea925398c9e3880364ab29c1c/libc/bionic/getdtablesize.c
-                export RUSTFLAGS="$RUSTFLAGS -Clink-arg=$libgetdtablesize_LIBRARY_DIR/libgetdtablesize.a"
-            fi
-        done
 
         # https://docs.rs/openssl/latest/openssl/
         [ "$PACKAGE_DEP_UPP_OPENSSL" = 1 ] && {
@@ -6791,17 +6669,54 @@ $PACKAGE_DO12345
             eval export "${NATIVE_RUST_TARGET}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/openssl'"
         }
 
-        for item in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+        #########################################################################
+
+        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            case $item in
-                openssl)
-                    export OPENSSL_DIR="$openssl_INSTALL_DIR"
-                    ;;
+            case $DEPENDENT_PACKAGE_NAME in
                 openssl@1.1)
+                    # https://docs.rs/openssl/latest/openssl/
                     export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
+
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/sfackler/rust-openssl/blob/master/openssl-sys/build/main.rs
+                        export OPENSSL_STATIC=1
+                        export OPENSSL_NO_VENDOR=1
+                    fi
+                    ;;
+                openssl-dev)
+                    # https://docs.rs/openssl/latest/openssl/
+                    export OPENSSL_DIR="$openssl_dev_INSTALL_DIR"
+
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/sfackler/rust-openssl/blob/master/openssl-sys/build/main.rs
+                        export OPENSSL_STATIC=1
+                        export OPENSSL_NO_VENDOR=1
+                    fi
+                    ;;
+                libssh2)
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/alexcrichton/ssh2-rs/blob/master/libssh2-sys/build.rs
+                        export LIBSSH2_SYS_USE_PKG_CONFIG=1
+                    fi
+                    ;;
+                libgit2)
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/rust-lang/git2-rs/blob/master/libgit2-sys/build.rs
+                        export LIBGIT2_NO_VENDOR=1
+                        export LIBGIT2_SYS_USE_PKG_CONFIG=1
+                    fi
+                    ;;
+                libz|zlib)
+                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+                        # https://github.com/rust-lang/libz-sys/blob/main/build.rs
+                        export LIBZ_SYS_STATIC=1
+                    fi
                     ;;
             esac
         done
+
+        #########################################################################
 
         # https://libraries.io/cargo/cc
         # https://crates.io/crates/cc
@@ -6823,6 +6738,7 @@ $PACKAGE_DO12345
 
         export TARGET_AR="$AR"
 
+        #########################################################################
 
         # https://libraries.io/cargo/pkg-config
         # https://crates.io/crates/pkg-config
@@ -6834,6 +6750,8 @@ $PACKAGE_DO12345
         export HOST_PKG_CONFIG_LIBDIR="$NDKPKG_CORE_DIR/lib"
 
         unset PKG_CONFIG_SYSROOT_DIR
+
+        #########################################################################
 
         # https://libraries.io/cargo/cmake
         # https://crates.io/crates/cmake
@@ -8820,13 +8738,7 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    unset DOT
-
-    if [ "$NATIVE_OS_KIND" = linux ] ; then
-        DOT=dot_static
-    fi
-
-    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd jq yq d2 $DOT
+    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd jq yq d2 dot_static
     do
         if [ "$ANDROID" = 1 ] && [ "$UPPM_PACKAGE_NAME" = git ] ; then
             run proot --link2symlink ./uppm install "$UPPM_PACKAGE_NAME"
@@ -8886,21 +8798,15 @@ EOF
 # {{{ ndk-pkg help
 
 __help() {
-    if command -v base64 > /dev/null ; then
-        LOGO_BASE64_ENCODED='ICAgICAgICAgICBfIF8gICAgICAgICAgICAgICBfICAgICAgICAgCiBfIF9fICAgX198IHwgfCBf
-XyAgICAgXyBfXyB8IHwgX19fXyBfIAp8ICdfIFwgLyBfYCB8IHwvIC9fX19ffCAnXyBcfCB8LyAv
-IF9gIHwKfCB8IHwgfCAoX3wgfCAgIDxfX19fX3wgfF8pIHwgICA8IChffCB8CnxffCB8X3xcX18s
-X3xffFxfXCAgICB8IC5fXy98X3xcX1xfXywgfAogICAgICAgICAgICAgICAgICAgICAgfF98ICAg
-ICAgICB8X19fLyAK'
-
-        if command -v lolcat > /dev/null ; then
-            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat -S 350
-        elif command -v awk > /dev/null ; then
-            printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d | lolcat_awk
-        else
-            printf '%b\n' "${COLOR_BLUE}$(printf '%s\n' "$LOGO_BASE64_ENCODED" | base64 -d)${COLOR_OFF}"
-        fi
-    fi
+    cat <<EOF
+[38;5;204m    [38;5;198m    [38;5;199m   _ [38;5;163m_   [38;5;164m    [38;5;128m     [38;5;129m   _[38;5;93m    [38;5;99m     
+[38;5;204m _ [38;5;198m__   [38;5;199m__| [38;5;163m| | [38;5;164m__   [38;5;128m  _ [38;5;129m__ |[38;5;93m | __[38;5;99m__ _[38;5;63m 
+[38;5;204m| '[38;5;198m_ \ [38;5;199m/ _\` [38;5;163m| |/[38;5;164m /__[38;5;128m__| '[38;5;129m_ \|[38;5;93m |/ [38;5;99m/ _\` [38;5;63m|
+[38;5;204m| |[38;5;198m | |[38;5;199m (_|[38;5;163m |   [38;5;164m<___[38;5;128m__| [38;5;129m|_) |[38;5;93m   <[38;5;99m (_|[38;5;63m |
+[38;5;204m|_[38;5;198m| |_[38;5;199m|\__,[38;5;163m_|_|[38;5;164m\_\ [38;5;128m   | [38;5;129m.__/[38;5;93m|_|\_[38;5;99m\__,[38;5;63m |
+[38;5;204m  [38;5;198m    [38;5;199m    [38;5;163m     [38;5;164m    [38;5;128m   |[38;5;129m_|   [38;5;93m    [38;5;99m |__[38;5;63m_/  $NDKPKG_VERSION
+[0m
+EOF
 
     printf '%b\n' "
 ${COLOR_GREEN}A package builder/manager for Android NDK to build projects written in C, C++, Rust, Golang, etc.${COLOR_OFF}
@@ -9294,7 +9200,7 @@ NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 NDKPKG_ARGS="$*"
 
-NDKPKG_VERSION=0.10.10
+NDKPKG_VERSION=0.10.11
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'

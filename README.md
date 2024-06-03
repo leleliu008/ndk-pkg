@@ -365,7 +365,6 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     - [GNU sed](https://www.gnu.org/software/sed/manual/sed.html)
     - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
     - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
-    - [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)
     - [patchelf](https://github.com/NixOS/patchelf)
     - [sysinfo](https://github.com/leleliu008/C-examples/tree/master/utils/sysinfo)
     - [tree](https://linux.die.net/man/1/tree)
@@ -759,6 +758,8 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
 |`symlink`|optional|whether to symlink installed files to `$NDKPKG_HOME/symlinked/*`.<br>value shall be `0` or `1`. default value is `1`.|
+|`movable`|optional|whether can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
+|`parallel`|optional|whether to allow build system running jobs in parallel.<br>value shall be `0` or `1`. default value is `1`.|
 ||||
 |`api-min`|optional|specify which minimum Android SDK API level is supported for this package.|
 ||||
@@ -906,22 +907,28 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`x_INCLUDE_DIR`|`$x_INSTALL_DIR/include`|
 |`x_LIBRARY_DIR`|`$x_INSTALL_DIR/lib`|
 
-
 ## ndk-pkg formula repository
 
-a ndk-pkg formula repository is a git repository.
+a typical hierarchical structure of a ndk-pkg formula repository looks like below:
 
-a ndk-pkg formula repository's root directory should have a `formula` named sub directory, this repository's formulas all should be located in this directory.
+```
+NDKPKGFormulaRepoName
+├── formula
+│   ├── packageA.yml
+│   └── packageB.yml
+├── LICENSE
+└── README.md
+```
 
-a ndk-pkg formula repository's local path is `~/.ndk-pkg/repos.d/${ndk-pkgFormulaRepoName}`
+## ndk-pkg formula repository local location
 
-ndk-pkg supports multiple formula repositories.
+`${NDKPKG_HOME}/repos.d/${NDKPKGFormulaRepoName}`
 
-## ndk-pkg formula repository's config
+## ndk-pkg formula repository local config
 
-After a ndk-pkg formula repository is successfully fetched from server to local, a config file for this repository would be created at `~/.ndk-pkg/repos.d/${ndk-pkgFormulaRepoName}/.ndk-pkg-formula-repo.yml`
+a ndk-pkg formula repository's config file is located at `${NDKPKG_HOME}/repos.d/${NDKPKGFormulaRepoName}/.ndk-pkg-formula-repo.yml`
 
-a typical ndk-pkg formula repository's config is as follows:
+a typical ndk-pkg formula repository's config file content looks like below:
 
 ```yaml
 url: https://github.com/leleliu008/ndk-pkg-formula-repository-official-core
@@ -936,11 +943,17 @@ If a ndk-pkg formula repository is `pinned`, which means it would not be updated
 
 If a ndk-pkg formula repository is `disabled`, which means ndk-pkg would not search formulas in this formula repository.
 
+## ndk-pkg formula repository management
+
+run `ndk-pkg formula-repo-add ` command to create a new formula repository locally from an exsting remote git repository.
+
+run `ndk-pkg formula-repo-init` command to create a new formula repository locally without taking any further action.
+
 ## ndk-pkg official formula repository
 
 ndk-pkg official formula repository is hosted at <https://github.com/leleliu008/ndk-pkg-formula-repository-official-core>
 
-ndk-pkg official formula repository would be automatically fetched to local cache as name `official-core` when you run `ndk-pkg update` command.
+It would be automatically fetched to your local repository as name `official-core` when you run `ndk-pkg update` command.
 
 **Note:** If you find that a package is not in ndk-pkg official formula repository yet, PR is welcomed.
 

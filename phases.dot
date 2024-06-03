@@ -8,5 +8,8 @@ digraph {
     onfinal [fillcolor="green";style=filled]
 
     do12345 [shape="box"; style="dashed"];
+    dopatch [shape="box"; style="dashed"];
+    prepare [shape="box"; style="dashed"];
+    dotweak [shape="box"; style="dashed"];
     caveats [shape="box"; style="dashed"];
 }
