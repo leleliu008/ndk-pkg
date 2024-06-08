@@ -371,6 +371,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
     - [xxd](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)
+    - [bat](https://github.com/sharkdp/bat)
     - [jq](https://stedolan.github.io/jq/manual/)
     - [yq](https://mikefarah.gitbook.io/yq/)
     - [d2](https://github.com/terrastruct/d2)
@@ -809,6 +810,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`jq`|[Reference](https://stedolan.github.io/jq/manual/)|
 |`yq`|[Reference](https://mikefarah.gitbook.io/yq/)|
 |`d2`|[Reference](https://github.com/terrastruct/d2)|
+|`bat`|[Reference](https://github.com/sharkdp/bat)|
 |`xxd`|[Reference](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)|
 |`git`|[Reference](https://git-scm.com/docs/git)|
 |`curl`|[Reference](https://curl.se/docs/manpage.html)|

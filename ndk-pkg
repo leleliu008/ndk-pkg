@@ -57,13 +57,13 @@ success() {
 }
 
 error() {
-    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
+    printf '%b\n' "${COLOR_RED}💔  ndk-pkg: $*${COLOR_OFF}" >&2
 }
 
 abort() {
     EXIT_STATUS_CODE="$1"
     shift
-    printf '%b\n' "${COLOR_RED}💔  $*${COLOR_OFF}" >&2
+    printf '%b\n' "${COLOR_RED}💔  ndk-pkg: $*${COLOR_OFF}" >&2
     exit "$EXIT_STATUS_CODE"
 }
 
@@ -387,8 +387,8 @@ version_match() {
     FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$1"
     FORMULA_REPO_CONFIG_FILEPATH="$FORMULA_REPO_PATH/.ndk-pkg-formula-repo.yml"
 
-    [ -d "$FORMULA_REPO_PATH" ] || abort 1 "$1 named formula repository does not exist."
-    [ -f "$FORMULA_REPO_CONFIG_FILEPATH" ] || abort 1 "$1 formula repository is broken."
+    [ -d "$FORMULA_REPO_PATH" ] || abort 1 "formula repository '$1' does not exist."
+    [ -f "$FORMULA_REPO_CONFIG_FILEPATH" ] || abort 1 "formula repository '$1' is broken."
 
     FORMULA_REPO_URL=
     FORMULA_REPO_BRANCH=
@@ -399,36 +399,36 @@ version_match() {
 
     FORMULA_REPO_URL="$(yq .url "$FORMULA_REPO_CONFIG_FILEPATH")"
 
-    [ "$FORMULA_REPO_URL" = null ] && abort 1 "$1 formula repository is broken."
+    [ "$FORMULA_REPO_URL" = null ] && abort 1 "formula repository '$1' is broken."
 
     FORMULA_REPO_BRANCH="$(yq .branch "$FORMULA_REPO_CONFIG_FILEPATH")"
 
-    [ "$FORMULA_REPO_BRANCH" = null ] && abort 1 "$1 formula repository is broken."
+    [ "$FORMULA_REPO_BRANCH" = null ] && abort 1 "formula repository '$1' is broken."
 
     FORMULA_REPO_PINNED="$(yq .pinned "$FORMULA_REPO_CONFIG_FILEPATH")"
 
     case $FORMULA_REPO_PINNED in
         0|1) ;;
-        *)   abort 1 "$1 formula repository is broken."
+        *)   abort 1 "formula repository '$1' is broken."
     esac
 
     FORMULA_REPO_ENABLED="$(yq .enabled "$FORMULA_REPO_CONFIG_FILEPATH")"
 
     case $FORMULA_REPO_ENABLED in
         0|1) ;;
-        *)   abort 1 "$1 formula repository is broken."
+        *)   abort 1 "formula repository '$1' is broken."
     esac
 
     FORMULA_REPO_TIMESTAMP_CREATED="$(yq .created "$FORMULA_REPO_CONFIG_FILEPATH")"
 
-    [ "${#FORMULA_REPO_TIMESTAMP_CREATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
+    [ "${#FORMULA_REPO_TIMESTAMP_CREATED}" -eq 10 ] || abort 1 "formula repository '$1' is broken."
 
     FORMULA_REPO_TIMESTAMP_UPDATED="$(yq .updated "$FORMULA_REPO_CONFIG_FILEPATH")"
 
     if [ "$FORMULA_REPO_TIMESTAMP_UPDATED" = null ] ; then
            FORMULA_REPO_TIMESTAMP_UPDATED=
     else
-        [ "${#FORMULA_REPO_TIMESTAMP_UPDATED}" -eq 10 ] || abort 1 "$1 formula repository is broken."
+        [ "${#FORMULA_REPO_TIMESTAMP_UPDATED}" -eq 10 ] || abort 1 "formula repository '$1' is broken."
     fi
 }
 
@@ -486,10 +486,10 @@ version_match() {
     FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$FORMULA_REPO_NAME"
 
     if [ -d "$FORMULA_REPO_PATH" ] ; then
-        abort 1 "$FORMULA_REPO_NAME named formula repository already exists."
+        abort 1 "formula repository '$FORMULA_REPO_NAME' already exists."
     fi
 
-    printf '%b\n' "${COLOR_PURPLE}==> Adding formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
+    printf '%b\n' "${COLOR_PURPLE}==> ndk-pkg formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF} ${COLOR_PURPLE} is being added${COLOR_OFF}"
 
     SESSION_DIR="$NDKPKG_HOME/run/$$/$FORMULA_REPO_NAME"
 
@@ -567,10 +567,10 @@ EOF
     FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$FORMULA_REPO_NAME"
 
     if [ -d "$FORMULA_REPO_PATH" ] ; then
-        abort 1 "$FORMULA_REPO_NAME named formula repository already exists."
+        abort 1 "formula repository '$FORMULA_REPO_NAME' already exists."
     fi
 
-    printf '%b\n' "${COLOR_PURPLE}==> Creating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
+    printf '%b\n' "${COLOR_PURPLE}==> ndk-pkg formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF} ${COLOR_PURPLE} is being created${COLOR_OFF}"
 
     SESSION_DIR="$NDKPKG_HOME/run/$$/$FORMULA_REPO_NAME"
 
@@ -601,12 +601,12 @@ EOF
   __delete_a_formula_repository() {
     [ -z "$1" ] && abort 1 "please specify a repository name."
 
-    [ "$1" = 'official-core' ] && abort 1 "'official-core' formula repository is not allowed to delete."
+    [ "$1" = 'official-core' ] && abort 1 "formula repository 'official-core' is not allowed to delete."
 
     if [ -d    "$NDKPKG_HOME/repos.d/$1" ] ; then
         rm -rf "$NDKPKG_HOME/repos.d/$1"
     else
-        abort 1 "'$1' named formula repository does not exist."
+        abort 1 "formula repository '$1' does not exist."
     fi
 }
 
@@ -620,7 +620,7 @@ EOF
 
     __load_formula_repository_config "$1"
 
-    [ "$FORMULA_REPO_PINNED" = 1 ] && abort 1 "'$FORMULA_REPO_NAME' named formula repository is pinned."
+    [ "$FORMULA_REPO_PINNED" = 1 ] && abort 1 "'formula repository '$FORMULA_REPO_NAME' is pinned."
 
     if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
         GIT_FETCH_URL="$FORMULA_REPO_URL"
@@ -628,7 +628,7 @@ EOF
         GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$FORMULA_REPO_URL")"
     fi
 
-    printf '%b\n' "${COLOR_PURPLE}==> Updating formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF}"
+    printf '%b\n' "${COLOR_PURPLE}==> ndk-pkg formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF} ${COLOR_PURPLE}is being updated${COLOR_OFF}"
 
     run cd "$FORMULA_REPO_PATH"
     run git remote set-url origin "$GIT_FETCH_URL"
@@ -2430,15 +2430,8 @@ __fetch_resources_of_the_given_package() {
     for fp in $FILEPATHs
     do
         case $fp in
-            *.svg)  ;;
-            *.png)  ;;
-            *.yml)  run yq . "$fp" ;;
-            *.json) run jq . "$fp" ;;
-            *)  if command -v bat > /dev/null ; then
-                    bat  "$fp"
-                else
-                    less "$fp"
-                fi
+            *.png) ;;
+            *) run bat "$fp"
         esac
     done
 }
@@ -4386,7 +4379,7 @@ inspect_install_arguments() {
 
     BUILD_NJOBS=$NATIVE_OS_NCPU
 
-    DRYRUN=0
+    unset DRYRUN
 
     unset PROFILE
 
@@ -5075,14 +5068,51 @@ __install_the_given_package() {
 
     #########################################################################################
 
+    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        cat <<EOF
+     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
+
+     NATIVE_OS_KIND = $NATIVE_OS_KIND
+     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
+     NATIVE_OS_CODE = $NATIVE_OS_CODE
+     NATIVE_OS_NAME = $NATIVE_OS_NAME
+     NATIVE_OS_VERS = $NATIVE_OS_VERS
+     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
+     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
+     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
+     NATIVE_OS_EUID = $NATIVE_OS_EUID
+     NATIVE_OS_EGID = $NATIVE_OS_EGID
+
+TARGET_PLATFORM_VERS= $TARGET_PLATFORM_VERS
+TARGET_PLATFORM_ARCH= $TARGET_PLATFORM_ARCH
+TARGET_PLATFORM_ABI = $TARGET_PLATFORM_ABI
+
+NDKPKG_VERSION      = $NDKPKG_VERSION
+NDKPKG_HOME         = $NDKPKG_HOME
+NDKPKG              = $NDKPKG
+NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
+
+          LOG_LEVEL = $LOG_LEVEL
+            PROFILE = $PROFILE
+
+             DRYRUN = $DRYRUN
+      ENABLE_CCACHE = $ENABLE_CCACHE
+REQUEST_TO_KEEP_SESSION_DIR = $REQUEST_TO_KEEP_SESSION_DIR
+REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON = $REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
+REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE = $REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
+EOF
+    fi
+
+    #########################################################################################
+
+    step "load formula"
+
     PACKAGE_FORMULA_FILEPATH="$SESSION_DIR/$PACKAGE_NAME.yml"
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        step "view formula"
-        run yq "$PACKAGE_FORMULA_FILEPATH"
+        bat --language=yaml --paging=never "$PACKAGE_FORMULA_FILEPATH"
     fi
-   
-    step "load formula"
+
     __load_formula_of_the_given_package "$PACKAGE_NAME" "$PACKAGE_FORMULA_FILEPATH"
 
     #########################################################################################
@@ -5134,44 +5164,6 @@ EOF
 
     if [ "$PACKAGE_API_MIN" -gt "$TARGET_PLATFORM_VERS" ] ; then
         abort 1 "package installation failure: '$1'\n    supported min sdk api level: $PACKAGE_API_MIN\n    requested min sdk api level: $TARGET_PLATFORM_VERS"
-    fi
-
-    #########################################################################################
-
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        cat <<EOF
-     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
-
-     NATIVE_OS_KIND = $NATIVE_OS_KIND
-     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
-     NATIVE_OS_CODE = $NATIVE_OS_CODE
-     NATIVE_OS_NAME = $NATIVE_OS_NAME
-     NATIVE_OS_VERS = $NATIVE_OS_VERS
-     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
-     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
-     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
-     NATIVE_OS_EUID = $NATIVE_OS_EUID
-     NATIVE_OS_EGID = $NATIVE_OS_EGID
-
-TARGET_PLATFORM_VERS= $TARGET_PLATFORM_VERS
-TARGET_PLATFORM_ARCH= $TARGET_PLATFORM_ARCH
-TARGET_PLATFORM_ABI = $TARGET_PLATFORM_ABI
-
-NDKPKG_VERSION      = $NDKPKG_VERSION
-NDKPKG_HOME         = $NDKPKG_HOME
-NDKPKG              = $NDKPKG
-NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
-
-          LOG_LEVEL = $LOG_LEVEL
-            PROFILE = $PROFILE
-        BUILD_NJOBS = $BUILD_NJOBS
-
-             DRYRUN = $DRYRUN
-      ENABLE_CCACHE = $ENABLE_CCACHE
-REQUEST_TO_KEEP_SESSION_DIR = $REQUEST_TO_KEEP_SESSION_DIR
-REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON = $REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
-REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE = $REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
-EOF
     fi
 
     #########################################################################################
@@ -6106,7 +6098,7 @@ $DOT_CONTENT
     #########################################################################################
 
     [ "$DRYRUN" = 1 ] && {
-        [ -z "$SHELL" ] || SHELL=$(command -v zsh || command -v bash || command -v sh) || abort 1 "none of zsh|bash|sh shell found in your system."
+        [ -z "$SHELL" ] || SHELL=$(command -v zsh || command -v bash || command -v sh) || abort 1 "none of zsh|bash|sh shell found."
         exec "$SHELL"
     }
 
@@ -7551,13 +7543,7 @@ __record_installed_files_of_the_given_package() {
 
 gow() {
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        if command -v bat > /dev/null ; then
-            run "go env | bat --language=bash --paging=never --style=plain"
-        else
-            run "go env"
-        fi
-
-        printf '\n'
+        run "go env | bat --language=bash --paging=never --style=plain"
     fi
 
     # https://pkg.go.dev/cmd/go
@@ -8292,11 +8278,7 @@ EOF
         fi
 
         if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-            if command -v bat > /dev/null ; then
-                run bat --language=cmake --paging=never --style=plain "$CMAKE_TOOLCHAIN_FILE"
-            else
-                run cat "$CMAKE_TOOLCHAIN_FILE"
-            fi
+            bat --language=cmake --paging=never "$CMAKE_TOOLCHAIN_FILE"
         fi
 
         if [   -f "$PACKAGE_BCACHED_DIR/CMakeCache.txt" ] ; then
@@ -8738,13 +8720,9 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd jq yq d2 dot_static
+    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd bat jq yq d2 dot_static
     do
-        if [ "$ANDROID" = 1 ] && [ "$UPPM_PACKAGE_NAME" = git ] ; then
-            run proot --link2symlink ./uppm install "$UPPM_PACKAGE_NAME"
-        else
-            run ./uppm install "$UPPM_PACKAGE_NAME"
-        fi
+        run ./uppm install "$UPPM_PACKAGE_NAME"
 
         UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
@@ -8822,7 +8800,7 @@ ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
     show version of this command.
 
 ${COLOR_GREEN}ndk-pkg setup${COLOR_OFF}
-    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, tree, git, curl, bsdtar, zip, xxd, jq, yq, d2, sysinfo, pkg-config, patchelf, etc) used by this shell script.
+    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, tree, git, curl, bsdtar, zip, xxd, bat, jq, yq, d2, sysinfo, pkg-config, patchelf, etc) used by this shell script.
 
 ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
     show basic information about this software.
@@ -9250,6 +9228,10 @@ fi
 ##################################################################################
 
 TIMESTAMP_UNIX="$(date +%s)"
+
+##################################################################################
+
+export BAT_THEME=Dracula
 
 ##################################################################################
 
