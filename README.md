@@ -47,10 +47,10 @@ For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-
 **step1. create the ndk-pkg docker container**
 
 ```bash
-mkdir -p ~/.ndk-pkg
+mkdir -p ~/ndk-pkg-home
 mkdir -p ~/.m2
 
-docker create -it --name ndk-pkg -v ~/.ndk-pkg:/root/.ndk-pkg -v ~/.m2:/root/.m2 fpliu/ndk-pkg
+docker create -it --name ndk-pkg -v ~/ndk-pkg-home:/root/.ndk-pkg -v ~/.m2:/root/.m2 fpliu/ndk-pkg
 ```
 
 **step2. start the ndk-pkg docker container**
