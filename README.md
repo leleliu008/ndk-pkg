@@ -14,7 +14,7 @@ Please read these caveats carefully before starting to use this software.
 
 - Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change files under `~/.ndk-pkg` directory without notice.
 
-- Please do NOT run `ndk-pkg` command in parallel to avoid generating dirty data.
+- Please do NOT run `ndk-pkg` command in parallel so as not to generate dirty data.
 
 ## Supported platforms (platforms that this software can be run on)
 
