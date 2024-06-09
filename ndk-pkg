@@ -2464,19 +2464,19 @@ __fetch_resources_of_the_given_package() {
             -t) shift
 
                 if [ -z "$1" ] ; then
-                    abort 1 "$NDKPKG pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is specified but <OUTPUT-TYPE> is unspecified."
+                    abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is specified but <OUTPUT-TYPE> is unspecified."
                 else
                     OUTPUT_TYPE="$1"
                 fi
 
                 case $OUTPUT_TYPE in
                     zip|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
-                    *) abort 1 "$NDKPKG pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_TYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
+                    *) abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_TYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
                 esac
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$NDKPKG pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
+                    abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
                 else
                     OUTPUT_PATH="$1"
                 fi
@@ -2487,7 +2487,7 @@ __fetch_resources_of_the_given_package() {
                     EXCLUDES="$EXCLUDES $EXCLUDE"
                 fi
                 ;;
-            *)  abort 1 "$NDKPKG pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
+            *)  abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
         esac
         shift
     done
@@ -2982,7 +2982,7 @@ EOF
 
     ###########################################################################################
 
-    if [ "${NDKPKG_ARGS%% *}" = deploy ] ; then
+    if [ "$NDKPKG_ARG1" = deploy ] ; then
         return 0
     fi
 
@@ -3483,7 +3483,7 @@ __cleanup() {
         esac
     done
 
-    ZSH_COMPLETIONS_SCRIPT_FILENAME="_$(basename "$NDKPKG")"
+    ZSH_COMPLETIONS_SCRIPT_FILENAME="_$(basename "$NDKPKG_ARG0")"
 
     if [ -n "$OUTPUT_DIR" ] ; then
         ZSH_COMPLETIONS_SCRIPT_OUT_FILEPATH="$OUTPUT_DIR/$ZSH_COMPLETIONS_SCRIPT_FILENAME"
@@ -3586,7 +3586,7 @@ EOF
 
 # __show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <d2|dot|box|svg|png>] [-o <OUTPUT-PATH>]
 __show_packages_depended_by_the_given_package() {
-    [ -z "$1" ] && abort 1 "$NDKPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], <PACKAGE-NAME> is unspecified."
+    [ -z "$1" ] && abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], <PACKAGE-NAME> is unspecified."
 
     PACKAGE_NAME="$1"
 
@@ -3604,18 +3604,18 @@ __show_packages_depended_by_the_given_package() {
                 case $1 in
                     d2|dot|box|svg|png)
                         OUTPUT_TYPE="$1" ;;
-                    '') abort 1 "$NDKPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified." ;;
-                    *)  abort 1 "$NDKPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPUT-TYPE>: $1, <OUTPUT-TYPE> should be one of dot|d2|box|svg|png"
+                    '') abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is given but <OUTPUT-TYPE> is unspecified." ;;
+                    *)  abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPUT-TYPE>: $1, <OUTPUT-TYPE> should be one of dot|d2|box|svg|png"
                 esac
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$NDKPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
+                    abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -o option is given but <OUTPUT-PATH> is unspecified."
                 else
                     OUTPUT_PATH="$1"
                 fi
                 ;;
-            *)  abort 1 "$NDKPKG depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
+            *)  abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
         esac
         shift
     done
@@ -4519,7 +4519,7 @@ inspect_install_arguments() {
 __install_the_given_packages() {
     inspect_install_arguments "$@"
 
-    [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "$NDKPKG install <PACKAGE-SPEC|PACKAGE-NAME>..., <|PACKAGE-SPEC|PACKAGE-NAME> is unspecified."
+    [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "$NDKPKG_ARG0 install <PACKAGE-SPEC|PACKAGE-NAME>..., <|PACKAGE-SPEC|PACKAGE-NAME> is unspecified."
 
     #########################################################################################
 
@@ -5087,9 +5087,12 @@ TARGET_PLATFORM_VERS= $TARGET_PLATFORM_VERS
 TARGET_PLATFORM_ARCH= $TARGET_PLATFORM_ARCH
 TARGET_PLATFORM_ABI = $TARGET_PLATFORM_ABI
 
-NDKPKG_VERSION      = $NDKPKG_VERSION
+NDKPKG_ARG0         = $NDKPKG_ARG0
+NDKPKG_ARG1         = $NDKPKG_ARG1
+NDKPKG_ARGV         = $NDKPKG_ARGV
+NDKPKG_PATH         = $NDKPKG_PATH
 NDKPKG_HOME         = $NDKPKG_HOME
-NDKPKG              = $NDKPKG
+NDKPKG_VERSION      = $NDKPKG_VERSION
 NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
 
           LOG_LEVEL = $LOG_LEVEL
@@ -8456,7 +8459,7 @@ ndk_build() {
 # must run in a subshell
 # ndkinfo <ANDROID-NDK-HOME>
 ndkinfo() {
-    [ -z "$1" ] && abort 1 "$NDKPKG ndkinfo <ANDROID-NDK-HOME> , <ANDROID-NDK-HOME> is not given."
+    [ -z "$1" ] && abort 1 "$NDKPKG_ARG0 ndkinfo <ANDROID-NDK-HOME> , <ANDROID-NDK-HOME> is not given."
     [ -d "$1" ] || abort 1 "'$1' was expected to be a directory, but it was not."
 
     NDK_SOURCE_PROPERTIES_FILEPATH="$1/source.properties"
@@ -9172,13 +9175,13 @@ fi
     fi
 }
 
-NDKPKG="$0"
+NDKPKG_VERSION=0.10.11
+
+NDKPKG_ARG0="$0"
+NDKPKG_ARG1="$1"
+NDKPKG_ARGV="$0 $*"
 
 NDKPKG_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
-
-NDKPKG_ARGS="$*"
-
-NDKPKG_VERSION=0.10.11
 
 NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-zsh-completion'
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
@@ -9332,7 +9335,7 @@ fi
 if [ -f "$NDKPKG_CORE_DIR/env.sh" ] ; then
     .   "$NDKPKG_CORE_DIR/env.sh"
 else
-    abort 1 "please run ${COLOR_GREEN}$NDKPKG setup${COLOR_OFF} command first, then try again."
+    abort 1 "please run ${COLOR_GREEN}$NDKPKG_ARG0 setup${COLOR_OFF} command first, then try again."
 fi
 
 ##################################################################################

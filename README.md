@@ -840,9 +840,10 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 
 |variable|overview|
 |-|-|
-|`NDKPKG`|the name or path of `ndk-pkg` that you're running.|
+|`NDKPKG_ARG0`|the 1st arguments of `ndk-pkg` that you've supplied.|
+|`NDKPKG_ARG1`|the 2nd arguments of `ndk-pkg` that you've supplied.|
+|`NDKPKG_ARGV`|the all arguments of `ndk-pkg` that you've supplied.|
 |`NDKPKG_PATH`|the full path of `ndk-pkg` that you're running.|
-|`NDKPKG_ARGS`|the arguments of `ndk-pkg` that you've supplied.|
 |`NDKPKG_HOME`|the home directory of `ndk-pkg` that you're running.|
 |`NDKPKG_VERSION`|the version of `ndk-pkg` that you're running.|
 |||
