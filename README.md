@@ -825,7 +825,9 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`error`|`error 'error message.'`|
 |`abort`|`abort 1 "please specify a package name."`|
 |`success`|`success "build success."`|
-|`sed_in_place`|`sed_in_place 's/-mandroid//g' Configure`|
+|`isInteger`|`isInteger $x \|\| abort 1 "should be an integer."`|
+|`isCrossBuild`|`isCrossBuild && abort 1 "This package is not supposed to be cross built."`|
+|`sedInPlace`|`sedInPlace 's/-mandroid//g' Configure`|
 |`wfetch`|`wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH> [-q]`|
 |||
 |`configure`|`configure --enable-pic`|

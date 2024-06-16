@@ -82,7 +82,7 @@ list_size() {
     printf '%s\n' "$#"
 }
 
-is_integer() {
+isInteger() {
     case "${1#[+-]}" in
         (*[!0123456789]*) return 1 ;;
         ('')              return 1 ;;
@@ -104,8 +104,8 @@ bppend_to_ACLOCAL_PATH() {
     esac
 }
 
-sed_in_place() {
-    if [ "${SED_VERBOSE:-0}" = 1 ] ; then
+sedInPlace() {
+    if [ "${DUMP_SED:-0}" = 1 ] ; then
         if [ -z "$SED" ] ; then
             SED="$(command -v gsed || command -v sed)" || abort 1 "command not found: gsed"
         fi
@@ -1054,11 +1054,11 @@ filetype_from_url() {
     fi
 
     if [ -n "$PACKAGE_GIT_NTH" ] ; then
-        is_integer "$PACKAGE_GIT_NTH" || abort "the value of git-nth mapping should be an integer."
+        isInteger "$PACKAGE_GIT_NTH" || abort "the value of git-nth mapping should be an integer."
     fi
 
     if [ -n "$PACKAGE_API_MIN" ] ; then
-        is_integer "$PACKAGE_API_MIN" || abort "the value of api-min mapping should be an integer."
+        isInteger "$PACKAGE_API_MIN" || abort "the value of api-min mapping should be an integer."
     fi
 
     #########################################################################################
@@ -4375,13 +4375,11 @@ inspect_install_arguments() {
     LOG_LEVEL_VERBOSE=2
     LOG_LEVEL_VERY_VERBOSE=3
 
-    LOG_LEVEL=1
-
-    BUILD_NJOBS=$NATIVE_OS_NCPU
-
-    unset DRYRUN
-
     unset PROFILE
+
+    unset LOG_LEVEL
+
+    unset BUILD_NJOBS
 
     unset ENABLE_LTO
 
@@ -4389,7 +4387,7 @@ inspect_install_arguments() {
 
     unset ENABLE_CCACHE
 
-    unset REQUEST_TO_UPGRADE_IF_COULD_BE
+    unset REQUEST_TO_UPGRADE_IF_POSSIBLE
 
     unset REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
 
@@ -4399,46 +4397,145 @@ inspect_install_arguments() {
 
     unset SPECIFIED_PACKAGE_LIST
 
+    unset SPECIFIED_TARGET
+
     unset ANDROID_NDK_HOME
 
-    unset NDKPKG_VERBOSE
+    unset DUMP_ENV
+    unset DUMP_HTTP
+    unset DUMP_UPPM
+    unset DUMP_NDK
+    unset DUMP_SED
+    unset DUMP_FORMULA
+
+    unset VERBOSE_GO
+    unset VERBOSE_CARGO
+    unset VERBOSE_MESON
+    unset VERBOSE_NINJA
+    unset VERBOSE_GMAKE
+    unset VERBOSE_CMAKE
+    unset VERBOSE_XMAKE
+
+    unset DEBUG_CC
+    unset DEBUG_LD
+    unset DEBUG_GO
+    unset DEBUG_CARGO
+    unset DEBUG_GMAKE
+    unset DEBUG_CMAKE
+    unset DEBUG_XMAKE
+    unset DEBUG_PKG_CONFIG
 
     while [ -n "$1" ]
     do
         case $1 in
-            -vv)
-                LOG_LEVEL="$LOG_LEVEL_VERY_VERBOSE"
+            -q) LOG_LEVEL=0 ;;
+            -v) LOG_LEVEL=2
+
+                DUMP_ENV=1
+                DUMP_HTTP=1
+                DUMP_UPPM=1
+                DUMP_NDK=1
+                DUMP_SED=1
+                DUMP_FORMULA=1
+
+                VERBOSE_GO=1
+                VERBOSE_CARGO=1
+                VERBOSE_MESON=1
+                VERBOSE_NINJA=1
+                VERBOSE_GMAKE=1
+                VERBOSE_CMAKE=1
+                VERBOSE_XMAKE=1
                 ;;
-            -v)
-                LOG_LEVEL="$LOG_LEVEL_VERBOSE"
+            -x) LOG_LEVEL=3
+
+                DUMP_ENV=1
+                DUMP_HTTP=1
+                DUMP_UPPM=1
+                DUMP_NDK=1
+                DUMP_SED=1
+                DUMP_FORMULA=1
+
+                VERBOSE_MESON=1
+                VERBOSE_NINJA=1
+                VERBOSE_GMAKE=1
+                VERBOSE_CMAKE=1
+                VERBOSE_XMAKE=1
+
+                DEBUG_CC=1
+                DEBUG_LD=1
+                DEBUG_GO=1
+                DEBUG_CARGO=1
+                DEBUG_GMAKE=1
+                DEBUG_CMAKE=1
+                DEBUG_XMAKE=1
+                DEBUG_PKG_CONFIG=1
                 ;;
-            -q)
-                LOG_LEVEL="$LOG_LEVEL_QUIET"
+            -v-env)
+                DUMP_ENV=1
                 ;;
+            -v-http)
+                DUMP_HTTP=1
+                ;;
+            -v-uppm)
+                DUMP_UPPM=1
+                ;;
+            -v-ndk)
+                DUMP_NDK=1
+                ;;
+            -v-formula)
+                DUMP_FORMULA=1
+                ;;
+            -v-go)
+                VERBOSE_GO=1
+                ;;
+            -v-cargo)
+                VERBOSE_CARGO=1
+                ;;
+            -v-meson)
+                VERBOSE_MESON=1
+                ;;
+            -v-ninja)
+                VERBOSE_NINJA=1
+                ;;
+            -v-gmake)
+                VERBOSE_GMAKE=1
+                ;;
+            -v-cmake)
+                VERBOSE_CMAKE=1
+                ;;
+            -v-xmake)
+                VERBOSE_XMAKE=1
+                ;;
+            -x-sh)
+                set -x
+                ;;
+            -x-cc)
+                DEBUG_CC=1
+                ;;
+            -x-ld)
+                DEBUG_LD=1
+                ;;
+            -x-go)
+                DEBUG_GO=1
+                ;;
+            -x-cargo)
+                DEBUG_CARGO=1
+                ;;
+            -x-gmake)
+                DEBUG_GMAKE=1
+                ;;
+            -x-cmake)
+                DEBUG_CMAKE=1
+                ;;
+            -x-xmake)
+                DEBUG_XMAKE=1
+                ;;
+            -x-pkg-config)
+                DEBUG_PKG_CONFIG=1
+                ;;
+
             --disable-ccache)
                 ENABLE_CCACHE=0
-                ;;
-            --upgrade)
-                REQUEST_TO_UPGRADE_IF_COULD_BE=1
-                ;;
-            --dry-run)
-                DRYRUN=1
-                ;;
-            --keep-session-dir)
-                REQUEST_TO_KEEP_SESSION_DIR=1
-                ;;
-            --export-compile-commands-json)
-                REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON=1
-                ;;
-            --profile=*)
-                PROFILE="${1#*=}"
-                ;;
-            --fsle)
-                REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
-                ;;
-            --jobs=*)
-                BUILD_NJOBS="${1#*=}"
-                is_integer "$BUILD_NJOBS" || abort 1 "--jobs=INTEGER argument's value must be an integer."
                 ;;
             --enable-lto)
                 ENABLE_LTO=1
@@ -4453,9 +4550,27 @@ inspect_install_arguments() {
                     *)  abort 1 "--strip=<VALUE>, VALUE must be one of no, all, debug, unneeded"
                 esac
                 ;;
+            --target=*)
+                SPECIFIED_TARGET="${1#*=}"
+                ;;
+            --profile=*)
+                PROFILE="${1#*=}"
+                ;;
             --ndk-home=*)
                 ANDROID_NDK_HOME="${1#*=}"
                 ;;
+            --fsle)
+                REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+                ;;
+            -j) shift
+                isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
+                BUILD_NJOBS="$1"
+                ;;
+
+            -K) REQUEST_TO_KEEP_SESSION_DIR=1 ;;
+            -U) REQUEST_TO_UPGRADE_IF_POSSIBLE=1 ;;
+            -E) REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON=1 ;;
+
             -*) abort 1 "unrecognized option: $1"
                 ;;
             *)  SPECIFIED_PACKAGE_LIST="$SPECIFIED_PACKAGE_LIST $1"
@@ -4476,17 +4591,13 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    setup_android_ndk_env "$ANDROID_NDK_HOME"
-
-    #########################################################################################
-
-      if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
-        export NDKPKG_VERBOSE=1
-    elif [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        SED_VERBOSE=1
-    elif [ "$LOG_LEVEL" -eq "$LOG_LEVEL_QUIET" ] ; then
+    if [ "$LOG_LEVEL" = 0 ] ; then
         exec 1>/dev/null
         exec 2>&1
+    else
+        if [ -z "$LOG_LEVEL" ] ; then
+            LOG_LEVEL=1
+        fi
     fi
 
     #########################################################################################
@@ -4506,14 +4617,32 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    # DO NOT use this environment variable
+    # DO NOT use these environment variables
     # https://cmake.org/cmake/help/latest/envvar/MACOSX_DEPLOYMENT_TARGET.html
-    unset MACOSX_DEPLOYMENT_TARGET
+    unset   MACOSX_DEPLOYMENT_TARGET
+    unset IPHONEOS_DEPLOYMENT_TARGET
+    unset  WATCHOS_DEPLOYMENT_TARGET
+
+    # https://www.real-world-systems.com/docs/xcrun.1.html
+    unset SDKROOT
 
     # https://stackoverflow.com/questions/18476490/what-is-purpose-of-target-arch-variable-in-makefiles
     unset TARGET_ARCH
 
     unset LIBS
+
+    #########################################################################################
+
+    if [ "$DEBUG_CC" = 1 ] ; then
+        # this environment variable is used by wrapper-target-*
+        export NDKPKG_VERBOSE=1
+    else
+        unset  NDKPKG_VERBOSE
+    fi
+
+    #########################################################################################
+
+    setup_android_ndk_env "$ANDROID_NDK_HOME"
 }
 
 __install_the_given_packages() {
@@ -4634,12 +4763,12 @@ __install_the_given_packages() {
                     if is_package__outdated "$PACKAGE_SPEC" ; then
                         (__install_the_given_package "$PACKAGE_SPEC")
                     else
-                        if [ "$LOG_LEVEL" -gt 0 ] ; then
+                        if [ "$LOG_LEVEL" -ne 0 ] ; then
                             printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed and is up-to-date.\n" "$PACKAGE_SPEC"
                         fi
                     fi
                 else
-                    if [ "$LOG_LEVEL" -gt 0 ] ; then
+                    if [ "$LOG_LEVEL" -ne 0 ] ; then
                         printf "$COLOR_GREEN%-10s$COLOR_OFF already have been installed.\n" "$PACKAGE_SPEC"
                     fi
                 fi
@@ -4861,7 +4990,7 @@ EOF
     export PKG_CONFIG_PATH="$NATIVE_PACKAGE_WORKING_DIR/lib/pkgconfig"
     export ACLOCAL_PATH="$NATIVE_PACKAGE_WORKING_DIR/share/aclocal"
     export CPPFLAGS="-I$NATIVE_PACKAGE_WORKING_DIR/include $CPPFLAGS"
-    export LDFLAGS="-L$NATIVE_PACKAGE_WORKING_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALL_DIR/lib $LDFLAGS"
+    export LDFLAGS="-Wl,-rpath,$NATIVE_PACKAGE_INSTALL_DIR/lib $LDFLAGS"
 
     for DEPENDENT_NATIVE_PACKAGE_NAME in $NATIVE_PACKAGE_DEPENDENCIES
     do
@@ -4937,9 +5066,9 @@ EOF
     run cd src
 
     if   [ "$1" = 'libz' ] ; then
-        sed_in_place 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
+        sedInPlace 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
     elif [ "$1" = 'texinfo' ] ; then
-        sed_in_place '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
+        sedInPlace '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
     elif [ "$1" = 'python3' ] ; then
         unset PYTHONHOME
         unset PYTHONPATH
@@ -5015,15 +5144,13 @@ EOF
 }
 
 __install_the_given_package_onexit() {
-    if [ "$DRYRUN" != 1 ] ; then
-        is_package_installed "$PACKAGE_SPEC" || {
-            abort 1 "package installation failure: $PACKAGE_SPEC\n"
+    is_package_installed "$PACKAGE_SPEC" || {
+        abort 1 "package installation failure: $PACKAGE_SPEC\n"
 
-            if [ -n "$PACKAGE_WORKING_DIR"] ; then
-                printf '%b\n' "${COLOR_RED}you would probably want to figure out want had happeded, please change to the working directory: $PACKAGE_WORKING_DIR${COLOR_OFF}"
-            fi
-        }
-    fi
+        if [ -n "$PACKAGE_WORKING_DIR"] ; then
+            printf '%b\n' "${COLOR_RED}you would probably want to figure out want had happeded, please change to the working directory: $PACKAGE_WORKING_DIR${COLOR_OFF}"
+        fi
+    }
 }
 
 # Note: this function must run in a subshell
@@ -5098,7 +5225,6 @@ NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
           LOG_LEVEL = $LOG_LEVEL
             PROFILE = $PROFILE
 
-             DRYRUN = $DRYRUN
       ENABLE_CCACHE = $ENABLE_CCACHE
 REQUEST_TO_KEEP_SESSION_DIR = $REQUEST_TO_KEEP_SESSION_DIR
 REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON = $REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
@@ -5112,7 +5238,7 @@ EOF
 
     PACKAGE_FORMULA_FILEPATH="$SESSION_DIR/$PACKAGE_NAME.yml"
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+    if [ "$DUMP_FORMULA" = 1 ] ; then
         bat --language=yaml --paging=never "$PACKAGE_FORMULA_FILEPATH"
     fi
 
@@ -5150,7 +5276,9 @@ EOF
 
     #########################################################################################
 
-    if [ "$PACKAGE_PARALLEL" = 0 ] ; then
+    if [ "$PACKAGE_PARALLEL" = 1 ] ; then
+        BUILD_NJOBS="$NATIVE_OS_NCPU"
+    else
         BUILD_NJOBS=1
     fi
 
@@ -5220,11 +5348,9 @@ EOF
 
     #########################################################################################
 
-    step "onstart"
+    if [ -n "$PACKAGE_ONSTART" ] ; then
+        step "onstart"
 
-    if [ -z "$PACKAGE_ONSTART" ] ; then
-        note "onstart mapping was not found in formula, skipped."
-    else
         eval "
 onstart() {
 $PACKAGE_ONSTART
@@ -5235,10 +5361,6 @@ $PACKAGE_ONSTART
     #########################################################################################
 
     step "locate C/C++ toolchain for native build"
-
-    # https://www.real-world-systems.com/docs/xcrun.1.html
-    # do not use this environment variable
-    unset SDKROOT
 
     unset      CC_FOR_BUILD
     unset    OBJC_FOR_BUILD
@@ -5321,10 +5443,13 @@ $PACKAGE_ONSTART
          LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
     fi
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
+    if [ "$DEBUG_CC" = 1 ] ; then
           CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -v"
         CXXFLAGS_FOR_BUILD="$CXXFLAGS_FOR_BUILD -v"
        OBJCFLAGS_FOR_BUILD="$OBJCFLAGS_FOR_BUILD -v"
+    fi
+
+    if [ "$DEBUG_LD" = 1 ] ; then
          LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-v"
     fi
 
@@ -5332,7 +5457,7 @@ $PACKAGE_ONSTART
           CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -Os"
         CXXFLAGS_FOR_BUILD="$CXXFLAGS_FOR_BUILD -Os"
        OBJCFLAGS_FOR_BUILD="$OBJCFLAGS_FOR_BUILD -Os"
-         LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-s"
+         LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-S"
     fi
 
     export    CFLAGS_FOR_BUILD
@@ -5431,16 +5556,18 @@ $PACKAGE_ONSTART
             release) CMAKE_BUILD_TYPE=Release ;;
         esac
 
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        if [ "$VERBOSE_CMAKE" = 1 ] ; then
             CMAKE_VERBOSE_MAKEFILE=ON
             CMAKE_COLOR_MAKEFILE=ON
+            CMAKE_INSTALL_MESSAGE=ALWAYS
         else
             CMAKE_VERBOSE_MAKEFILE=OFF
             CMAKE_COLOR_MAKEFILE=OFF
+            CMAKE_INSTALL_MESSAGE=NEVER
         fi
 
         # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
+        if [ "$DEBUG_CMAKE" = 1 ] ; then
             CMAKE_FIND_DEBUG_MODE=ON
         else
             CMAKE_FIND_DEBUG_MODE=OFF
@@ -5897,7 +6024,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "fetching source/patches/resources"
+    step "fetching resources"
 
     case $PACKAGE_SRC_URL in
         '')
@@ -5954,7 +6081,7 @@ $DOT_CONTENT
                             for GIT_SUBMODULE_URL in $GIT_SUBMODULE_URLS
                             do
                                 GIT_SUBMODULE_URI="$("$NDKPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
-                                sed_in_place "s|$GIT_SUBMODULE_URL|$GIT_SUBMODULE_URI|" "$GIT_SUBMODULE_PATH"
+                                sedInPlace "s|$GIT_SUBMODULE_URL|$GIT_SUBMODULE_URI|" "$GIT_SUBMODULE_PATH"
                             done
                         done
                     fi
@@ -5982,7 +6109,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "unpack or copy source/patches/resources to proper location"
+    step "unpack/copy resources to proper location"
 
     if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
         case $PACKAGE_SRC_FILETYPE in
@@ -6100,13 +6227,6 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ "$DRYRUN" = 1 ] && {
-        [ -z "$SHELL" ] || SHELL=$(command -v zsh || command -v bash || command -v sh) || abort 1 "none of zsh|bash|sh shell found."
-        exec "$SHELL"
-    }
-
-    #########################################################################################
-
     {
         [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ||
@@ -6125,7 +6245,7 @@ $DOT_CONTENT
             run chmod a+x "$FILEPATH"
 
             if [ "$FILENAME" = 'config.sub' ] ; then
-                sed_in_place 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+                sedInPlace 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
             fi
 
             find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
@@ -6134,11 +6254,9 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "onready"
+    if [ -n "$PACKAGE_ONREADY" ] ; then
+        step "onready"
 
-    if [ -z "$PACKAGE_ONREADY" ] ; then
-        note "onready mapping was not found in formula, skipped."
-    else
         if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
             run     cd "$PACKAGE_BSCRIPT_DIR"
         fi
@@ -6152,11 +6270,9 @@ $PACKAGE_ONREADY
 
     #########################################################################################
 
-    step "install for native"
+    if [ -n "$PACKAGE_DO12345" ] ; then
+        step "install for native"
 
-    if [ -z "$PACKAGE_DO12345" ] ; then
-        note "do12345 mapping was not found in formula, skipped."
-    else
         NATIVE_BUILD_NEEDED=1
 
         NATIVE_INSTALLED_VERSION_TXT_FILEPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_NAME/version.txt"
@@ -6191,7 +6307,7 @@ EOF
                     run cd "$PACKAGE_BCACHED_DIR"
                 fi
 
-                [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] && {
+                [ "$DUMP_ENV" = 1 ] && {
                     run export -p
                     echo
                 }
@@ -6325,9 +6441,12 @@ $PACKAGE_DO12345
 
     ##############################################
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
+    if [ "$DEBUG_CC" = 1 ] ; then
         CCFLAGS="$CCFLAGS -v"
         XXFLAGS="$XXFLAGS -v"
+    fi
+
+    if [ "$DEBUG_LD" = 1 ] ; then
         LDFLAGS="$LDFLAGS -Wl,-v"
     fi
 
@@ -6590,16 +6709,18 @@ $PACKAGE_DO12345
             release) CMAKE_BUILD_TYPE=Release ;;
         esac
 
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        if [ "$VERBOSE_CMAKE" = 1 ] ; then
             CMAKE_VERBOSE_MAKEFILE=ON
             CMAKE_COLOR_MAKEFILE=ON
+            CMAKE_INSTALL_MESSAGE=ALWAYS
         else
             CMAKE_VERBOSE_MAKEFILE=OFF
             CMAKE_COLOR_MAKEFILE=OFF
+            CMAKE_INSTALL_MESSAGE=NEVER
         fi
 
         # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
+        if [ "$DEBUG_CMAKE" = 1 ] ; then
             CMAKE_FIND_DEBUG_MODE=ON
         else
             CMAKE_FIND_DEBUG_MODE=OFF
@@ -6875,7 +6996,7 @@ EOF
 
     #########################################################################################
 
-    if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
+    [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] && {
         if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
             step "copy dependent libraries to linker first search dir"
 
@@ -6888,29 +7009,25 @@ EOF
                 fi
             done
         fi
-    fi
+    }
 
     #########################################################################################
 
-    step "set up ccache"
+    [ "$ENABLE_CCACHE" = 1 ] && {
+        step "setup ccache"
 
-    if [ "$ENABLE_CCACHE" = 1 ] ; then
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-cc"
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-c++"
 
         ccache -s > "$PACKAGE_WORKING_DIR/ccache-s.txt"
-    else
-        note "ccache is disabled, skipped."
-    fi
+    }
 
     #########################################################################################
 
     step "dopatch for target"
 
-    if [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] ; then
-        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run     cd "$PACKAGE_BSCRIPT_DIR"
-        fi
+    [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] && {
+        cd "$PACKAGE_BSCRIPT_DIR"
 
         for LINE in $(cat "$PACKAGE_INSTALLING_FIX_DIR/index")
         do
@@ -6919,34 +7036,26 @@ EOF
             [ -z "$OPTS" ] && OPTS='-p1'
             run "patch $OPTS < $PACKAGE_INSTALLING_FIX_DIR/$FILE"
         done
-    fi
+    }
 
-    if [ -z "$PACKAGE_DOPATCH" ] ; then
-        note "dopatch mapping was not found in formula, skipped."
-    else
-        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run     cd "$PACKAGE_BSCRIPT_DIR"
-        fi
+    [ -n "$PACKAGE_DOPATCH" ] && {
+        cd "$PACKAGE_BSCRIPT_DIR"
 
         eval "
 dopatch() {
 $PACKAGE_DOPATCH
 }"
         dopatch
-    fi
+    }
 
     #########################################################################################
 
-    if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-        run     cd "$PACKAGE_BSCRIPT_DIR"
-    fi
+    cd "$PACKAGE_BSCRIPT_DIR"
 
     #########################################################################################
 
     # https://github.com/golang/go/issues/65568
-    if [ -f go.mod ] ; then
-        sed_in_place 's|^go 1.22$|go 1.22.0|' go.mod
-    fi
+    [ -f go.mod ] && sedInPlace 's|^go 1.22$|go 1.22.0|' go.mod
 
     #########################################################################################
 
@@ -6981,17 +7090,15 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    step "prepare for target"
+    [ -n "$PACKAGE_PREPARE" ] && {
+        step "prepare for target"
 
-    if [ -z "$PACKAGE_PREPARE" ] ; then
-        note "prepare mapping was not found in formula, skipped."
-    else
         eval "
 prepare() {
 $PACKAGE_PREPARE
 }"
         prepare
-    fi
+    }
 
     #########################################################################################
 
@@ -7007,7 +7114,7 @@ $PACKAGE_PREPARE
         run rm -rf "$PACKAGE_INSTALL_DIR"
     fi
 
-    [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] && {
+    [ "$DUMP_ENV" = 1 ] && {
         run export -p
         echo
     }
@@ -7023,6 +7130,7 @@ $PACKAGE_DOBUILD
 
     [   -d "$PACKAGE_INSTALL_DIR" ] || abort 1 "nothing was installed."
 
+    step "change to the installed directory"
     run cd "$PACKAGE_INSTALL_DIR"
 
     [ -z "$(ls)" ]                  && abort 1 "nothing was installed."
@@ -7031,28 +7139,23 @@ $PACKAGE_DOBUILD
 
     step "dotweak for target"
 
-    if [ -z "$PACKAGE_DOTWEAK" ] ; then
-        note "dotweak mapping was not found in formula, skipped."
-    else
+    __tweak_pc_files
+
+    [ -n "$PACKAGE_DOTWEAK" ] && {
         eval "
 dotweak() {
 $PACKAGE_DOTWEAK
 }"
         dotweak
-    fi
+    }
 
     #########################################################################################
 
-    if [ -d  "$PACKAGE_INSTALL_DIR/lib" ] ; then
+    [ -d  "$PACKAGE_INSTALL_DIR/lib" ] && {
         # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
         # remove Libtool Archive (.la) files
         find "$PACKAGE_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm '{}' \;
-    fi
-
-    #########################################################################################
-
-    step "tweak .pc files"
-    __tweak_pc_files
+    }
 
     #########################################################################################
 
@@ -7073,7 +7176,7 @@ $PACKAGE_DOTWEAK
     # executable that need to be set rpath : $ORIGIN/../.ndk-pkg/dependencies/lib
     unset PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2
 
-    step "check ELF files"
+    step "docheck for target"
     __check_elf_files
 
     #########################################################################################
@@ -7155,6 +7258,20 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
+    [ -n "$PACKAGE_ONFINAL" ] && {
+        step "onfinal"
+
+        cd "$PACKAGE_INSTALL_DIR"
+
+        eval "
+onfinal() {
+$PACKAGE_ONFINAL
+}"
+        onfinal
+    }
+
+    #########################################################################################
+
     cd "$PACKAGE_INSTALL_DIR"
 
     step "generate MANIFEST.txt"
@@ -7181,28 +7298,10 @@ $PACKAGE_DOTWEAK
         run rm -rf "$PACKAGE_WORKING_DIR"
     }
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        step "show installed files in tree-like format"
-        run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
-    fi
-
     #########################################################################################
 
-    step "onfinal"
-
-    if [ -z "$PACKAGE_ONFINAL" ] ; then
-        note "onfinal mapping was not found in formula, skipped."
-    else
-        if [ "$PWD" != "$PACKAGE_INSTALL_DIR" ] ; then
-            run     cd "$PACKAGE_INSTALL_DIR"
-        fi
-
-        eval "
-onfinal() {
-$PACKAGE_ONFINAL
-}"
-        onfinal
-    fi
+    step "show installed files in tree-like format"
+    run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
 
     #########################################################################################
 
@@ -7396,42 +7495,50 @@ __check_elf_files() {
 }
 
 __tweak_pc_files() {
-    [ -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" ] || {
-        note "no .pc files installed, skipped"
-        return 0
-    }
+    unset PC_FILES
 
-    PC_FILES="$(find "$PACKAGE_INSTALL_DIR/lib/pkgconfig" -name '*.pc')"
+    for item in lib share
+    do
+        PC_FILES_LIVEDIR="$PACKAGE_INSTALL_DIR/$item/pkgconfig"
 
-    [ -z "$PC_FILES" ] && {
-        note "no .pc files installed, skipped"
-        return 0
-    }
+        if [ -d        "$PC_FILES_LIVEDIR" ] ; then
+            fs="$(find "$PC_FILES_LIVEDIR" -type f -name '*.pc')"
+
+            if [ -n "$fs" ] ; then
+                PC_FILES="$PC_FILES $fs"
+            fi
+        fi
+    done
 
     for pcfile in $PC_FILES
     do
-        sed_in_place "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
-        sed_in_place 's|-lpthread||g'              "$pcfile"
-        sed_in_place 's|-Wl,--strip-debug||g'      "$pcfile"
-        sed_in_place "s|-I$NDKPKG_HOME[^' ]*||g"   "$pcfile"
-        sed_in_place "s|-L$NDKPKG_HOME[^' ]*||g"   "$pcfile"
-        sed_in_place "s|-L$SYSROOT[^' ]*||g"       "$pcfile"
-        sed_in_place "s|--sysroot=$SYSROOT||"      "$pcfile"
+        sedInPlace "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
+
+        sedInPlace "s|-I$NDKPKG_HOME[^' ]*||g"   "$pcfile"
+        sedInPlace "s|-L$NDKPKG_HOME[^' ]*||g"   "$pcfile"
+        sedInPlace "s|-L$SYSROOT[^' ]*||g"       "$pcfile"
+        sedInPlace "s|--sysroot=$SYSROOT||"      "$pcfile"
+        sedInPlace 's|-flto||g'                  "$pcfile"
+        sedInPlace 's|-lpthread||g'              "$pcfile"
+        sedInPlace 's|-Wl,--strip-debug||g'      "$pcfile"
+
+        sedInPlace "s|${NDKPKG_HOME}/.*/lib\(.*\)\.so|-l\1|g" "$pcfile"
+        sedInPlace "s|${NDKPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g"  "$pcfile"
 
         if grep -q 'Libs.private:' "$pcfile" ; then
             LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
             LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
-            sed_in_place "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
-            sed_in_place '/Libs.private/d' "$pcfile"
+            sedInPlace "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
+            sedInPlace '/Libs.private/d' "$pcfile"
         fi
 
         if grep -q 'Requires.private:' "$pcfile" ; then
             if grep -q 'Requires:' "$pcfile" ; then
                 REQUIRES_PRIVATE_CONTENT=$(sed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
-                sed_in_place "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
-                sed_in_place '/Requires.private:/d' "$pcfile"
+                sedInPlace "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
+                sedInPlace '/Requires.private:/d' "$pcfile"
             else
-                sed_in_place 's|Requires.private:|Requires:|' "$pcfile"
+                sedInPlace 's|Requires.private:|Requires:|' "$pcfile"
             fi
         fi
     done
@@ -7530,7 +7637,7 @@ __record_installed_files_of_the_given_package() {
 
         exec 7>&-
 
-        sed_in_place "s|$PACKAGE_INSTALL_DIR/||" "$INSTALLED_FILES_FILEPATH"
+        sedInPlace "s|$PACKAGE_INSTALL_DIR/||" "$INSTALLED_FILES_FILEPATH"
     else
         for file in $(ls $2)
         do
@@ -7545,7 +7652,7 @@ __record_installed_files_of_the_given_package() {
 }
 
 gow() {
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+    if [ "$VERBOSE_GO" = 1 ] ; then
         run "go env | bat --language=bash --paging=never --style=plain"
     fi
 
@@ -7592,7 +7699,7 @@ gow() {
     GO_BUILD_ARGS='-trimpath'
 
     if [ -z "$GO_BUILD_ARGV_V" ] ; then
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        if [ "$VERBOSE_GO" = 1 ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -v"
         fi
     else
@@ -7600,7 +7707,7 @@ gow() {
     fi
 
     if [ -z "$GO_BUILD_ARGV_X" ] ; then
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
+        if [ "$DEBUG_GO" = 1 ] ; then
             GO_BUILD_ARGS="$GO_BUILD_ARGS -x"
         fi
     else
@@ -7665,7 +7772,7 @@ cargow() {
             CARGO_BUILD_ARGS="$@"
 
             if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
-                if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+                if [ "$DEBUG_CARGO" = 1 ] ; then
                     CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS -vv"
                 fi
             fi
@@ -7703,7 +7810,7 @@ cargow() {
             CARGO_INSTALL_ARGS="$@"
 
             if [ -z "$CARGO_BUILD_ARG_VV" ] ; then
-                if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+                if [ "$DEBUG_CARGO" = 1 ] ; then
                     CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
                 fi
             fi
@@ -7748,7 +7855,7 @@ cargow() {
             CARGO_CINSTALL_ARGS="$@"
 
             if [ -z "$CARGO_CINSTALL_ARG_Q" ] && [ -z "$CARGO_CINSTALL_ARG_V" ] && [ -z "$CARGO_CINSTALL_ARG_VV" ] ; then
-                if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+                if [ "$DEBUG_CARGO" = 1 ] ; then
                     CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS -vv"
                 fi
             fi
@@ -8005,11 +8112,10 @@ configure_only() {
         fi
 
         if [ -z "$CONFIGURE_ARG_ENABLE_DEBUG" ] ; then
-            if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
-                CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"
-            else
-                CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug"
-            fi
+            case $PROFILE in
+                debug)   CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-debug"  ;;
+                release) CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-debug" ;;
+            esac
         fi
 
         if [ -z "$CONFIGURE_ARG_ENABLE_STATIC" ] ; then
@@ -8042,7 +8148,7 @@ configure_only() {
 
         CONFIGURE="$PACKAGE_BSCRIPT_DIR/configure"
 
-        sed_in_place 's/cross_compiling=no/cross_compiling=yes/g' "$CONFIGURE"
+        sedInPlace 's/cross_compiling=no/cross_compiling=yes/g' "$CONFIGURE"
 
         if run $CONFIGURE $CONFIGURE_ARGS $@ $CONFIGURE_ENVS ; then
             echo
@@ -8059,11 +8165,11 @@ configure_only() {
         fi
     fi
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+    if [ "$VERBOSE_GMAKE" = 1 ] ; then
         for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
-            sed_in_place 's|\t@|\t|g'     "$Makefile"
-            sed_in_place 's|@echo|echo|g' "$Makefile"
+            sedInPlace 's|\t@|\t|g'     "$Makefile"
+            sedInPlace 's|@echo|echo|g' "$Makefile"
         done
         unset Makefile
     fi
@@ -8109,8 +8215,12 @@ gmakew() {
         GMAKE_OPTIONS="$GMAKE_OPTIONS -j$BUILD_NJOBS"
     fi
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
-        GMAKE_OPTIONS="$GMAKE_OPTIONS --debug V=1"
+    if [ "$VERBOSE_GMAKE" = 1 ] ; then
+        GMAKE_OPTIONS="$GMAKE_OPTIONS V=1"
+    fi
+
+    if [ "$DEBUG_GMAKE" = 1 ] ; then
+        GMAKE_OPTIONS="$GMAKE_OPTIONS --debug"
     fi
 
     if [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
@@ -8148,7 +8258,7 @@ cmakew() {
         CMAKE_CONFIG_OPTIONS="-Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=$CMAKE_EXPORT_COMPILE_COMMANDS -DBUILD_TESTING=OFF"
 
         # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        if [ "$DEBUG_CMAKE" = 1 ] ; then
             CMAKE_CONFIG_OPTIONS="$CMAKE_CONFIG_OPTIONS -DCMAKE_FIND_DEBUG_MODE=TRUE"
         fi
 
@@ -8171,7 +8281,7 @@ cmakew() {
                 printf 'set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")\n' > "$CMAKE_PROJECT_INCLUDE"
             fi
 
-            if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+            if [ "$VERBOSE_CMAKE" = 1 ] ; then
                 run cat "$CMAKE_PROJECT_INCLUDE"
             fi
         fi
@@ -8181,7 +8291,7 @@ cmakew() {
             release) CMAKE_BUILD_TYPE=Release ;;
         esac
 
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        if [ "$VERBOSE_CMAKE" = 1 ] ; then
             CMAKE_VERBOSE_MAKEFILE=ON
             CMAKE_COLOR_MAKEFILE=ON
         else
@@ -8190,7 +8300,7 @@ cmakew() {
         fi
 
         # https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_DEBUG_MODE.html
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] ; then
+        if [ "$DEBUG_CMAKE" = 1 ] ; then
             CMAKE_FIND_DEBUG_MODE=ON
         else
             CMAKE_FIND_DEBUG_MODE=OFF
@@ -8264,6 +8374,8 @@ endif()
 set(CMAKE_FIND_DEBUG_MODE $CMAKE_FIND_DEBUG_MODE)
 set(CMAKE_FIND_ROOT_PATH "$CMAKE_FIND_ROOT_PATH")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+
+set(CMAKE_INSTALL_MESSAGE "$CMAKE_INSTALL_MESSAGE")
 EOF
 
         NASM="$(command -v nasm || command -v yasm || true)"
@@ -8280,7 +8392,7 @@ set(NDK_CCACHE "$CCACHE")
 EOF
         fi
 
-        if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+        if [ "$VERBOSE_CMAKE" = 1 ] ; then
             bat --language=cmake --paging=never "$CMAKE_TOOLCHAIN_FILE"
         fi
 
@@ -8318,7 +8430,7 @@ xmakew() {
         esac
     done
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERY_VERBOSE" ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ] ; then
+    if [ "$DEBUG_XMAKE" = 1 ] && [ -z "$XMAKE_CONFIG_OPTION_vD" ] ; then
         XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTION_vD -vD"
     fi
 
@@ -8397,7 +8509,7 @@ EOF
         MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
     fi
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+    if [ "$VERBOSE_MESON" = 1 ] ; then
         MESON_COMPILE_ARGS="$MESON_COMPILE_ARGS -v"
     fi
 
@@ -8616,7 +8728,7 @@ EOF
 
     NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+    if [ "$DUMP_NDK" = 1 ] ; then
         echo "$NDKINFO"
     fi
 
@@ -8916,18 +9028,6 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
         ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
             If --ndk-home=<ANDROID-NDK-HOME> is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
 
-        ${COLOR_BLUE}--jobs=N${COLOR_OFF}
-            specify the number of jobs you can run in parallel.
-
-        ${COLOR_BLUE}-q${COLOR_OFF}
-            silent mode. no any messages will be output to terminal.
-
-        ${COLOR_BLUE}-v${COLOR_OFF}
-            verbose mode. many messages will be output to terminal.
-
-        ${COLOR_BLUE}-vv${COLOR_OFF}
-            very verbose mode. many many messages will be output to terminal.
-
         ${COLOR_BLUE}--profile=<debug|release>${COLOR_OFF}
             specify the build profile.
 
@@ -8952,20 +9052,96 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
             a fully  statically linked executable is easy to distribute to all version of Android devices.
             a mostly statically linked executable is easy to distribute to one version of Android devices.
 
+        ${COLOR_BLUE}-j <N>${COLOR_OFF}
+            specify the number of jobs you can run in parallel.
+
+        ${COLOR_BLUE}-E${COLOR_OFF}
+            export compile_commands.json
+
+        ${COLOR_BLUE}-U${COLOR_OFF}
+            upgrade packages if possible.
+
+        ${COLOR_BLUE}-K${COLOR_OFF}
+            keep the session directory even if this package is successfully installed.
+
+        ${COLOR_BLUE}-q${COLOR_OFF}
+            silent mode. no any messages will be output to terminal.
+
+        ${COLOR_BLUE}-v${COLOR_OFF}
+            verbose mode. many messages will be output to terminal.
+
+            This option is equivalent to -v-* options all are supplied.
+
+        ${COLOR_BLUE}-x${COLOR_OFF}
+            very verbose mode. many many messages will be output to terminal.
+
+            This option is equivalent to -v-* and -x-* options all are supplied.
+
+        ${COLOR_BLUE}-v-env${COLOR_OFF}
+            show all environment variables before starting to build.
+
+        ${COLOR_BLUE}-v-http${COLOR_OFF}
+            show http request/response.
+
+        ${COLOR_BLUE}-v-ndk${COLOR_OFF}
+            show Android NDK information.
+
+        ${COLOR_BLUE}-v-formula${COLOR_OFF}
+            show formula content.
+
+        ${COLOR_BLUE}-v-go${COLOR_OFF}
+            pass -v argument to go build command.
+
+        ${COLOR_BLUE}-v-uppm${COLOR_OFF}
+            pass -v argument to uppm command.
+
+        ${COLOR_BLUE}-v-cargo${COLOR_OFF}
+            pass -v argument to cargo command.
+
+        ${COLOR_BLUE}-v-meson${COLOR_OFF}
+            pass -v argument to meson command.
+
+        ${COLOR_BLUE}-v-ninja${COLOR_OFF}
+            pass -v argument to ninja command.
+
+        ${COLOR_BLUE}-v-gmake${COLOR_OFF}
+            pass V=1 argument to gmake command.
+
+        ${COLOR_BLUE}-v-cmake${COLOR_OFF}
+            set(CMAKE_VERBOSE_MAKEFILE ON)
+
+        ${COLOR_BLUE}-v-xmake${COLOR_OFF}
+            pass -v argument to xmake command.
+
+        ${COLOR_BLUE}-x-sh${COLOR_OFF}
+            set -x to debug current running shell.
+
+        ${COLOR_BLUE}-x-cc${COLOR_OFF}
+            pass -v argument to clang command.
+
+        ${COLOR_BLUE}-x-ld${COLOR_OFF}
+            pass -Wl,-v argument to linker.
+
+        ${COLOR_BLUE}-x-go${COLOR_OFF}
+            pass -x argument to go build command.
+
+        ${COLOR_BLUE}-x-cargo${COLOR_OFF}
+            pass -vv argument to cargo command.
+
+        ${COLOR_BLUE}-x-gmake${COLOR_OFF}
+            pass --debug argument to gmake command.
+
+        ${COLOR_BLUE}-x-cmake${COLOR_OFF}
+            set(CMAKE_FIND_DEBUG_MODE ON)
+
+        ${COLOR_BLUE}-x-xmake${COLOR_OFF}
+            pass -vD argument to xmake command.
+
+        ${COLOR_BLUE}-x-pkg-config${COLOR_OFF}
+            export PKG_CONFIG_DEBUG_SPEW=1
+
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
             do not use ccache.
-
-        ${COLOR_BLUE}--export-compile-commands-json${COLOR_OFF}
-            generates compile_commands.json
-
-        ${COLOR_BLUE}--upgrade${COLOR_OFF}
-            If this package has been already installed, then it will be upgraded if it could be.
-
-        ${COLOR_BLUE}--dry-run${COLOR_OFF}
-            do not actually install the package.
-
-        ${COLOR_BLUE}--keep-session-dir${COLOR_OFF}
-            do not delete the session directory even if this package is successfully installed.
 
     USAGE-EXAMPLES:
         ndk-pkg install android-21-arm64-v8a/libz
@@ -9175,7 +9351,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.10.11
+NDKPKG_VERSION=0.11.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"

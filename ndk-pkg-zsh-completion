@@ -187,50 +187,117 @@ function _ndk_pkg() {
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
                         '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
-                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '--dry-run[do not actually install the package]' \
-                        '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
-                        '--profile=-[specify build profile]:build-profile:(debug release)' \
+                        '--target=-[specify the target to be built for]:target:(android-21-armeabi-v7a android-21-arm64-v8a android-21-x86 android-21-x86_64)' \
+                        '--profile=-[specify build profile]:profile:(debug release)' \
                         '--fsle[create fully statically linked executables]' \
-                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '-U[upgrade if possible]' \
+                        '-K[keep the session directory even if successfully installed]' \
+                        '-E[export compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
+                        '-v-env[show all environment variables before starting to build]' \
+                        '-v-http[show http request/response]' \
+                        '-v-ndk[show Android NDK information]' \
+                        '-v-formula[show formula content]' \
+                        '-v-go[pass -v argument to go build command]' \
+                        '-v-uppm[pass -v argument to uppm command]' \
+                        '-v-cargo[pass -v argument to cargo command]' \
+                        '-v-meson[pass -v argument to meson command]' \
+                        '-v-ninja[pass -v argument to ninja command]' \
+                        '-v-gmake[pass V=1 argument to gmake command]' \
+                        '-v-xmake[pass -v argument to xmake command]' \
+                        '-v-cmake[pass -DCMAKE_VERBOSE_MAKEFILE argument to cmake command]' \
+                        '-x-sh[set -x to debug current running shell]' \
+                        '-x-cc[pass -v argument to clang command]' \
+                        '-x-ld[pass -Wl,-v argument to linker]' \
+                        '-x-go[pass -x argument to go build command]' \
+                        '-x-cargo[pass -vv argument to cargo command]' \
+                        '-x-gmake[pass --debug argument to gmake command]' \
+                        '-x-cmake[pass -DCMAKE_FIND_DEBUG_MODE=ON argument to cmake command]' \
+                        '-x-xmake[pass -vD argument to xmake command]' \
+                        '-x-pkg-config[export PKG_CONFIG_DEBUG_SPEW=1]' \
                         + '(verbose_level)' \
-                        '-vv[debug mode. many many messages will be output to terminal]' \
-                        '-v[verbose mode. many messages will be output to terminal]' \
-                        '-q[silent mode. no any messages will be output to terminal]'
+                        '-x[very verbose mode. equivalent to -v-* and -x-* options all are supplied]' \
+                        '-v[verbose mode. equivalent to -v-* options all are supplied]' \
+                        '-q[silent mode.]'
                     ;;
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
                         '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
-                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '--dry-run[dry-run]' \
-                        '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
-                        '--profile=-[specify build profile]:build-profile:(debug release)' \
+                        '--target=-[specify the target to be built for]:target:(android-21-armeabi-v7a android-21-arm64-v8a android-21-x86 android-21-x86_64)' \
+                        '--profile=-[specify build profile]:profile:(debug release)' \
                         '--fsle[create fully statically linked executables]' \
-                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '-U[upgrade if possible]' \
+                        '-K[keep the session directory even if successfully installed]' \
+                        '-E[export compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
+                        '-v-env[show all environment variables before starting to build]' \
+                        '-v-http[show http request/response]' \
+                        '-v-ndk[show Android NDK information]' \
+                        '-v-formula[show formula content]' \
+                        '-v-go[pass -v argument to go build command]' \
+                        '-v-uppm[pass -v argument to uppm command]' \
+                        '-v-ninja[pass -v argument to ninja command]' \
+                        '-v-meson[pass -v argument to meson command]' \
+                        '-v-cargo[pass -v argument to cargo command]' \
+                        '-v-gmake[pass V=1 argument to gmake command]' \
+                        '-v-xmake[pass -v argument to xmake command]' \
+                        '-v-cmake[pass -DCMAKE_VERBOSE_MAKEFILE argument to cmake command]' \
+                        '-x-sh[set -x to debug current running shell]' \
+                        '-x-go[pass -x argument to go build command]' \
+                        '-x-cc[pass -v argument to clang command]' \
+                        '-x-ld[pass -Wl,-v argument to linker]' \
+                        '-x-cargo[pass -vv argument to cargo command]' \
+                        '-x-gmake[pass --debug argument to gmake command]' \
+                        '-x-cmake[pass -DCMAKE_FIND_DEBUG_MODE=ON argument to cmake command]' \
+                        '-x-xmake[pass -vD argument to xmake command]' \
+                        '-x-pkg-config[export PKG_CONFIG_DEBUG_SPEW=1]' \
                         + '(verbose_level)' \
-                        '-vv[debug mode. many many messages will be output to terminal]' \
-                        '-v[verbose mode. many messages will be output to terminal]' \
-                        '-q[silent mode. no any messages will be output to terminal]'
+                        '-x[very verbose mode. equivalent to -v-* and -x-* options all are supplied]' \
+                        '-v[verbose mode. equivalent to -v-* options all are supplied]' \
+                        '-q[silent mode.]'
                     ;;
                 upgrade)
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
                         '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
-                        '--jobs=-[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
-                        '--dry-run[dry-run]' \
-                        '--keep-session-dir[do not delete the session directory even if this package is successfully installed]' \
-                        '--profile=-[specify build profile]:build-profile:(debug release)' \
+                        '--target=-[specify the target to be built for]:target:(android-21-armeabi-v7a android-21-arm64-v8a android-21-x86 android-21-x86_64)' \
+                        '--profile=-[specify build profile]:profile:(debug release)' \
                         '--fsle[create fully statically linked executables]' \
-                        '--export-compile-commands-json[generates compile_commands.json]' \
+                        '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
+                        '-U[upgrade if possible]' \
+                        '-K[keep the session directory even if successfully installed]' \
+                        '-E[export compile_commands.json]' \
                         '--disable-ccache[do not use ccache]' \
+                        '-v-env[show all environment variables before starting to build]' \
+                        '-v-http[show http request/response]' \
+                        '-v-ndk[show Android NDK information]' \
+                        '-v-formula[show formula content]' \
+                        '-v-go[pass -v argument to go build command]' \
+                        '-v-uppm[pass -v argument to uppm command]' \
+                        '-v-ninja[pass -v argument to ninja command]' \
+                        '-v-meson[pass -v argument to meson command]' \
+                        '-v-cargo[pass -v argument to cargo command]' \
+                        '-v-gmake[pass V=1 argument to gmake command]' \
+                        '-v-xmake[pass -v argument to xmake command]' \
+                        '-v-cmake[pass -DCMAKE_VERBOSE_MAKEFILE argument to cmake command]' \
+                        '-x-sh[set -x to debug current running shell]' \
+                        '-x-cc[pass -v argument to clang command]' \
+                        '-x-ld[pass -Wl,-v argument to linker]' \
+                        '-x-go[pass -x argument to go build command]' \
+                        '-x-cargo[pass -vv argument to cargo command]' \
+                        '-x-gmake[pass --debug argument to gmake command]' \
+                        '-x-cmake[pass -DCMAKE_FIND_DEBUG_MODE=ON argument to cmake command]' \
+                        '-x-xmake[pass -vD argument to xmake command]' \
+                        '-x-pkg-config[export PKG_CONFIG_DEBUG_SPEW=1]' \
                         + '(verbose_level)' \
-                        '-vv[debug mode. many many messages will be output to terminal]' \
-                        '-v[verbose mode. many messages will be output to terminal]' \
-                        '-q[silent mode. no any messages will be output to terminal]'
+                        '-x[very verbose mode. equivalent to -v-* and -x-* options all are supplied]' \
+                        '-v[verbose mode. equivalent to -v-* options all are supplied]' \
+                        '-q[silent mode.]'
                     ;;
+
                 uninstall)
                     _arguments '*:package-name:_ndk_pkg_installed_packages'
                     ;;

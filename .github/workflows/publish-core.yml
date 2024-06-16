@@ -56,8 +56,8 @@ jobs:
       - run: chmod a+x xcpkg
       - run: ./xcpkg setup
       - run: ./xcpkg update
-      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.2 --link-type=static-most
-      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.2 -o .
+      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 --link-type=static-most
+      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 -o .
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
@@ -106,8 +106,8 @@ jobs:
       - run: chmod a+x ppkg
       - run: ./ppkg setup
       - run: ./ppkg update
-      - run: ./ppkg install uppm@0.15.2 --link-type=static-full
-      - run: ./ppkg pack    uppm@0.15.2 -o .
+      - run: ./ppkg install uppm@0.15.4 --link-type=static-full
+      - run: ./ppkg pack    uppm@0.15.4 -o .
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
@@ -143,10 +143,10 @@ jobs:
       - run: ndk-pkg setup
       - run: ndk-pkg update
 
-      - run: ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.3
+      - run: ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4
       - run: ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core
 
-      - run: ndk-pkg pack    android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.3  -o .
+      - run: ndk-pkg pack    android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4  -o .
       - run: ndk-pkg pack    android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core -o .
 
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
