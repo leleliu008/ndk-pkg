@@ -758,7 +758,6 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `rake` `ndk-build`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
-|`symlink`|optional|whether to symlink installed files to `$NDKPKG_HOME/symlinked/*`.<br>value shall be `0` or `1`. default value is `1`.|
 |`movable`|optional|whether can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
 |`parallel`|optional|whether to allow build system running jobs in parallel.<br>value shall be `0` or `1`. default value is `1`.|
 ||||
@@ -776,6 +775,10 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 ||||
 |`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
+|phases of a package's installation|
+|-|
+|![phases](phases.svg)|
+
 |build system name|build script file name|
 |-|-|
 |`meson`|`meson.build`|
@@ -790,10 +793,6 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`autotools`|`configure.ac`|
 |`configure`|`configure`|
 |`ndk-build`|`Android.mk`|
-
-|phases of a package's installation|
-|-|
-|![phases](phases.svg)|
 
 **commands that can be used out of the box:**
 
