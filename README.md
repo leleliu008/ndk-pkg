@@ -371,6 +371,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
     - [xxd](https://raw.githubusercontent.com/vim/vim/master/runtime/doc/xxd.man)
+    - [fzf](https://github.com/junegunn/fzf)
     - [bat](https://github.com/sharkdp/bat)
     - [jq](https://stedolan.github.io/jq/manual/)
     - [yq](https://mikefarah.gitbook.io/yq/)

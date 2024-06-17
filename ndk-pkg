@@ -2425,15 +2425,9 @@ __fetch_resources_of_the_given_package() {
         abort 1 "package '$PACKAGE_SPEC' is not installed."
     fi
 
-    FILEPATHs="$(find "$PACKAGE_INSTALLED_DIR/.ndk-pkg" -type f)"
+    cd "$PACKAGE_INSTALLED_DIR/.ndk-pkg"
 
-    for fp in $FILEPATHs
-    do
-        case $fp in
-            *.png) ;;
-            *) run bat "$fp"
-        esac
-    done
+    fzf --preview='bat --color=always --theme=Dracula {}' --preview-window='right:75%'
 }
 
 # }}}
@@ -2441,7 +2435,7 @@ __fetch_resources_of_the_given_package() {
 # {{{ ndk-pkg pack
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--exclude=<PATH>] [--keep-session-dir]
+# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--exclude=<PATH>] [-K]
 # __pack_the_given_installed_package    autoconf     -t tar.xz
   __pack_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
@@ -2458,8 +2452,7 @@ __fetch_resources_of_the_given_package() {
     while [ -n "$1" ]
     do
         case $1 in
-            --keep-session-dir)
-                KEEP_SESSION_DIR=1
+            -K) KEEP_SESSION_DIR=1
                 ;;
             -t) shift
 
@@ -2487,7 +2480,7 @@ __fetch_resources_of_the_given_package() {
                     EXCLUDES="$EXCLUDES $EXCLUDE"
                 fi
                 ;;
-            *)  abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
+            *)  abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-K], unrecognized option: $1"
         esac
         shift
     done
@@ -2617,7 +2610,7 @@ __fetch_resources_of_the_given_package() {
 
     if [ "$KEEP_SESSION_DIR" = 1 ] ; then
         echo
-        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is specified."
+        note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
     else
         run rm -rf "$SESSION_DIR"
     fi
@@ -2679,7 +2672,7 @@ __fetch_resources_of_the_given_package() {
 #                     ├── abi.json
 #                     └── libz.so
 #
-# __export_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>] [--keep-session-dir]
+# __export_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>] [-K]
   __export_google_prefab_aar_for_the_given_installed_packages() {
     unset PACKAGE_NAME
 
@@ -2733,8 +2726,7 @@ __fetch_resources_of_the_given_package() {
             -o) shift
                 OUTPUT_PATH="$1"
                 ;;
-            --keep-session-dir)
-                REQUEST_TO_KEEP_SESSION_DIR=1
+            -K) REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
         esac
         shift
@@ -3026,14 +3018,14 @@ rm -rf $SESSION_DIR\n"
 
     if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
         echo
-        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is specified."
+        note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
     else
         step "delete the session directory"
         run rm -rf "$SESSION_DIR"
     fi
 }
 
-# __deploy_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>/<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [--keep-session-dir] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
+# __deploy_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>/<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--groupId] [-K] [--dry-run] [--debug] [--remote < REMOTE-CONFIG-FILE]
   __deploy_google_prefab_aar_for_the_given_installed_packages() {
     __export_google_prefab_aar_for_the_given_installed_packages "$@"
 
@@ -3072,8 +3064,7 @@ rm -rf $SESSION_DIR\n"
             --dry-run)
                 DRYRUN=1
                 ;;
-            --keep-session-dir)
-                ;;
+            -K) ;;
             --groupId=*)
                 GROUPID="${1#*=}"
                 ;;
@@ -3326,7 +3317,7 @@ rm -rf $SESSION_DIR\n"
 
     if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
         printf '\n'
-        note "the session directory '$SESSION_DIR' is not deleted as --keep-session-dir option is given."
+        note "the session directory '$SESSION_DIR' is not deleted as -K option is given."
     else
         step "delete the session directory"
         run rm -rf "$SESSION_DIR"
@@ -3615,7 +3606,7 @@ __show_packages_depended_by_the_given_package() {
                     OUTPUT_PATH="$1"
                 fi
                 ;;
-            *)  abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--keep-session-dir], unrecognized option: $1"
+            *)  abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-K], unrecognized option: $1"
         esac
         shift
     done
@@ -4307,7 +4298,7 @@ __upgrade_packages() {
     printf '%s\n' "$PACKAGE_SPEC"
 }
 
-# inspect_package_spec_list <PACKAGE-NAME | PACKAGE-SPECS>
+# inspect_package_spec_list <PACKAGE-NAME | PACKAGE-SPECS> [USER-SPECIFIED-TARGET]
   inspect_package_spec_list() {
     case $1 in
         '') abort 1 "neither package-name nor package-specs is specified."
@@ -4348,21 +4339,37 @@ __upgrade_packages() {
             printf '%s\n' "$PACKAGE_SPEC_LIST"
             ;;
         *)  if printf '%s\n' "$1" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
-                case $NDKPKG_DEFAULT_TARGET in
-                    '') NDKPKG_DEFAULT_TARGET='android-21-arm64-v8a'
-                        ;;
-                    android-[1-9][0-9]-armeabi-v7a)
-                        ;;
-                    android-[1-9][0-9]-arm64-v8a)
-                        ;;
-                    android-[1-9][0-9]-x86)
-                        ;;
-                    android-[1-9][0-9]-x86_64)
-                        ;;
-                    *) abort 1 "you have set NDKPKG_DEFAULT_TARGET=$NDKPKG_DEFAULT_TARGET , but it is an invalid android spec."
-                esac
+                if [ -z "$2" ] ; then
+                    case $NDKPKG_DEFAULT_TARGET in
+                        '') NDKPKG_DEFAULT_TARGET='android-21-arm64-v8a'
+                            ;;
+                        android-[1-9][0-9]-armeabi-v7a)
+                            ;;
+                        android-[1-9][0-9]-arm64-v8a)
+                            ;;
+                        android-[1-9][0-9]-x86)
+                            ;;
+                        android-[1-9][0-9]-x86_64)
+                            ;;
+                        *) abort 1 "you have set environment variable NDKPKG_DEFAULT_TARGET=$NDKPKG_DEFAULT_TARGET , but it is an invalid android spec."
+                    esac
 
-                printf '%s\n' "$NDKPKG_DEFAULT_TARGET/$1"
+                    printf '%s\n' "$NDKPKG_DEFAULT_TARGET/$1"
+                else
+                    case $2 in
+                        android-[1-9][0-9]-armeabi-v7a)
+                            ;;
+                        android-[1-9][0-9]-arm64-v8a)
+                            ;;
+                        android-[1-9][0-9]-x86)
+                            ;;
+                        android-[1-9][0-9]-x86_64)
+                            ;;
+                        *) abort 1 "you have specified --target=$2 argument, but it is an invalid android spec."
+                    esac
+
+                    printf '%s\n' "$2/$1"
+                fi
             else
                 abort 1 "invalid package name: $1"
             fi
@@ -4571,8 +4578,8 @@ inspect_install_arguments() {
             -U) REQUEST_TO_UPGRADE_IF_POSSIBLE=1 ;;
             -E) REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON=1 ;;
 
-            -*) abort 1 "unrecognized option: $1"
-                ;;
+            -*) abort 1 "unrecognized option: $1" ;;
+
             *)  SPECIFIED_PACKAGE_LIST="$SPECIFIED_PACKAGE_LIST $1"
         esac
         shift
@@ -4584,7 +4591,7 @@ inspect_install_arguments() {
 
     for PACKAGE in $SPECIFIED_PACKAGE_LIST
     do
-        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST $(inspect_package_spec_list "$PACKAGE")"
+        SPECIFIED_PACKAGE_SPEC_LIST="$SPECIFIED_PACKAGE_SPEC_LIST $(inspect_package_spec_list "$PACKAGE" "$SPECIFIED_TARGET")"
     done
 
     SPECIFIED_PACKAGE_SPEC_LIST=${SPECIFIED_PACKAGE_SPEC_LIST#' '}
@@ -4617,7 +4624,7 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    # DO NOT use these environment variables
+    # these environment variables are not used by this script
     # https://cmake.org/cmake/help/latest/envvar/MACOSX_DEPLOYMENT_TARGET.html
     unset   MACOSX_DEPLOYMENT_TARGET
     unset IPHONEOS_DEPLOYMENT_TARGET
@@ -4630,6 +4637,29 @@ inspect_install_arguments() {
     unset TARGET_ARCH
 
     unset LIBS
+
+    # these environment variables are override by this script
+    unset        CC_FOR_BUILD
+    unset      OBJC_FOR_BUILD
+    unset       CXX_FOR_BUILD
+    unset       CPP_FOR_BUILD
+    unset        AS_FOR_BUILD
+    unset        AR_FOR_BUILD
+    unset    RANLIB_FOR_BUILD
+    unset        LD_FOR_BUILD
+    unset        NM_FOR_BUILD
+    unset      SIZE_FOR_BUILD
+    unset     STRIP_FOR_BUILD
+    unset   STRINGS_FOR_BUILD
+    unset   OBJDUMP_FOR_BUILD
+    unset   OBJCOPY_FOR_BUILD
+    unset   READELF_FOR_BUILD
+    unset   SYSROOT_FOR_BUILD
+
+    unset    CFLAGS_FOR_BUILD
+    unset  CXXFLAGS_FOR_BUILD
+    unset OBJCFLAGS_FOR_BUILD
+    unset   LDFLAGS_FOR_BUILD
 
     #########################################################################################
 
@@ -5360,59 +5390,99 @@ $PACKAGE_ONSTART
 
     #########################################################################################
 
-    step "locate C/C++ toolchain for native build"
+    TOOLCHAIN_CONFIG_TARGET="$SESSION_DIR/toolchain-target.sh"
 
-    unset      CC_FOR_BUILD
-    unset    OBJC_FOR_BUILD
-    unset     CXX_FOR_BUILD
-    unset     CPP_FOR_BUILD
-    unset      AS_FOR_BUILD
-    unset      AR_FOR_BUILD
-    unset  RANLIB_FOR_BUILD
-    unset      LD_FOR_BUILD
-    unset      NM_FOR_BUILD
-    unset    SIZE_FOR_BUILD
-    unset   STRIP_FOR_BUILD
-    unset STRINGS_FOR_BUILD
-    unset OBJDUMP_FOR_BUILD
-    unset OBJCOPY_FOR_BUILD
-    unset READELF_FOR_BUILD
-    unset SYSROOT_FOR_BUILD
-
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-             CC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
-           OBJC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
-            CXX_FOR_BUILD="$(xcrun --sdk macosx --find clang++)"
-             AS_FOR_BUILD="$(xcrun --sdk macosx --find as)"
-             AR_FOR_BUILD="$(xcrun --sdk macosx --find ar)"
-         RANLIB_FOR_BUILD="$(xcrun --sdk macosx --find ranlib)"
-             LD_FOR_BUILD="$(xcrun --sdk macosx --find ld)"
-             NM_FOR_BUILD="$(xcrun --sdk macosx --find nm)"
-           SIZE_FOR_BUILD="$(xcrun --sdk macosx --find size)"
-          STRIP_FOR_BUILD="$(xcrun --sdk macosx --find strip)"
-        STRINGS_FOR_BUILD="$(xcrun --sdk macosx --find strings)"
-        OBJDUMP_FOR_BUILD="$(xcrun --sdk macosx --find objdump)"
-        SYSROOT_FOR_BUILD="$(xcrun --sdk macosx --show-sdk-path)"
-    else
-             CC_FOR_BUILD="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
-           OBJC_FOR_BUILD="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
-            CXX_FOR_BUILD="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler for native not found."
-             AS_FOR_BUILD="$(command -v as)"      || abort 1 "command not found: as"
-             AR_FOR_BUILD="$(command -v ar)"      || abort 1 "command not found: ar"
-         RANLIB_FOR_BUILD="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
-             LD_FOR_BUILD="$(command -v ld)"      || abort 1 "command not found: ld"
-             NM_FOR_BUILD="$(command -v nm)"      || abort 1 "command not found: nm"
-           SIZE_FOR_BUILD="$(command -v size)"    || abort 1 "command not found: size"
-          STRIP_FOR_BUILD="$(command -v strip)"   || abort 1 "command not found: strip"
-        STRINGS_FOR_BUILD="$(command -v strings)" || abort 1 "command not found: strings"
-        OBJDUMP_FOR_BUILD="$(command -v objdump)" || abort 1 "command not found: objdump"
-        OBJCOPY_FOR_BUILD="$(command -v objcopy)" || abort 1 "command not found: objcopy"
-        READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
+    if [ ! -f "$TOOLCHAIN_CONFIG_TARGET" ] ; then
+        println_android_ndk_info > "$TOOLCHAIN_CONFIG_TARGET"
     fi
 
-    PROXIED_CC_FOR_BUILD="$CC_FOR_BUILD"
-    PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
-    PROXIED_OBJC_FOR_BUILD="$OBJC_FOR_BUILD"
+    #########################################################################################
+
+    TOOLCHAIN_CONFIG_NATIVE="$SESSION_DIR/toolchain-native.sh"
+
+    if [ -f "$TOOLCHAIN_CONFIG_NATIVE" ] ; then
+        .   "$TOOLCHAIN_CONFIG_NATIVE"
+    else
+        step "locate C/C++ toolchain for native build"
+
+        if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+                 CC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
+               OBJC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
+                CXX_FOR_BUILD="$(xcrun --sdk macosx --find clang++)"
+                 AS_FOR_BUILD="$(xcrun --sdk macosx --find as)"
+                 AR_FOR_BUILD="$(xcrun --sdk macosx --find ar)"
+             RANLIB_FOR_BUILD="$(xcrun --sdk macosx --find ranlib)"
+                 LD_FOR_BUILD="$(xcrun --sdk macosx --find ld)"
+                 NM_FOR_BUILD="$(xcrun --sdk macosx --find nm)"
+               SIZE_FOR_BUILD="$(xcrun --sdk macosx --find size)"
+              STRIP_FOR_BUILD="$(xcrun --sdk macosx --find strip)"
+            STRINGS_FOR_BUILD="$(xcrun --sdk macosx --find strings)"
+            OBJDUMP_FOR_BUILD="$(xcrun --sdk macosx --find objdump)"
+            SYSROOT_FOR_BUILD="$(xcrun --sdk macosx --show-sdk-path)"
+
+            CCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
+            LDFLAGS_FOR_BUILD='-Wl,-search_paths_first'
+        else
+                 CC_FOR_BUILD="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
+               OBJC_FOR_BUILD="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
+                CXX_FOR_BUILD="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler for native not found."
+                 AS_FOR_BUILD="$(command -v as)"      || abort 1 "command not found: as"
+                 AR_FOR_BUILD="$(command -v ar)"      || abort 1 "command not found: ar"
+             RANLIB_FOR_BUILD="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
+                 LD_FOR_BUILD="$(command -v ld)"      || abort 1 "command not found: ld"
+                 NM_FOR_BUILD="$(command -v nm)"      || abort 1 "command not found: nm"
+               SIZE_FOR_BUILD="$(command -v size)"    || abort 1 "command not found: size"
+              STRIP_FOR_BUILD="$(command -v strip)"   || abort 1 "command not found: strip"
+            STRINGS_FOR_BUILD="$(command -v strings)" || abort 1 "command not found: strings"
+            OBJDUMP_FOR_BUILD="$(command -v objdump)" || abort 1 "command not found: objdump"
+            OBJCOPY_FOR_BUILD="$(command -v objcopy)" || abort 1 "command not found: objcopy"
+            READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
+
+            CCFLAGS_FOR_BUILD="-fPIC -fno-common"
+            LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+            # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
+        fi
+
+        if [ "$DEBUG_CC" = 1 ] ; then
+            CCFLAGS_FOR_BUILD="$CCFLAGS_FOR_BUILD -v"
+        fi
+
+        if [ "$DEBUG_LD" = 1 ] ; then
+            LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-v"
+        fi
+
+        if [ "$PROFILE" = release ] ; then
+            CCFLAGS_FOR_BUILD="$CCFLAGS_FOR_BUILD -Os"
+            LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-S"
+        fi
+
+        cat > "$TOOLCHAIN_CONFIG_NATIVE" <<EOF
+     CC_FOR_BUILD='$CC_FOR_BUILD'
+   OBJC_FOR_BUILD='$OBJC_FOR_BUILD'
+    CXX_FOR_BUILD='$CXX_FOR_BUILD'
+     AS_FOR_BUILD='$AS_FOR_BUILD'
+     AR_FOR_BUILD='$AR_FOR_BUILD'
+ RANLIB_FOR_BUILD='$RANLIB_FOR_BUILD'
+     LD_FOR_BUILD='$LD_FOR_BUILD'
+     NM_FOR_BUILD='$NM_FOR_BUILD'
+   SIZE_FOR_BUILD='$SIZE_FOR_BUILD'
+  STRIP_FOR_BUILD='$STRIP_FOR_BUILD'
+STRINGS_FOR_BUILD='$STRINGS_FOR_BUILD'
+OBJDUMP_FOR_BUILD='$OBJDUMP_FOR_BUILD'
+OBJCOPY_FOR_BUILD='$OBJCOPY_FOR_BUILD'
+READELF_FOR_BUILD='$READELF_FOR_BUILD'
+SYSROOT_FOR_BUILD='$SYSROOT_FOR_BUILD'
+
+CCFLAGS_FOR_BUILD='$CCFLAGS_FOR_BUILD'
+LDFLAGS_FOR_BUILD='$LDFLAGS_FOR_BUILD'
+EOF
+    fi
+
+    export PROXIED_CC_FOR_BUILD="$CC_FOR_BUILD"
+    export PROXIED_CXX_FOR_BUILD="$CXX_FOR_BUILD"
+    export PROXIED_OBJC_FOR_BUILD="$OBJC_FOR_BUILD"
+
+    export CCFLAGS_FOR_BUILD
 
      CC_FOR_BUILD="$NDKPKG_CORE_DIR/wrapper-native-cc"
    OBJC_FOR_BUILD="$NDKPKG_CORE_DIR/wrapper-native-objc"
@@ -5421,74 +5491,11 @@ $PACKAGE_ONSTART
 
     #########################################################################################
 
-    for TOOL in PROXIED_CC PROXIED_CXX PROXIED_OBJC CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT
+    for TOOL in CC OBJC CXX CPP AS AR RANLIB LD NM STRIP SIZE STRINGS OBJDUMP OBJCOPY READELF SYSROOT CFLAGS OBJCFLAGS CXXFLAGS CPPFLAGS LDFLAGS
     do
         export "${TOOL}_FOR_BUILD"
+        eval export "$TOOL=\"\$${TOOL}_FOR_BUILD\""
     done
-
-    #########################################################################################
-
-    if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
-          CFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
-       OBJCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
-        CXXFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
-        CPPFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -Qunused-arguments"
-         LDFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH"
-    else
-          CFLAGS_FOR_BUILD="-fPIC -fno-common"
-       OBJCFLAGS_FOR_BUILD="-fPIC -fno-common"
-        CXXFLAGS_FOR_BUILD="-fPIC -fno-common"
-        CPPFLAGS_FOR_BUILD=
-        # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-         LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
-    fi
-
-    if [ "$DEBUG_CC" = 1 ] ; then
-          CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -v"
-        CXXFLAGS_FOR_BUILD="$CXXFLAGS_FOR_BUILD -v"
-       OBJCFLAGS_FOR_BUILD="$OBJCFLAGS_FOR_BUILD -v"
-    fi
-
-    if [ "$DEBUG_LD" = 1 ] ; then
-         LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-v"
-    fi
-
-    if [ "$PROFILE" = release ] ; then
-          CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -Os"
-        CXXFLAGS_FOR_BUILD="$CXXFLAGS_FOR_BUILD -Os"
-       OBJCFLAGS_FOR_BUILD="$OBJCFLAGS_FOR_BUILD -Os"
-         LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-S"
-    fi
-
-    export    CFLAGS_FOR_BUILD
-    export  CPPFLAGS_FOR_BUILD
-    export  CXXFLAGS_FOR_BUILD
-    export OBJCFLAGS_FOR_BUILD
-    export   LDFLAGS_FOR_BUILD
-
-    #########################################################################################
-
-    # install perl module need these, they will be override when cross compile starting
-
-    export      CC="$CC_FOR_BUILD"
-    export    OBJC="$OBJC_FOR_BUILD"
-    export     CXX="$CXX_FOR_BUILD"
-    export     CPP="$CPP_FOR_BUILD"
-    export      AS="$AS_FOR_BUILD"
-    export      AR="$AR_FOR_BUILD"
-    export  RANLIB="$RANLIB_FOR_BUILD"
-    export      LD="$LD_FOR_BUILD"
-    export      NM="$NM_FOR_BUILD"
-    export    SIZE="$SIZE_FOR_BUILD"
-    export   STRIP="$STRIP_FOR_BUILD"
-    export STRINGS="$STRINGS_FOR_BUILD"
-    export OBJDUMP="$OBJDUMP_FOR_BUILD"
-
-    export    CFLAGS="$CFLAGS_FOR_BUILD"
-    export OBJCFLAGS="$OBJCFLAGS_FOR_BUILD"
-    export  CXXFLAGS="$CXXFLAGS_FOR_BUILD"
-    export  CPPFLAGS="$CPPFLAGS_FOR_BUILD"
-    export   LDFLAGS="$LDFLAGS_FOR_BUILD"
 
     #########################################################################################
 
@@ -7258,6 +7265,11 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
+    mv "$TOOLCHAIN_CONFIG_NATIVE" "$PACKAGE_METAINFO_DIR/"
+    mv "$TOOLCHAIN_CONFIG_TARGET" "$PACKAGE_METAINFO_DIR/"
+
+    #########################################################################################
+
     [ -n "$PACKAGE_ONFINAL" ] && {
         step "onfinal"
 
@@ -8568,9 +8580,7 @@ ndk_build() {
 
 ########################################################################
 
-# must run in a subshell
-# ndkinfo <ANDROID-NDK-HOME>
-ndkinfo() {
+inspect_android_ndk_info() {
     [ -z "$1" ] && abort 1 "$NDKPKG_ARG0 ndkinfo <ANDROID-NDK-HOME> , <ANDROID-NDK-HOME> is not given."
     [ -d "$1" ] || abort 1 "'$1' was expected to be a directory, but it was not."
 
@@ -8658,9 +8668,14 @@ ndkinfo() {
 
     #########################################################################################
 
+    ANDROID_NDK_HOME="$1"
+    ANDROID_NDK_ROOT="$1"
+}
+
+println_android_ndk_info() {
     cat <<EOF
-ANDROID_NDK_HOME='$1'
-ANDROID_NDK_ROOT='$1'
+ANDROID_NDK_HOME='$ANDROID_NDK_HOME'
+ANDROID_NDK_ROOT='$ANDROID_NDK_ROOT'
 ANDROID_NDK_VERSION='$ANDROID_NDK_VERSION'
 ANDROID_NDK_VERSION_MAJOR='$ANDROID_NDK_VERSION_MAJOR'
 ANDROID_NDK_TOOLCHAIN_ROOT='$ANDROID_NDK_TOOLCHAIN_ROOT'
@@ -8726,13 +8741,11 @@ EOF
         ANDROID_NDK_HOME="$1"
     fi
 
-    NDKINFO="$(ndkinfo "$ANDROID_NDK_HOME")"
+    inspect_android_ndk_info "$ANDROID_NDK_HOME"
 
     if [ "$DUMP_NDK" = 1 ] ; then
-        echo "$NDKINFO"
+        println_android_ndk_info
     fi
-
-    eval "$NDKINFO"
 
     export ANDROID_NDK_HOME
     export ANDROID_NDK_ROOT
@@ -8788,7 +8801,7 @@ __setup() {
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' -o ./ --no-buffer
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/dev/ndk-pkg-core-latest-release-version' -o ./ --no-buffer
 
     ##################################################################################
 
@@ -8835,7 +8848,7 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd bat jq yq d2 dot_static
+    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd fzf bat jq yq d2 dot_static
     do
         run ./uppm install "$UPPM_PACKAGE_NAME"
 
@@ -8915,7 +8928,7 @@ ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
     show version of this command.
 
 ${COLOR_GREEN}ndk-pkg setup${COLOR_OFF}
-    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, tree, git, curl, bsdtar, zip, xxd, bat, jq, yq, d2, sysinfo, pkg-config, patchelf, etc) used by this shell script.
+    install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, tree, git, curl, bsdtar, zip, xxd, fzf, bat, jq, yq, d2, sysinfo, pkg-config, patchelf, etc) used by this shell script.
 
 ${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
     show basic information about this software.
@@ -9165,8 +9178,9 @@ ${COLOR_GREEN}ndk-pkg tree <PACKAGE-SPEC> [--dirsfirst | -L N]${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg logs <PACKAGE-SPEC>${COLOR_OFF}
     show logs of the given installed package.
 
+    This will launch fzf finder. press ESC key to quit.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [--keep-session-dir]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K]${COLOR_OFF}
     pack the given installed package.
 
     <OUTPUT-TYPE> must ends with one of tar.gz tar.xz tar.lz tar.bz2 zip
@@ -9186,7 +9200,7 @@ ${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] 
     <PATH> is relative to installed root directory.
 
 
-${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>] [--keep-session-dir]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>] [-K]${COLOR_OFF}
     export the given installed package as google prefab aar.
 
     For details about google prefab, please visit https://google.github.io/prefab/
@@ -9203,7 +9217,7 @@ ${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>
 
     If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar
 
-${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [--keep-session-dir] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [-K] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
     export the given installed package as google prefab aar then deploy it to Maven Repository.
 
     For details about google prefab, please visit https://google.github.io/prefab/
@@ -9351,7 +9365,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.11.0
+NDKPKG_VERSION=0.11.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9545,8 +9559,16 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native/$NATIVE_OS_KIND-$NATIVE_OS_AR
 ##################################################################################
 
 case $1 in
-    ndkinfo) shift; ndkinfo "$@" ;;
-    sysinfo) shift; sysinfo "$@" ;;
+    ndkinfo)
+        shift
+        inspect_android_ndk_info "$1"
+        println_android_ndk_info
+        ;;
+
+    sysinfo)
+        shift
+        sysinfo "$@"
+        ;;
 
     update)            shift; __sync_available_formula_repositories "$@" ;;
     formula-repo-list) shift; __list_available_formula_repositories "$@" ;;
