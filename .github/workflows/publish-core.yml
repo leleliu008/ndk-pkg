@@ -56,8 +56,8 @@ jobs:
       - run: chmod a+x xcpkg
       - run: ./xcpkg setup
       - run: ./xcpkg update
-      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 --link-type=static-most
-      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 -o .
+      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
+      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
@@ -106,8 +106,8 @@ jobs:
       - run: chmod a+x ppkg
       - run: ./ppkg setup
       - run: ./ppkg update
-      - run: ./ppkg install uppm@0.15.4 --link-type=static-full
-      - run: ./ppkg pack    uppm@0.15.4 -o .
+      - run: ./ppkg install uppm@0.15.4 --fsle
+      - run: ./ppkg pack    uppm@0.15.4
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
       - run: mv out/bin/uppm out/
