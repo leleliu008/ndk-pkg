@@ -8801,7 +8801,7 @@ __setup() {
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/dev/ndk-pkg-core-latest-release-version' -o ./ --no-buffer
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' -o ./ --no-buffer
 
     ##################################################################################
 
