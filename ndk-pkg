@@ -795,26 +795,33 @@ __list_available_formula_repositories() {
   __path_of_formula_of_the_given_package() {
     [ -z "$1" ] && abort 1 "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
+    for FORMULA_SEARCH_DIR in $NDKPKG_FORMULA_SEARCH_DIRS
+    do
+        FORMULA_FILEPATH="$FORMULA_SEARCH_DIR/$1.yml"
+
+        if [ -f           "$FORMULA_FILEPATH" ] ; then
+            printf '%s\n' "$FORMULA_FILEPATH"
+            return 0
+        fi
+    done
+
     [ -d "$NDKPKG_FORMULA_REPO_ROOT" ] || return 0
 
-    AVAILABLE_FORMULA_REPOSITORY_NAMES=
+    FORMULA_REPOSITORY_NAMES=
 
     for item in $(cd "$NDKPKG_FORMULA_REPO_ROOT" && ls)
     do
         if [ -f "$NDKPKG_FORMULA_REPO_ROOT/$item/.ndk-pkg-formula-repo.yml" ] ; then
-            AVAILABLE_FORMULA_REPOSITORY_NAMES="$AVAILABLE_FORMULA_REPOSITORY_NAMES $item"
+            FORMULA_REPOSITORY_NAMES="$FORMULA_REPOSITORY_NAMES $item"
         fi
     done
 
-    for FORMULA_REPOSITORY_NAME in $AVAILABLE_FORMULA_REPOSITORY_NAMES
+    for FORMULA_REPOSITORY_NAME in $FORMULA_REPOSITORY_NAMES
     do
-        if [ -e           "$NDKPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$NATIVE_OS_TYPE/$1.yml" ] ; then
-            printf '%s\n' "$NDKPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$NATIVE_OS_TYPE/$1.yml"
-            return 0
-        fi
+        FORMULA_FILEPATH="$NDKPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$1.yml"
 
-        if [ -e           "$NDKPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$1.yml" ] ; then
-            printf '%s\n' "$NDKPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula/$1.yml"
+        if [ -f           "$FORMULA_FILEPATH" ] ; then
+            printf '%s\n' "$FORMULA_FILEPATH"
             return 0
         fi
     done
@@ -1746,16 +1753,16 @@ __list_available_package_names() {
     [ -d "$NDKPKG_FORMULA_REPO_ROOT" ] || return 0
 
     {
-        AVAILABLE_FORMULA_REPOSITORY_NAMES=
+        FORMULA_REPOSITORY_NAMES=
 
         for item in $(cd "$NDKPKG_FORMULA_REPO_ROOT" && ls)
         do
             if [ -f "$NDKPKG_FORMULA_REPO_ROOT/$item/.ndk-pkg-formula-repo.yml" ] ; then
-                AVAILABLE_FORMULA_REPOSITORY_NAMES="$AVAILABLE_FORMULA_REPOSITORY_NAMES $item"
+                FORMULA_REPOSITORY_NAMES="$FORMULA_REPOSITORY_NAMES $item"
             fi
         done
 
-        for FORMULA_REPOSITORY_NAME in $AVAILABLE_FORMULA_REPOSITORY_NAMES
+        for FORMULA_REPOSITORY_NAME in $FORMULA_REPOSITORY_NAMES
         do
             FORMULA_SEARCH_DIR="$NDKPKG_FORMULA_REPO_ROOT/$FORMULA_REPOSITORY_NAME/formula"
 
@@ -3995,7 +4002,7 @@ __reinstall_the_given_packages() {
 
             __load_formula_of_the_given_package "$PACKAGE_NAME"
 
-            cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+            cp -L "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
 
             eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
 
@@ -4134,7 +4141,7 @@ __upgrade_packages() {
 
             __load_formula_of_the_given_package "$PACKAGE_NAME"
 
-            cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+            cp -L "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
 
             eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
 
@@ -4402,6 +4409,8 @@ inspect_install_arguments() {
 
     unset REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
 
+    unset SPECIFIED_FORMULA_SEARCH_DIRS
+
     unset SPECIFIED_PACKAGE_LIST
 
     unset SPECIFIED_TARGET
@@ -4573,7 +4582,14 @@ inspect_install_arguments() {
                 isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
                 BUILD_NJOBS="$1"
                 ;;
-
+            -I) shift
+                [ -z "$1" ] && abort 1 "-I <FORMULA-SEARCH-DIR> , <FORMULA-SEARCH-DIR> is unspecified."
+                [ -e "$1" ] || abort 1 "'$1' was expected to be exist, but it was not."
+                [ -d "$1" ] || abort 1 "'$1' was expected to be a directory, but it was not."
+                FORMULA_SEARCH_DIR="$(realpath "$1")"
+                SPECIFIED_FORMULA_SEARCH_DIRS="$SPECIFIED_FORMULA_SEARCH_DIRS
+$FORMULA_SEARCH_DIR"
+                ;;
             -K) REQUEST_TO_KEEP_SESSION_DIR=1 ;;
             -U) REQUEST_TO_UPGRADE_IF_POSSIBLE=1 ;;
             -E) REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON=1 ;;
@@ -4584,6 +4600,10 @@ inspect_install_arguments() {
         esac
         shift
     done
+
+    #########################################################################################
+
+    NDKPKG_FORMULA_SEARCH_DIRS="$SPECIFIED_FORMULA_SEARCH_DIRS"
 
     #########################################################################################
 
@@ -4710,7 +4730,7 @@ __install_the_given_packages() {
 
             __load_formula_of_the_given_package "$PACKAGE_NAME"
 
-            cp "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
+            cp -L "$PACKAGE_FORMULA_FILEPATH" "$SESSION_DIR/$PACKAGE_NAME.yml"
 
             eval "PACKAGE_DEP_PKG_${PACKAGE_NAME_UPPERCASE_UNDERSCORE}='$PACKAGE_DEP_PKG'"
 
@@ -7334,7 +7354,7 @@ __check_elf_files() {
 
     for FILEPATH in $FILEPATHs
     do
-        [ -e "$FILEPATH" ] || continue
+        [ -f "$FILEPATH" ] || continue
 
         FILE_HEADER_ACTUAL="$(xxd -u -p -l 20 "$FILEPATH")"
 
@@ -7460,7 +7480,7 @@ __check_elf_files() {
             lib*.so)
                 DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
 
-                if [ -e "$DT_NEEDED_FILEPATH" ] ; then
+                if [ -f "$DT_NEEDED_FILEPATH" ] ; then
                     if [ "$2" = 1 ] ; then
                         PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1="$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1 $1"
                     fi
@@ -7474,12 +7494,12 @@ __check_elf_files() {
                         do
                             DT_NEEDED_FILEPATH="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$DT_NEEDED"
 
-                            if [ -e "$DT_NEEDED_FILEPATH" ] ; then
+                            if [ -f "$DT_NEEDED_FILEPATH" ] ; then
                                 if [ !      -d    "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR" ] ; then
                                     install -d -v "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR"
                                 fi
 
-                                if [ ! -e "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/$DT_NEEDED" ] ; then
+                                if [ ! -f "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/$DT_NEEDED" ] ; then
                                     cp -L -v "$DT_NEEDED_FILEPATH" "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/"
                                 fi
 
@@ -9066,7 +9086,10 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
             a mostly statically linked executable is easy to distribute to one version of Android devices.
 
         ${COLOR_BLUE}-j <N>${COLOR_OFF}
-            specify the number of jobs you can run in parallel.
+            specify the max number of jobs you could run in parallel.
+
+        ${COLOR_BLUE}-I <FORMULA-SEARCH-DIR>${COLOR_OFF}
+            specify the formula search directory. This option can be used multiple times.
 
         ${COLOR_BLUE}-E${COLOR_OFF}
             export compile_commands.json
@@ -9365,7 +9388,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.11.1
+NDKPKG_VERSION=0.12.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9377,11 +9400,15 @@ NDKPKG_ZSH_COMPLETION_SCRIPT_URL='https://raw.githubusercontent.com/leleliu008/n
 NDKPKG_OFFICIAL_FORMULA_REPO_URL='https://github.com/leleliu008/ndk-pkg-formula-repository-official-core.git'
 NDKPKG_UPGRAGE_URL='https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg'
 
-NDKPKG_FORMULA_REPO_ROOT="$NDKPKG_HOME/repos.d"
-NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
+NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
+
 NDKPKG_DOWNLOADS_DIR="$NDKPKG_HOME/downloads"
 
-NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
+NDKPKG_FORMULA_REPO_ROOT="$NDKPKG_HOME/repos.d"
+
+NDKPKG_FORMULA_SEARCH_DIRS=
+
+NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
 
 ##################################################################################
 
