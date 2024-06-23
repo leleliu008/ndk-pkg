@@ -132,9 +132,11 @@ git() {
 
 # wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <OUTPUT-PATH>] [-q] [--no-buffer]
 #
-# If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwise, the result will be written to stdout.
+# If -o <OUTPUT-PATH> option is unspecified, the result will be written to <OUTPUT-PATH>/$(basename <URL>)
 #
-# If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
+# If <OUTPUT-PATH> is -, then the result will be written to stdout.
+#
+# If <OUTPUT-PATH> is . .. or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
 #
 # If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/$(basename <URL>)
 #
@@ -209,10 +211,10 @@ wfetch() {
     fi
 
     case $FETCH_PATH in
-        '')
+        -)
             FETCH_BUFFER_FILEPATH='-'
             ;;
-        .)
+        .|'')
             FETCH_OUTPUT_DIR='.'
             FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
             ;;
@@ -2456,10 +2458,12 @@ __fetch_resources_of_the_given_package() {
 
     unset EXCLUDES
 
+    unset REQUEST_TO_KEEP_SESSION_DIR
+
     while [ -n "$1" ]
     do
         case $1 in
-            -K) KEEP_SESSION_DIR=1
+            -K) REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
             -t) shift
 
@@ -2615,7 +2619,7 @@ __fetch_resources_of_the_given_package() {
 
     ###########################################################################################
 
-    if [ "$KEEP_SESSION_DIR" = 1 ] ; then
+    if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
         echo
         note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
     else
@@ -5349,30 +5353,6 @@ EOF
 
     #########################################################################################
 
-    step "create and change to the working directory"
-
-    PACKAGE_WORKING_DIR="$SESSION_DIR/$TARGET_PLATFORM_SPEC/$PACKAGE_NAME"
-    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/_"
-
-    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
-    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
-    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
-    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
-    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
-
-    install -d "$PACKAGE_INSTALLING_SRC_DIR"
-    install -d "$PACKAGE_INSTALLING_FIX_DIR"
-    install -d "$PACKAGE_INSTALLING_RES_DIR"
-    install -d "$PACKAGE_INSTALLING_BIN_DIR"
-    install -d "$PACKAGE_INSTALLING_INC_DIR"
-    install -d "$PACKAGE_INSTALLING_LIB_DIR"
-    install -d "$PACKAGE_BCACHED_DIR"
-
-    run cd "$PACKAGE_WORKING_DIR"
-
-    #########################################################################################
-
     PACKAGE_INSTALL_UTS=
     PACKAGE_INSTALL_UTS="$(date +%s)"
 
@@ -5384,21 +5364,51 @@ $PACKAGE_SPEC:$$:$PACKAGE_INSTALL_UTS
 EOF
 } | cut -d ' ' -f1)"
 
-    PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$PACKAGE_INSTALL_SHA"
-
     #########################################################################################
 
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
-        cat <<EOF
-PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
-PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
-PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
-EOF
+    PACKAGE_WORKING_DIR="$SESSION_DIR/$PACKAGE_SPEC"
+    PACKAGE_BCACHED_DIR="$PACKAGE_WORKING_DIR/src/_"
+    PACKAGE_INSTALL_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$PACKAGE_INSTALL_SHA"
+
+    if [ -z "$PACKAGE_BSCRIPT" ] ; then
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_WORKING_DIR/src"
+    else
+        PACKAGE_BSCRIPT_DIR="$PACKAGE_WORKING_DIR/src/$PACKAGE_BSCRIPT"
     fi
 
     #########################################################################################
 
-    if [ -n "$PACKAGE_ONSTART" ] ; then
+    [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] && {
+        cat <<EOF
+PACKAGE_WORKING_DIR = $PACKAGE_WORKING_DIR
+PACKAGE_BSCRIPT_DIR = $PACKAGE_BSCRIPT_DIR
+PACKAGE_BCACHED_DIR = $PACKAGE_BCACHED_DIR
+PACKAGE_INSTALL_DIR = $PACKAGE_INSTALL_DIR
+EOF
+}
+
+    #########################################################################################
+
+    step "create and change to the working directory"
+
+    run install -d "$PACKAGE_WORKING_DIR"
+
+    run cd "$PACKAGE_WORKING_DIR"
+
+    run install -d src/_ fix res bin lib include
+
+    #########################################################################################
+
+    PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
+    PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
+    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
+    PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
+    PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
+    PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_ONSTART" ] && {
         step "onstart"
 
         eval "
@@ -5406,7 +5416,7 @@ onstart() {
 $PACKAGE_ONSTART
 }"
         onstart
-    fi
+    }
 
     #########################################################################################
 
@@ -6236,10 +6246,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    PACKAGE_BSCRIPT_DIR="$PACKAGE_INSTALLING_SRC_DIR/$PACKAGE_BSCRIPT"
-    PACKAGE_BSCRIPT_DIR="${PACKAGE_BSCRIPT_DIR%/}"
-
-    if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
+    [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] && {
         step "tree files of the installing top directory"
         run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
 
@@ -6250,7 +6257,7 @@ $DOT_CONTENT
             step "list files of the installing build script directory"
             run ls -l "$PACKAGE_BSCRIPT_DIR"
         fi
-    fi
+    }
 
     #########################################################################################
 
@@ -8776,33 +8783,33 @@ EOF
 # {{{ ndk-pkg setup
 
 __setup() {
-    NATIVE_OS_KIND="$(uname -s | tr A-Z a-z)"
-    NATIVE_OS_ARCH="$(uname -m)"
+    unset NATIVE_OS_ARCH
+    unset NATIVE_OS_VERS
 
-    if [ "$(id -u)" -ne 0 ] ; then
-        sudo=sudo
-    else
-        sudo=
-    fi
+    case "$(uname -s)" in
+        Darwin)
+            NATIVE_OS_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
 
-    #################################################################################
+            if [ "$NATIVE_OS_VERS_MAJOR" -le 10 ] ; then
+                NATIVE_OS_VERS='10.15'
+            elif [ "$NATIVE_OS_VERS_MAJOR" -ge 14 ] ; then
+                NATIVE_OS_VERS='14.0'
+            else
+                NATIVE_OS_VERS="$NATIVE_OS_VERS_MAJOR.0"
+            fi
 
-    unset FETCH_TOOL
-
-    for FETCH_TOOL in curl wget http lynx aria2c axel
-    do
-        if command -v "$FETCH_TOOL" > /dev/null ; then
-            break
-        else
-            unset FETCH_TOOL
-        fi
-    done
-
-    if [ -z "$FETCH_TOOL" ] ; then
-        abort 1 "no any fetch tool[curl, wget, http, lynx, aria2c, axel] found."
-    else
-        unset FETCH_TOOL
-    fi
+            NATIVE_OS_ARCH="$(uname -m)"
+            NATIVE_OS_TARGET="macos-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
+            ;;
+        Linux)
+            if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
+                NATIVE_OS_VERS="$(getprop ro.build.version.sdk)"
+                NATIVE_OS_TARGET="android-$NDK_BUILD_ARGS-arm64-v8a"
+            else
+                NATIVE_OS_ARCH="$(uname -m)"
+                NATIVE_OS_TARGET="linux-$NATIVE_OS_ARCH"
+            fi
+    esac
 
     ##################################################################################
 
@@ -8815,48 +8822,20 @@ __setup() {
     ##################################################################################
 
     # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' -o . --no-buffer
+    wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
 
     export SSL_CERT_FILE="$PWD/cacert.pem"
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' -o ./ --no-buffer
-
-    ##################################################################################
-
-    unset ANDROID
-
-    case $NATIVE_OS_KIND in
-        darwin)
-            NATIVE_OS_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
-
-            if [ "$NATIVE_OS_VERS_MAJOR" -le 10 ] ; then
-                NATIVE_OS_TYPE='macos-10.15'
-            elif [ "$NATIVE_OS_VERS_MAJOR" -ge 14 ] ; then
-                NATIVE_OS_TYPE='macos-14.0'
-            else
-                NATIVE_OS_TYPE="macos-$NATIVE_OS_VERS_MAJOR.0"
-            fi
-            ;;
-        linux)
-            if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
-                ANDROID=1
-                LV="$(getprop ro.build.version.sdk)"
-                NATIVE_OS_TYPE="android-$LV"
-                NATIVE_OS_ARCH=arm64-v8a
-            else
-                NATIVE_OS_TYPE=linux
-            fi
-    esac
-
-    ##################################################################################
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' --no-buffer
 
     NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
-    NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}-${NATIVE_OS_TYPE}-${NATIVE_OS_ARCH}.tar.xz"
-    NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL="https://github.com/leleliu008/ndk-pkg/releases/download/ndk-pkg-core-${NDKPKG_CORE_LATEST_RELEASE_VERSION}/${NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME}"
+    NDKPKG_CORE_LATEST_RELEASE_TAG="ndk-pkg-core-$NDKPKG_CORE_LATEST_RELEASE_VERSION"
+    NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="$NDKPKG_CORE_LATEST_RELEASE_TAG-$NATIVE_OS_TARGET.tar.xz"
+    NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL="https://github.com/leleliu008/ndk-pkg/releases/download/$NDKPKG_CORE_LATEST_RELEASE_TAG/$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME"
 
-    wfetch "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL" -o ./ --no-buffer
+    wfetch "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL" --no-buffer
 
     run tar xvf "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
 
@@ -8890,7 +8869,9 @@ __setup() {
     UPPM_PACKAGE_EXEFIND_PATH="${UPPM_PACKAGE_EXEFIND_PATH#':'}"
     UPPM_PACKAGE_ACLOCAL_PATH="${UPPM_PACKAGE_ACLOCAL_PATH#':'}"
 
-    cat > env.sh <<EOF
+    ##################################################################################
+
+    cat > init.rc <<EOF
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
@@ -8916,7 +8897,7 @@ EOF
 
     #################################################################################
 
-    success "ndk-pkg have been successfully setup."
+    success "ndk-pkg-$NDKPKG_VERSION have been successfully setup."
 }
 
 # }}}
@@ -9203,67 +9184,104 @@ ${COLOR_GREEN}ndk-pkg logs <PACKAGE-SPEC>${COLOR_OFF}
 
     This will launch fzf finder. press ESC key to quit.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [OPTIONS]${COLOR_OFF}
     pack the given installed package.
 
-    <OUTPUT-TYPE> must ends with one of tar.gz tar.xz tar.lz tar.bz2 zip
+    ${COLOR_BLUE}-t <OUTPUT-TYPE>${COLOR_OFF}
+        must be any one of tar.gz tar.xz tar.lz tar.bz2 zip
 
-    <OUTPUT-PATH> can be either the filepath or directory which indicates where the packed archive file would be written to.
+        If this option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
 
-    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it would be treated as a directory, otherwise, it would be treated as a filepath.
+    ${COLOR_BLUE}-o <OUTPUT-PATH>${COLOR_OFF}
+        specify where the packed archive file would be written to.
 
-    If <OUTPUT-PATH> is treated as a filepath, then it must ends with one of .tar.gz .tar.xz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2 .zip , in this case, -t <OUTPUT-TYPE> option would be ignored if it also is specified.
+        <OUTPUT-PATH> can be either the filepath or directory.
 
-    If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
+        If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it would be treated as a directory, otherwise, it would be treated as a filepath.
 
-    If -o <OUTPUT-PATH> option is unspecified, <OUTPUT-PATH> would be assigned to ./<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
+        If <OUTPUT-PATH> is treated as a filepath, then it must ends with one of .tar.gz .tar.xz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2 .zip , in this case, -t <OUTPUT-TYPE> option would be ignored if it also is specified.
 
-    If -t <OUTPUT-TYPE> option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
+        If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
 
-    <PATH> is relative to installed root directory.
+        If this option is unspecified, <OUTPUT-PATH> would be assigned to ./<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
 
+    ${COLOR_BLUE}--exclude <PATH>${COLOR_OFF}
+        exclude file that isn't mean to packed into the archive file.
 
-${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>] [-K]${COLOR_OFF}
+        <PATH> is relative to the installed root directory.
+
+        this option can be used multiple times.
+
+    ${COLOR_BLUE}-K${COLOR_OFF}
+        keep the session directory even if this package is successfully packed.
+
+${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [OPTIONS]${COLOR_OFF}
     export the given installed package as google prefab aar.
 
     For details about google prefab, please visit https://google.github.io/prefab/
 
     For details about the aar file contains google prefab, please visit https://developer.android.com/studio/projects/android-library#aar-contents
 
-    ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
+    ${COLOR_BLUE}<ANDROID-ABIs>${COLOR_OFF}
+        A comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
-    If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
+    ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
+        If this option is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
 
-    ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} can be either the filepath or directory where the aar file will be written to.
+    ${COLOR_BLUE}-o <OUTPUT-PATH>${COLOR_OFF}
+        specify where the aar file will be written to.
 
-    If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is an existing directory or ends with slash, then it will be treated as a directory, otherwise, it will be treated as a filepath.
+        <OUTPUT-PATH> can be either the filepath or directory.
 
-    If ${COLOR_RED}<OUTPUT-PATH>${COLOR_OFF} is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar
+        If <OUTPUT-PATH> is an existing directory or ends with slash, then it will be treated as a directory, otherwise, it will be treated as a filepath.
 
-${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [--debug] [-K] [--dry-run] [--local=<DIR>] [--remote < REMOTE-CONFIG-FILE]${COLOR_OFF}
+        If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>.aar
+
+    ${COLOR_BLUE}-K${COLOR_OFF}
+        keep the session directory even if this package is successfully exported.
+
+${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [OPTIONS]${COLOR_OFF}
     export the given installed package as google prefab aar then deploy it to Maven Repository.
 
     For details about google prefab, please visit https://google.github.io/prefab/
 
     For details about the aar file contains google prefab, please visit https://developer.android.com/studio/projects/android-library#aar-contents
 
-    ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
+    ${COLOR_BLUE}<ANDROID-ABIs>${COLOR_OFF}
+        A comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
-    If ${COLOR_RED}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF} is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
+    ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
+        If this option is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
 
-    If ${COLOR_RED}--remote${COLOR_OFF} is specified, the aar file would be deployed to Sonatype OSSRH (https://s01.oss.sonatype.org/)
+    ${COLOR_BLUE}--debug${COLOR_OFF}
+        pass -X option to mvn command.
 
-    If ${COLOR_RED}--local=<DIR>${COLOR_OFF} is specified, the aar file would be deployed to the specified location of Maven Local Repository.
+    ${COLOR_BLUE}--dry-run${COLOR_OFF}
+        just pack the aar file, do not actually export.
 
-    If neither ${COLOR_RED}--local=<DIR>${COLOR_OFF} nor ${COLOR_RED}--remote${COLOR_OFF} is specified, the aar file would be deployed to your default Maven Local Repository (usually under ~/.m2/repository/ directory, depending on your settings.xml configuration)
+    ${COLOR_BLUE}-K${COLOR_OFF}
+        keep the session directory even if this package is successfully exported.
 
-    REMOTE-CONFIG-FILE contains following content:
+    ${COLOR_BLUE}--groupId=<GROUPID>${COLOR_OFF}
+        specify the groupId.
 
-    SERVER_ID=
-    SERVER_URL=
-    SERVER_USERNAME=
-    SERVER_PASSWORD=
-    GPG_PASSPHRASE=
+        If this option is unspecified, ${COLOR_RED}com.fpliu.ndk.pkg.prefab.android.<ANDROID-API>${COLOR_OFF} would be used as default.
+
+    ${COLOR_BLUE}--local=<DIR>${COLOR_OFF}
+        deploy the aar file to the specified location of Maven Local Repository.
+
+    ${COLOR_BLUE}--remote${COLOR_OFF}
+        deploy the aar file to Sonatype OSSRH (https://s01.oss.sonatype.org/)
+
+        If this option is specified, some extra information would be read from stdin. stdin should contain the following content:
+
+        SERVER_ID=
+        SERVER_URL=
+        SERVER_USERNAME=
+        SERVER_PASSWORD=
+        GPG_PASSPHRASE=
+
+    ${COLOR_RED}Caveat:${COLOR_OFF} If neither --local=<DIR> nor --remote is specified, the aar file would be deployed to your default Maven Local Repository (usually under ~/.m2/repository/ directory, depending on your settings.xml configuration)
 
 
 ==================
@@ -9354,7 +9372,7 @@ This software can NOT run on Cygwin and MSYS2 due to CMake: Builds hosted on 'CY
 
 Please do NOT place your own files under ~/.ndk-pkg directory, as ndk-pkg will change files under ~/.ndk-pkg directory without notice.
 
-Please do NOT run ndk-pkg command in parallel to avoid generating dirty data.
+Please do NOT run ndk-pkg command in parallel so as not to generate dirty data.
     "
 
     if [ -z "$1" ] ; then
@@ -9388,7 +9406,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.12.0
+NDKPKG_VERSION=0.12.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9549,8 +9567,8 @@ fi
 
 ##################################################################################
 
-if [ -f "$NDKPKG_CORE_DIR/env.sh" ] ; then
-    .   "$NDKPKG_CORE_DIR/env.sh"
+if [ -f "$NDKPKG_CORE_DIR/init.rc" ] ; then
+    .   "$NDKPKG_CORE_DIR/init.rc"
 else
     abort 1 "please run ${COLOR_GREEN}$NDKPKG_ARG0 setup${COLOR_OFF} command first, then try again."
 fi

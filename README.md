@@ -149,8 +149,8 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 ├── core
 │   ├── SourceCodePro-Light.otf
 │   ├── cacert.pem
-│   ├── env.sh
 │   ├── fonts.conf
+│   ├── init.rc
 │   ├── ndk-pkg-core-2024.05.15-linux-x86_64.tar.xz
 │   ├── ndk-pkg-core-latest-release-version
 │   ├── sed-in-place
