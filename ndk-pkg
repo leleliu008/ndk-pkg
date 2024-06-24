@@ -8934,7 +8934,7 @@ ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg setup${COLOR_OFF}
     install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, tree, git, curl, bsdtar, zip, xxd, fzf, bat, jq, yq, d2, sysinfo, pkg-config, patchelf, etc) used by this shell script.
 
-${COLOR_GREEN}ndk-pkg env${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg about${COLOR_OFF}
     show basic information about this software.
 
 ${COLOR_GREEN}ndk-pkg sysinfo${COLOR_OFF}
@@ -9012,22 +9012,20 @@ ${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN> [-v]${COLOR_OFF}
     search all available packages whose name matches the given regular expression pattern.
 
 
-${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <d2|dot|box|svg|png>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]${COLOR_OFF}
     show the packages that are depended by the given package.
 
-    <OUTPUT-TYPE> must be one of d2 dot box svg png
+    <OUTPUT-TYPE> must be any one of d2 dot box svg png
 
     <OUTPUT-PATH> can be either the filepath or directory.
 
-    If -o <OUTPUT-PATH> option is specified, the result will be written to file, otherwise, the result will be written to stdout.
-
-    If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
+    If <OUTPUT-PATH> is . .. or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
 
     If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>
 
-    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .d2|.dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.
+    If -o <OUTPUT-PATH> option is unspecified, the result will be written to stdout.
 
-    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.
+    If -t <OUTPUT-TYPE> option is unspecified, and if <OUTPUT-PATH> ends with one of .d2 .dot .box .svg .png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.
 
 
 ${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
@@ -9409,7 +9407,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.12.2
+NDKPKG_VERSION=0.12.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9485,8 +9483,14 @@ case $1 in
         printf '%s\n' "$NDKPKG_VERSION"
         exit
         ;;
-    env)
-        cat <<EOF
+    about)
+        if command -v bat > /dev/null ; then
+            VIEWER='bat --language=yaml --paging=never --color=always --theme=Dracula --style=plain'
+        else
+            VIEWER=cat
+        fi
+
+        $VIEWER <<EOF
 ndk-pkg.version: $NDKPKG_VERSION
 ndk-pkg.homedir: $NDKPKG_HOME
 ndk-pkg.exepath: $NDKPKG_PATH

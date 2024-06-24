@@ -326,7 +326,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 - **show basic information about this software**
 
     ```bash
-    ndk-pkg env
+    ndk-pkg about
     ```
 
 - **show basic information about your current running operation system**
