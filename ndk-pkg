@@ -6261,26 +6261,29 @@ $DOT_CONTENT
 
     #########################################################################################
 
+    # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
+    # https://git.savannah.gnu.org/cgit/config.git/tree/
+
+    step "update config.{sub,guess}"
+
     {
         [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ]
     } && {
-        # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
-
-        step "replace config.sub and config.guess with the latest version"
-
         for FILENAME in config.sub config.guess
         do
             FILEPATH="$SESSION_DIR/$FILENAME"
 
-            wfetch "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=$FILENAME;hb=HEAD" -o "$FILEPATH" --no-buffer
+            [ -f "$FILEPATH" ] || {
+                wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH"
 
-            run chmod a+x "$FILEPATH"
+                run chmod a+x "$FILEPATH"
 
-            if [ "$FILENAME" = 'config.sub' ] ; then
-                sedInPlace 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
-            fi
+                if [ "$FILENAME" = 'config.sub' ] ; then
+                    sedInPlace 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+                fi
+            }
 
             find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
         done
@@ -9406,7 +9409,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.12.1
+NDKPKG_VERSION=0.12.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
