@@ -5,7 +5,7 @@ _ndk_pkg_actions=(
     '--help:show help of this command.'
     '-V:show version of this.'
     '--version:show version of this command.'
-    'about:show current machine os and android-ndk toolchain info.'
+    'about:show basic information about this software.'
     'sysinfo:show basic information about your current running operation system.'
     'ndkinfo:show basic information about the given Android NDK.'
     'setup:install essential tools used by this shell script.'
