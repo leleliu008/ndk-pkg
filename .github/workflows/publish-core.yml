@@ -146,7 +146,7 @@ jobs:
       - run: mv *.otf      out/
 
       - run: |
-          cat <<EOF
+          cat > run.sh <<EOF
           set -ex
 
           apk update
