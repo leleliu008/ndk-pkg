@@ -131,7 +131,7 @@ jobs:
   linux-aarch64:
     needs: base
 
-    runs-on: ubuntu-latest
+    runs-on: macos-14
 
     container: arm64v8/alpine
 
