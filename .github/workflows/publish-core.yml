@@ -131,41 +131,47 @@ jobs:
   linux-aarch64:
     needs: base
 
-    runs-on: macos-14
-
-    container: arm64v8/alpine
+    runs-on: ubuntu-latest
 
     steps:
-      - run: apk update
-      - run: apk add curl xz g++ libc-dev linux-headers
-
       - uses: actions/checkout@v4
+
+      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+      - run: chmod a+x ppkg
 
       - run: install -d out/
 
       - run: mv fonts.conf out/
+      - run: mv *.otf      out/
 
       - run: |
+          cat <<EOF
+          set -ex
+
+          apk update
+          apk add curl xz g++ libc-dev linux-headers
+
           for item in *.c
           do
             gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
           done
 
-      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
+          ./ppkg setup
+          ./ppkg update
+          ./ppkg install uppm@0.15.4 --link-type=static-full
+          ./ppkg pack    uppm@0.15.4
 
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-      - run: chmod a+x ppkg
-      - run: ./ppkg setup
-      - run: ./ppkg update
-      - run: ./ppkg install uppm@0.15.4 --link-type=static-full
-      - run: ./ppkg pack    uppm@0.15.4
+          tar vxf uppm*.tar.xz -C out --strip-components=1
+          mv out/bin/uppm out/
+          rm -rf out/bin
+          rm -rf out/share
+          rm -rf out/.ppkg
+          EOF
 
-      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
-      - run: mv out/bin/uppm out/
-      - run: rm -rf out/bin
-      - run: rm -rf out/share
-      - run: rm -rf out/.ppkg
-      - run: mv *.otf out/
+      # https://github.com/multiarch/qemu-user-static
+      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - run: docker run -v $PWD:$PWD -w $PWD --name alpine arm64v8/apline sh run.sh
 
       - run: |
           DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-aarch64"
@@ -176,7 +182,6 @@ jobs:
         with:
           name: ndk-pkg-core-linux-aarch64.tar.xz
           path: ndk-pkg-core-*.tar.xz
-
 
 
   android:
