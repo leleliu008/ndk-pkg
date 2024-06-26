@@ -6392,10 +6392,10 @@ $PACKAGE_DO12345
         TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-linux-android"
     fi
 
-    export ANDROID_TARGET="${TARGET_TRIPLE}${TARGET_PLATFORM_VERS}"
+    export ANDROID_NDK_COMPILER_ARGS="--target=${TARGET_TRIPLE}${TARGET_PLATFORM_VERS} --sysroot=$ANDROID_NDK_SYSROOT"
+
     export ANDROID_NDK_CC
     export ANDROID_NDK_CXX
-    export ANDROID_NDK_SYSROOT
 
     #########################################################################################
 

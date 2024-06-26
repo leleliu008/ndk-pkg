@@ -2,9 +2,10 @@
 
 set -ex
 
-for item in *.c
+for f in *.c
 do
-    file="${item%.c}"
-    cc -flto -Os -std=c99 -Wl,-s -o "$file" "$item"
-    mv "$file" ~/.ndk-pkg/core/
+    o="${f%.c}"
+    cc -flto -Os -std=c99 -o "$o" "$f"
+    strip "$o"
+    mv "$o" ~/.ndk-pkg/core/
 done

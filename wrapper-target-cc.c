@@ -7,11 +7,10 @@
 #include <sys/stat.h>
 
 #define ACTION_PREPROCESS                           1
-#define ACTION_COMPILE                              2
-#define ACTION_ASSEMBLE                             3
+#define ACTION_ASSEMBLE                             2
+#define ACTION_COMPILE                              3
 #define ACTION_CREATE_SHARED_LIBRARY                4
 #define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE  5
-#define ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE 6
 
 int main(int argc, char * argv[]) {
     char * const compiler = getenv("ANDROID_NDK_CC");
@@ -28,110 +27,77 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    const char * const TARGET = getenv("ANDROID_TARGET");
+    char * const baseArgs = getenv("ANDROID_NDK_COMPILER_ARGS");
 
-    if (TARGET == NULL) {
-        fprintf(stderr, "ANDROID_TARGET environment variable is not set.\n");
-        return 3;
-    }
-
-    if (TARGET[0] == '\0') {
-        fprintf(stderr, "ANDROID_TARGET environment variable value should be a non-empty string.\n");
-        return 4;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * const SYSROOT = getenv("ANDROID_NDK_SYSROOT");
-
-    if (SYSROOT == NULL) {
-        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable is not set.\n");
+    if (baseArgs == NULL) {
+        fprintf(stderr, "ANDROID_NDK_COMPILER_ARGS environment variable is not set.\n");
         return 5;
     }
 
-    if (SYSROOT[0] == '\0') {
-        fprintf(stderr, "ANDROID_NDK_SYSROOT environment variable value should be a non-empty string.\n");
+    if (baseArgs[0] == '\0') {
+        fprintf(stderr, "ANDROID_NDK_COMPILER_ARGS environment variable value should be a non-empty string.\n");
         return 6;
     }
 
     /////////////////////////////////////////////////////////////////
 
-    size_t targetArgLength = strlen(TARGET) + 10U;
-    char   targetArg[targetArgLength];
+    int action = 0;
 
-    int ret = snprintf(targetArg, targetArgLength, "--target=%s", TARGET);
-
-    if (ret < 0) {
-        perror(NULL);
-        return 7;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    size_t sysrootArgLength = strlen(SYSROOT) + 11U;
-    char   sysrootArg[sysrootArgLength];
-
-    ret = snprintf(sysrootArg, sysrootArgLength, "--sysroot=%s", SYSROOT);
-
-    if (ret < 0) {
-        perror(NULL);
-        return 8;
-    }
-
-    /////////////////////////////////////////////////////////////////
-
-    const char * actions[8] = { "-E", "-S", "-c", "-shared", "-static", "--static", "-pie" };
-          int    indexes[8] = {  -1,   -1,   -1,      -1,        -1,         -1,      -1,  };
+    int staticFlag = 0;
 
     for (int i = 1; i < argc; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (strcmp(argv[i], actions[j]) == 0) {
-                indexes[j] = i;
+        if (strcmp(argv[i], "-E") == 0) {
+            action = ACTION_PREPROCESS;
+            break;
+        }
 
-                if (indexes[0] > 0) {
-                    break;
-                }
+        if (strcmp(argv[i], "-S") == 0) {
+            action = ACTION_ASSEMBLE;
+            break;
+        }
 
-                if (indexes[1] > 0) {
-                    break;
-                }
+        if (strcmp(argv[i], "-c") == 0) {
+            action = ACTION_COMPILE;
+            break;
+        }
 
-                if (indexes[2] > 0) {
-                    break;
-                }
+        if (strcmp(argv[i], "-shared") == 0) {
+            action = ACTION_CREATE_SHARED_LIBRARY;
+            break;
+        }
 
-                if (indexes[3] > 0) {
-                    break;
-                }
-            }
+        if (strcmp(argv[i], "-static") == 0) {
+            staticFlag = 1;
+        }
+
+        if (strcmp(argv[i], "--static") == 0) {
+            staticFlag = 1;
+        }
+    }
+
+    if (action == 0) {
+        if (staticFlag == 1) {
+            action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
         }
     }
 
     /////////////////////////////////////////////////////////////////
 
-    int action;
+    size_t baseArgc = 1U;
 
-    if (indexes[0] > 0) {
-        action = ACTION_PREPROCESS;
-    } else if (indexes[1] > 0) {
-        action = ACTION_COMPILE;
-    } else if (indexes[2] > 0) {
-        action = ACTION_ASSEMBLE;
-    } else if (indexes[3] > 0) {
-        action = ACTION_CREATE_SHARED_LIBRARY;
-    } else if (indexes[4] > 0) {
-        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-    } else if (indexes[5] > 0) {
-        action = ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE;
-    } else if (indexes[6] > 0) {
-        action = ACTION_CREATE_DYNAMICALLY_LINKED_EXECUTABLE;
-    } else {
-        action = 0;
+    for (size_t i = 0U; ; i++) {
+        if (baseArgs[i] == '\0') {
+            break;
+        }
+
+        if (baseArgs[i] == ' ') {
+            baseArgc++;
+        }
     }
 
     /////////////////////////////////////////////////////////////////
 
-    char* argv2[argc + 5];
+    char* argv2[argc + baseArgc + 5];
 
     char sonameArg[100]; sonameArg[0] = '\0';
 
@@ -166,7 +132,6 @@ int main(int argc, char * argv[]) {
             // It's rare to see. like -o/a/b/libxx.so.1
             for (int i = 1; i < argc; i++) {
                 if (strncmp(argv[i], "-o", 2) == 0) {
-                    indexes[5] = i;
                     outputFilePath = &argv[i][2];
                     break;
                 }
@@ -213,7 +178,7 @@ int main(int argc, char * argv[]) {
 
                 s[n] = '\0';
 
-                ret = snprintf(sonameArg, n + 13, "-Wl,-soname,%s", s);
+                int ret = snprintf(sonameArg, n + 13, "-Wl,-soname,%s", s);
 
                 if (ret < 0) {
                     perror(NULL);
@@ -286,17 +251,33 @@ int main(int argc, char * argv[]) {
         if (msle != NULL && strcmp(msle, "1") == 0) {
             for (int i = 1; i < argc; i++) {
                 if (argv[i][0] == '/') {
-                    int len = strlen(argv[i]);
+                    int len = 0;
+                    int dotIndex = -1;
 
-                    if ((argv[i][len - 3] == '.') && (argv[i][len - 2] == 's') && (argv[i][len - 1] == 'o')) {
-                        argv[i][len - 2] = 'a';
-                        argv[i][len - 1] = '\0';
+                    for (int j = 0; ; j++) {
+                        if (argv[i][j] == '\0') {
+                            len = j;
+                            break;
+                        }
 
-                        struct stat st;
+                        if (argv[i][j] == '.') {
+                            dotIndex = j;
+                        }
+                    }
 
-                        if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
-                            argv[i][len - 2] = 's';
-                            argv[i][len - 1] = 'o';
+                    if (dotIndex > 0) {
+                        if (len - dotIndex == 3) {
+                            if (strcmp(&argv[i][dotIndex], ".so") == 0) {
+                                argv[i][dotIndex + 1] = 'a' ;
+                                argv[i][dotIndex + 2] = '\0';
+
+                                struct stat st;
+
+                                if (stat(argv[i], &st) != 0 || !S_ISREG(st.st_mode)) {
+                                    argv[i][dotIndex + 1] = 's';
+                                    argv[i][dotIndex + 2] = 'o';
+                                }
+                            }
                         }
                     }
                 }
@@ -312,22 +293,39 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    argv2[0]        = compiler;
-    argv2[argc]     = targetArg;
-    argv2[argc + 1] = sysrootArg;
+    char * p = baseArgs;
+
+    for (size_t i = 0U; ; i++) {
+        if (baseArgs[i] == '\0') {
+            if (p[0] != '\0') {
+                argv2[argc++] = p;
+            }
+            break;
+        }
+
+        if (baseArgs[i] == ' ') {
+            baseArgs[i] = '\0';
+
+            if (p[0] != '\0') {
+                argv2[argc++] = p;
+            }
+
+            p = &baseArgs[i + 1];
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////
 
     if (action == ACTION_CREATE_SHARED_LIBRARY) {
-        argv2[argc + 2] = (char*)"-fPIC";
+        argv2[argc++] = (char*)"-fPIC";
 
-        if (sonameArg[0] == '\0') {
-            argv2[argc + 3] = NULL;
-        } else {
-            argv2[argc + 3] = sonameArg;
-            argv2[argc + 4] = NULL;
+        if (sonameArg[0] != '\0') {
+            argv2[argc++] = sonameArg;
         }
-    } else {
-        argv2[argc + 2] = NULL;
     }
+
+    argv2[argc++] = NULL;
+    argv2[0] = compiler;
 
     /////////////////////////////////////////////////////////////////
 
