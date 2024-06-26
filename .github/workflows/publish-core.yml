@@ -152,9 +152,9 @@ jobs:
           apk update
           apk add curl xz g++ libc-dev linux-headers
 
-          for item in *.c
+          for f in *.c
           do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
+            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/\${f%.c}" "\$f"
           done
 
           ./ppkg setup
@@ -171,7 +171,7 @@ jobs:
 
       # https://github.com/multiarch/qemu-user-static
       - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-      - run: docker run -v $PWD:$PWD -w $PWD --name alpine arm64v8/alpine sh run.sh
+      - run: docker run -v $PWD:/root -w /root --name alpine arm64v8/alpine sh run.sh
 
       - run: |
           DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-aarch64"
