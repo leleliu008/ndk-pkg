@@ -8831,7 +8831,7 @@ __setup() {
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/dev/ndk-pkg-core-latest-release-version' --no-buffer
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' --no-buffer
 
     NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
     NDKPKG_CORE_LATEST_RELEASE_TAG="ndk-pkg-core-$NDKPKG_CORE_LATEST_RELEASE_VERSION"
@@ -9407,7 +9407,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.12.3
+NDKPKG_VERSION=0.13.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
