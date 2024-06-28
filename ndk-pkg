@@ -2559,9 +2559,9 @@ __fetch_resources_of_the_given_package() {
     fi
 
     if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
-        PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+        PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
     else
-        PACKED_DIR_NAME="$RECEIPT_PACKAGE_PKGNAME-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+        PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
     fi
 
     ###########################################################################################
@@ -8807,7 +8807,7 @@ __setup() {
         Linux)
             if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
                 NATIVE_OS_VERS="$(getprop ro.build.version.sdk)"
-                NATIVE_OS_TARGET="android-$NDK_BUILD_ARGS-arm64-v8a"
+                NATIVE_OS_TARGET="android-$NATIVE_OS_VERS-arm64-v8a"
             else
                 NATIVE_OS_ARCH="$(uname -m)"
                 NATIVE_OS_TARGET="linux-$NATIVE_OS_ARCH"
@@ -9407,7 +9407,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.13.0
+NDKPKG_VERSION=0.13.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
