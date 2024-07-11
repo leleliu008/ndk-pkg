@@ -5983,7 +5983,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "locate build tools"
+    step "locate needed tools"
 
     unset AUTORECONF
     unset AUTOCONF

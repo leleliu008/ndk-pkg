@@ -7,8 +7,8 @@
 #include <sys/stat.h>
 
 #define ACTION_PREPROCESS                           1
-#define ACTION_ASSEMBLE                             2
-#define ACTION_COMPILE                              3
+#define ACTION_COMPILE                              2
+#define ACTION_ASSEMBLE                             3
 #define ACTION_CREATE_SHARED_LIBRARY                4
 #define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE  5
 
@@ -52,12 +52,12 @@ int main(int argc, char * argv[]) {
         }
 
         if (strcmp(argv[i], "-S") == 0) {
-            action = ACTION_ASSEMBLE;
+            action = ACTION_COMPILE;
             break;
         }
 
         if (strcmp(argv[i], "-c") == 0) {
-            action = ACTION_COMPILE;
+            action = ACTION_ASSEMBLE;
             break;
         }
 
@@ -66,11 +66,11 @@ int main(int argc, char * argv[]) {
             break;
         }
 
-        if (strcmp(argv[i], "-static") == 0) {
-            staticFlag = 1;
+        if (staticFlag == 1) {
+            continue;
         }
 
-        if (strcmp(argv[i], "--static") == 0) {
+        if (strcmp(argv[i], "-static") == 0 || strcmp(argv[i], "--static") == 0) {
             staticFlag = 1;
         }
     }
@@ -316,7 +316,7 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    if (action == ACTION_CREATE_SHARED_LIBRARY) {
+    if (action == ACTION_ASSEMBLE || action == ACTION_CREATE_SHARED_LIBRARY) {
         argv2[argc++] = (char*)"-fPIC";
 
         if (sonameArg[0] != '\0') {
