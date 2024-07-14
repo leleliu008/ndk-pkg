@@ -5557,7 +5557,7 @@ $DOT_CONTENT
 
         step "install needed packages via uppm"
 
-        run "$UPPM" env
+        run "$UPPM" about
         run "$UPPM" update
 
         for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP_T1
@@ -8443,7 +8443,7 @@ EOF
         if ! "$UPPM" is-installed "$ANDROID_NDK_PKG" ; then
             note "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK ($ANDROID_NDK_REVISION) will be installed via uppm."
 
-            run "$UPPM" env
+            run "$UPPM" about
             run "$UPPM" update
             run "$UPPM" install "$ANDROID_NDK_PKG"
 
@@ -8544,7 +8544,7 @@ __setup() {
 
     ##################################################################################
 
-    run ./uppm env
+    run ./uppm about
     run ./uppm update
 
     unset UPPM_PACKAGE_EXEFIND_PATH
@@ -9204,7 +9204,7 @@ ndk-pkg.website: https://github.com/leleliu008/ndk-pkg
 EOF
         if [ -f "$UPPM" ] ; then
             printf '\n'
-            "$UPPM" env
+            "$UPPM" about
         fi
 
         exit
