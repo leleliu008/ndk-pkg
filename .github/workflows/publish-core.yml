@@ -106,7 +106,7 @@ jobs:
       - run: chmod a+x ppkg
       - run: ./ppkg setup
       - run: ./ppkg update
-      - run: ./ppkg install uppm@0.15.4 --link-type=static-full
+      - run: ./ppkg install uppm@0.15.4 --static
       - run: ./ppkg pack    uppm@0.15.4
 
       - run: tar vxf uppm*.tar.xz -C out --strip-components=1
@@ -159,7 +159,7 @@ jobs:
 
           ./ppkg setup
           ./ppkg update
-          ./ppkg install uppm@0.15.4 --link-type=static-full
+          ./ppkg install uppm@0.15.4 --static
           ./ppkg pack    uppm@0.15.4
 
           tar vxf uppm*.tar.xz -C out --strip-components=1
