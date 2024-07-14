@@ -126,6 +126,74 @@ git() {
     fi
 }
 
+git_submodule_update_recursive() {
+    if [ -z "$1" ] ; then
+        GIT_REPO_ROOT_DIR="$PWD"
+    else
+        GIT_REPO_ROOT_DIR="$1"
+    fi
+
+    GIT_SUBMODULE_HAVE="$(cd "$GIT_REPO_ROOT_DIR" && find . -type f -name '.gitmodules' -print -quit)"
+
+    if [ -n "$GIT_SUBMODULE_HAVE" ] ; then
+        if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
+            run git submodule update --init --recursive
+        else
+            unset GIT_SUBMODULE_BASEDIR_STACK
+
+            GIT_SUBMODULE_CONFIG_FILE_LIST="$(find "$GIT_REPO_ROOT_DIR" -type f -name '.gitmodules')"
+
+            for f in $GIT_SUBMODULE_CONFIG_FILE_LIST
+            do
+                if [ -z "$GIT_SUBMODULE_BASEDIR_STACK" ] ; then
+                    GIT_SUBMODULE_BASEDIR_STACK="${f%/*}"
+                else
+                    GIT_SUBMODULE_BASEDIR_STACK="$GIT_SUBMODULE_BASEDIR_STACK;${f%/*}"
+                fi
+            done
+
+            while [ -n "$GIT_SUBMODULE_BASEDIR_STACK" ]
+            do
+                case $GIT_SUBMODULE_BASEDIR_STACK in
+                    *\;*) GIT_SUBMODULE_BASEDIR="${GIT_SUBMODULE_BASEDIR_STACK##*;}" ; GIT_SUBMODULE_BASEDIR_STACK="${GIT_SUBMODULE_BASEDIR_STACK%;*}" ;;
+                    *)    GIT_SUBMODULE_BASEDIR="${GIT_SUBMODULE_BASEDIR_STACK}"     ; GIT_SUBMODULE_BASEDIR_STACK=
+                esac
+
+                run cd "$GIT_SUBMODULE_BASEDIR"
+
+                GIT_SUBMODULE_NAME_LIST="$(sed -n '/\[submodule ".*"\]/p' .gitmodules | sed 's|\[submodule "\(.*\)"\]|\1|')"
+
+                for GIT_SUBMODULE_NAME in $GIT_SUBMODULE_NAME_LIST
+                do
+                    GIT_SUBMODULE_PATH="$(git config --file=.gitmodules --get "submodule.$GIT_SUBMODULE_NAME.path")"
+                    GIT_SUBMODULE_URL="$(git config --file=.gitmodules --get "submodule.$GIT_SUBMODULE_NAME.url")"
+                    GIT_SUBMODULE_URI="$("$NDKPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
+
+                    run git submodule set-url "$GIT_SUBMODULE_PATH" "$GIT_SUBMODULE_URI"
+                done
+
+                run git submodule update --init
+
+                GIT_SUBMODULE_PATH_LIST="$(git submodule | sed 's|^ *||' | cut -d ' ' -f2)"
+
+                for GIT_SUBMODULE_PATH in $GIT_SUBMODULE_PATH_LIST
+                do
+                    GIT_SUBMODULE_CONFIG_FILE_LIST="$(find "$GIT_SUBMODULE_PATH" -type f -name '.gitmodules')"
+
+                    for f in $GIT_SUBMODULE_CONFIG_FILE_LIST
+                    do
+                        if [ -z "$GIT_SUBMODULE_BASEDIR_STACK" ] ; then
+                            GIT_SUBMODULE_BASEDIR_STACK="$GIT_SUBMODULE_BASEDIR/${f%/*}"
+                        else
+                            GIT_SUBMODULE_BASEDIR_STACK="$GIT_SUBMODULE_BASEDIR_STACK;$GIT_SUBMODULE_BASEDIR/${f%/*}"
+                        fi
+                    done
+                done
+            done
+        fi
+    fi
+}
+
 # }}}
 ##############################################################################
 # {{{ wfetch
@@ -2382,11 +2450,13 @@ __fetch_resources_of_the_given_package() {
         run rm -rf     "$SESSION_DIR"
         run install -d "$SESSION_DIR"
         run cd         "$SESSION_DIR"
+
         run git -c init.defaultBranch=master init
         run git remote add origin "$GIT_FETCH_URL"
         run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
         run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-        run git submodule update --init
+
+        git_submodule_update_recursive
 
         rm -rf "$SESSION_DIR"
     fi
@@ -4579,7 +4649,7 @@ inspect_install_arguments() {
             --ndk-home=*)
                 ANDROID_NDK_HOME="${1#*=}"
                 ;;
-            --fsle)
+            --static)
                 REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
                 ;;
             -j) shift
@@ -4837,364 +4907,6 @@ __install_the_given_packages() {
     if [ "$REQUEST_TO_KEEP_SESSION_DIR" != 1 ] ; then
         rm -rf "$SESSION_DIR"
     fi
-}
-
-# this function must run in subshell
-# __install_native_package <PACKAGE-NAME>
-  __install_native_package() {
-    case $1 in
-        '') abort 1 "__install_native_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
-            ;;
-        expat)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='ef2420f0232c087801abf705e89ae65f6257df6b7931d37846a193ef2e8cdcbe'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TOOLS=OFF'
-            ;;
-        libz)
-            NATIVE_PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
-            ;;
-        libbz2)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/leleliu008/bzip2/archive/refs/tags/1.0.8.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='fb36d769189faaf841390fae88639fb02c79b87b0691a340fbbfc32b4f82b789'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DINSTALL_EXECUTABLES=OFF -DINSTALL_LIBRARIES=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF'
-            ;;
-        perl)
-            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/R/RJ/RJBS/perl-5.38.2.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
-            ;;
-        openssl)
-            NATIVE_PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.1.1.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='b3aa61334233b852b63ddb048df181177c2c659eb9d4376008118f9c08d07674'
-            NATIVE_PACKAGE_DEPENDENCIES='perl'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
-            ;;
-        texinfo)
-            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953'
-            NATIVE_PACKAGE_DEPENDENCIES='perl'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--with-included-regex --enable-threads=posix --disable-nls'
-            ;;
-        help2man)
-            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
-            NATIVE_PACKAGE_DEPENDENCIES='perl'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
-            ;;
-        intltool)
-            NATIVE_PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
-            NATIVE_PACKAGE_DEPENDENCIES='perl expat perl-XML-Parser'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
-            ;;
-        libtool)
-            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--enable-ltdl-install'
-            ;;
-        autoconf)
-            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
-            NATIVE_PACKAGE_DEPENDENCIES='perl'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
-            ;;
-        automake)
-            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
-            NATIVE_PACKAGE_SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
-            NATIVE_PACKAGE_DEPENDENCIES='perl autoconf'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
-            ;;
-        liblzma)
-            NATIVE_PACKAGE_SRC_URL='https://mirrors.aliyun.com/macports/distfiles/xz/xz-5.4.6.tar.bz2'
-            NATIVE_PACKAGE_SRC_SHA='913851b274e8e1d31781ec949f1c23e8dbcf0ecf6e73a2436dc21769dd3e6f49'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links --disable-scripts --disable-doc'
-            ;;
-        gdbm)
-            NATIVE_PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-nls --enable-largefile --enable-libgdbm-compat --without-readline'
-            ;;
-        sqlite3)
-            NATIVE_PACKAGE_SRC_URL='https://www.sqlite.org/2024/sqlite-autoconf-3450200.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='bc9067442eedf3dd39989b5c5cfbfff37ae66cc9c99274e0c3052dc4d4a8f6ae'
-            NATIVE_PACKAGE_DEPENDENCIES='libz'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile --disable-editline --disable-readline'
-            ;;
-        libffi)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --disable-docs --disable-symvers'
-            ;;
-        libyaml)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --disable-shared --enable-largefile'
-            ;;
-        ruby)
-            NATIVE_PACKAGE_SRC_URL='https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.2.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='96c57558871a6748de5bc9f274e93f4b5aad06cd8f37befa0e8d94e7b8a423bc'
-            NATIVE_PACKAGE_DEPENDENCIES='libz libyaml libffi'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--disable-dependency-tracking --enable-static --enable-shared --disable-docs'
-            ;;
-        python3)
-            NATIVE_PACKAGE_SRC_URL='https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz'
-            NATIVE_PACKAGE_SRC_SHA='c049bf317e877cbf9fce8c3af902436774ecef5249a29d10984ca3a37f7f4736'
-            NATIVE_PACKAGE_DEPENDENCIES='libz libbz2 liblzma gdbm expat sqlite3 libffi openssl perl'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS="--with-system-expat --with-system-ffi --with-openssl=$NATIVE_PACKAGE_INSTALLED_ROOT/openssl --with-ensurepip=yes --with-lto --enable-ipv6 --enable-shared --enable-largefile --disable-option-checking --disable-nls --disable-debug --disable-loadable-sqlite-extensions --disable-profiling"
-            ;;
-        perl-XML-Parser)
-            NATIVE_PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
-            NATIVE_PACKAGE_DEPENDENCIES='perl expat'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS=
-            ;;
-        libpcre2)
-            NATIVE_PACKAGE_SRC_URL='https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2'
-            NATIVE_PACKAGE_SRC_SHA='8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840'
-            NATIVE_PACKAGE_DEPENDENCIES=
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='cmake'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='-DCMAKE_C_STANDARD=99 -DCMAKE_C_STANDARD_REQUIRED=ON -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF -DPCRE2_DEBUG=OFF -DPCRE2_SUPPORT_VALGRIND=OFF -DPCRE2_SUPPORT_UNICODE=ON'
-            ;;
-        swig)
-            NATIVE_PACKAGE_SRC_URL='https://downloads.sourceforge.net/project/swig/swig/swig-4.1.1/swig-4.1.1.tar.gz'
-            NATIVE_PACKAGE_SRC_SHA='2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b'
-            NATIVE_PACKAGE_DEPENDENCIES='libpcre2'
-            NATIVE_PACKAGE_USE_BSYSTEM_NAME='configure'
-            NATIVE_PACKAGE_BUILD_CONFIG_ARGS='--enable-ccache --enable-cpp11-testing --with-popen --with-pcre --without-boost --without-android --without-java --without-javascript --without-python --without-perl5 --without-ruby --without-php --without-tcl --without-guile --without-octave --without-scilab --without-ocaml --without-mzscheme --without-csharp --without-lua --without-r --without-d --without-go'
-            ;;
-        *)  abort 1 "unknown native package name: $1"
-    esac
-
-    #########################################################################################
-
-    for NATIVE_PACKAGE_DEPENDENCY in $NATIVE_PACKAGE_DEPENDENCIES
-    do
-        (__install_native_package "$NATIVE_PACKAGE_DEPENDENCY")
-    done
-
-    #########################################################################################
-
-    step "install native package : $1"
-
-    NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$1"
-
-    if [ -f "$NATIVE_PACKAGE_INSTALLED_DIR/receipt.txt" ] && [ "$(cat "$NATIVE_PACKAGE_INSTALLED_DIR/receipt.txt")" = "$NATIVE_PACKAGE_SRC_SHA" ] ; then
-        note "native package '$1' already has been installed, skipped."
-        return 0
-    fi
-
-    #########################################################################################
-
-    NATIVE_PACKAGE_INSTALL_UTS=
-    NATIVE_PACKAGE_INSTALL_UTS="$(date +%s)"
-
-    NATIVE_PACKAGE_INSTALL_SHA=
-    NATIVE_PACKAGE_INSTALL_SHA="$(
-{
-    sha256sum <<EOF
-$1:$NATIVE_PACKAGE_SRC_URL:$$:$NATIVE_PACKAGE_INSTALL_UTS
-EOF
-} | cut -d ' ' -f1)"
-
-    #########################################################################################
-
-    NATIVE_PACKAGE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_INSTALL_SHA"
-
-    NATIVE_PACKAGE_SRC_FILETYPE="$(filetype_from_url "$NATIVE_PACKAGE_SRC_URL")"
-    NATIVE_PACKAGE_SRC_FILENAME="$NATIVE_PACKAGE_SRC_SHA$NATIVE_PACKAGE_SRC_FILETYPE"
-    NATIVE_PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$NATIVE_PACKAGE_SRC_FILENAME"
-
-    NATIVE_PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
-
-    #########################################################################################
-
-    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
-    # because we only want to use our own
-    export PKG_CONFIG_LIBDIR="$NATIVE_PACKAGE_WORKING_DIR/lib/pkgconfig"
-    export PKG_CONFIG_PATH="$NATIVE_PACKAGE_WORKING_DIR/lib/pkgconfig"
-    export ACLOCAL_PATH="$NATIVE_PACKAGE_WORKING_DIR/share/aclocal"
-    export CPPFLAGS="-I$NATIVE_PACKAGE_WORKING_DIR/include $CPPFLAGS"
-    export LDFLAGS="-Wl,-rpath,$NATIVE_PACKAGE_INSTALL_DIR/lib $LDFLAGS"
-
-    for DEPENDENT_NATIVE_PACKAGE_NAME in $NATIVE_PACKAGE_DEPENDENCIES
-    do
-        DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_NATIVE_PACKAGE_NAME"
-
-        if [ -d  "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
-            CPPFLAGS="$CPPFLAGS -I$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/include"
-        fi
-
-        if [ -d  "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
-            LDFLAGS="$LDFLAGS -L$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/lib"
-        fi
-
-        if [ -d  "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
-            PATH="$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
-        fi
-
-        if [ -d  "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-            PATH="$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-        fi
-
-        if [ -d          "$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-            ACLOCAL_PATH="$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-        fi
-
-        for d in lib share
-        do
-            DEPENDENT_NATIVE_PACKAGE_PKGCONF_DIR="$DEPENDENT_NATIVE_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
-
-            if [ -d "$DEPENDENT_NATIVE_PACKAGE_PKGCONF_DIR" ] ; then
-                PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$DEPENDENT_NATIVE_PACKAGE_PKGCONF_DIR"
-            fi
-        done
-    done
-
-    #########################################################################################
-
-    cat <<EOF
-PKG_CONFIG_LIBDIR=$PKG_CONFIG_LIBDIR
-
-PKG_CONFIG_PATH=$PKG_CONFIG_PATH
-
-ACLOCAL_PATH=$ACLOCAL_PATH
-
-PATH=$PATH
-
-NATIVE_PACKAGE_SRC_URL      = $NATIVE_PACKAGE_SRC_URL
-NATIVE_PACKAGE_SRC_SHA      = $NATIVE_PACKAGE_SRC_SHA
-NATIVE_PACKAGE_SRC_FILENAME = $NATIVE_PACKAGE_SRC_FILENAME
-NATIVE_PACKAGE_SRC_FILETYPE = $NATIVE_PACKAGE_SRC_FILETYPE
-
-NATIVE_PACKAGE_DEPENDENCIES = $NATIVE_PACKAGE_DEPENDENCIES
-
-NATIVE_PACKAGE_USE_BSYSTEM_NAME = $NATIVE_PACKAGE_USE_BSYSTEM_NAME
-NATIVE_PACKAGE_BUILD_CONFIG_ARGS = $NATIVE_PACKAGE_BUILD_CONFIG_ARGS
-
-NATIVE_PACKAGE_WORKING_DIR = $NATIVE_PACKAGE_WORKING_DIR
-NATIVE_PACKAGE_INSTALL_UTS = $NATIVE_PACKAGE_INSTALL_UTS
-NATIVE_PACKAGE_INSTALL_SHA = $NATIVE_PACKAGE_INSTALL_SHA
-NATIVE_PACKAGE_INSTALL_DIR = $NATIVE_PACKAGE_INSTALL_DIR
-
-EOF
-
-    #########################################################################################
-
-    run install -d "$NATIVE_PACKAGE_WORKING_DIR/src"
-    run cd         "$NATIVE_PACKAGE_WORKING_DIR"
-
-    wfetch "$NATIVE_PACKAGE_SRC_URL" --sha256="$NATIVE_PACKAGE_SRC_SHA" -o "$NATIVE_PACKAGE_SRC_FILEPATH"
-
-    run bsdtar xf "$NATIVE_PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner -C src
-
-    run cd src
-
-    if   [ "$1" = 'libz' ] ; then
-        sedInPlace 's|/share/pkgconfig|/lib/pkgconfig|' CMakeLists.txt
-    elif [ "$1" = 'texinfo' ] ; then
-        sedInPlace '/libintl/d' tp/Texinfo/XS/parsetexi/api.c
-    elif [ "$1" = 'python3' ] ; then
-        unset PYTHONHOME
-        unset PYTHONPATH
-
-        export ZLIB_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/libz/include"
-        export ZLIB_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/libz/lib -lz"
-
-        export BZIP2_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/include"
-        export BZIP2_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/libbz2/lib -lbz2"
-
-        export LIBLZMA_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/liblzma/include"
-        export LIBLZMA_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/liblzma/lib -llzma"
-
-        export LIBSQLITE3_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/sqlite3/include"
-        export LIBSQLITE3_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/sqlite3/lib -lsqlite3"
-
-        export GDBM_CFLAGS="-I$NATIVE_PACKAGE_INSTALLED_ROOT/gdbm/include"
-        export GDBM_LIBS="-L$NATIVE_PACKAGE_INSTALLED_ROOT/gdbm/lib -lgdbm -lgdbm_compat"
-
-        export LIBS='-lm'
-    fi
-
-    #########################################################################################
-
-    case $NATIVE_PACKAGE_USE_BSYSTEM_NAME in
-        cmake)
-            CMAKE="$(command -v cmake)" || abort 1 "command not found: cmake"
-
-            run "$CMAKE" -DCMAKE_INSTALL_PREFIX="$NATIVE_PACKAGE_INSTALL_DIR" -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS -G 'Unix Makefiles'" -S . -B build.d
-            run "$CMAKE" --build   build.d -- -j$BUILD_NJOBS
-            run "$CMAKE" --install build.d
-            ;;
-        configure)
-            if [ "$1" = openssl ] ; then
-                # https://github.com/openssl/openssl/blob/master/INSTALL.md
-                run ./config no-tests no-ssl3 no-ssl3-method no-zlib --prefix="$NATIVE_PACKAGE_INSTALL_DIR" --libdir=lib --openssldir=etc/ssl
-
-                GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
-
-                run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                run "$GMAKE" install_sw
-            else
-                case $1 in
-                    perl)
-                        run ./Configure "-Dprefix=$NATIVE_PACKAGE_INSTALL_DIR" -Dman1dir=none -Dman3dir=none -des -Dmake=gmake -Duselargefiles -Duseshrplib -Dusethreads -Dusenm=false -Dusedl=true
-                        ;;
-                    perl-XML-Parser)
-                        run perl Makefile.PL EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/lib" EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/expat/include"
-                        run install -d "$NATIVE_PACKAGE_INSTALL_DIR"
-                        ;;
-                    *)  run ./configure "--prefix=$NATIVE_PACKAGE_INSTALL_DIR" "$NATIVE_PACKAGE_BUILD_CONFIG_ARGS"
-                esac
-
-                GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
-
-                run "$GMAKE" "--jobs=$NATIVE_OS_NCPU"
-                run "$GMAKE" install
-            fi
-            ;;
-    esac
-
-    # TO FIX: glibtoolize: command not found
-    if [ "$1" = 'libtool' ] ; then
-        run cd "$NATIVE_PACKAGE_INSTALL_DIR/bin"
-        run ln -s -r libtool    glibtool
-        run ln -s -r libtoolize glibtoolize
-        run cd -
-    fi
-
-    printf '%s\n' "$NATIVE_PACKAGE_SRC_SHA" > "$NATIVE_PACKAGE_INSTALL_DIR/receipt.txt"
-
-    run ln -s -r -f -T "$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_INSTALL_SHA" "$NATIVE_PACKAGE_INSTALLED_ROOT/$1"
 }
 
 __install_the_given_package_onexit() {
@@ -5875,13 +5587,12 @@ $DOT_CONTENT
     }
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
-        PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq)"
+        PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq | tr '\n' ' ')"
+
+        run "$XBUILDER" install "$PACKAGE_DEP_UPP_T2" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$NDKPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
 
         for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_UPP_T2
         do
-
-            (__install_native_package "$NATIVE_PACKAGE_NAME")
-
             NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
 
             if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
@@ -5948,7 +5659,7 @@ $DOT_CONTENT
         done
 
         if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
-            __install_native_package perl-XML-Parser
+            run "$XBUILDER" install perl-XML-Parser --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$NDKPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
         fi
 
         if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
@@ -6102,29 +5813,13 @@ $DOT_CONTENT
                 fi
 
                 run cd "$PACKAGE_INSTALLING_SRC_DIR"
+
                 run git -c init.defaultBranch=master init
                 run git remote add origin "$GIT_FETCH_URL"
                 run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
                 run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
 
-                GIT_SUBMODULE_PATH_LIST="$(find . -name .gitmodules)"
-
-                if [ -n "$GIT_SUBMODULE_PATH_LIST" ] ; then
-                    if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
-                        for GIT_SUBMODULE_PATH in $GIT_SUBMODULE_PATH_LIST
-                        do
-                            GIT_SUBMODULE_URLS="$(grep 'url = ' "$GIT_SUBMODULE_PATH" | sed 's|[[:space:]]||g' | cut -c5-)"
-
-                            for GIT_SUBMODULE_URL in $GIT_SUBMODULE_URLS
-                            do
-                                GIT_SUBMODULE_URI="$("$NDKPKG_URL_TRANSFORM" "$GIT_SUBMODULE_URL")"
-                                sedInPlace "s|$GIT_SUBMODULE_URL|$GIT_SUBMODULE_URI|" "$GIT_SUBMODULE_PATH"
-                            done
-                        done
-                    fi
-
-                    run git submodule update --init
-                fi
+                git_submodule_update_recursive
             fi
             ;;
         dir://*)
@@ -8831,6 +8526,11 @@ __setup() {
 
     ##################################################################################
 
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/master/xbuilder' --no-buffer
+    run chmod +x xbuilder
+
+    ##################################################################################
+
     wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' --no-buffer
 
     NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
@@ -9056,7 +8756,7 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
                 CPPFLAGS: -DNDEBUG
                  LDFLAGS: -flto -Wl,-s
 
-        ${COLOR_BLUE}--fsle${COLOR_OFF}
+        ${COLOR_BLUE}--static${COLOR_OFF}
             create Fully Statically Linked Executables
 
             This option only affects the package whose type is exe. If this option is not given, ndk-pkg will create Mostly Statically Linked Executables
@@ -9407,7 +9107,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.13.1
+NDKPKG_VERSION=0.14.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9428,6 +9128,12 @@ NDKPKG_FORMULA_REPO_ROOT="$NDKPKG_HOME/repos.d"
 NDKPKG_FORMULA_SEARCH_DIRS=
 
 NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
+
+##################################################################################
+
+NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native"
+
+XBUILDER="$NDKPKG_CORE_DIR/xbuilder"
 
 ##################################################################################
 
@@ -9602,11 +9308,11 @@ NATIVE_OS_LIBC="$(sysinfo libc)"
 NATIVE_OS_EUID="$(id -u)"
 NATIVE_OS_EGID="$(id -g)"
 
+##################################################################################
+
 if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
     sudo=sudo
 fi
-
-NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native/$NATIVE_OS_KIND-$NATIVE_OS_ARCH"
 
 ##################################################################################
 

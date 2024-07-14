@@ -8,7 +8,7 @@
 
 #define ACTION_PREPROCESS                           1
 #define ACTION_COMPILE                              2
-#define ACTION_ASSEMBLE                             3
+#define ACTION_CREATE_OBJECT_FILE                   3
 #define ACTION_CREATE_SHARED_LIBRARY                4
 #define ACTION_CREATE_STATICALLY_LINKED_EXECUTABLE  5
 
@@ -57,7 +57,7 @@ int main(int argc, char * argv[]) {
         }
 
         if (strcmp(argv[i], "-c") == 0) {
-            action = ACTION_ASSEMBLE;
+            action = ACTION_CREATE_OBJECT_FILE;
             break;
         }
 
@@ -101,7 +101,7 @@ int main(int argc, char * argv[]) {
 
     char sonameArg[100]; sonameArg[0] = '\0';
 
-    if (action == ACTION_PREPROCESS || action == ACTION_COMPILE || action == ACTION_ASSEMBLE) {
+    if (action == ACTION_PREPROCESS || action == ACTION_COMPILE || action == ACTION_CREATE_OBJECT_FILE) {
         for (int i = 1; i < argc; i++) {
             argv2[i] = argv[i];
         }
@@ -316,7 +316,7 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    if (action == ACTION_ASSEMBLE || action == ACTION_CREATE_SHARED_LIBRARY) {
+    if (action == ACTION_CREATE_OBJECT_FILE || action == ACTION_CREATE_SHARED_LIBRARY) {
         argv2[argc++] = (char*)"-fPIC";
 
         if (sonameArg[0] != '\0') {
