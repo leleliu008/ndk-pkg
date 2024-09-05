@@ -5634,14 +5634,13 @@ $DOT_CONTENT
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PYM" ] && {
-        step "install needed python packages via pip3"
+        step "install needed python packages via pip"
 
-        PIP3="$(command -v pip3)" || abort 1 "command not found: pip3"
+        PYTHON3="$(command -v python3)" || abort 1 "command not found: python3"
 
-        run "$PIP3" --version
-        run "$PIP3" install --upgrade pip setuptools wheel
-        run "$PIP3" --version
-        run "$PIP3" install --upgrade "$PACKAGE_DEP_PYM"
+        run "$PYTHON3" --version
+        run "$PYTHON3" -m pip install --upgrade pip
+        run "$PYTHON3" -m pip install --upgrade "$PACKAGE_DEP_PYM"
     }
 
     #########################################################################################
@@ -9126,7 +9125,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.14.1
+NDKPKG_VERSION=0.14.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
