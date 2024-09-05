@@ -104,7 +104,7 @@ bppend_to_ACLOCAL_PATH() {
     esac
 }
 
-sedInPlace() {
+sed2() {
     if [ "${DUMP_SED:-0}" = 1 ] ; then
         if [ -z "$SED" ] ; then
             SED="$(command -v gsed || command -v sed)" || abort 1 "command not found: gsed"
@@ -1118,10 +1118,6 @@ filetype_from_url() {
         abort 1 "summary mapping not found in $PACKAGE_FORMULA_FILEPATH"
     fi
 
-    if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
-        abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
-    fi
-
     if [ -n "$PACKAGE_FIX_URL" ] && [ -n "$PACKAGE_PATCHES" ] ; then
         abort 1 "fix-url and patches mapping shouldn't be used together in $PACKAGE_FORMULA_FILEPATH"
     fi
@@ -1172,6 +1168,20 @@ filetype_from_url() {
                     abort 1 "src-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
                 fi
 
+                if [ -z "$PACKAGE_GIT_URL" ] ; then
+                    case $PACKAGE_SRC_URL in
+                        https://github.com/*/*/releases/*)
+                            PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/releases/*}"
+                            ;;
+                        https://github.com/*/*/archive/*)
+                            PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/archive/*}"
+                            ;;
+                        https://gitlab.com/*/*/-/archive/*)
+                            PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/-/archive/*}"
+                            ;;
+                    esac
+                fi
+
                 if [ -z "$PACKAGE_VERSION" ] ; then
                     PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' | awk -F- '{print $NF}')"
                     case $PACKAGE_VERSION in
@@ -1197,6 +1207,12 @@ filetype_from_url() {
 
             PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP git"
         fi
+    fi
+
+    #########################################################################################
+
+    if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
+        abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
     fi
 
     #########################################################################################
@@ -1410,29 +1426,13 @@ filetype_from_url() {
 
     sed -i "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
 
-    grep -q '^pkgtype: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" "$PACKAGE_RECEIPT_FILEPATH"
-    }
-
-    grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed -i "/^pkgtype:/a version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
-    }
-
-    grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed -i "/^git-url:/i web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
-    }
-
-    grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
-    }
-
-    grep -q '^binbstd: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
-    }
-
-    grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-        sed -i "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
-    }
+    grep -q '^pkgtype: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgtype:/a version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^summary:/a web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^git-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^binbstd: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
+    grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
 
     [ -n "$PACKAGE_GIT_SHA" ] && {
         grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
@@ -5981,7 +5981,7 @@ $DOT_CONTENT
                 run chmod a+x "$FILEPATH"
 
                 if [ "$FILENAME" = 'config.sub' ] ; then
-                    sedInPlace 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+                    gsed -i 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
                 fi
             }
 
@@ -6792,7 +6792,7 @@ $PACKAGE_DOPATCH
     #########################################################################################
 
     # https://github.com/golang/go/issues/65568
-    [ -f go.mod ] && sedInPlace 's|^go 1.22$|go 1.22.0|' go.mod
+    [ -f go.mod ] && gsed -i 's|^go 1.22$|go 1.22.0|' go.mod
 
     #########################################################################################
 
@@ -7254,33 +7254,33 @@ __tweak_pc_files() {
 
     for pcfile in $PC_FILES
     do
-        sedInPlace "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
+        gsed -i "s|$PACKAGE_INSTALL_DIR|\${pcfiledir}/../..|g" "$pcfile"
 
-        sedInPlace "s|-I$NDKPKG_HOME[^' ]*||g"   "$pcfile"
-        sedInPlace "s|-L$NDKPKG_HOME[^' ]*||g"   "$pcfile"
-        sedInPlace "s|-L$SYSROOT[^' ]*||g"       "$pcfile"
-        sedInPlace "s|--sysroot=$SYSROOT||"      "$pcfile"
-        sedInPlace 's|-flto||g'                  "$pcfile"
-        sedInPlace 's|-lpthread||g'              "$pcfile"
-        sedInPlace 's|-Wl,--strip-debug||g'      "$pcfile"
+        gsed -i "s|-I$NDKPKG_HOME[^' ]*||g"   "$pcfile"
+        gsed -i "s|-L$NDKPKG_HOME[^' ]*||g"   "$pcfile"
+        gsed -i "s|-L$SYSROOT[^' ]*||g"       "$pcfile"
+        gsed -i "s|--sysroot=$SYSROOT||"      "$pcfile"
+        gsed -i 's|-flto||g'                  "$pcfile"
+        gsed -i 's|-lpthread||g'              "$pcfile"
+        gsed -i 's|-Wl,--strip-debug||g'      "$pcfile"
 
-        sedInPlace "s|${NDKPKG_HOME}/.*/lib\(.*\)\.so|-l\1|g" "$pcfile"
-        sedInPlace "s|${NDKPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g"  "$pcfile"
+        gsed -i "s|${NDKPKG_HOME}/.*/lib\(.*\)\.so|-l\1|g" "$pcfile"
+        gsed -i "s|${NDKPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g"  "$pcfile"
 
         if grep -q 'Libs.private:' "$pcfile" ; then
             LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
             LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
-            sedInPlace "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
-            sedInPlace '/Libs.private/d' "$pcfile"
+            gsed -i "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
+            gsed -i '/Libs.private/d' "$pcfile"
         fi
 
         if grep -q 'Requires.private:' "$pcfile" ; then
             if grep -q 'Requires:' "$pcfile" ; then
                 REQUIRES_PRIVATE_CONTENT=$(sed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
-                sedInPlace "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
-                sedInPlace '/Requires.private:/d' "$pcfile"
+                gsed -i "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
+                gsed -i '/Requires.private:/d' "$pcfile"
             else
-                sedInPlace 's|Requires.private:|Requires:|' "$pcfile"
+                gsed -i 's|Requires.private:|Requires:|' "$pcfile"
             fi
         fi
     done
@@ -7379,7 +7379,7 @@ __record_installed_files_of_the_given_package() {
 
         exec 7>&-
 
-        sedInPlace "s|$PACKAGE_INSTALL_DIR/||" "$INSTALLED_FILES_FILEPATH"
+        gsed -i "s|$PACKAGE_INSTALL_DIR/||" "$INSTALLED_FILES_FILEPATH"
     else
         for file in $(ls $2)
         do
@@ -7890,7 +7890,7 @@ configure_only() {
 
         CONFIGURE="$PACKAGE_BSCRIPT_DIR/configure"
 
-        sedInPlace 's/cross_compiling=no/cross_compiling=yes/g' "$CONFIGURE"
+        gsed -i 's/cross_compiling=no/cross_compiling=yes/g' "$CONFIGURE"
 
         if run $CONFIGURE $CONFIGURE_ARGS $@ $CONFIGURE_ENVS ; then
             echo
@@ -7910,8 +7910,8 @@ configure_only() {
     if [ "$VERBOSE_GMAKE" = 1 ] ; then
         for Makefile in $(find "$PACKAGE_BSCRIPT_DIR" -name Makefile)
         do
-            sedInPlace 's|\t@|\t|g'     "$Makefile"
-            sedInPlace 's|@echo|echo|g' "$Makefile"
+            gsed -i 's|\t@|\t|g'     "$Makefile"
+            gsed -i 's|@echo|echo|g' "$Makefile"
         done
         unset Makefile
     fi

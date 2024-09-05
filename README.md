@@ -827,7 +827,6 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`success`|`success "build success."`|
 |`isInteger`|`isInteger $x \|\| abort 1 "should be an integer."`|
 |`isCrossBuild`|`isCrossBuild && abort 1 "This package is not supposed to be cross built."`|
-|`sedInPlace`|`sedInPlace 's/-mandroid//g' Configure`|
 |`wfetch`|`wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH> [-q]`|
 |||
 |`configure`|`configure --enable-pic`|
