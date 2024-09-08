@@ -355,6 +355,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ```bash
     ndk-pkg setup
     ```
+    This command needs `curl` or `wget`, `tar`, `xz` have installed.
 
     This command is actually to do two things:
 
