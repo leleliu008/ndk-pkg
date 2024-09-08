@@ -8,22 +8,25 @@ Please read these caveats carefully before starting to use this software.
 
 - This software is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
 
-- This software can NOT run on [Android](https://www.android.com/), [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), [FreeBSD](https://www.freebsd.org/), [OpenBSD](https://www.openbsd.org/), [NetBSD](https://www.netbsd.org/) due to lack of [Android NDK](https://developer.android.google.cn/ndk) for these platforms.
-
-- This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to `CMake: Builds hosted on 'CYGWIN' not supported.` [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L277-L299)
-
 - Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change files under `~/.ndk-pkg` directory without notice.
 
 - Please do NOT run `ndk-pkg` command in parallel so as not to generate dirty data.
 
-## Supported platforms (platforms that this software can be run on)
+## Platforms that this software can run on
 
 |HostOS|HostArch|SubSystem|recommended|fully tested|fully supported|
 |------|--------|---------|-----------|------------|-------|
 |✶|`x86_64`|[Docker](https://www.docker.com/)|✔︎|✔︎|✔︎|
-|[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`|[glibc](http://www.gnu.org/software/libc/)|✔︎|✔︎|✔︎|
+|[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`||✔︎|✔︎|✔︎|
 |[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||||
 |[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||✔︎||
+|[Android](https://www.android.com/)|`aarch64`|[Termux](https://github.com/termux)||||
+
+**Note:**
+
+- Due to Android NDK for Linux is linked dynamically against [glibc](http://www.gnu.org/software/libc/), hence you might need to install [glibc](http://www.gnu.org/software/libc/) by yourself if you run this software on [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), as to Alpine Linux, please see https://wiki.alpinelinux.org/wiki/Running_glibc_programs
+
+- This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to `CMake: Builds hosted on 'CYGWIN' not supported.` [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L277-L299)
 
 ## Using ndk-pkg via GitHub Actions
 
@@ -106,7 +109,7 @@ ndk-pkg/ndk-pkg setup
 
 **Note** :
 
-- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the Android NDK's linux binaries, Android NDK is incompatible with WSL1. For more details please read https://github.com/android/ndk/issues/1755
+- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the binaries of Android NDK for Linux , Android NDK for Linux is incompatible with WSL1. For more details please read https://github.com/android/ndk/issues/1755
 
 **/etc/wsl.conf** :
 
