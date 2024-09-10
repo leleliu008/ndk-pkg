@@ -2514,7 +2514,7 @@ __fetch_resources_of_the_given_package() {
 # {{{ ndk-pkg pack
 
 # examples:
-# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--exclude=<PATH>] [-K]
+# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K]
 # __pack_the_given_installed_package    autoconf     -t tar.xz
   __pack_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
@@ -2555,10 +2555,12 @@ __fetch_resources_of_the_given_package() {
                     OUTPUT_PATH="$1"
                 fi
                 ;;
-            --exclude=*)
-                EXCLUDE="${1#*=}"
-                if [ -n "$EXCLUDE" ] ; then
-                    EXCLUDES="$EXCLUDES $EXCLUDE"
+            --exclude)
+                shift
+                if [ -z "$1" ] ; then
+                    abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
+                else
+                    EXCLUDES="$EXCLUDES $1"
                 fi
                 ;;
             *)  abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-K], unrecognized option: $1"
@@ -9125,7 +9127,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.14.2
+NDKPKG_VERSION=0.14.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9169,10 +9171,17 @@ if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
 
     export CURLOPT_DNS_SERVERS='1.1.1.1,8.8.8.8'
 
-    bsdtar() {
-        # https://github.com/termux/termux-packages/issues/1054
-        proot --link2symlink "$UPPM_HOME/installed/bsdtar/bin/bsdtar" "$@"
-    }
+    unset TERMUX
+
+    if command -v termux-info > /dev/null ; then
+        TERMUX=1
+
+        bsdtar() {
+            # https://github.com/termux/termux-packages/issues/1054
+            run pkg install -y proot
+            run proot --link2symlink "$UPPM_HOME/installed/bsdtar/bin/bsdtar" "$@"
+        }
+    fi
 fi
 
 ##################################################################################
