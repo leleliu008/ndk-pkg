@@ -20,13 +20,12 @@ Please read these caveats carefully before starting to use this software.
 |[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`||✔︎|✔︎|✔︎|
 |[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||||
 |[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||✔︎||
-|[Android](https://www.android.com/)|`aarch64`|[Termux](https://github.com/termux)||||
 
 **Note:**
 
-- Due to Android NDK for Linux is linked dynamically against [glibc](http://www.gnu.org/software/libc/), hence you might need to install [glibc](http://www.gnu.org/software/libc/) by yourself if you run this software on [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), as to Alpine Linux, please see https://wiki.alpinelinux.org/wiki/Running_glibc_programs
+- This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to a cmake error: `CMake: Builds hosted on 'CYGWIN' not supported.`, for the reason please refer to [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L278-L300). If you really want to use this software on [Windows](https://www.microsoft.com/en-us/windows/), please use via [Docker](https://www.docker.com/) or [WSL](https://docs.microsoft.com/en-us/windows/wsl/) instead.
 
-- This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to `CMake: Builds hosted on 'CYGWIN' not supported.` [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L277-L299)
+- Due to Android NDK for Linux is linked dynamically against [glibc](http://www.gnu.org/software/libc/), hence you might need to install [glibc](http://www.gnu.org/software/libc/) by yourself if you run this software on [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), as to Alpine Linux, please refer to https://wiki.alpinelinux.org/wiki/Running_glibc_programs
 
 ## Using ndk-pkg via GitHub Actions
 
@@ -109,7 +108,7 @@ ndk-pkg/ndk-pkg setup
 
 **Note** :
 
-- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the binaries of Android NDK for Linux , Android NDK for Linux is incompatible with WSL1. For more details please read https://github.com/android/ndk/issues/1755
+- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the binaries of Android NDK for Linux , Android NDK for Linux is incompatible with WSL1. For more details please refer to https://github.com/android/ndk/issues/1755
 
 **/etc/wsl.conf** :
 
