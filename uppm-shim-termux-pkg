@@ -1,0 +1,57 @@
+#!/bin/sh
+
+set -ex
+
+pkg() {
+    if [ "$(id -u)" -eq 0 ] ; then
+        command      pkg "$@"
+    else
+        command sudo pkg "$@"
+    fi
+}
+
+package_name_transform_from_uppm_to_pkg() {
+    case $1 in
+        gm4)      printf '%s\n' 'm4'        ;;
+        gsed)     printf '%s\n' 'sed'       ;;
+        gtar)     printf '%s\n' 'tar'       ;;
+        gmake)    printf '%s\n' 'make'      ;;
+        xz)       printf '%s\n' 'xz-utils'  ;;
+        bsdtar)   printf '%s\n' 'libarchive';;
+        *)        printf '%s\n' "$1"
+    esac
+}
+
+main() {
+    case $1 in
+        about)
+            ;;
+        update)
+            pkg update
+            ;;
+        install)
+            shift 1
+            for UPPM_PACKAGE_NAME in "$@"
+            do
+                BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkg "$UPPM_PACKAGE_NAME")"
+                pkg install -y "$BREW_PACKAGE_NAME"
+            done
+            ;;
+        is-installed)
+            shift 1
+            BREW_PACKAGE_NAME="$(package_name_transform_from_uppm_to_pkg "$1")"
+            pkg info "$BREW_PACKAGE_NAME" 2>/dev/null
+            ;;
+        info)
+            shift 1
+            case $2 in
+                installed-dir)
+                    printf '%s\n' '/data/data/com.termux/files/usr'
+                    ;;
+            esac
+            ;;
+        *)  pkg "$@"
+    esac
+}
+
+main "$@"

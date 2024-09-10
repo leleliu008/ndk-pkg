@@ -9167,6 +9167,8 @@ if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
     LV="$(getprop ro.build.version.sdk)"
     export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/fpliu1214/uppm-package-repository-android-$LV-aarch64"
 
+    export CURLOPT_DNS_SERVERS='1.1.1.1,8.8.8.8'
+
     bsdtar() {
         # https://github.com/termux/termux-packages/issues/1054
         proot --link2symlink "$UPPM_HOME/installed/bsdtar/bin/bsdtar" "$@"
