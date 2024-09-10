@@ -21,7 +21,7 @@ Please read these caveats carefully before starting to use this software.
 |[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||||
 |[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||✔︎||
 
-**Note:**
+**Notes** :
 
 - This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to a cmake error: `CMake: Builds hosted on 'CYGWIN' not supported.`, for the reason please refer to [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L278-L300). If you really want to use this software on [Windows](https://www.microsoft.com/en-us/windows/), please use via [Docker](https://www.docker.com/) or [WSL](https://docs.microsoft.com/en-us/windows/wsl/) instead.
 
@@ -73,10 +73,10 @@ docker exec -it ndk-pkg ndk-pkg setup
 docker exec -it ndk-pkg ndk-pkg update
 ```
 
-If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package:
+If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package for target `android-34-arm64-v8a`:
 
 ```bash
-docker exec -it ndk-pkg ndk-pkg install android-34-arm64-v8a/curl
+docker exec -it ndk-pkg ndk-pkg install curl --target=android-34-arm64-v8a
 ```
 
 **Note:** you can use `podman` instead of `docker`
