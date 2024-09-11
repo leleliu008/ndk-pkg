@@ -9088,14 +9088,20 @@ Caveats
 
 This software is being actively developed. It's in beta stage and may not be stable. Some features are subject to change without notice.
 
-This software can NOT run on Android, musl-libc based GNU/Linux, FreeBSD, OpenBSD, NetBSD due to lack of Android NDK for these platforms.
-
-This software can NOT run on Cygwin and MSYS2 due to CMake: Builds hosted on 'CYGWIN' not supported. Android-Determine.cmake
-
 Please do NOT place your own files under ~/.ndk-pkg directory, as ndk-pkg will change files under ~/.ndk-pkg directory without notice.
 
 Please do NOT run ndk-pkg command in parallel so as not to generate dirty data.
     "
+
+    if [ "$(uname -s)" = Linux ] ; then
+        if [ -f /etc/os-release ] ; then
+            .   /etc/os-release
+        fi
+
+        if [ "$ID" = alpine ] ; then
+            printf 'Due to Android NDK for Linux is linked dynamically against glibc, hence you might need to install glibc by yourself on this system(alpine-%s), to achieve this, please refer to https://wiki.alpinelinux.org/wiki/Running_glibc_programs\n\n' "$VERSION_ID"
+        fi
+    fi
 
     if [ -z "$1" ] ; then
         exit
