@@ -356,7 +356,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ```
     This command needs `curl` or `wget`, `tar`, `xz` have installed.
 
-    This command is actually to do two things:
+    This command is mainly doing two things:
 
   - install [uppm](https://github.com/leleliu008/uppm) to `~/.ndk-pkg/core`
   - install other essential tools (listed below) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
@@ -723,9 +723,9 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`pkgtype`|optional|indicates what type of this package. value shall be any one of `exe`, `pie`, `lib`, `exe+lib`.<br>To `exe` type package, `ndk-pkg` would add `--static -static` options to `LDFLAGS` if `--static` install option is given.<br>To `pie` type package, it means that it doesn't support fully statically linking, it is supposed to be dynamically linked.<br>If this mapping is not present, `ndk-pkg` will determine the package type by package name, if a package name starts/ends with `lib`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
 |`summary`|required|describe this package in one sentence.|
 |`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
-|`version`|optional|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|
+|`version`|optional|the version of this package.<br>If this mapping is not present, it will be extracted from `src-url` if present, otherwise it will be calculated by running command `date +%Y.%m.%d`|
 ||||
-|`web-url`|optional|the home webpage of this package.<br>If this mapping is not present, `git-url` must be present.|
+|`web-url`|optional|the home webpage of this package.<br>If this mapping is not present, use `git-url` if present, otherwise extract from `src-url`.|
 ||||
 |`git-url`|optional|the source code git repository.<br>If `src-url` is not present, this mapping must be present.|
 |`git-ref`|optional|reference: <https://git-scm.com/book/en/v2/Git-Internals-Git-References> <br>example values: `HEAD` `refs/heads/master` `refs/heads/main` `refs/tags/v1`, default value is `HEAD`|
