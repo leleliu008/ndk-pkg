@@ -1398,6 +1398,7 @@ filetype_from_url() {
         case $PACKAGE_NAME in
             lib*)   PACKAGE_PKGTYPE=lib ;;
             *lib)   PACKAGE_PKGTYPE=lib ;;
+            *-dev)  PACKAGE_PKGTYPE=lib ;;
                *)
                 # https://github.com/golang/go/issues/59942
                 if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
