@@ -348,7 +348,11 @@ wfetch() {
             fi
 
             if [ -n "$SSL_CERT_FILE" ] ; then
-                CURL_OPTIONS="--cacert $SSL_CERT_FILE"
+                CURL_OPTIONS="$CURL_OPTIONS --cacert $SSL_CERT_FILE"
+            fi
+
+            if [ -n "$CURL_DNS_SERVERS" ] ; then
+                CURL_OPTIONS="$CURL_OPTIONS --dns-servers $CURL_DNS_SERVERS"
             fi
 
             run "curl $CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
@@ -9197,16 +9201,20 @@ if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
     export  UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
 fi
 
+unset CURL_DNS_SERVERS
+
 if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
     LV="$(getprop ro.build.version.sdk)"
     export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/fpliu1214/uppm-package-repository-android-$LV-aarch64"
 
     export CURLOPT_DNS_SERVERS='1.1.1.1,8.8.8.8'
 
-    unset TERMUX
+    CURL_DNS_SERVERS='1.1.1.1,8.8.8.8'
 
     if command -v termux-info > /dev/null ; then
         TERMUX=1
+    else
+        unset TERMUX
     fi
 fi
 
