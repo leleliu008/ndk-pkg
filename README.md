@@ -89,13 +89,10 @@ chmod a+x ndk-pkg
 ./ndk-pkg setup
 ```
 
-## Install ndk-pkg via wget
+Please try the following URLs if above url is not reachable:
 
-```bash
-wget https://cdn.jsdelivr.net/gh/leleliu008/ndk-pkg/ndk-pkg
-chmod a+x ndk-pkg
-./ndk-pkg setup
-```
+- https://gitee.com/fpliu/ndk-pkg/raw/master/ndk-pkg
+- https://cdn.jsdelivr.net/gh/leleliu008/ndk-pkg/ndk-pkg
 
 ## Install ndk-pkg via git
 

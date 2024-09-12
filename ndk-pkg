@@ -5528,24 +5528,49 @@ $DOT_CONTENT
 
     unset PACKAGE_DEP_UPP_OPENSSL
 
-    for item in $PACKAGE_DEP_UPP
-    do
-        case $item in
-            perl)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ; PACKAGE_DEP_UPP_OPENSSL=1 ;;
-            texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            help2man) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            swig)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            libz)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-            *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
-        esac
-    done
+    unset TERMUX_PKGS
+
+    if [ "$TERMUX" = 1 ] ; then
+        TERMUX_PKGS="$PACKAGE_DEP_PLM_T1"
+
+        for item in $PACKAGE_DEP_UPP
+        do
+            case $item in
+                perl)     TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                openssl)  TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                texinfo)  TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                help2man) TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                intltool) TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                ruby)     TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                swig)     TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                libtool)  TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                autoconf) TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                automake) TERMUX_PKGS="$TERMUX_PKGS $item" ;;
+                python3)  TERMUX_PKGS="$TERMUX_PKGS python";;
+                libz)     TERMUX_PKGS="$TERMUX_PKGS zlib"  ;;
+                *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
+            esac
+        done
+    else
+        for item in $PACKAGE_DEP_UPP
+        do
+            case $item in
+                perl)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ; PACKAGE_DEP_UPP_OPENSSL=1 ;;
+                texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                help2man) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                swig)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                libz)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
+            esac
+        done
+    fi
 
     #########################################################################################
 
@@ -5594,6 +5619,8 @@ $DOT_CONTENT
             fi
         done
     }
+
+    [ -n "$TERMUX_PKGS" ] && run pkg install -y "$TERMUX_PKGS"
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
         PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq | tr '\n' ' ')"

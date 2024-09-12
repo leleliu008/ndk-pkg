@@ -25,6 +25,7 @@ package_name_transform_from_uppm_to_pkg() {
 main() {
     case $1 in
         about)
+            termux-info
             ;;
         update)
             pkg update
