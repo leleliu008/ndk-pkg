@@ -661,6 +661,14 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
+- **NDKPKG_DNS_SERVERS**
+
+    DNS servers to be used instead of the system default.
+
+    ```bash
+    export NDKPKG_DNS_SERVERS='1.1.1.1,8.8.8.8'
+    ```
+
 - **NDKPKG_XTRACE**
 
     For debugging purposes.
