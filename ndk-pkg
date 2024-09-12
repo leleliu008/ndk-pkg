@@ -5531,8 +5531,6 @@ $DOT_CONTENT
     unset TERMUX_PKGS
 
     if [ "$TERMUX" = 1 ] ; then
-        TERMUX_PKGS="$PACKAGE_DEP_PLM_T1"
-
         for item in $PACKAGE_DEP_UPP
         do
             case $item in
@@ -9161,7 +9159,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.14.3
+NDKPKG_VERSION=0.14.4
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9209,12 +9207,6 @@ if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
 
     if command -v termux-info > /dev/null ; then
         TERMUX=1
-
-        bsdtar() {
-            # https://github.com/termux/termux-packages/issues/1054
-            run pkg install -y proot
-            run proot --link2symlink "$UPPM_HOME/installed/bsdtar/bin/bsdtar" "$@"
-        }
     fi
 fi
 
