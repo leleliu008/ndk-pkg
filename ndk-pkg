@@ -1027,6 +1027,7 @@ filetype_from_url() {
     unset PACKAGE_BSYSTEM
     unset PACKAGE_BSYSTEM_MASTER
 
+    unset PACKAGE_USE_BSYSTEM_WAF
     unset PACKAGE_USE_BSYSTEM_GO
     unset PACKAGE_USE_BSYSTEM_RAKE
     unset PACKAGE_USE_BSYSTEM_NINJA
@@ -1304,6 +1305,7 @@ filetype_from_url() {
                     gmakew)       PACKAGE_BSYSTEM=gmake ; break ;;
                     cargow)       PACKAGE_BSYSTEM=cargo ; break ;;
                     go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
+                    waf)          PACKAGE_BSYSTEM=waf   ; break ;;
                 esac
             done
         fi
@@ -1330,6 +1332,7 @@ filetype_from_url() {
             rake)        PACKAGE_USE_BSYSTEM_RAKE=1      ;;
             cargo)       PACKAGE_USE_BSYSTEM_CARGO=1     ;;
             go)          PACKAGE_USE_BSYSTEM_GO=1        ;;
+            waf)         PACKAGE_USE_BSYSTEM_WAF=1       ;;
         esac
     done
 
@@ -1347,6 +1350,7 @@ filetype_from_url() {
             gmake)     PACKAGE_DOBUILD='gmakew clean && gmakew && gmakew install' ;;
             cargo)     PACKAGE_DOBUILD='cargow install' ;;
             go)        PACKAGE_DOBUILD='gow' ;;
+            waf)       PACKAGE_DOBUILD='waf' ;;
         esac
     }
 
@@ -1371,9 +1375,11 @@ filetype_from_url() {
     [ "$PACKAGE_USE_BSYSTEM_NINJA"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"
     [ "$PACKAGE_USE_BSYSTEM_RAKE"      = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"
     [ "$PACKAGE_USE_BSYSTEM_GO"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
+    [ "$PACKAGE_USE_BSYSTEM_WAF"       = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
 
     #########################################################################################
 
+    [ "$PACKAGE_USE_BSYSTEM_WAF"   = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_GO"    = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && PACKAGE_BINBSTD=1
     [ "$PACKAGE_USE_BSYSTEM_XMAKE" = 1 ] && PACKAGE_BINBSTD=1
@@ -7652,8 +7658,26 @@ cargow() {
     esac
 }
 
-# run in a subshell
-configure_only() {
+# }}}
+##############################################################################
+# {{{ waf
+
+waf() {
+    run python3 ./waf "$@"
+}
+
+# }}}
+##############################################################################
+# {{{ configure
+
+configure() {
+    unset CONFIGURE_ONLY
+
+    if [ "$1" = only ] ; then
+        CONFIGURE_ONLY=1
+        shift
+    fi
+
     if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
         if run "$PACKAGE_BSCRIPT_DIR"/configure \
             --prefix="$PACKAGE_INSTALL_DIR" \
@@ -7947,14 +7971,12 @@ configure_only() {
         done
         unset Makefile
     fi
-}
 
-# run in a subshell
-configure() {
-    configure_only "$@"
-    gmakew clean
-    gmakew
-    gmakew install
+    if [ "$CONFIGURE_ONLY" != 1 ] ; then
+        gmakew clean
+        gmakew
+        gmakew install
+    fi
 }
 
 # gmake wrapper
@@ -9163,7 +9185,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.14.4
+NDKPKG_VERSION=0.14.5
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9200,6 +9222,8 @@ export UPPM_HOME="$NDKPKG_HOME/uppm"
 if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
     export  UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
 fi
+
+unset CURLOPT_DNS_SERVERS
 
 if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
     LV="$(getprop ro.build.version.sdk)"
