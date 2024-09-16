@@ -4658,6 +4658,11 @@ inspect_install_arguments() {
                 ;;
             --profile=*)
                 PROFILE="${1#*=}"
+                case $PROFILE in
+                    '') abort 1 "--profile=<VALUE>, VALUE should not be empty." ;;
+                    debug|release) ;;
+                    *)  abort 1 "--profile=<VALUE>, VALUE must be either debug or release" ;;
+                esac
                 ;;
             --ndk-home=*)
                 ANDROID_NDK_HOME="${1#*=}"
