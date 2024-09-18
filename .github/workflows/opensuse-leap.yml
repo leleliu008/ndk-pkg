@@ -18,6 +18,9 @@ jobs:
     container: opensuse/leap:${{ matrix.tag }}
 
     steps:
+      - run: zypper update  -y
+      - run: zypper install -y curl tar xz gcc-c++ git
+
       - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help

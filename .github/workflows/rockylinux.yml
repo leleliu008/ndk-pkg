@@ -18,12 +18,6 @@ jobs:
     container: rockylinux:${{ matrix.tag }}
 
     steps:
-      - run: dnf -y update
-      - run: dnf -y install xz gcc-c++ git
-      - run:  |
-          command -v curl > /dev/null || dnf -y install curl
-          #https://bugs.launchpad.net/tripleo/+bug/1953156
-
       - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help

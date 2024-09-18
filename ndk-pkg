@@ -8574,7 +8574,10 @@ __setup_linuxmint() {
 
 __setup_rocky() {
     $sudo dnf -y update
-    $sudo dnf -y install curl tar xz gcc-c++
+    $sudo dnf -y install tar xz gcc-c++
+
+    # https://bugs.launchpad.net/tripleo/+bug/1953156
+    command -v curl > /dev/null || dnf -y install curl
 }
 
 __setup_centos() {
