@@ -510,25 +510,20 @@ version_match() {
 ##############################################################################
 # {{{ ndk-pkg formula-repo-add
 
-# __create_a_formula_repository_then_sync_it <REPO-NAME> <REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]
-  __create_a_formula_repository_then_sync_it() {
+# __create_a_formula_repository <REPO-NAME> <REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable --sync]
+  __create_a_formula_repository() {
     [ -z "$1" ] && abort 1 "please specify a repository name."
     [ -z "$2" ] && abort 1 "please specify a repository url."
 
     FORMULA_REPO_NAME="$1"
     FORMULA_REPO_URL="$2"
 
-    if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
-        GIT_FETCH_URL="$FORMULA_REPO_URL"
-    else
-        GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$FORMULA_REPO_URL")"
-    fi
-
     shift 2
 
     FORMULA_REPO_BRANCH=
     FORMULA_REPO_PINNED=
     FORMULA_REPO_ENABLED=
+    FORMULA_REPO_SYNC=
 
     while [ -n "$1" ]
     do
@@ -547,6 +542,9 @@ version_match() {
                 ;;
             --disable)
                 FORMULA_REPO_ENABLED=0
+                ;;
+            --sync)
+                FORMULA_REPO_SYNC=1
                 ;;
             *)  abort 1 "unrecognized argument: $1"
         esac
@@ -571,89 +569,21 @@ version_match() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    run git -c init.defaultBranch=master init
-    run git remote add origin "$GIT_FETCH_URL"
-    run git -c protocol.version=2 fetch --progress origin "+refs/heads/$FORMULA_REPO_BRANCH:refs/remotes/origin/$FORMULA_REPO_BRANCH"
-    run git checkout --progress --force -B "$FORMULA_REPO_BRANCH" "refs/remotes/origin/$FORMULA_REPO_BRANCH"
+    if [ "$FORMULA_REPO_SYNC" = 1 ] ; the
+        if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
+            GIT_FETCH_URL="$FORMULA_REPO_URL"
+        else
+            GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$FORMULA_REPO_URL")"
+        fi
 
-    cat > .ndk-pkg-formula-repo.yml <<EOF
-url: $FORMULA_REPO_URL
-branch: $FORMULA_REPO_BRANCH
-pinned: $FORMULA_REPO_PINNED
-enabled: $FORMULA_REPO_ENABLED
-created: $TIMESTAMP_UNIX
-EOF
-
-    run install -d        "$NDKPKG_FORMULA_REPO_ROOT"
-    run mv "$SESSION_DIR" "$NDKPKG_FORMULA_REPO_ROOT/"
-}
-
-# }}}
-##############################################################################
-# {{{ ndk-pkg formula-repo-init
-
-# __create_a_formula_repository <REPO-NAME> <REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]
-  __create_a_formula_repository() {
-    [ -z "$1" ] && abort 1 "please specify a repository name."
-    [ -z "$2" ] && abort 1 "please specify a repository url."
-
-    FORMULA_REPO_NAME="$1"
-
-    if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
-        FORMULA_REPO_URL="$2"
+        run git -c init.defaultBranch=master init
+        run git remote add origin "$GIT_FETCH_URL"
+        run git -c protocol.version=2 fetch --progress origin "+refs/heads/$FORMULA_REPO_BRANCH:refs/remotes/origin/$FORMULA_REPO_BRANCH"
+        run git checkout --progress --force -B "$FORMULA_REPO_BRANCH" "refs/remotes/origin/$FORMULA_REPO_BRANCH"
     else
-        FORMULA_REPO_URL="$("$NDKPKG_URL_TRANSFORM" "$2")"
+        run git -c init.defaultBranch=master init
+        run git remote add origin "$FORMULA_REPO_URL"
     fi
-
-    shift 2
-
-    FORMULA_REPO_BRANCH=
-    FORMULA_REPO_PINNED=
-    FORMULA_REPO_ENABLED=
-
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --branch=*)
-                FORMULA_REPO_BRANCH="${1#*=}"
-                ;;
-            --pin)
-                FORMULA_REPO_PINNED=1
-                ;;
-            --unpin)
-                FORMULA_REPO_PINNED=0
-                ;;
-            --enable)
-                FORMULA_REPO_ENABLED=1
-                ;;
-            --disable)
-                FORMULA_REPO_ENABLED=0
-                ;;
-            *)  abort 1 "unrecognized argument: $1"
-        esac
-        shift
-    done
-
-    FORMULA_REPO_BRANCH="${FORMULA_REPO_BRANCH:-master}"
-    FORMULA_REPO_PINNED="${FORMULA_REPO_PINNED:-1}"
-    FORMULA_REPO_ENABLED="${FORMULA_REPO_ENABLED:-1}"
-
-    FORMULA_REPO_PATH="$NDKPKG_HOME/repos.d/$FORMULA_REPO_NAME"
-
-    if [ -d "$FORMULA_REPO_PATH" ] ; then
-        abort 1 "formula repository '$FORMULA_REPO_NAME' already exists."
-    fi
-
-    printf '%b\n' "${COLOR_PURPLE}==> ndk-pkg formula repository${COLOR_OFF} ${COLOR_GREEN}$FORMULA_REPO_NAME${COLOR_OFF} ${COLOR_PURPLE} is being created${COLOR_OFF}"
-
-    SESSION_DIR="$NDKPKG_HOME/run/$$/$FORMULA_REPO_NAME"
-
-    run rm -rf     "$SESSION_DIR"
-    run install -d "$SESSION_DIR"
-    run cd         "$SESSION_DIR"
-
-    run git -c init.defaultBranch=master init
-    run git remote add origin "$FORMULA_REPO_URL"
 
     cat > .ndk-pkg-formula-repo.yml <<EOF
 url: $FORMULA_REPO_URL
@@ -840,7 +770,7 @@ __sync_available_formula_repositories() {
     }
 
     [ -d "$NDKPKG_FORMULA_REPO_ROOT/official-core" ] || {
-        __create_a_formula_repository_then_sync_it official-core "$NDKPKG_OFFICIAL_FORMULA_REPO_URL"
+        __create_a_formula_repository official-core "$NDKPKG_OFFICIAL_FORMULA_REPO_URL" --sync
     }
 }
 
@@ -8817,11 +8747,8 @@ ${COLOR_GREEN}ndk-pkg cleanup${COLOR_OFF}
     delete the unused cached files.
 
 
-${COLOR_GREEN}ndk-pkg formula-repo-init <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]${COLOR_OFF}
-    create a new empty formula repository.
-
-${COLOR_GREEN}ndk-pkg formula-repo-add  <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable]${COLOR_OFF}
-    create a new empty formula repository then sync with server.
+${COLOR_GREEN}ndk-pkg formula-repo-add  <FORMULA-REPO-NAME> <FORMULA-REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable --sync]${COLOR_OFF}
+    create a new empty formula repository. If --sync option is given, sync with the server after the formula repo is created.
 
 ${COLOR_GREEN}ndk-pkg formula-repo-del  <FORMULA-REPO-NAME>${COLOR_OFF}
     delete the given formula repository.
@@ -9506,15 +9433,6 @@ case $1 in
     formula-repo-info) shift; __info_the_given_formula_repository "$@" ;;
     formula-repo-conf) shift; __conf_the_given_formula_repository "$@" ;;
     formula-repo-sync) shift; __sync_the_given_formula_repository "$@" ;;
-    formula-repo-init)
-        shift
-
-        case $1 in
-            official-*) abort 1 "ndk-pkg formula repository name that starts with 'official-' is reserved for ndk-pkg official formula repository, please use other name."
-        esac
-
-        __create_a_formula_repository "$@"
-        ;;
     formula-repo-add)
         shift
 
@@ -9522,7 +9440,7 @@ case $1 in
             official-*) abort 1 "ndk-pkg formula repository name that starts with 'official-' is reserved for ndk-pkg official formula repository, please use other name."
         esac
 
-        __create_a_formula_repository_then_sync_it "$@"
+        __create_a_formula_repository "$@"
         ;;
     formula-repo-del)
         shift

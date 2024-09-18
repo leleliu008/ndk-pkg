@@ -511,8 +511,12 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
     ```bash
     ndk-pkg formula-repo-add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository-my_repo
-    ndk-pkg formula-repo-add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository-my_repo master
-    ndk-pkg formula-repo-add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository-my_repo main
+    ndk-pkg formula-repo-add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository-my_repo --branch=master
+    ndk-pkg formula-repo-add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository-my_repo --branch=main
+
+    ndk-pkg formula-repo-add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository-my_repo --sync
+    ndk-pkg formula-repo-add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository-my_repo --sync --branch=master
+    ndk-pkg formula-repo-add my_repo https://github.com/leleliu008/ndk-pkg-formula-repository-my_repo --sync --branch=main
     ```
 
 - **delete a existing formula repository**
@@ -956,9 +960,7 @@ If a ndk-pkg formula repository is `disabled`, which means ndk-pkg would not sea
 
 ## ndk-pkg formula repository management
 
-run `ndk-pkg formula-repo-add ` command to create a new formula repository locally from an exsting remote git repository.
-
-run `ndk-pkg formula-repo-init` command to create a new formula repository locally without taking any further action.
+run `ndk-pkg formula-repo-add ` command to create a new formula repository locally.
 
 ## ndk-pkg official formula repository
 

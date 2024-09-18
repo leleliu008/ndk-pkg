@@ -19,8 +19,7 @@ _ndk_pkg_actions=(
     'search:search all available packages whose name matches the given regular expression pattern.'
     'info-available:show information of the given available package.'
     'info-installed:show information of the given installed package.'
-    'formula-repo-init:create a new empty formula repository.'
-    'formula-repo-add:create a new empty formula repository then sync with server.'
+    'formula-repo-add:create a new empty formula repository.'
     'formula-repo-del:delete the given formula repository from your local cache.'
     'formula-repo-sync:sync the given formula repository.'
     'formula-repo-conf:change the config of the given formula repository.'
@@ -90,18 +89,7 @@ function _ndk_pkg() {
                         '1:formula-repo-name:(name)' \
                         '2:formula-repo-url:(https://)' \
                         '--branch=-[specify the formula repo branch]' \
-                        + '(pin)' \
-                        '--pin[set pinned to 1]' \
-                        '--unpin[set pinned to 0]' \
-                        + '(enable)' \
-                        '--enable[set enabled to 1]' \
-                        '--disable[set enabled to 0]'
-                    ;;
-                formula-repo-init)
-                    _arguments \
-                        '1:formula-repo-name:(name)' \
-                        '2:formula-repo-url:(https://)' \
-                        '--branch=-[specify the formula repo branch]' \
+                        '--sync[sync with the server after the formula repo is created]' \
                         + '(pin)' \
                         '--pin[set pinned to 1]' \
                         '--unpin[set pinned to 0]' \
