@@ -18,9 +18,6 @@ jobs:
     container: fedora:${{ matrix.tag }}
 
     steps:
-      - run: dnf -y update
-      - run: dnf -y install curl xz g++ git
-
       - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help

@@ -52,7 +52,7 @@ For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-
 mkdir -p ~/ndk-pkg-home
 mkdir -p ~/.m2
 
-docker create -it --name ndk-pkg -v ~/ndk-pkg-home:/root/.ndk-pkg -v ~/.m2:/root/.m2 fpliu/ndk-pkg
+docker create -it --name ndk-pkg -v ~/ndk-pkg-home:/root/.ndk-pkg -v ~/.m2:/root/.m2 ubuntu:24.04
 ```
 
 **step2. start the ndk-pkg docker container**
@@ -351,10 +351,9 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ```bash
     ndk-pkg setup
     ```
-    This command needs `curl` or `wget`, `tar`, `xz` have installed.
+    This command is mainly doing the following things:
 
-    This command is mainly doing two things:
-
+  - install `curl`, `tar`, `xz`, `g++` commands via your system's package manager
   - install [uppm](https://github.com/leleliu008/uppm) to `~/.ndk-pkg/core`
   - install other essential tools (listed below) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
 

@@ -19,11 +19,6 @@ jobs:
     container: ubuntu:${{ matrix.version }}
 
     steps:
-      - run: export -p
-
-      - run: apt -y update
-      - run: apt -y install curl xz-utils g++ git
-
       - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help

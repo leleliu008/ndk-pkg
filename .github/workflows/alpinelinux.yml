@@ -13,14 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: ['3.18', '3.17', '3.16','3.19']
+        tag: ['3.19', '3.18', '3.17', '3.16']
 
     container: alpine:${{ matrix.tag }}
 
     steps:
-      - run: apk update
-      - run: apk add gcompat g++ libc-dev linux-headers
-
       - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help

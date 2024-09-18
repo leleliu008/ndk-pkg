@@ -13,9 +13,6 @@ jobs:
     container: manjarolinux/base
 
     steps:
-      - run: pacman -Syyuu --noconfirm
-      - run: pacman -S     --noconfirm gcc git
-
       - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help

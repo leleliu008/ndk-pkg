@@ -13,8 +13,6 @@ jobs:
     container: madhacking/gentoo
 
     steps:
-      - run: emerge net-misc/curl sys-devel/gcc dev-vcs/git
-
       - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help

@@ -8557,6 +8557,70 @@ EOF
 ##############################################################################
 # {{{ ndk-pkg setup
 
+__setup_debian() {
+    $sudo apt-get -y update
+    $sudo apt-get -y install curl tar xz-utils g++
+}
+
+__setup_ubuntu() {
+    $sudo apt-get -y update
+    $sudo apt-get -y install curl tar xz-utils g++
+}
+
+__setup_linuxmint() {
+    $sudo apt-get -y update
+    $sudo apt-get -y install curl tar xz-utils g++
+}
+
+__setup_rocky() {
+    $sudo dnf -y update
+    $sudo dnf -y install curl tar xz gcc-c++
+}
+
+__setup_centos() {
+    $sudo dnf -y update
+    $sudo dnf -y install curl tar xz gcc-c++
+}
+
+__setup_fedora() {
+    $sudo dnf -y update
+    $sudo dnf -y install curl tar xz g++
+}
+
+__setup_rhel() {
+:
+}
+
+__setup_opensuse_leap() {
+    $sudo zypper update  -y
+    $sudo zypper install -y curl tar xz gcc-c++
+}
+
+__setup_gentoo() {
+    $sudo emerge net-misc/curl sys-devel/gcc
+}
+
+__setup_manjaro() {
+    $sudo pacman -Syyuu --noconfirm
+    $sudo pacman -S     --noconfirm curl gcc
+}
+
+__setup_arch() {
+    $sudo pacman -Syyuu --noconfirm
+    $sudo pacman -S     --noconfirm curl gcc
+}
+
+__setup_void() {
+    $sudo xbps-install -Syu xbps
+    $sudo xbps-install -S
+    $sudo xbps-install -Syu curl tar xz gcc
+}
+
+__setup_alpine() {
+    $sudo apk update
+    $sudo apk add gcompat g++
+}
+
 __setup() {
     unset NATIVE_OS_ARCH
     unset NATIVE_OS_VERS
@@ -8583,6 +8647,20 @@ __setup() {
             else
                 NATIVE_OS_ARCH="$(uname -m)"
                 NATIVE_OS_TARGET="linux-$NATIVE_OS_ARCH"
+
+                if [ -f /etc/os-release ] ; then
+                    .   /etc/os-release
+
+                    if [ "$ID" = 'opensuse-leap' ] ; then
+                        ID='opensuse_leap'
+                    fi
+
+                    if [ "$(id -u)" -ne 0 ] ; then
+                        sudo=sudo
+                    fi
+
+                    __setup_$ID
+                fi
             fi
     esac
 

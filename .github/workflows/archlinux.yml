@@ -13,9 +13,6 @@ jobs:
     container: archlinux
 
     steps:
-      - run: pacman -Syyuu --noconfirm
-      - run: pacman -S     --noconfirm curl gcc git
-
       - uses: actions/checkout@v4
 
       - run: ./ndk-pkg --help
