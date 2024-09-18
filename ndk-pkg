@@ -569,7 +569,7 @@ version_match() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    if [ "$FORMULA_REPO_SYNC" = 1 ] ; the
+    if [ "$FORMULA_REPO_SYNC" = 1 ] ; then
         if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
             GIT_FETCH_URL="$FORMULA_REPO_URL"
         else
