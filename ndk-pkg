@@ -8551,7 +8551,7 @@ __setup_void() {
 
 __setup_alpine() {
     $sudo apk update
-    $sudo apk add gcompat g++
+    $sudo apk add gcompat g++ linux-headers
 }
 
 __setup() {

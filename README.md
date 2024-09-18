@@ -25,8 +25,6 @@ Please read these caveats carefully before starting to use this software.
 
 - This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to a cmake error: `CMake: Builds hosted on 'CYGWIN' not supported.`, for the reason please refer to [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L278-L300). If you really want to use this software on [Windows](https://www.microsoft.com/en-us/windows/), please use via [Docker](https://www.docker.com/) or [WSL](https://docs.microsoft.com/en-us/windows/wsl/) instead.
 
-- Due to Android NDK for Linux is linked dynamically against [glibc](http://www.gnu.org/software/libc/), hence you might need to install [glibc](http://www.gnu.org/software/libc/) by yourself if you run this software on [musl-libc](http://musl.libc.org/) based [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html), as to Alpine Linux, please refer to https://wiki.alpinelinux.org/wiki/Running_glibc_programs
-
 ## Using ndk-pkg via GitHub Actions
 
 This is the recommended way of using this software.
@@ -61,13 +59,21 @@ docker create -it --name ndk-pkg -v ~/ndk-pkg-home:/root/.ndk-pkg -v ~/.m2:/root
 docker start ndk-pkg
 ```
 
-**step3. install essential tools**
+**step3. install ndk-pkg**
+
+```bash
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
+chmod a+x ndk-pkg
+docker cp ndk-pkg ndk-pkg:/usr/bin/
+```
+
+**step4. install essential tools**
 
 ```bash
 docker exec -it ndk-pkg ndk-pkg setup
 ```
 
-**step4. update formula repositories**
+**step5. update formula repositories**
 
 ```bash
 docker exec -it ndk-pkg ndk-pkg update
