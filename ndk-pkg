@@ -8247,18 +8247,18 @@ EOF
 
     MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$PROFILE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD --cross-file=$MESON_CROSS_FILE -Dlibdir=lib"
 
-    MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
-
     if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
-        MESON_SETUP_ARGS="$MESON_SETUP_ARGS --prefer-static"
-    fi
-
-    if [ "$VERBOSE_MESON" = 1 ] ; then
-        MESON_COMPILE_ARGS="$MESON_COMPILE_ARGS -v"
+        MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=static --prefer-static"
+    else
+        MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
     fi
 
     MESON_COMPILE_ARGS="-C $PACKAGE_BCACHED_DIR -j $BUILD_NJOBS"
     MESON_INSTALL_ARGS="-C $PACKAGE_BCACHED_DIR"
+
+    if [ "$VERBOSE_MESON" = 1 ] ; then
+        MESON_COMPILE_ARGS="$MESON_COMPILE_ARGS -v"
+    fi
 
     run "$MESON" setup   "$MESON_SETUP_ARGS" "$@" "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR" &&
     run "$MESON" compile "$MESON_COMPILE_ARGS" &&
