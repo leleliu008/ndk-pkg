@@ -6139,6 +6139,15 @@ $PACKAGE_DO12345
 
     ##############################################
 
+    for item in $PACKAGE_LDFLAGS
+    do
+        case $item in
+            -l*) ANDROID_NDK_COMPILER_ARGS="$ANDROID_NDK_COMPILER_ARGS $item"
+        esac
+    done
+
+    ##############################################
+
     CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
     XXFLAGS="$(printf '%s\n' "$XXFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
     LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
