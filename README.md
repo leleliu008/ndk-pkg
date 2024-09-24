@@ -44,7 +44,7 @@ For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-
 
 ## Using ndk-pkg via [Docker](https://www.docker.com/)
 
-This is the recommended way of using this software due to docker container is an isolated environment where the running process can not be affected by your host system's environemt variables.
+This is the recommended way of using this software if you prefer to use this software locally due to docker container is an isolated environment where the running process can not be affected by your host system's environemt variables.
 
 **step1. create the ndk-pkg docker container**
 
