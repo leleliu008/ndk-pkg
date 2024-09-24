@@ -132,13 +132,12 @@ mountFsTab = true
 **installation instructions** :
 
 ```bash
-# If you want to store ndk-pkg generated data to D:\ partition to share with your Windows
-mkdir  /mnt/d/ndk-pkg
-ln -sf /mnt/d/ndk-pkg ~/.ndk-pkg
+# If you want to store ndk-pkg generated data to D:\ partition
+export NDKPKG_HOME=/mnt/d/ndk-pkg
 
 # If you use Ubuntu or Debian distribution
 sudo apt -y update
-sudo apt -y install curl xz-utils g++
+sudo apt -y install curl
 
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 chmod a+x ndk-pkg
