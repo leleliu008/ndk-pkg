@@ -4920,12 +4920,6 @@ __install_the_given_package() {
 
     #########################################################################################
 
-    # these two variable might be set in formula file to control cmakew's behavor
-    unset CMAKE_BUILD_TARGETS
-    unset CMAKE_INSTALL_COMPONENTS
-
-    #########################################################################################
-
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         cat <<EOF
      TIMESTAMP_UNIX = $TIMESTAMP_UNIX
@@ -7984,15 +7978,58 @@ gmakew() {
     fi
 }
 
-cmakew_parse_args() {
+# cmakew [2] [--targets=<comma-separated list>] [--components=<comma-separated list>] [CMAKE-OPTIONS]
+cmakew() {
+    unset CMAKE_EXTRA_ARGS
+    unset CMAKE_BUILD_TARGETS
+    unset CMAKE_INSTALL_COMPONENTS
+    unset CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY
+
+    if [ "$1" = 2 ] ; then
+        CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY=1
+        shift
+    fi
+
     while [ -n "$1" ]
     do
         case $1 in
             -S) shift; PACKAGE_BSCRIPT_DIR="$1" ;;
             -B) shift; PACKAGE_BCACHED_DIR="$1" ;;
+            --targets=*)
+                TARGETS="${1#*=}"
+
+                export IFS=','
+
+                for item in $TARGETS
+                do
+                    CMAKE_BUILD_TARGETS="$CMAKE_BUILD_TARGETS $item"
+                done
+
+                unset IFS
+                ;;
+            --components=*)
+                COMPONENTS="${1#*=}"
+
+                export IFS=','
+
+                for item in $COMPONENTS
+                do
+                    CMAKE_INSTALL_COMPONENTS="$CMAKE_INSTALL_COMPONENTS $item"
+                done
+
+                unset IFS
+                ;;
+            *)  CMAKE_EXTRA_ARGS="$CMAKE_EXTRA_ARGS $1"
         esac
         shift
     done
+
+    if [ "$CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY" = 1 ] ; then
+        cmakew_internal $CMAKE_EXTRA_ARGS -DBUILD_SHARED_LIBS=OFF
+        cmakew_internal $CMAKE_EXTRA_ARGS -DBUILD_SHARED_LIBS=ON
+    else
+        cmakew_internal $CMAKE_EXTRA_ARGS
+    fi
 }
 
 # https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html#cross-compiling
@@ -8005,9 +8042,7 @@ cmakew_parse_args() {
 # https://cmake.org/cmake/help/latest/command/enable_testing.html?highlight=build_testing
 # https://developer.android.com/ndk/guides/cmake
 # run in a subshell
-cmakew() {
-    cmakew_parse_args "$@"
-
+cmakew_internal() {
     if [ "$BUILD_FOR_NATIVE" = 1 ] ; then
         CMAKE_CONFIG_OPTIONS="-Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=$CMAKE_EXPORT_COMPILE_COMMANDS -DBUILD_TESTING=OFF"
 
@@ -9221,7 +9256,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.15.0
+NDKPKG_VERSION=0.16.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
