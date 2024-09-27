@@ -7306,6 +7306,11 @@ install_libs() {
     done
 }
 
+writepc() {
+    install -v -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
+    cat >         "$PACKAGE_INSTALL_DIR/lib/pkgconfig/$1.pc"
+}
+
 install_pcfs() {
     install -v -d          "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
     install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/lib/pkgconfig"
@@ -7873,7 +7878,11 @@ configure() {
         fi
 
         if [ -z "$CONFIGURE_ARG_ENABLE_SHARED" ] ; then
-            CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"
+            if [ "$PACKAGE_PKGTYPE" = lib ] ; then
+                CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"
+            else
+                CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-shared"
+            fi
         fi
 
         # https://android.googlesource.com/platform/bionic/+/master/docs/32-bit-abi.md#is-32_bit-on-lp32-y2038
@@ -9256,7 +9265,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.16.0
+NDKPKG_VERSION=0.17.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"

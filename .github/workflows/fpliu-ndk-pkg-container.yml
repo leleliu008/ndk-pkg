@@ -14,10 +14,7 @@ jobs:
     container: fpliu/ndk-pkg
 
     steps:
-      - run: export -p
-
-      - run: apt -y update
-      - run: apt -y install curl xz-utils g++
+      - run: ndk-pkg upgrade-self
 
       - run: ndk-pkg --help
       - run: ndk-pkg -h
