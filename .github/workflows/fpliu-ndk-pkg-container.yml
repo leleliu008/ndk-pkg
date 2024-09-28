@@ -14,6 +14,18 @@ jobs:
     container: fpliu/ndk-pkg
 
     steps:
+      - run: ndk-pkg --help
+      - run: ndk-pkg -h
+
+      - run: ndk-pkg --version
+      - run: ndk-pkg -V
+
+      - run: ndk-pkg about
+
+      - run: ndk-pkg setup
+
+      - run: ndk-pkg sysinfo
+
       - run: ndk-pkg upgrade-self
 
       - run: ndk-pkg --help
@@ -27,7 +39,6 @@ jobs:
       - run: ndk-pkg setup
 
       - run: ndk-pkg sysinfo
-
 
       - run: ndk-pkg integrate zsh
 

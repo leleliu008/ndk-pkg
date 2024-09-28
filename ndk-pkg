@@ -7878,10 +7878,10 @@ configure() {
         fi
 
         if [ -z "$CONFIGURE_ARG_ENABLE_SHARED" ] ; then
-            if [ "$PACKAGE_PKGTYPE" = lib ] ; then
-                CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"
-            else
+            if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
                 CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-shared"
+            else
+                CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"
             fi
         fi
 
