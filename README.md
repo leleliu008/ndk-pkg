@@ -360,7 +360,8 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ```
     This command is mainly doing the following things:
 
-  - install `curl`, `tar`, `xz`, `g++` commands via your system's package manager
+  - install `curl` via your system's package manager if any one of `curl` `wget` `http` `lynx` `aria2c` `axel` command is not found.
+  - install `g++`  via your system's package manager.
   - install [uppm](https://github.com/leleliu008/uppm) to `~/.ndk-pkg/core`
   - install other essential tools (listed below) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
 

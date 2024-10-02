@@ -8687,8 +8687,9 @@ __setup() {
     ##################################################################################
 
     TAR="$(command -v bsdtar || command -v gtar || command -v tar || true)"
+    XZ="$(command -v xz || true)"
 
-    if [ -z "$TAR" ] ; then
+    if [ -z "$TAR" ] || [ -z "$XZ" ] ; then
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/bsdtar-3.7.2-linux-x86_64.exe' -o bsdtar --no-buffer
         chmod +x bsdtar
         TAR=./bsdtar
