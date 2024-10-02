@@ -22,7 +22,7 @@ jobs:
 
       - run: ndk-pkg about
 
-      - run: ndk-pkg setup
+      - run: ndk-pkg setup -y
 
       - run: ndk-pkg sysinfo
 
@@ -36,7 +36,7 @@ jobs:
 
       - run: ndk-pkg about
 
-      - run: ndk-pkg setup
+      - run: ndk-pkg setup -y
 
       - run: ndk-pkg sysinfo
 
