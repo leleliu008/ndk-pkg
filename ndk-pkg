@@ -8623,6 +8623,10 @@ __install_gcc_via_syspm() {
     if [ -f /etc/os-release ] ; then
         .   /etc/os-release
 
+        if [ "$ID" = 'opensuse-leap' ] ; then
+            ID='opensuse_leap'
+        fi
+
         __install_gcc_via_syspm_$ID
     fi
 }
