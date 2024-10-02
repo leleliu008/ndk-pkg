@@ -361,7 +361,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ```
     This command is mainly doing the following things:
 
-  - install `curl` via your system's package manager if none of `curl` `wget` `http` `lynx` `aria2c` `axel` command is found when -y option is given.
+  - install `curl` via your system's package manager if none of `curl` `wget` `http` `lynx` `aria2c` `axel` command is found when `-y` option is given.
   - install [uppm](https://github.com/leleliu008/uppm) to `~/.ndk-pkg/core`
   - install other essential tools (listed below) that are used by this shell script via [uppm](https://github.com/leleliu008/uppm)
 

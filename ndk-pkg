@@ -4429,6 +4429,8 @@ inspect_install_arguments() {
 
     unset ENABLE_CCACHE
 
+    unset ASSUME_YES
+
     unset REQUEST_TO_UPGRADE_IF_POSSIBLE
 
     unset REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
@@ -4577,7 +4579,8 @@ inspect_install_arguments() {
             -x-pkg-config)
                 DEBUG_PKG_CONFIG=1
                 ;;
-
+            -y) ASSUME_YES=1
+                ;;
             --disable-ccache)
                 ENABLE_CCACHE=0
                 ;;
@@ -8620,14 +8623,16 @@ __install_gcc_via_syspm_alpine() {
 }
 
 __install_gcc_via_syspm() {
-    if [ -f /etc/os-release ] ; then
-        .   /etc/os-release
+    if [ "$ASSUME_YES" = 1 ] ; then
+        if [ -f /etc/os-release ] ; then
+            .   /etc/os-release
 
-        if [ "$ID" = 'opensuse-leap' ] ; then
-            ID='opensuse_leap'
+            if [ "$ID" = 'opensuse-leap' ] ; then
+                ID='opensuse_leap'
+            fi
+
+            __install_gcc_via_syspm_$ID
         fi
-
-        __install_gcc_via_syspm_$ID
     fi
 }
 
@@ -8970,10 +8975,8 @@ ${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}
     download all the resources of the given package to the local cache.
 
 
-${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg install [android-<ANDROID-API>-<ANDROID-ABIs>/]<PACKAGE-NAME>... [INSTALL-OPTIONS]${COLOR_OFF}
     install the given packages.
-
-    ${COLOR_RED}C and C++ compiler for native build might be installed by yourself using your system's default package manager before running this command.${COLOR_OFF}
 
     ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
@@ -9100,6 +9103,9 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
 
         ${COLOR_BLUE}-x-pkg-config${COLOR_OFF}
             export PKG_CONFIG_DEBUG_SPEW=1
+
+        ${COLOR_BLUE}-y${COLOR_OFF}
+            If this option is specified, C and C++ compiler for native build would be installed via your system package manager if none of g++ clang++ c++ command is found. otherwise a error message would be raised if none of g++ clang++ c++ command is found.
 
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
             do not use ccache.
