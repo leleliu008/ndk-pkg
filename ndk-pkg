@@ -5124,9 +5124,9 @@ $PACKAGE_ONSTART
             CCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
             LDFLAGS_FOR_BUILD='-Wl,-search_paths_first'
         else
-                 CC_FOR_BUILD="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
-               OBJC_FOR_BUILD="$(command -v cc || command -v clang || command -v gcc)" || abort 1 "C Compiler for native not found."
-                CXX_FOR_BUILD="$(command -v c++ || command -v clang++ || command -v g++)" || abort 1 "C++ Compiler for native not found."
+                 CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
+               OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
+                CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
                  AS_FOR_BUILD="$(command -v as)"      || abort 1 "command not found: as"
                  AR_FOR_BUILD="$(command -v ar)"      || abort 1 "command not found: ar"
              RANLIB_FOR_BUILD="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
@@ -8555,36 +8555,33 @@ EOF
 # {{{ ndk-pkg setup
 
 __setup_debian() {
-    $sudo apt-get -y update
-    $sudo apt-get -y install curl tar xz-utils g++
+    run $sudo apt-get -y update
+    run $sudo apt-get -y install g++ "$@"
 }
 
 __setup_ubuntu() {
-    $sudo apt-get -y update
-    $sudo apt-get -y install curl tar xz-utils g++
+    run $sudo apt-get -y update
+    run $sudo apt-get -y install g++ "$@"
 }
 
 __setup_linuxmint() {
-    $sudo apt-get -y update
-    $sudo apt-get -y install curl tar xz-utils g++
-}
-
-__setup_rocky() {
-    $sudo dnf -y update
-    $sudo dnf -y install tar xz gcc-c++
-
-    # https://bugs.launchpad.net/tripleo/+bug/1953156
-    command -v curl > /dev/null || dnf -y install curl
-}
-
-__setup_centos() {
-    $sudo dnf -y update
-    $sudo dnf -y install curl tar xz gcc-c++
+    run $sudo apt-get -y update
+    run $sudo apt-get -y install g++ "$@"
 }
 
 __setup_fedora() {
-    $sudo dnf -y update
-    $sudo dnf -y install curl tar xz g++
+    run $sudo dnf -y update
+    run $sudo dnf -y install g++ "$@"
+}
+
+__setup_rocky() {
+    run $sudo dnf -y update
+    run $sudo dnf -y install gcc-c++ "$@"
+}
+
+__setup_centos() {
+    run $sudo dnf -y update
+    run $sudo dnf -y install gcc-c++ "$@"
 }
 
 __setup_rhel() {
@@ -8592,33 +8589,33 @@ __setup_rhel() {
 }
 
 __setup_opensuse_leap() {
-    $sudo zypper update  -y
-    $sudo zypper install -y curl tar xz gcc-c++
+    run $sudo zypper update  -y
+    run $sudo zypper install -y gcc-c++ "$@"
 }
 
 __setup_gentoo() {
-    $sudo emerge net-misc/curl sys-devel/gcc
+    run $sudo emerge sys-devel/gcc "$@"
 }
 
 __setup_manjaro() {
-    $sudo pacman -Syyuu --noconfirm
-    $sudo pacman -S     --noconfirm curl gcc
+    run $sudo pacman -Syyuu --noconfirm
+    run $sudo pacman -S     --noconfirm gcc "$@"
 }
 
 __setup_arch() {
-    $sudo pacman -Syyuu --noconfirm
-    $sudo pacman -S     --noconfirm curl gcc
+    run $sudo pacman -Syyuu --noconfirm
+    run $sudo pacman -S     --noconfirm gcc "$@"
 }
 
 __setup_void() {
-    $sudo xbps-install -Syu xbps
-    $sudo xbps-install -S
-    $sudo xbps-install -Syu curl tar xz gcc
+    run $sudo xbps-install -Syu xbps
+    run $sudo xbps-install -S
+    run $sudo xbps-install -Syu gcc "$@"
 }
 
 __setup_alpine() {
-    $sudo apk update
-    $sudo apk add gcompat g++ linux-headers
+    run $sudo apk update
+    run $sudo apk add gcompat g++ linux-headers "$@"
 }
 
 __setup() {
@@ -8651,6 +8648,21 @@ __setup() {
                 if [ -f /etc/os-release ] ; then
                     .   /etc/os-release
 
+                    for FETCH_TOOL in curl wget http lynx aria2c axel
+                    do
+                        if command -v "$FETCH_TOOL" > /dev/null ; then
+                            break
+                        else
+                            unset FETCH_TOOL
+                        fi
+                    done
+
+                    unset PACKAGE_NAME_CURL
+
+                    if [ -z "$FETCH_TOOL" ] ; then
+                        PACKAGE_NAME_CURL=curl
+                    fi
+
                     if [ "$ID" = 'opensuse-leap' ] ; then
                         ID='opensuse_leap'
                     fi
@@ -8659,7 +8671,7 @@ __setup() {
                         sudo=sudo
                     fi
 
-                    __setup_$ID
+                    __setup_$ID $PACKAGE_NAME_CURL
                 fi
             fi
     esac
@@ -8671,6 +8683,16 @@ __setup() {
     run rm -rf     "$SESSION_DIR"
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
+
+    ##################################################################################
+
+    TAR="$(command -v bsdtar || command -v gtar || command -v tar || true)"
+
+    if [ -z "$TAR" ] ; then
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/bsdtar-3.7.2-linux-x86_64.exe' -o bsdtar --no-buffer
+        chmod +x bsdtar
+        TAR=./bsdtar
+    fi
 
     ##################################################################################
 
@@ -8695,7 +8717,7 @@ __setup() {
 
     wfetch "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL" --no-buffer
 
-    run tar xvf "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
+    run $TAR xvf "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME" --strip-components=1 --no-same-owner
 
     ##################################################################################
 
@@ -9265,7 +9287,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.17.0
+NDKPKG_VERSION=0.18.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
