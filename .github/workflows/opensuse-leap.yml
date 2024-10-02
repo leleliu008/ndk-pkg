@@ -18,8 +18,8 @@ jobs:
     container: opensuse/leap:${{ matrix.tag }}
 
     steps:
-      - run: zypper update  -y
-      - run: zypper install -y curl tar xz gcc-c++ git
+      #- run: zypper update  -y
+      #- run: zypper install -y curl git
 
       - uses: actions/checkout@v4
 
