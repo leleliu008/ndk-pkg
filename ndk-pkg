@@ -330,7 +330,7 @@ wfetch() {
     done
 
     if [ -z "$FETCH_TOOL" ] ; then
-        abort 1 "no fetch tool found, please install one of curl wget http lynx aria2c axel, then try again."
+        abort 1 "none of curl wget http lynx aria2c axel command was found, please install one of them then try again."
     fi
 
     if [                -n "$FETCH_OUTPUT_DIR" ] ; then
@@ -5124,9 +5124,10 @@ $PACKAGE_ONSTART
             CCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
             LDFLAGS_FOR_BUILD='-Wl,-search_paths_first'
         else
+                CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || __install_gcc_via_syspm
+                CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
                  CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
                OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
-                CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
                  AS_FOR_BUILD="$(command -v as)"      || abort 1 "command not found: as"
                  AR_FOR_BUILD="$(command -v ar)"      || abort 1 "command not found: ar"
              RANLIB_FOR_BUILD="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
@@ -8552,73 +8553,91 @@ EOF
 
 # }}}
 ##############################################################################
-# {{{ ndk-pkg setup
+# {{{ install_g++_via_system_package_manager
 
-__setup_debian() {
-    run $sudo apt-get -y update
-    run $sudo apt-get -y install g++ "$@"
+__install_gcc_via_syspm_debian() {
+    $sudo apt-get -y update
+    $sudo apt-get -y install g++
 }
 
-__setup_ubuntu() {
-    run $sudo apt-get -y update
-    run $sudo apt-get -y install g++ "$@"
+__install_gcc_via_syspm_ubuntu() {
+    $sudo apt-get -y update
+    $sudo apt-get -y install g++
 }
 
-__setup_linuxmint() {
-    run $sudo apt-get -y update
-    run $sudo apt-get -y install g++ "$@"
+__install_gcc_via_syspm_linuxmint() {
+    $sudo apt-get -y update
+    $sudo apt-get -y install g++
 }
 
-__setup_fedora() {
-    run $sudo dnf -y update
-    run $sudo dnf -y install g++ "$@"
+__install_gcc_via_syspm_rocky() {
+    $sudo dnf -y update
+    $sudo dnf -y install gcc-c++
 }
 
-__setup_rocky() {
-    run $sudo dnf -y update
-    run $sudo dnf -y install gcc-c++ "$@"
+__install_gcc_via_syspm_centos() {
+    $sudo dnf -y update
+    $sudo dnf -y install gcc-c++
 }
 
-__setup_centos() {
-    run $sudo dnf -y update
-    run $sudo dnf -y install gcc-c++ "$@"
+__install_gcc_via_syspm_fedora() {
+    $sudo dnf -y update
+    $sudo dnf -y install curl g++
 }
 
-__setup_rhel() {
+__install_gcc_via_syspm_rhel() {
 :
 }
 
-__setup_opensuse_leap() {
-    run $sudo zypper update  -y
-    run $sudo zypper install -y gcc-c++ "$@"
+__install_gcc_via_syspm_opensuse_leap() {
+    $sudo zypper update  -y
+    $sudo zypper install -y gcc-c++
 }
 
-__setup_gentoo() {
-    run $sudo emerge sys-devel/gcc "$@"
+__install_gcc_via_syspm_gentoo() {
+    $sudo emerge sys-devel/gcc
 }
 
-__setup_manjaro() {
-    run $sudo pacman -Syyuu --noconfirm
-    run $sudo pacman -S     --noconfirm gcc "$@"
+__install_gcc_via_syspm_manjaro() {
+    $sudo pacman -Syyuu --noconfirm
+    $sudo pacman -S     --noconfirm gcc
 }
 
-__setup_arch() {
-    run $sudo pacman -Syyuu --noconfirm
-    run $sudo pacman -S     --noconfirm gcc "$@"
+__install_gcc_via_syspm_arch() {
+    $sudo pacman -Syyuu --noconfirm
+    $sudo pacman -S     --noconfirm gcc
 }
 
-__setup_void() {
-    run $sudo xbps-install -Syu xbps
-    run $sudo xbps-install -S
-    run $sudo xbps-install -Syu gcc "$@"
+__install_gcc_via_syspm_void() {
+    $sudo xbps-install -Syu xbps
+    $sudo xbps-install -S
+    $sudo xbps-install -Syu gcc
 }
 
-__setup_alpine() {
-    run $sudo apk update
-    run $sudo apk add gcompat g++ linux-headers "$@"
+__install_gcc_via_syspm_alpine() {
+    $sudo apk update
+    $sudo apk add gcompat g++ linux-headers
 }
+
+__install_gcc_via_syspm() {
+    if [ -f /etc/os-release ] ; then
+        .   /etc/os-release
+
+        __install_gcc_via_syspm_$ID
+    fi
+}
+
+# }}}
+##############################################################################
+# {{{ ndk-pkg setup
 
 __setup() {
+    unset REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER
+
+    if [ "$1" = -y ] ; then
+        REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER=1
+    fi
+
     unset NATIVE_OS_ARCH
     unset NATIVE_OS_VERS
 
@@ -8657,21 +8676,53 @@ __setup() {
                         fi
                     done
 
-                    unset PACKAGE_NAME_CURL
-
                     if [ -z "$FETCH_TOOL" ] ; then
-                        PACKAGE_NAME_CURL=curl
-                    fi
+                        if [ "$REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER" = 1 ] ; then
+                            unset sudo
 
-                    if [ "$ID" = 'opensuse-leap' ] ; then
-                        ID='opensuse_leap'
-                    fi
+                            if [ "$(id -u)" -ne 0 ] ; then
+                                sudo=sudo
+                            fi
 
-                    if [ "$(id -u)" -ne 0 ] ; then
-                        sudo=sudo
-                    fi
+                            FETCH_TOOL=curl
 
-                    __setup_$ID $PACKAGE_NAME_CURL
+                            case $ID in
+                                debian|ubuntu|linuxmint)
+                                    run $sudo apt-get -y update
+                                    run $sudo apt-get -y install curl
+                                    ;;
+                                fedora|centos|rocky)
+                                    run $sudo dnf -y update
+                                    run $sudo dnf -y install curl
+                                    ;;
+                                opensuse-leap)
+                                    run $sudo zypper update  -y
+                                    run $sudo zypper install -y curl
+                                    ;;
+                                gentoo)
+                                    run $sudo emerge net-misc/curl
+                                    ;;
+                                arch|manjaro)
+                                    run $sudo pacman -Syyuu --noconfirm
+                                    run $sudo pacman -S     --noconfirm curl
+                                    ;;
+                                void)
+                                    run $sudo xbps-install -Syu xbps
+                                    run $sudo xbps-install -S
+                                    run $sudo xbps-install -Syu curl
+                                    ;;
+                                alpine)
+                                    run $sudo apk update
+                                    run $sudo apk add curl
+                                    ;;
+                                *)  unset FETCH_TOOL
+                            esac
+                        fi
+
+                        if [ -z "$FETCH_TOOL" ] ; then
+                            abort 1 "none of curl wget http lynx aria2c axel command was found, please install one of them then try again."
+                        fi
+                    fi
                 fi
             fi
     esac
@@ -8815,8 +8866,10 @@ ${COLOR_GREEN}ndk-pkg --version${COLOR_OFF}
 ${COLOR_GREEN}ndk-pkg -V${COLOR_OFF}
     show version of this command.
 
-${COLOR_GREEN}ndk-pkg setup${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg setup [-y]${COLOR_OFF}
     install essential tools (e.g. uppm, bash, coreutils, findutils, gsed, gawk, grep, tree, git, curl, bsdtar, zip, xxd, fzf, bat, jq, yq, d2, sysinfo, pkg-config, patchelf, etc) used by this shell script.
+
+    If -y is given, install curl via your system's package manager if none of curl wget http lynx aria2c axel command is found.
 
 ${COLOR_GREEN}ndk-pkg about${COLOR_OFF}
     show basic information about this software.
@@ -8921,6 +8974,11 @@ ${COLOR_GREEN}ndk-pkg install android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME
     ${COLOR_RED}<ANDROID-ABIs>${COLOR_OFF} is a comma-separated list, any combination of arm64-v8a, armeabi-v7a, x86_64, x86
 
     INSTALL-OPTIONS:
+        ${COLOR_BLUE}--target=android-<ANDROID-API>-<ANDROID-ABI>${COLOR_OFF}
+            specify the target to be built for.
+
+            If this option is unspecified, the environment variable ${COLOR_RED}NDKPKG_DEFAULT_TARGET${COLOR_OFF} is honored, if the environment variable NDKPKG_DEFAULT_TARGET is not set, then android-21-arm64-v8a will be used as the default.
+
         ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
             If --ndk-home=<ANDROID-NDK-HOME> is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
 
