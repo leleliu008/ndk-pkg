@@ -18,8 +18,9 @@ jobs:
     container: opensuse/leap:${{ matrix.tag }}
 
     steps:
-      #- run: zypper update  -y
-      #- run: zypper install -y curl git
+      # To create a local Git repository instead, add Git 2.18 or higher to the PATH
+      - run: zypper update  -y
+      - run: zypper install -y git
 
       - uses: actions/checkout@v4
 
