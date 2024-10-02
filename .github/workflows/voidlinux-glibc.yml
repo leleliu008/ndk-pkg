@@ -69,7 +69,7 @@ jobs:
       - run: ./ndk-pkg depends libzip -o libzip.box
 
 
-      - run: ./ndk-pkg install libzip
+      - run: ./ndk-pkg install libzip -y
 
 
 
