@@ -1467,15 +1467,15 @@ ndkvers: $ANDROID_NDK_VERSION
 builtby: ndk-pkg-$NDKPKG_VERSION
 builtat: $TIMESTAMP_UNIX
 buildon:
-    os-arch: $NATIVE_OS_ARCH
-    os-kind: $NATIVE_OS_KIND
-    os-type: $NATIVE_OS_TYPE
-    os-code: $NATIVE_OS_CODE
-    os-name: $NATIVE_OS_NAME
-    os-vers: $NATIVE_OS_VERS
-    os-ncpu: $NATIVE_OS_NCPU
-    os-euid: $NATIVE_OS_EUID
-    os-egid: $NATIVE_OS_EGID
+    os-arch: $NATIVE_PLATFORM_ARCH
+    os-kind: $NATIVE_PLATFORM_KIND
+    os-type: $NATIVE_PLATFORM_TYPE
+    os-code: $NATIVE_PLATFORM_CODE
+    os-name: $NATIVE_PLATFORM_NAME
+    os-vers: $NATIVE_PLATFORM_VERS
+    os-ncpu: $NATIVE_PLATFORM_NCPU
+    os-euid: $NATIVE_PLATFORM_EUID
+    os-egid: $NATIVE_PLATFORM_EGID
 builtfor: $TARGET_PLATFORM_SPEC
 profile: $PROFILE
 EOF
@@ -4991,35 +4991,35 @@ __install_the_given_package() {
 
     if [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] ; then
         cat <<EOF
-     TIMESTAMP_UNIX = $TIMESTAMP_UNIX
+      TIMESTAMP_UNIX = $TIMESTAMP_UNIX
 
-     NATIVE_OS_KIND = $NATIVE_OS_KIND
-     NATIVE_OS_TYPE = $NATIVE_OS_TYPE
-     NATIVE_OS_CODE = $NATIVE_OS_CODE
-     NATIVE_OS_NAME = $NATIVE_OS_NAME
-     NATIVE_OS_VERS = $NATIVE_OS_VERS
-     NATIVE_OS_ARCH = $NATIVE_OS_ARCH
-     NATIVE_OS_NCPU = $NATIVE_OS_NCPU
-     NATIVE_OS_LIBC = $NATIVE_OS_LIBC
-     NATIVE_OS_EUID = $NATIVE_OS_EUID
-     NATIVE_OS_EGID = $NATIVE_OS_EGID
+NATIVE_PLATFORM_KIND = $NATIVE_PLATFORM_KIND
+NATIVE_PLATFORM_TYPE = $NATIVE_PLATFORM_TYPE
+NATIVE_PLATFORM_CODE = $NATIVE_PLATFORM_CODE
+NATIVE_PLATFORM_NAME = $NATIVE_PLATFORM_NAME
+NATIVE_PLATFORM_VERS = $NATIVE_PLATFORM_VERS
+NATIVE_PLATFORM_ARCH = $NATIVE_PLATFORM_ARCH
+NATIVE_PLATFORM_NCPU = $NATIVE_PLATFORM_NCPU
+NATIVE_PLATFORM_LIBC = $NATIVE_PLATFORM_LIBC
+NATIVE_PLATFORM_EUID = $NATIVE_PLATFORM_EUID
+NATIVE_PLATFORM_EGID = $NATIVE_PLATFORM_EGID
 
-TARGET_PLATFORM_VERS= $TARGET_PLATFORM_VERS
-TARGET_PLATFORM_ARCH= $TARGET_PLATFORM_ARCH
-TARGET_PLATFORM_ABI = $TARGET_PLATFORM_ABI
+TARGET_PLATFORM_VERS = $TARGET_PLATFORM_VERS
+TARGET_PLATFORM_ARCH = $TARGET_PLATFORM_ARCH
+TARGET_PLATFORM_ABI  = $TARGET_PLATFORM_ABI
 
-NDKPKG_ARG0         = $NDKPKG_ARG0
-NDKPKG_ARG1         = $NDKPKG_ARG1
-NDKPKG_ARGV         = $NDKPKG_ARGV
-NDKPKG_PATH         = $NDKPKG_PATH
-NDKPKG_HOME         = $NDKPKG_HOME
-NDKPKG_VERSION      = $NDKPKG_VERSION
-NDKPKG_URL_TRANSFORM= $NDKPKG_URL_TRANSFORM
+NDKPKG_ARG0          = $NDKPKG_ARG0
+NDKPKG_ARG1          = $NDKPKG_ARG1
+NDKPKG_ARGV          = $NDKPKG_ARGV
+NDKPKG_PATH          = $NDKPKG_PATH
+NDKPKG_HOME          = $NDKPKG_HOME
+NDKPKG_VERSION       = $NDKPKG_VERSION
+NDKPKG_URL_TRANSFORM = $NDKPKG_URL_TRANSFORM
 
-          LOG_LEVEL = $LOG_LEVEL
-            PROFILE = $PROFILE
+           LOG_LEVEL = $LOG_LEVEL
+             PROFILE = $PROFILE
 
-      ENABLE_CCACHE = $ENABLE_CCACHE
+       ENABLE_CCACHE = $ENABLE_CCACHE
 REQUEST_TO_KEEP_SESSION_DIR = $REQUEST_TO_KEEP_SESSION_DIR
 REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON = $REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
 REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE = $REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
@@ -5071,7 +5071,7 @@ EOF
     #########################################################################################
 
     if [ "$PACKAGE_PARALLEL" = 1 ] ; then
-        BUILD_NJOBS="$NATIVE_OS_NCPU"
+        BUILD_NJOBS="$NATIVE_PLATFORM_NCPU"
     else
         BUILD_NJOBS=1
     fi
@@ -5175,7 +5175,7 @@ $PACKAGE_ONSTART
     else
         step "locate C/C++ toolchain for native build"
 
-        if [ "$NATIVE_OS_KIND" = 'darwin' ] ; then
+        if [ "$NATIVE_PLATFORM_KIND" = 'darwin' ] ; then
                  CC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
                OBJC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
                 CXX_FOR_BUILD="$(xcrun --sdk macosx --find clang++)"
@@ -5190,7 +5190,7 @@ $PACKAGE_ONSTART
             OBJDUMP_FOR_BUILD="$(xcrun --sdk macosx --find objdump)"
             SYSROOT_FOR_BUILD="$(xcrun --sdk macosx --show-sdk-path)"
 
-            CCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_OS_VERS -arch $NATIVE_OS_ARCH -Qunused-arguments"
+            CCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
             LDFLAGS_FOR_BUILD='-Wl,-search_paths_first'
         else
                 CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || __install_gcc_via_syspm
@@ -6573,7 +6573,7 @@ $PACKAGE_DO12345
 
         # https://docs.rs/openssl/latest/openssl/
         [ "$PACKAGE_DEP_UPP_OPENSSL" = 1 ] && {
-            case "$NATIVE_OS_TYPE-$NATIVE_OS_ARCH" in
+            case "$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH" in
                 linux-x86_64)  NATIVE_RUST_TARGET='X86_64_UNKNOWN_LINUX_GNU' ;;
                 macos-x86_64)  NATIVE_RUST_TARGET='X86_64_APPLE_DARWIN'      ;;
                 macos-arm64)   NATIVE_RUST_TARGET='AARCH64_APPLE_DARWIN'     ;;
@@ -7525,7 +7525,7 @@ gow() {
         GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -s -w"
     fi
 
-    if [ "$NATIVE_OS_KIND" != darwin ] ; then
+    if [ "$NATIVE_PLATFORM_KIND" != darwin ] ; then
         if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] && [ "$CGO_ENABLED" -eq 1 ] ; then
             GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
         fi
@@ -8474,10 +8474,10 @@ inspect_android_ndk_info() {
 
     ANDROID_NDK_VERSION_MAJOR="$(printf '%s\n' "$ANDROID_NDK_VERSION" | cut -d. -f1)"
 
-    if [ "$NATIVE_OS_KIND" = darwin ] ; then
+    if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
         ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
     else
-        ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_OS_ARCH"
+        ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_PLATFORM_ARCH"
     fi
 
     ANDROID_NDK_TOOLCHAIN_ROOT="$1/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG"
@@ -8572,7 +8572,7 @@ EOF
 # setup_android_ndk_env [ANDROID_NDK_HOME]
   setup_android_ndk_env() {
     if [ -z "$1" ] ; then
-        if [ "$NATIVE_OS_KIND" = android ] ; then
+        if [ "$NATIVE_PLATFORM_KIND" = android ] ; then
             # use comunity compiled Android NDK for aarch64-linux right now, I might compile my own at some point.
             # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
             ANDROID_NDK_REVISION='r26b'
@@ -8591,7 +8591,7 @@ EOF
             run "$UPPM" update
             run "$UPPM" install "$ANDROID_NDK_PKG"
 
-            case $NATIVE_OS_KIND in
+            case $NATIVE_PLATFORM_KIND in
                 linux)
                     # https://github.com/microsoft/WSL/issues/8681
                     # https://github.com/microsoft/WSL/issues/4071
@@ -8713,31 +8713,31 @@ __setup() {
         REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER=1
     fi
 
-    unset NATIVE_OS_ARCH
-    unset NATIVE_OS_VERS
+    unset NATIVE_PLATFORM_ARCH
+    unset NATIVE_PLATFORM_VERS
 
     case "$(uname -s)" in
         Darwin)
-            NATIVE_OS_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
+            NATIVE_PLATFORM_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
 
-            if [ "$NATIVE_OS_VERS_MAJOR" -le 10 ] ; then
-                NATIVE_OS_VERS='10.15'
-            elif [ "$NATIVE_OS_VERS_MAJOR" -ge 14 ] ; then
-                NATIVE_OS_VERS='14.0'
+            if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+                NATIVE_PLATFORM_VERS='10.15'
+            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 14 ] ; then
+                NATIVE_PLATFORM_VERS='14.0'
             else
-                NATIVE_OS_VERS="$NATIVE_OS_VERS_MAJOR.0"
+                NATIVE_PLATFORM_VERS="$NATIVE_PLATFORM_VERS_MAJOR.0"
             fi
 
-            NATIVE_OS_ARCH="$(uname -m)"
-            NATIVE_OS_TARGET="macos-$NATIVE_OS_VERS-$NATIVE_OS_ARCH"
+            NATIVE_PLATFORM_ARCH="$(uname -m)"
+            NATIVE_PLATFORM_TARGET="macos-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
             ;;
         Linux)
             if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
-                NATIVE_OS_VERS="$(getprop ro.build.version.sdk)"
-                NATIVE_OS_TARGET="android-$NATIVE_OS_VERS-arm64-v8a"
+                NATIVE_PLATFORM_VERS="$(getprop ro.build.version.sdk)"
+                NATIVE_PLATFORM_TARGET="android-$NATIVE_PLATFORM_VERS-arm64-v8a"
             else
-                NATIVE_OS_ARCH="$(uname -m)"
-                NATIVE_OS_TARGET="linux-$NATIVE_OS_ARCH"
+                NATIVE_PLATFORM_ARCH="$(uname -m)"
+                NATIVE_PLATFORM_TARGET="linux-$NATIVE_PLATFORM_ARCH"
 
                 if [ -f /etc/os-release ] ; then
                     .   /etc/os-release
@@ -8845,7 +8845,7 @@ __setup() {
 
     NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
     NDKPKG_CORE_LATEST_RELEASE_TAG="ndk-pkg-core-$NDKPKG_CORE_LATEST_RELEASE_VERSION"
-    NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="$NDKPKG_CORE_LATEST_RELEASE_TAG-$NATIVE_OS_TARGET.tar.xz"
+    NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="$NDKPKG_CORE_LATEST_RELEASE_TAG-$NATIVE_PLATFORM_TARGET.tar.xz"
     NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL="https://github.com/leleliu008/ndk-pkg/releases/download/$NDKPKG_CORE_LATEST_RELEASE_TAG/$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME"
 
     wfetch "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL" --no-buffer
@@ -9628,20 +9628,20 @@ fi
 
 ##################################################################################
 
-NATIVE_OS_KIND="$(sysinfo kind)"
-NATIVE_OS_TYPE="$(sysinfo type)"
-NATIVE_OS_CODE="$(sysinfo code)"
-NATIVE_OS_NAME="$(sysinfo name)"
-NATIVE_OS_VERS="$(sysinfo vers)"
-NATIVE_OS_ARCH="$(sysinfo arch)"
-NATIVE_OS_NCPU="$(sysinfo ncpu)"
-NATIVE_OS_LIBC="$(sysinfo libc)"
-NATIVE_OS_EUID="$(id -u)"
-NATIVE_OS_EGID="$(id -g)"
+NATIVE_PLATFORM_KIND="$(sysinfo kind)"
+NATIVE_PLATFORM_TYPE="$(sysinfo type)"
+NATIVE_PLATFORM_CODE="$(sysinfo code)"
+NATIVE_PLATFORM_NAME="$(sysinfo name)"
+NATIVE_PLATFORM_VERS="$(sysinfo vers)"
+NATIVE_PLATFORM_ARCH="$(sysinfo arch)"
+NATIVE_PLATFORM_NCPU="$(sysinfo ncpu)"
+NATIVE_PLATFORM_LIBC="$(sysinfo libc)"
+NATIVE_PLATFORM_EUID="$(id -u)"
+NATIVE_PLATFORM_EGID="$(id -g)"
 
 ##################################################################################
 
-if [ "$NATIVE_OS_EUID" -ne 0 ] ; then
+if [ "$NATIVE_PLATFORM_EUID" -ne 0 ] ; then
     sudo=sudo
 fi
 
