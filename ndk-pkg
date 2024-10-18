@@ -138,10 +138,10 @@ git_checkout() {
     unset GIT_CHECKOUT_BRANCH_NAME
     unset GIT_WORK_DIR
 
-    if [ -z "$PPKG_URL_TRANSFORM" ] ; then
+    if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
         GIT_FETCH_FROM_URL="$1"
     else
-        GIT_FETCH_FROM_URL="$("$PPKG_URL_TRANSFORM" "$1")"
+        GIT_FETCH_FROM_URL="$("$NDKPKG_URL_TRANSFORM" "$1")"
     fi
 
     shift
@@ -5570,6 +5570,8 @@ $DOT_CONTENT
             esac
         done
     else
+        unset PACKAGE_DEP_UPP_PYTHON3
+
         for item in $PACKAGE_DEP_UPP
         do
             case $item in
@@ -5578,7 +5580,7 @@ $DOT_CONTENT
                 texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
                 help2man) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
                 intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
+                python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ; PACKAGE_DEP_UPP_PYTHON3=1 ;;
                 ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
                 swig)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
                 libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
@@ -5641,42 +5643,63 @@ $DOT_CONTENT
     [ -n "$TERMUX_PKGS" ] && run pkg install -y "$TERMUX_PKGS"
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
-        PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq | tr '\n' ' ')"
-
-        run "$XBUILDER" install "$PACKAGE_DEP_UPP_T2" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$NDKPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
-
-        for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_UPP_T2
-        do
-            NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
-
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
-                CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
+        if [ "$GITHUB_ACTIONS" = true ] ; then
+            if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
+                T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
+            else
+                T="$NATIVE_PLATFORM_SPEC"
             fi
 
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
-                LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
+            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.12-$T"
+            NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
+
+            if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
+                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.12/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
+                run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
+                run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
+                run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
             fi
 
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib/pkgconfig" ] ; then
-                PKG_CONFIG_PATH_FOR_BUILD="$NATIVE_PACKAGE_INSTALLED_DIR/lib/pkgconfig:$PKG_CONFIG_PATH_FOR_BUILD"
-            fi
+            export PATH="$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
 
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/share/pkgconfig" ] ; then
-                PKG_CONFIG_PATH_FOR_BUILD="$NATIVE_PACKAGE_INSTALLED_DIR/share/pkgconfig:$PKG_CONFIG_PATH_FOR_BUILD"
+            if [ "$PACKAGE_DEP_UPP_PYTHON3" = 1 ] ; then
+                if [ ! -f "$NATIVE_PACKAGE_INSTALLED_ROOT/python3/ok" ] ; then
+                    PYTHON3_DISTRIBUTION_VERSION='2024.10.17'
+                    PYTHON3_DISTRIBUTION_FILENAME="python-distribution-$PYTHON3_DISTRIBUTION_VERSION-$T.tar.xz"
+                    wfetch "https://github.com/leleliu008/python-distribution/releases/download/$PYTHON3_DISTRIBUTION_VERSION/$PYTHON3_DISTRIBUTION_FILENAME"
+                    run bsdtar xf "$PYTHON3_DISTRIBUTION_FILENAME"
+                    run touch "$NATIVE_PACKAGE_INSTALLED_ROOT/python3/ok"
+                fi
+                export PATH="$NATIVE_PACKAGE_INSTALLED_ROOT/python3/bin:$PATH"
             fi
+        else
+            PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq | tr '\n' ' ')"
 
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
-            fi
+            run "$XBUILDER" install "$PACKAGE_DEP_UPP_T2" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$NDKPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
 
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-            fi
+            for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_UPP_T2
+            do
+                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
+                    CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
+                fi
 
-            if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-                ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-            fi
-        done
+                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
+                    LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
+                fi
+
+                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                    PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
+                fi
+
+                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                    PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+                fi
+
+                if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+                    ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+                fi
+            done
+        fi
     }
 
     #########################################################################################
