@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [20.04, 22.04]
+        version: [24.04, 22.04, 20.04]
 
     container: ubuntu:${{ matrix.version }}
 
@@ -66,8 +66,6 @@ jobs:
 
 
       - run: ./ndk-pkg install libzip -y
-
-
 
 
       - run: ./ndk-pkg info-installed libzip --prefix

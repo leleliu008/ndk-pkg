@@ -5647,7 +5647,7 @@ $DOT_CONTENT
             if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
                 T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
             else
-                T="$NATIVE_PLATFORM_SPEC"
+                T="linux-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
             fi
 
             NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.12-$T"
