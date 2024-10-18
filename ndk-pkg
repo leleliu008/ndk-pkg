@@ -5663,11 +5663,14 @@ $DOT_CONTENT
             export PATH="$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
 
             if [ "$PACKAGE_DEP_UPP_PYTHON3" = 1 ] ; then
-                if [ ! -f "$NATIVE_PACKAGE_INSTALLED_ROOT/python3/ok" ] ; then
+                PYTHON3_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/python3"
+
+                if [ ! -f "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok" ] ; then
                     PYTHON3_DISTRIBUTION_VERSION='2024.10.17'
                     PYTHON3_DISTRIBUTION_FILENAME="python-distribution-$PYTHON3_DISTRIBUTION_VERSION-$T.tar.xz"
                     wfetch "https://github.com/leleliu008/python-distribution/releases/download/$PYTHON3_DISTRIBUTION_VERSION/$PYTHON3_DISTRIBUTION_FILENAME"
-                    run bsdtar xf "$PYTHON3_DISTRIBUTION_FILENAME"
+                    run install -d "$PYTHON3_DISTRIBUTION_INSTALL_DIR"
+                    run bsdtar xf "$PYTHON3_DISTRIBUTION_FILENAME" -C "$PYTHON3_DISTRIBUTION_INSTALL_DIR" --strip-components 1 --no-same-owner
                     run touch "$NATIVE_PACKAGE_INSTALLED_ROOT/python3/ok"
                 fi
                 export PATH="$NATIVE_PACKAGE_INSTALLED_ROOT/python3/bin:$PATH"
