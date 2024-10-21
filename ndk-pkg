@@ -5682,6 +5682,8 @@ $DOT_CONTENT
 
             for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_UPP_T2
             do
+                NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
+
                 if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
                     CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
                 fi
