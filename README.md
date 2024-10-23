@@ -872,14 +872,14 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |||
 |`TIMESTAMP_UNIX`|the unix timestamp of this action.|
 |||
-|`NATIVE_OS_KIND`|current running os kind. value might be `linux` or `darwin`|
-|`NATIVE_OS_TYPE`|current running os type. value might be `linux` or `macos`|
-|`NATIVE_OS_NAME`|current running os name. value might be `Ubuntu`, `macOS`, etc|
-|`NATIVE_OS_VERS`|current running os version.|
-|`NATIVE_OS_ARCH`|current running os arch. value might be any one of `x86_64`, `arm64`, etc|
-|`NATIVE_OS_NCPU`|current running os's cpu core count.|
-|`NATIVE_OS_EUID`|current running os's effective user ID.|
-|`NATIVE_OS_EGID`|current running os's effective group ID.|
+|`NATIVE_PLATFORM_KIND`|current running os kind. value might be `linux` or `darwin`|
+|`NATIVE_PLATFORM_TYPE`|current running os type. value might be `linux` or `macos`|
+|`NATIVE_PLATFORM_NAME`|current running os name. value might be `Ubuntu`, `macOS`, etc|
+|`NATIVE_PLATFORM_VERS`|current running os version.|
+|`NATIVE_PLATFORM_ARCH`|current running os arch. value might be any one of `x86_64`, `arm64`, etc|
+|`NATIVE_PLATFORM_NCPU`|current running os's cpu core count.|
+|`NATIVE_PLATFORM_EUID`|current running os's effective user ID.|
+|`NATIVE_PLATFORM_EGID`|current running os's effective group ID.|
 |||
 |`TARGET_PLATFORM_VERS`|[android sdk api-level table](https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element#api-level-table)|
 |`TARGET_PLATFORM_NBIT`|value shall be any one of `32` `64`|
