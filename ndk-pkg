@@ -1363,8 +1363,8 @@ filetype_from_url() {
     [ -n "$PACKAGE_DEP_PLM" ]                && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake"
 
     [ "$PACKAGE_USE_BSYSTEM_NDK_BUILD" = 1 ] && PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM gmake"
-    [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake"
-    [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl autoconf automake"
+    [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake automake"
+    [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake automake"
     [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
     [ "$PACKAGE_USE_BSYSTEM_MESON"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
     [ "$PACKAGE_USE_BSYSTEM_MESON"     = 1 ] && PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
@@ -3390,8 +3390,8 @@ rm -rf $SESSION_DIR\n"
     MVN="$(command -v mvn || true)"
 
     if [ -z "$MVN" ] ; then
-        step "install maven"
-        run "$UPPM" install maven
+        step install maven
+        uppm install maven
 
         unset  JAVA_HOME
         unset MAVEN_HOME
@@ -4937,6 +4937,16 @@ __install_the_given_packages() {
     fi
 }
 
+xbuilder() {
+    XBUILDER="$SESSION_DIR/xbuilder"
+
+    if [ ! -f "$XBUILDER" ] ; then
+        wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/refs/heads/master/xbuilder' -o "$XBUILDER" --no-buffer
+    fi
+
+    run sh "$XBUILDER" install "$@" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$NDKPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
+}
+
 __install_the_given_package_onexit() {
     is_package_installed "$PACKAGE_SPEC" || {
         abort 1 "package installation failure: $PACKAGE_SPEC\n"
@@ -5210,7 +5220,7 @@ $PACKAGE_ONSTART
             READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
 
             CCFLAGS_FOR_BUILD="-fPIC -fno-common"
-            LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+            LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition -fno-use-linker-plugin -static --static"
             # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
         fi
 
@@ -5540,83 +5550,79 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    # these native packages would be installed by uppm
-    PACKAGE_DEP_UPP_T1='pkg-config patchelf tree'
-
-    # these native packages are not relocatable, we should build them from source locally at build time.
-    PACKAGE_DEP_UPP_T2=
-
-    unset PACKAGE_DEP_UPP_OPENSSL
-
-    unset TERMUX_PKGS
-
-    if [ "$TERMUX" = 1 ] ; then
-        for item in $PACKAGE_DEP_UPP
-        do
-            case $item in
-                perl)     TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                openssl)  TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                texinfo)  TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                help2man) TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                intltool) TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                ruby)     TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                swig)     TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                libtool)  TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                autoconf) TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                automake) TERMUX_PKGS="$TERMUX_PKGS $item" ;;
-                python3)  TERMUX_PKGS="$TERMUX_PKGS python";;
-                libz)     TERMUX_PKGS="$TERMUX_PKGS zlib"  ;;
-                *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
-            esac
-        done
-    else
-        unset PACKAGE_DEP_UPP_PYTHON3
-
-        for item in $PACKAGE_DEP_UPP
-        do
-            case $item in
-                perl)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                openssl)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ; PACKAGE_DEP_UPP_OPENSSL=1 ;;
-                texinfo)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                help2man) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake"       ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                intltool) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                python3)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ; PACKAGE_DEP_UPP_PYTHON3=1 ;;
-                ruby)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                swig)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                libtool)  PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                autoconf) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                automake) PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake gm4"   ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                libz)     PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 gmake cmake" ; PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $item" ;;
-                *)        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 $item"
-            esac
-        done
-    fi
-
-    #########################################################################################
-
     if [ "$PACKAGE_USE_BSYSTEM_GMAKE" = 1 ] && [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
-        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 bear"
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
     fi
 
     if [ "$ENABLE_CCACHE" = 1 ] ; then
-        PACKAGE_DEP_UPP_T1="$PACKAGE_DEP_UPP_T1 ccache"
+        PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ccache"
     fi
-
-    PACKAGE_DEP_UPP_T1="${PACKAGE_DEP_UPP_T1#' '}"
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DEP_UPP_T1" ] && {
-        PACKAGE_DEP_UPP_T1="$(printf '%s\n' $PACKAGE_DEP_UPP_T1 | sort | uniq)"
+    unset PACKAGE_DEP_UPP_LIBZ
+    unset PACKAGE_DEP_UPP_LIBOPENSSL
+    unset PACKAGE_DEP_UPP_PYTHON3
 
+    # these native packages are not relocatable and would be fetched to a fixed location /opt/non-relocatable-*
+    unset PACKAGE_DEP_UPP_T2
+
+    # these native packages would be built from source locally
+    unset PACKAGE_DEP_XBUILDER
+
+    #########################################################################################
+
+    if [ "$TERMUX" = 1 ] ; then
+        TERMUX_PKGS='pkg-config patchelf tree'
+
+        for item in $PACKAGE_DEP_UPP
+        do
+            case $item in
+                python3)  TERMUX_PKGS="$TERMUX_PKGS python" ;;
+                libz)     TERMUX_PKGS="$TERMUX_PKGS zlib"   ;;
+                *)        TERMUX_PKGS="$TERMUX_PKGS $item"  ;;
+            esac
+        done
+
+        step "install needed packages via pkg"
+
+        run pkg install -y "$TERMUX_PKGS"
+    else
         step "install needed packages via uppm"
 
         run "$UPPM" about
         run "$UPPM" update
 
-        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP_T1
+        unset UPPM_INSTALL_ARGS
+
+        if [ "$DUMP_UPPM" = 1 ] ; then
+            UPPM_INSTALL_ARGS=-v
+        fi
+
+        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP pkg-config patchelf tree
         do
-            run "$UPPM" install "$UPPM_PACKAGE_NAME"
+            case $UPPM_PACKAGE_NAME in
+                libz)
+                    PACKAGE_DEP_UPP_LIBZ=1
+                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER libz"
+                    continue
+                    ;;
+                libopenssl)
+                    PACKAGE_DEP_UPP_LIBOPENSSL=1
+                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER libopenssl"
+                    continue
+                    ;;
+                perl|autoconf|automake|libtool|texinfo|help2man|intltool)
+                    PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $UPPM_PACKAGE_NAME"
+                    continue
+                    ;;
+                python3)
+                    PACKAGE_DEP_UPP_PYTHON3=1
+                    continue
+                    ;;
+            esac
+
+            run "$UPPM" install "$UPPM_PACKAGE_NAME" $UPPM_INSTALL_ARGS
 
             UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
@@ -5632,79 +5638,125 @@ $DOT_CONTENT
                 ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
             fi
 
-            if [ "$UPPM_PACKAGE_NAME" = 'docbook-xsl' ] ; then
-                # http://xmlsoft.org/xslt/xsltproc.html
-                export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
-                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
-            fi
+            case $UPPM_PACKAGE_NAME in
+                swig)
+                    # https://www.swig.org/Doc4.0/Library.html
+                    X="$(ls $UPPM_PACKAGE_INSTALLED_DIR/share/swig/*/swig.swg)"
+                    export SWIG_LIB="${X%/*}"
+                    ;;
+                file)
+                    export MAGIC="$UPPM_PACKAGE_INSTALLED_DIR/share/misc/magic.mgc"
+                    ;;
+                docbook-xsl)
+                    # http://xmlsoft.org/xslt/xsltproc.html
+                    export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
+                    printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+            esac
         done
-    }
+    fi
 
-    [ -n "$TERMUX_PKGS" ] && run pkg install -y "$TERMUX_PKGS"
+    #########################################################################################
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
-        if [ "$GITHUB_ACTIONS" = true ] ; then
+        #if [ "$GITHUB_ACTIONS" = true ] ; then
+        if true ; then
             if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-                T="macos-${NATIVE_PLATFORM_VERS%%.*}.0-$NATIVE_PLATFORM_ARCH"
+                NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
+
+                if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+                    X='10.15'
+                elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                    X='15.0'
+                else
+                    X="$NATIVE_PLATFORM_VERS_MAJOR.0"
+                fi
+
+                T="macos-$X-$NATIVE_PLATFORM_ARCH"
             else
-                T="linux-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
+                T="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
             fi
 
-            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.12-$T"
+            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
             NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
 
             if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
-                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.12/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
+                wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.27/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
                 run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
                 run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
                 run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
             fi
 
             export PATH="$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
-
-            if [ "$PACKAGE_DEP_UPP_PYTHON3" = 1 ] ; then
-                PYTHON3_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/python3"
-
-                if [ ! -f "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok" ] ; then
-                    PYTHON3_DISTRIBUTION_VERSION='2024.10.17'
-                    PYTHON3_DISTRIBUTION_FILENAME="python-distribution-$PYTHON3_DISTRIBUTION_VERSION-$T.tar.xz"
-                    wfetch "https://github.com/leleliu008/python-distribution/releases/download/$PYTHON3_DISTRIBUTION_VERSION/$PYTHON3_DISTRIBUTION_FILENAME"
-                    run install -d "$PYTHON3_DISTRIBUTION_INSTALL_DIR"
-                    run bsdtar xf "$PYTHON3_DISTRIBUTION_FILENAME" -C "$PYTHON3_DISTRIBUTION_INSTALL_DIR" --strip-components 1 --no-same-owner
-                    run touch "$NATIVE_PACKAGE_INSTALLED_ROOT/python3/ok"
-                fi
-                export PATH="$NATIVE_PACKAGE_INSTALLED_ROOT/python3/bin:$PATH"
-            fi
         else
-            PACKAGE_DEP_UPP_T2="$(printf '%s\n' $PACKAGE_DEP_UPP_T2 | sort | uniq | tr '\n' ' ')"
-
-            run "$XBUILDER" install "$PACKAGE_DEP_UPP_T2" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$NDKPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
-
-            for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_UPP_T2
-            do
-                NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
-
-                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
-                    CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
-                fi
-
-                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
-                    LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
-                fi
-
-                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                    PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
-                fi
-
-                if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                    PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-                fi
-
-                if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-                    ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-                fi
-            done
+            PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER $PACKAGE_DEP_UPP_T2"
         fi
+    }
+
+    #########################################################################################
+
+    [ -n "$PACKAGE_DEP_XBUILDER" ] && {
+        run "$UPPM" install gmake
+
+        export PATH="$UPPM_HOME/installed/gmake/bin:$PATH"
+
+        xbuilder "$PACKAGE_DEP_XBUILDER"
+
+        for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_XBUILDER
+        do
+            NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
+                CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
+            fi
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
+                LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
+            fi
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
+                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
+            fi
+
+            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+            fi
+
+            if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+                ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+            fi
+        done
+    }
+
+    #########################################################################################
+
+    [ "$PACKAGE_DEP_UPP_PYTHON3" = 1 ] && {
+        if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
+            NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
+
+            if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+                X='10.15'
+            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                X='15.0'
+            else
+                X="$NATIVE_PLATFORM_VERS_MAJOR.0"
+            fi
+
+            T="macos-$X-$NATIVE_PLATFORM_ARCH"
+        else
+            T="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
+        fi
+
+        PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-distribution-2024.10.27-$T"
+        PYTHON3_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/python3"
+
+        if [ ! -f "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok" ] ; then
+            wfetch "https://github.com/leleliu008/python-distribution/releases/download/2024.10.27/$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz"
+            run install -d "$PYTHON3_DISTRIBUTION_INSTALL_DIR"
+            run bsdtar xf  "$PYTHON3_DISTRIBUTION_FILENAME_PREFIX.tar.xz" -C "$PYTHON3_DISTRIBUTION_INSTALL_DIR" --strip-components=1
+            run touch "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok"
+        fi
+
+        export PATH="$PYTHON3_DISTRIBUTION_INSTALL_DIR/bin:$PATH"
     }
 
     #########################################################################################
@@ -5740,7 +5792,7 @@ $DOT_CONTENT
         done
 
         if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
-            run "$XBUILDER" install perl-XML-Parser --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$NDKPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
+            xbuilder perl_XML_Parser
         fi
 
         if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
@@ -8612,12 +8664,12 @@ EOF
 
         ANDROID_NDK_HOME="$UPPM_HOME/installed/$ANDROID_NDK_PKG"
 
-        if ! "$UPPM" is-installed "$ANDROID_NDK_PKG" ; then
+        if ! uppm is-installed "$ANDROID_NDK_PKG" ; then
             note "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK ($ANDROID_NDK_REVISION) will be installed via uppm."
 
-            run "$UPPM" about
-            run "$UPPM" update
-            run "$UPPM" install "$ANDROID_NDK_PKG"
+            uppm about
+            uppm update
+            uppm install "$ANDROID_NDK_PKG"
 
             case $NATIVE_PLATFORM_KIND in
                 linux)
@@ -8744,14 +8796,16 @@ __setup() {
     unset NATIVE_PLATFORM_ARCH
     unset NATIVE_PLATFORM_VERS
 
+    unset LINUX
+
     case "$(uname -s)" in
         Darwin)
             NATIVE_PLATFORM_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
 
             if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
                 NATIVE_PLATFORM_VERS='10.15'
-            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 14 ] ; then
-                NATIVE_PLATFORM_VERS='14.0'
+            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                NATIVE_PLATFORM_VERS='15.0'
             else
                 NATIVE_PLATFORM_VERS="$NATIVE_PLATFORM_VERS_MAJOR.0"
             fi
@@ -8766,6 +8820,8 @@ __setup() {
             else
                 NATIVE_PLATFORM_ARCH="$(uname -m)"
                 NATIVE_PLATFORM_TARGET="linux-$NATIVE_PLATFORM_ARCH"
+
+                LINUX=1
 
                 if [ -f /etc/os-release ] ; then
                     .   /etc/os-release
@@ -8864,8 +8920,10 @@ __setup() {
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ppkg/master/xbuilder' --no-buffer
-    run chmod +x xbuilder
+    if [ "$LINUX" = 1 ] ; then
+        wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
+        run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
+    fi
 
     ##################################################################################
 
@@ -8912,7 +8970,7 @@ __setup() {
 
     ##################################################################################
 
-    cat > init.rc <<EOF
+    cat > init.sh <<EOF
 export ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:\$ACLOCAL_PATH"
 export PATH="$UPPM_PACKAGE_EXEFIND_PATH:\$PATH"
 
@@ -9482,13 +9540,15 @@ NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
 
 NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native"
 
-XBUILDER="$NDKPKG_CORE_DIR/xbuilder"
-
 ##################################################################################
 
 UPPM="$NDKPKG_CORE_DIR/uppm"
 
 export UPPM_HOME="$NDKPKG_HOME/uppm"
+
+uppm() {
+    run "$UPPM" "$@"
+}
 
 if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
     export  UPPM_URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
@@ -9639,8 +9699,8 @@ fi
 
 ##################################################################################
 
-if [ -f "$NDKPKG_CORE_DIR/init.rc" ] ; then
-    .   "$NDKPKG_CORE_DIR/init.rc"
+if [ -f "$NDKPKG_CORE_DIR/init.sh" ] ; then
+    .   "$NDKPKG_CORE_DIR/init.sh"
 else
     abort 1 "please run ${COLOR_GREEN}$NDKPKG_ARG0 setup${COLOR_OFF} command first, then try again."
 fi
