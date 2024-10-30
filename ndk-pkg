@@ -1363,8 +1363,8 @@ filetype_from_url() {
     [ -n "$PACKAGE_DEP_PLM" ]                && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake"
 
     [ "$PACKAGE_USE_BSYSTEM_NDK_BUILD" = 1 ] && PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM gmake"
-    [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake automake"
-    [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake automake"
+    [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake autotools"
+    [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake autotools"
     [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
     [ "$PACKAGE_USE_BSYSTEM_MESON"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
     [ "$PACKAGE_USE_BSYSTEM_MESON"     = 1 ] && PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
@@ -5220,7 +5220,8 @@ $PACKAGE_ONSTART
             READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
 
             CCFLAGS_FOR_BUILD="-fPIC -fno-common"
-            LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition -fno-use-linker-plugin -static --static"
+            LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+            #LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition -fno-use-linker-plugin"
             # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
         fi
 
@@ -5612,6 +5613,10 @@ $DOT_CONTENT
                     PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER libopenssl"
                     continue
                     ;;
+                autotools)
+                    PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 perl autoconf automake"
+                    UPPM_PACKAGE_NAME=gm4
+                    ;;
                 perl|autoconf|automake|libtool|texinfo|help2man|intltool)
                     PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 $UPPM_PACKAGE_NAME"
                     continue
@@ -5658,8 +5663,7 @@ $DOT_CONTENT
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
-        #if [ "$GITHUB_ACTIONS" = true ] ; then
-        if true ; then
+        if [ "$GITHUB_ACTIONS" = true ] ; then
             if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
                 NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
 
@@ -6651,15 +6655,18 @@ $PACKAGE_DO12345
 
         #########################################################################
 
-        # https://docs.rs/openssl/latest/openssl/
-        [ "$PACKAGE_DEP_UPP_OPENSSL" = 1 ] && {
-            case "$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_ARCH" in
-                linux-x86_64)  NATIVE_RUST_TARGET='X86_64_UNKNOWN_LINUX_GNU' ;;
-                macos-x86_64)  NATIVE_RUST_TARGET='X86_64_APPLE_DARWIN'      ;;
-                macos-arm64)   NATIVE_RUST_TARGET='AARCH64_APPLE_DARWIN'     ;;
-            esac
+        RUST_TARGET_FOR_BUILD="$(rustc -vV | sed -n '/host: /p' | cut -c7- | tr 'a-z-' 'A-Z_')"
 
-            eval export "${NATIVE_RUST_TARGET}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/openssl'"
+        # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
+        # https://doc.rust-lang.org/cargo/reference/environment-variables.html
+        export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_AR"="$AR_FOR_BUILD"
+        export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_LINKER"="$CC_FOR_BUILD"
+
+        #########################################################################
+
+        # https://docs.rs/openssl/latest/openssl/
+        [ "$PACKAGE_DEP_UPP_LIBOPENSSL" = 1 ] && {
+            eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/openssl'"
         }
 
         #########################################################################
@@ -8920,13 +8927,6 @@ __setup() {
 
     ##################################################################################
 
-    if [ "$LINUX" = 1 ] ; then
-        wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
-        run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
-    fi
-
-    ##################################################################################
-
     wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' --no-buffer
 
     NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
@@ -8985,6 +8985,58 @@ EOF
     ##################################################################################
 
     run "$UPPM_HOME/installed/gsed/bin/gsed" -i "'s|NDKPKG_CORE_DIR|$NDKPKG_CORE_DIR|'" fonts.conf
+
+    ##################################################################################
+
+    if [ "$LINUX" = 1 ] ; then
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/gcc-13.1.0-linux-glibc-x86_64.tar.xz' --no-buffer
+        run $TAR xf gcc-13.1.0-linux-glibc-x86_64.tar.xz --strip-components=1
+
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/binutils-2.41-linux-glibc-x86_64.tar.xz' --no-buffer
+        run $TAR xf binutils-2.41-linux-glibc-x86_64.tar.xz --strip-components=1
+
+        run install -d sysroot
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc-x86_64.tar.xz' --no-buffer
+        run $TAR xf glibc-2.40-linux-glibc-x86_64.tar.xz -C sysroot --strip-components=1
+
+        LINUX_KERNAL_VERSION="$(cut -d ' ' -f3 < /proc/version | cut -d- -f1)"
+        LINUX_KERNAL_VERSION="${LINUX_KERNAL_VERSION%.0}"
+        LINUX_KERNAL_VERSION_MAJOR="${LINUX_KERNAL_VERSION%%.*}"
+        LINUX_KERNAL_SRC_FILENAME="linux-$LINUX_KERNAL_VERSION.tar.xz"
+
+        wfetch "https://cdn.kernel.org/pub/linux/kernel/v$LINUX_KERNAL_VERSION_MAJOR.x/$LINUX_KERNAL_SRC_FILENAME" --no-buffer
+
+        run install -d linux-src
+        run cd linux-src
+        run $TAR xf "../$LINUX_KERNAL_SRC_FILENAME" --strip-components=1
+        run gmake headers_install INSTALL_HDR_PATH=../sysroot
+        cd -
+
+        for item in gcc g++
+        do
+            mv "bin/$item" "bin/$item.exe"
+            cat > "bin/$item" <<EOF
+#!/bin/sh
+X="\$NDKPKG_HOME/core/sysroot"
+\$NDKPKG_HOME/core/bin/$item.exe \
+    -nostdlib \
+    -I\$X/include \
+    -L\$X/lib \
+    -Wl,-rpath,\$X/lib \
+    -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
+    "\$@" \
+    \$X/lib/Scrt1.o \
+    \$X/lib/crti.o \
+    \$X/lib/crtn.o \
+    -lc
+EOF
+            chmod +x "bin/$item"
+        done
+
+        #wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
+        #run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
+        #ln -s ../wrapper-native-cc bin/cc
+    fi
 
     ##################################################################################
 
@@ -9510,7 +9562,7 @@ fi
     if [ -z "$HOME" ] ; then
         abort 1 "HOME environment variable is not set."
     else
-        NDKPKG_HOME="$HOME/.ndk-pkg"
+        export NDKPKG_HOME="$HOME/.ndk-pkg"
     fi
 }
 
