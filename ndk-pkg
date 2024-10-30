@@ -8946,7 +8946,7 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd fzf bat jq yq d2 dot_static
+    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf gmake xxd fzf bat jq yq d2 dot_static
     do
         run ./uppm install "$UPPM_PACKAGE_NAME"
 
@@ -9007,9 +9007,9 @@ EOF
         wfetch "https://cdn.kernel.org/pub/linux/kernel/v$LINUX_KERNAL_VERSION_MAJOR.x/$LINUX_KERNAL_SRC_FILENAME" --no-buffer
 
         run install -d linux-src
+        run $TAR xf "$LINUX_KERNAL_SRC_FILENAME" -C linux-src --strip-components=1
         run cd linux-src
-        run $TAR xf "../$LINUX_KERNAL_SRC_FILENAME" --strip-components=1
-        run gmake headers_install INSTALL_HDR_PATH=../sysroot
+        run "$UPPM_HOME/installed/gmake/bin/gmake" headers_install INSTALL_HDR_PATH=../sysroot
         cd -
 
         for item in gcc g++
