@@ -8999,19 +8999,6 @@ EOF
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc-x86_64.tar.xz' --no-buffer
         run $TAR xf glibc-2.40-linux-glibc-x86_64.tar.xz -C sysroot --strip-components=1
 
-        LINUX_KERNAL_VERSION="$(cut -d ' ' -f3 < /proc/version | cut -d- -f1)"
-        LINUX_KERNAL_VERSION="${LINUX_KERNAL_VERSION%.0}"
-        LINUX_KERNAL_VERSION_MAJOR="${LINUX_KERNAL_VERSION%%.*}"
-        LINUX_KERNAL_SRC_FILENAME="linux-$LINUX_KERNAL_VERSION.tar.xz"
-
-        wfetch "https://cdn.kernel.org/pub/linux/kernel/v$LINUX_KERNAL_VERSION_MAJOR.x/$LINUX_KERNAL_SRC_FILENAME" --no-buffer
-
-        run install -d linux-src
-        run $TAR xf "$LINUX_KERNAL_SRC_FILENAME" -C linux-src --strip-components=1
-        run cd linux-src
-        run "$UPPM_HOME/installed/gmake/bin/gmake" headers_install INSTALL_HDR_PATH=../sysroot
-        cd -
-
         for item in gcc g++
         do
             mv "bin/$item" "bin/$item.exe"
@@ -9032,6 +9019,21 @@ X="\$NDKPKG_HOME/core/sysroot"
 EOF
             chmod +x "bin/$item"
         done
+
+        export PATH="$PWD/bin:$PATH"
+
+        LINUX_KERNAL_VERSION="$(cut -d ' ' -f3 < /proc/version | cut -d- -f1)"
+        LINUX_KERNAL_VERSION="${LINUX_KERNAL_VERSION%.0}"
+        LINUX_KERNAL_VERSION_MAJOR="${LINUX_KERNAL_VERSION%%.*}"
+        LINUX_KERNAL_SRC_FILENAME="linux-$LINUX_KERNAL_VERSION.tar.xz"
+
+        wfetch "https://cdn.kernel.org/pub/linux/kernel/v$LINUX_KERNAL_VERSION_MAJOR.x/$LINUX_KERNAL_SRC_FILENAME" --no-buffer
+
+        run install -d linux-src
+        run $TAR xf "$LINUX_KERNAL_SRC_FILENAME" -C linux-src --strip-components=1
+        run cd linux-src
+        run "$UPPM_HOME/installed/gmake/bin/gmake" headers_install INSTALL_HDR_PATH=../sysroot
+        cd -
 
         #wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
         #run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
