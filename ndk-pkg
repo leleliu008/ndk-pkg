@@ -9013,6 +9013,7 @@ X="\$NDKPKG_HOME/core/sysroot"
     -I\$X/include \
     -L\$X/lib \
     -Wl,-rpath,\$X/lib \
+    -Wl,-rpath,\$NDKPKG_HOME/core/lib \
     -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
     "\$@" \
     \$X/lib/Scrt1.o \
@@ -9028,6 +9029,7 @@ X="\$NDKPKG_HOME/core/sysroot"
     -I\$X/include \
     -L\$X/lib \
     -Wl,-rpath,\$X/lib \
+    -Wl,-rpath,\$NDKPKG_HOME/core/lib \
     -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
     "\$@" \
     \$X/lib/Scrt1.o \
