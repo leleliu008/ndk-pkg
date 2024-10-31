@@ -4495,8 +4495,6 @@ inspect_install_arguments() {
 
     unset ENABLE_CCACHE
 
-    unset ASSUME_YES
-
     unset REQUEST_TO_UPGRADE_IF_POSSIBLE
 
     unset REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON
@@ -4644,8 +4642,6 @@ inspect_install_arguments() {
                 ;;
             -x-pkg-config)
                 DEBUG_PKG_CONFIG=1
-                ;;
-            -y) ASSUME_YES=1
                 ;;
             --disable-ccache)
                 ENABLE_CCACHE=0
@@ -8776,16 +8772,14 @@ __install_gcc_via_syspm_alpine() {
 }
 
 __install_gcc_via_syspm() {
-    if [ "$ASSUME_YES" = 1 ] ; then
-        if [ -f /etc/os-release ] ; then
-            .   /etc/os-release
+    if [ -f /etc/os-release ] ; then
+        .   /etc/os-release
 
-            if [ "$ID" = 'opensuse-leap' ] ; then
-                ID='opensuse_leap'
-            fi
-
-            __install_gcc_via_syspm_$ID
+        if [ "$ID" = 'opensuse-leap' ] ; then
+            ID='opensuse_leap'
         fi
+
+        __install_gcc_via_syspm_$ID
     fi
 }
 
@@ -9009,6 +9003,16 @@ EOF
 
         cat > bin/gcc <<EOF
 #!/bin/sh
+
+for arg in "\$@"
+do
+    case \$arg in
+        -c|-shared)
+            \$NDKPKG_HOME/core/bin/gcc.exe "\$@"
+            exit
+    esac
+done
+
 X="\$NDKPKG_HOME/core/sysroot"
 \$NDKPKG_HOME/core/bin/gcc.exe \
     -nostdlib \
@@ -9025,6 +9029,16 @@ X="\$NDKPKG_HOME/core/sysroot"
 EOF
         cat > bin/g++ <<EOF
 #!/bin/sh
+
+for arg in "\$@"
+do
+    case \$arg in
+        -c|-shared)
+            \$NDKPKG_HOME/core/bin/gcc.exe "\$@"
+            exit
+    esac
+done
+
 X="\$NDKPKG_HOME/core/sysroot"
 \$NDKPKG_HOME/core/bin/g++.exe \
     -nostdlib \
@@ -9611,7 +9625,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.18.0
+NDKPKG_VERSION=0.18.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
