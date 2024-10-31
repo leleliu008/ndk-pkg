@@ -9005,59 +9005,49 @@ EOF
 
         cat > bin/gcc <<EOF
 #!/bin/sh
-
-for arg in "\$@"
-do
-    case \$arg in
-        -c|-shared)
-            \$NDKPKG_HOME/core/bin/gcc.exe "\$@"
-            exit
-    esac
-done
-
-X="\$NDKPKG_HOME/core/sysroot"
-\$NDKPKG_HOME/core/bin/gcc.exe \
-    -nostdlib \
-    -I\$X/include \
-    -L\$X/lib \
-    -Wl,-rpath,\$X/lib \
-    -Wl,-rpath,\$NDKPKG_HOME/core/lib \
-    -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
-    "\$@" \
-    \$X/lib/Scrt1.o \
-    \$X/lib/crti.o \
-    \$X/lib/crtn.o \
-    -lc
+exec "$NDKPKG_HOME/core/bin/gcc.exe" "\$@" -specs "$NDKPKG_HOME/core/myglibc.specs"
 EOF
         cat > bin/g++ <<EOF
 #!/bin/sh
-
-for arg in "\$@"
-do
-    case \$arg in
-        -c|-shared)
-            \$NDKPKG_HOME/core/bin/gcc.exe "\$@"
-            exit
-    esac
-done
-
-X="\$NDKPKG_HOME/core/sysroot"
-\$NDKPKG_HOME/core/bin/g++.exe \
-    -nostdlib \
-    -I\$X/include \
-    -L\$X/lib \
-    -Wl,-rpath,\$X/lib \
-    -Wl,-rpath,\$NDKPKG_HOME/core/lib \
-    -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
-    "\$@" \
-    \$X/lib/Scrt1.o \
-    \$X/lib/crti.o \
-    \$X/lib/crtn.o \
-    -lstdc++ \
-    -lc
+exec "$NDKPKG_HOME/core/bin/g++.exe" "\$@" -specs "$NDKPKG_HOME/core/myglibc.specs"
 EOF
         chmod +x bin/gcc
         chmod +x bin/g++
+
+        cat > myglibc.specs <<EOF
+%rename cpp_options old_cpp_options
+
+*cpp_options:
+-nostdinc -isystem $NDKPKG_HOME/core/sysroot/include -isystem include%s %(old_cpp_options)
+
+*cc1:
+%(cc1_cpu) -nostdinc -isystem $NDKPKG_HOME/core/sysroot/include -isystem include%s
+
+*link_libgcc:
+-L$NDKPKG_HOME/core/sysroot/lib -L .%s
+
+*libgcc:
+libgcc.a%s %:if-exists(libgcc_eh.a%s)
+
+*startfile:
+%{!shared: $NDKPKG_HOME/core/sysroot/lib/Scrt1.o} $NDKPKG_HOME/core/sysroot/lib/crti.o crtbeginS.o%s
+
+*endfile:
+crtendS.o%s $NDKPKG_HOME/core/sysroot/lib/crtn.o
+
+*link:
+-dynamic-linker $NDKPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $NDKPKG_HOME/core/sysroot/lib -rpath $NDKPKG_HOME/core/lib -L $NDKPKG_HOME/core/sysroot/lib -L $NDKPKG_HOME/core/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
+
+*esp_link:
+
+
+*esp_options:
+
+
+*esp_cpp_options:
+
+
+EOF
 
         #wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
         #run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
@@ -9627,7 +9617,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.18.1
+NDKPKG_VERSION=0.18.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
