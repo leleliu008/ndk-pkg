@@ -9001,20 +9001,21 @@ EOF
         "$UPPM_HOME/installed/gsed/bin/gsed" -i "s|/home/leleliu008/.ppkg/installed/linux-glibc-x86_64/bebfceb3d2ea2461fde461b6c32a3e3cafc29d18ecec16e136e32b175caab53d|$NDKPKG_HOME/core/sysroot|g" sysroot/lib/libc.so sysroot/lib/libm.a sysroot/lib/libm.so
 
         mv bin/gcc bin/gcc.exe
-        mv bin/g++ bin/gcc.exe
+        mv bin/g++ bin/g++.exe
 
         cat > bin/gcc <<EOF
 #!/bin/sh
-exec "$NDKPKG_HOME/core/bin/gcc.exe" "\$@" -specs "$NDKPKG_HOME/core/myglibc.specs"
+exec "$NDKPKG_HOME/core/bin/gcc.exe" "\$@" -specs "$NDKPKG_HOME/core/gcc.specs"
 EOF
         cat > bin/g++ <<EOF
 #!/bin/sh
-exec "$NDKPKG_HOME/core/bin/g++.exe" "\$@" -specs "$NDKPKG_HOME/core/myglibc.specs"
+exec "$NDKPKG_HOME/core/bin/g++.exe" "\$@" -specs "$NDKPKG_HOME/core/g++.specs"
 EOF
         chmod +x bin/gcc
         chmod +x bin/g++
 
-        cat > myglibc.specs <<EOF
+        # https://gcc.gnu.org/onlinedocs/gcc/Spec-Files.html
+        cat > gcc.specs <<EOF
 %rename cpp_options old_cpp_options
 
 *cpp_options:
@@ -9049,6 +9050,42 @@ crtendS.o%s $NDKPKG_HOME/core/sysroot/lib/crtn.o
 
 EOF
 
+        cat > g++.specs <<EOF
+%rename cpp_options old_cpp_options
+
+*cpp_options:
+-nostdinc -isystem $NDKPKG_HOME/core/sysroot/include -I $NDKPKG_HOME/core/include/c++/13.1.0 -I $NDKPKG_HOME/core/include/c++/13.1.0/x86_64-pc-linux-gnu -isystem include%s %(old_cpp_options)
+
+*cc1:
+%(cc1_cpu) -nostdinc -isystem $NDKPKG_HOME/core/sysroot/include -I $NDKPKG_HOME/core/include/c++/13.1.0 -I $NDKPKG_HOME/core/include/c++/13.1.0/x86_64-pc-linux-gnu -isystem include%s
+
+*link_libgcc:
+-L$NDKPKG_HOME/core/sysroot/lib -L .%s
+
+*libgcc:
+libgcc.a%s %:if-exists(libgcc_eh.a%s)
+
+*startfile:
+%{!shared: $NDKPKG_HOME/core/sysroot/lib/Scrt1.o} $NDKPKG_HOME/core/sysroot/lib/crti.o crtbeginS.o%s
+
+*endfile:
+crtendS.o%s $NDKPKG_HOME/core/sysroot/lib/crtn.o
+
+*link:
+-dynamic-linker $NDKPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $NDKPKG_HOME/core/sysroot/lib -rpath $NDKPKG_HOME/core/lib -L $NDKPKG_HOME/core/sysroot/lib -L $NDKPKG_HOME/core/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
+
+*esp_link:
+
+
+*esp_options:
+
+
+*esp_cpp_options:
+
+
+EOF
+
+
         #wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
         #run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
         #ln -s ../wrapper-native-cc bin/cc
@@ -9067,39 +9104,21 @@ EOF
     success "ndk-pkg-$NDKPKG_VERSION have been successfully setup."
 }
 
-__xx() {
+__build_linux_headers() {
+    export PATH="$PWD/bin:$PATH"
 
-        cat > bin/gcc <<EOF
-#!/bin/sh
-X="$PWD/sysroot"
-$PWD/bin/gcc.exe \
-    -nostdlib \
-    -I\$X/include \
-    -L\$X/lib \
-    -Wl,-rpath,\$X/lib \
-    -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
-    "\$@" \
-    \$X/lib/Scrt1.o \
-    \$X/lib/crti.o \
-    \$X/lib/crtn.o \
-    -lc
-EOF
-        chmod +x bin/gcc
+    LINUX_KERNAL_VERSION="$(cut -d ' ' -f3 < /proc/version | cut -d- -f1)"
+    LINUX_KERNAL_VERSION="${LINUX_KERNAL_VERSION%.0}"
+    LINUX_KERNAL_VERSION_MAJOR="${LINUX_KERNAL_VERSION%%.*}"
+    LINUX_KERNAL_SRC_FILENAME="linux-$LINUX_KERNAL_VERSION.tar.xz"
 
-        export PATH="$PWD/bin:$PATH"
+    wfetch "https://cdn.kernel.org/pub/linux/kernel/v$LINUX_KERNAL_VERSION_MAJOR.x/$LINUX_KERNAL_SRC_FILENAME" --no-buffer
 
-        LINUX_KERNAL_VERSION="$(cut -d ' ' -f3 < /proc/version | cut -d- -f1)"
-        LINUX_KERNAL_VERSION="${LINUX_KERNAL_VERSION%.0}"
-        LINUX_KERNAL_VERSION_MAJOR="${LINUX_KERNAL_VERSION%%.*}"
-        LINUX_KERNAL_SRC_FILENAME="linux-$LINUX_KERNAL_VERSION.tar.xz"
-
-        wfetch "https://cdn.kernel.org/pub/linux/kernel/v$LINUX_KERNAL_VERSION_MAJOR.x/$LINUX_KERNAL_SRC_FILENAME" --no-buffer
-
-        run install -d linux-src
-        run $TAR xf "$LINUX_KERNAL_SRC_FILENAME" -C linux-src --strip-components=1
-        run cd linux-src
-        run "$UPPM_HOME/installed/gmake/bin/gmake" headers_install INSTALL_HDR_PATH=../sysroot
-        cd -
+    run install -d linux-src
+    run $TAR xf "$LINUX_KERNAL_SRC_FILENAME" -C linux-src --strip-components=1
+    run cd linux-src
+    run "$UPPM_HOME/installed/gmake/bin/gmake" headers_install INSTALL_HDR_PATH=../sysroot
+    cd -
 }
 
 # }}}
@@ -9617,7 +9636,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.18.2
+NDKPKG_VERSION=0.18.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
