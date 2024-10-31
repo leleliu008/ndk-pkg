@@ -8946,7 +8946,7 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf gmake xxd fzf bat jq yq d2 dot_static
+    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree sysinfo patchelf xxd fzf bat jq yq d2 dot_static
     do
         run ./uppm install "$UPPM_PACKAGE_NAME"
 
@@ -9001,6 +9001,8 @@ EOF
 
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/linux-headers-6.8-linux-x86_64.tar.xz' --no-buffer
         run $TAR xf linux-headers-6.8-linux-x86_64.tar.xz -C sysroot --strip-components=1
+
+        "$UPPM_HOME/installed/gsed/bin/gsed" -i "s|/home/leleliu008/.ppkg/installed/linux-glibc-x86_64/bebfceb3d2ea2461fde461b6c32a3e3cafc29d18ecec16e136e32b175caab53d|$NDKPKG_HOME/core/sysroot|g" sysroot/lib/libc.so sysroot/lib/libm.a sysroot/lib/libm.so
 
         mv bin/gcc bin/gcc.exe
         mv bin/g++ bin/gcc.exe
