@@ -8999,13 +8999,13 @@ EOF
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc-x86_64.tar.xz' --no-buffer
         run $TAR xf glibc-2.40-linux-glibc-x86_64.tar.xz -C sysroot --strip-components=1
 
-        for item in gcc g++
-        do
-            mv "bin/$item" "bin/$item.exe"
-            cat > "bin/$item" <<EOF
+        mv bin/gcc bin/gcc.exe
+        mv bin/g++ bin/gcc.exe
+
+        cat > bin/gcc <<EOF
 #!/bin/sh
-X="\$NDKPKG_HOME/core/sysroot"
-\$NDKPKG_HOME/core/bin/$item.exe \
+X="$PWD/sysroot"
+$PWD/bin/gcc.exe \
     -nostdlib \
     -I\$X/include \
     -L\$X/lib \
@@ -9017,8 +9017,7 @@ X="\$NDKPKG_HOME/core/sysroot"
     \$X/lib/crtn.o \
     -lc
 EOF
-            chmod +x "bin/$item"
-        done
+        chmod +x bin/gcc
 
         export PATH="$PWD/bin:$PATH"
 
@@ -9034,6 +9033,40 @@ EOF
         run cd linux-src
         run "$UPPM_HOME/installed/gmake/bin/gmake" headers_install INSTALL_HDR_PATH=../sysroot
         cd -
+
+        cat > bin/gcc <<EOF
+#!/bin/sh
+X="\$NDKPKG_HOME/core/sysroot"
+\$NDKPKG_HOME/core/bin/gcc.exe \
+    -nostdlib \
+    -I\$X/include \
+    -L\$X/lib \
+    -Wl,-rpath,\$X/lib \
+    -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
+    "\$@" \
+    \$X/lib/Scrt1.o \
+    \$X/lib/crti.o \
+    \$X/lib/crtn.o \
+    -lc
+EOF
+        cat > bin/g++ <<EOF
+#!/bin/sh
+X="\$NDKPKG_HOME/core/sysroot"
+\$NDKPKG_HOME/core/bin/g++.exe \
+    -nostdlib \
+    -I\$X/include \
+    -L\$X/lib \
+    -Wl,-rpath,\$X/lib \
+    -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
+    "\$@" \
+    \$X/lib/Scrt1.o \
+    \$X/lib/crti.o \
+    \$X/lib/crtn.o \
+    -lstdc++ \
+    -lc
+EOF
+        chmod +x bin/gcc
+        chmod +x bin/g++
 
         #wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
         #run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
