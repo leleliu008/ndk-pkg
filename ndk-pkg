@@ -4692,6 +4692,8 @@ $FORMULA_SEARCH_DIR"
             -U) REQUEST_TO_UPGRADE_IF_POSSIBLE=1 ;;
             -E) REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON=1 ;;
 
+            -y) ;;
+
             -*) abort 1 "unrecognized option: $1" ;;
 
             *)  SPECIFIED_PACKAGE_LIST="$SPECIFIED_PACKAGE_LIST $1"
