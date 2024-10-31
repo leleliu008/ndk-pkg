@@ -8999,40 +8999,11 @@ EOF
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc-x86_64.tar.xz' --no-buffer
         run $TAR xf glibc-2.40-linux-glibc-x86_64.tar.xz -C sysroot --strip-components=1
 
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/linux-headers-6.8-linux-x86_64.tar.xz' --no-buffer
+        run $TAR xf linux-headers-6.8-linux-x86_64.tar.xz -C sysroot --strip-components=1
+
         mv bin/gcc bin/gcc.exe
         mv bin/g++ bin/gcc.exe
-
-        cat > bin/gcc <<EOF
-#!/bin/sh
-X="$PWD/sysroot"
-$PWD/bin/gcc.exe \
-    -nostdlib \
-    -I\$X/include \
-    -L\$X/lib \
-    -Wl,-rpath,\$X/lib \
-    -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
-    "\$@" \
-    \$X/lib/Scrt1.o \
-    \$X/lib/crti.o \
-    \$X/lib/crtn.o \
-    -lc
-EOF
-        chmod +x bin/gcc
-
-        export PATH="$PWD/bin:$PATH"
-
-        LINUX_KERNAL_VERSION="$(cut -d ' ' -f3 < /proc/version | cut -d- -f1)"
-        LINUX_KERNAL_VERSION="${LINUX_KERNAL_VERSION%.0}"
-        LINUX_KERNAL_VERSION_MAJOR="${LINUX_KERNAL_VERSION%%.*}"
-        LINUX_KERNAL_SRC_FILENAME="linux-$LINUX_KERNAL_VERSION.tar.xz"
-
-        wfetch "https://cdn.kernel.org/pub/linux/kernel/v$LINUX_KERNAL_VERSION_MAJOR.x/$LINUX_KERNAL_SRC_FILENAME" --no-buffer
-
-        run install -d linux-src
-        run $TAR xf "$LINUX_KERNAL_SRC_FILENAME" -C linux-src --strip-components=1
-        run cd linux-src
-        run "$UPPM_HOME/installed/gmake/bin/gmake" headers_install INSTALL_HDR_PATH=../sysroot
-        cd -
 
         cat > bin/gcc <<EOF
 #!/bin/sh
@@ -9084,6 +9055,41 @@ EOF
     #################################################################################
 
     success "ndk-pkg-$NDKPKG_VERSION have been successfully setup."
+}
+
+__xx() {
+
+        cat > bin/gcc <<EOF
+#!/bin/sh
+X="$PWD/sysroot"
+$PWD/bin/gcc.exe \
+    -nostdlib \
+    -I\$X/include \
+    -L\$X/lib \
+    -Wl,-rpath,\$X/lib \
+    -Wl,-dynamic-linker,\$X/lib/ld-linux-x86-64.so.2 \
+    "\$@" \
+    \$X/lib/Scrt1.o \
+    \$X/lib/crti.o \
+    \$X/lib/crtn.o \
+    -lc
+EOF
+        chmod +x bin/gcc
+
+        export PATH="$PWD/bin:$PATH"
+
+        LINUX_KERNAL_VERSION="$(cut -d ' ' -f3 < /proc/version | cut -d- -f1)"
+        LINUX_KERNAL_VERSION="${LINUX_KERNAL_VERSION%.0}"
+        LINUX_KERNAL_VERSION_MAJOR="${LINUX_KERNAL_VERSION%%.*}"
+        LINUX_KERNAL_SRC_FILENAME="linux-$LINUX_KERNAL_VERSION.tar.xz"
+
+        wfetch "https://cdn.kernel.org/pub/linux/kernel/v$LINUX_KERNAL_VERSION_MAJOR.x/$LINUX_KERNAL_SRC_FILENAME" --no-buffer
+
+        run install -d linux-src
+        run $TAR xf "$LINUX_KERNAL_SRC_FILENAME" -C linux-src --strip-components=1
+        run cd linux-src
+        run "$UPPM_HOME/installed/gmake/bin/gmake" headers_install INSTALL_HDR_PATH=../sysroot
+        cd -
 }
 
 # }}}
