@@ -9002,11 +9002,14 @@ EOF
 
     ##################################################################################
 
-    if [ "$LINUX" = 1 ] && [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
-        cat >> init.sh <<EOF
+    if [ "$LINUX" = 1 ] ; then
+        if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
+            cat >> init.sh <<EOF
 export LD_LIBRARY_PATH="\$NDKPKG_HOME/lib"
 EOF
-
+            wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
+            run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
+        else
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/gcc-13.1.0-linux-glibc-x86_64.tar.xz' --no-buffer
         run $TAR xf gcc-13.1.0-linux-glibc-x86_64.tar.xz --strip-components=1
 
@@ -9109,10 +9112,9 @@ crtendS.o%s $NDKPKG_HOME/core/sysroot/lib/crtn.o
 
 EOF
 
-        ln -s ../wrapper-native-cc bin/cc
+        fi
 
-        #wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
-        #run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
+        ln -s ../wrapper-native-cc bin/cc
     fi
 
     ##################################################################################
@@ -9660,7 +9662,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.18.4
+NDKPKG_VERSION=0.18.5
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
