@@ -9002,7 +9002,11 @@ EOF
 
     ##################################################################################
 
-    if [ "$LINUX" = 1 ] ; then
+    if [ "$LINUX" = 1 ] && [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
+        cat >> init.sh <<EOF
+export LD_LIBRARY_PATH="\$NDKPKG_HOME/lib"
+EOF
+
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/gcc-13.1.0-linux-glibc-x86_64.tar.xz' --no-buffer
         run $TAR xf gcc-13.1.0-linux-glibc-x86_64.tar.xz --strip-components=1
 
