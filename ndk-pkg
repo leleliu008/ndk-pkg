@@ -5611,6 +5611,10 @@ $DOT_CONTENT
                     PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER libopenssl"
                     continue
                     ;;
+                ruby)
+                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER ruby"
+                    continue
+                    ;;
                 autotools)
                     PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 perl autoconf automake"
                     UPPM_PACKAGE_NAME=gm4
@@ -6646,10 +6650,10 @@ $PACKAGE_DO12345
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LDFLAG"
         done
 
-        if [ "$TARGET_PLATFORM_ARCH" = x86_64 ] || [ "$TARGET_PLATFORM_ARCH" = i686 ] ; then
+        #if [ "$TARGET_PLATFORM_ARCH" = x86_64 ] || [ "$TARGET_PLATFORM_ARCH" = i686 ] ; then
             LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LIBCLANG_RT_BUILTINS_FILEPATH"
-        fi
+        #fi
 
         #########################################################################
 
@@ -8829,6 +8833,26 @@ __setup() {
                 if [ -f /etc/os-release ] ; then
                     .   /etc/os-release
 
+                    unset sudo
+
+                    if [ "$(id -u)" -ne 0 ] ; then
+                        sudo=sudo
+                    fi
+
+                    # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+                    if [ "$GITHUB_ACTIONS" = true ] ; then
+                        if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
+                            if [ ! -f '/lib64/ld-linux-x86-64.so.2' ] ; then
+                                case $ID in
+                                    alpine)
+                                        run $sudo apk update
+                                        run $sudo apk add gcompat
+                                        ;;
+                                esac
+                            fi
+                        fi
+                    fi
+
                     for FETCH_TOOL in curl wget http lynx aria2c axel
                     do
                         if command -v "$FETCH_TOOL" > /dev/null ; then
@@ -8840,12 +8864,6 @@ __setup() {
 
                     if [ -z "$FETCH_TOOL" ] ; then
                         if [ "$REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER" = 1 ] ; then
-                            unset sudo
-
-                            if [ "$(id -u)" -ne 0 ] ; then
-                                sudo=sudo
-                            fi
-
                             FETCH_TOOL=curl
 
                             case $ID in
@@ -8998,6 +9016,8 @@ EOF
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/linux-headers-6.8-linux-x86_64.tar.xz' --no-buffer
         run $TAR xf linux-headers-6.8-linux-x86_64.tar.xz -C sysroot --strip-components=1
 
+        ln -s gcc/x86_64-pc-linux-gnu/13.1.0/libgcc.a lib/libgcc.a
+
         "$UPPM_HOME/installed/gsed/bin/gsed" -i "s|/home/leleliu008/.ppkg/installed/linux-glibc-x86_64/bebfceb3d2ea2461fde461b6c32a3e3cafc29d18ecec16e136e32b175caab53d|$NDKPKG_HOME/core/sysroot|g" sysroot/lib/libc.so sysroot/lib/libm.a sysroot/lib/libm.so
 
         mv bin/gcc bin/gcc.exe
@@ -9085,10 +9105,10 @@ crtendS.o%s $NDKPKG_HOME/core/sysroot/lib/crtn.o
 
 EOF
 
+        ln -s ../wrapper-native-cc bin/cc
 
         #wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
         #run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
-        #ln -s ../wrapper-native-cc bin/cc
     fi
 
     ##################################################################################
@@ -9636,7 +9656,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.18.3
+NDKPKG_VERSION=0.18.4
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
