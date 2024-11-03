@@ -3647,13 +3647,12 @@ __gen_url_transform_sample() {
     cat > url-transform.sample <<EOF
 #!/bin/sh
 
-# https://gitmirror.com/
 case \$1 in
     *githubusercontent.com/*)
-        printf '%s\n' "\$1" | sed 's|githubusercontent|gitmirror|'
+        printf 'https://ghp.ci/%s\n' "\$1"
         ;;
     https://github.com/*)
-        printf 'https://mirror.ghproxy.com/%s\n' "\$1"
+        printf 'https://ghp.ci/%s\n' "\$1"
         ;;
     '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ; exit 1 ;;
     *)  printf '%s\n' "\$1"
@@ -9005,7 +9004,7 @@ EOF
     if [ "$LINUX" = 1 ] ; then
         if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
             cat >> init.sh <<EOF
-export LD_LIBRARY_PATH="\$NDKPKG_HOME/lib"
+export LD_LIBRARY_PATH="\$NDKPKG_HOME/core/lib"
 EOF
             wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
             run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
@@ -9403,9 +9402,6 @@ ${COLOR_GREEN}ndk-pkg install [android-<ANDROID-API>-<ANDROID-ABIs>/]<PACKAGE-NA
 
         ${COLOR_BLUE}-x-pkg-config${COLOR_OFF}
             export PKG_CONFIG_DEBUG_SPEW=1
-
-        ${COLOR_BLUE}-y${COLOR_OFF}
-            If this option is specified, C and C++ compiler for native build would be installed via your system package manager if none of g++ clang++ c++ command is found. otherwise a error message would be raised if none of g++ clang++ c++ command is found.
 
         ${COLOR_BLUE}--disable-ccache${COLOR_OFF}
             do not use ccache.
