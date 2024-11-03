@@ -5665,21 +5665,27 @@ $DOT_CONTENT
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
         if [ "$GITHUB_ACTIONS" = true ] ; then
-            if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-                NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
+            case $NATIVE_PLATFORM_TYPE in
+                macos)
+                    NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
 
-                if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
-                    X='10.15'
-                elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
-                    X='15.0'
-                else
-                    X="$NATIVE_PLATFORM_VERS_MAJOR.0"
-                fi
+                    if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+                        X='10.15'
+                    elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                        X='15.0'
+                    else
+                        X="$NATIVE_PLATFORM_VERS_MAJOR.0"
+                    fi
 
-                T="macos-$X-$NATIVE_PLATFORM_ARCH"
-            else
-                T="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
-            fi
+                    T="macos-$X-$NATIVE_PLATFORM_ARCH"
+                    ;;
+                linux)
+                    if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
+                        T="linux-musl-$NATIVE_PLATFORM_ARCH"
+                    elif [ -f '/lib64/ld-linux-x86-64.so.2' ] ; then
+                        T="linux-glibc-$NATIVE_PLATFORM_ARCH"
+                    fi
+            esac
 
             NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
             NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
@@ -5735,21 +5741,27 @@ $DOT_CONTENT
     #########################################################################################
 
     [ "$PACKAGE_DEP_UPP_PYTHON3" = 1 ] && {
-        if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-            NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
+        case $NATIVE_PLATFORM_TYPE in
+            macos)
+                NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
 
-            if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
-                X='10.15'
-            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
-                X='15.0'
-            else
-                X="$NATIVE_PLATFORM_VERS_MAJOR.0"
-            fi
+                if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+                    X='10.15'
+                elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                    X='15.0'
+                else
+                    X="$NATIVE_PLATFORM_VERS_MAJOR.0"
+                fi
 
-            T="macos-$X-$NATIVE_PLATFORM_ARCH"
-        else
-            T="$NATIVE_PLATFORM_TYPE-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
-        fi
+                T="macos-$X-$NATIVE_PLATFORM_ARCH"
+                ;;
+            linux)
+                if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
+                    T="linux-musl-$NATIVE_PLATFORM_ARCH"
+                elif [ -f '/lib64/ld-linux-x86-64.so.2' ] ; then
+                    T="linux-glibc-$NATIVE_PLATFORM_ARCH"
+                fi
+        esac
 
         PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-distribution-2024.10.27-$T"
         PYTHON3_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/python3"
@@ -9658,7 +9670,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.18.5
+NDKPKG_VERSION=0.18.6
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
