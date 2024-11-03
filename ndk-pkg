@@ -5680,11 +5680,7 @@ $DOT_CONTENT
                     T="macos-$X-$NATIVE_PLATFORM_ARCH"
                     ;;
                 linux)
-                    if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
-                        T="linux-musl-$NATIVE_PLATFORM_ARCH"
-                    elif [ -f '/lib64/ld-linux-x86-64.so.2' ] ; then
-                        T="linux-glibc-$NATIVE_PLATFORM_ARCH"
-                    fi
+                    T="linux-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
             esac
 
             NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
@@ -5756,11 +5752,7 @@ $DOT_CONTENT
                 T="macos-$X-$NATIVE_PLATFORM_ARCH"
                 ;;
             linux)
-                if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
-                    T="linux-musl-$NATIVE_PLATFORM_ARCH"
-                elif [ -f '/lib64/ld-linux-x86-64.so.2' ] ; then
-                    T="linux-glibc-$NATIVE_PLATFORM_ARCH"
-                fi
+                T="linux-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
         esac
 
         PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-distribution-2024.10.27-$T"
@@ -9882,6 +9874,14 @@ NATIVE_PLATFORM_NCPU="$(sysinfo ncpu)"
 NATIVE_PLATFORM_LIBC="$(sysinfo libc)"
 NATIVE_PLATFORM_EUID="$(id -u)"
 NATIVE_PLATFORM_EGID="$(id -g)"
+
+if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
+    if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
+        NATIVE_PLATFORM_LIBC=musl
+    elif [ -f '/lib64/ld-linux-x86-64.so.2' ] ; then
+        NATIVE_PLATFORM_LIBC=glibc
+    fi
+fi
 
 ##################################################################################
 
