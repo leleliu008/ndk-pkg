@@ -8655,7 +8655,7 @@ EOF
             # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
             ANDROID_NDK_REVISION='r26b'
         else
-            ANDROID_NDK_REVISION='r26d'
+            ANDROID_NDK_REVISION='r27c'
         fi
 
         ANDROID_NDK_PKG="android-ndk-$ANDROID_NDK_REVISION"
