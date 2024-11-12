@@ -8,4 +8,4 @@ export NDKPKG_VERBOSE=1
 
 cc -flto -Os -o wrapper-target-cc wrapper-target-cc.c
 
-./wrapper-target-cc -flto -Os -o sed-in-place sed-in-place.c
+./wrapper-target-cc -flto -Os -o test wrapper-target-cc.c

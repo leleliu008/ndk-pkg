@@ -156,7 +156,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 │   ├── SourceCodePro-Light.otf
 │   ├── cacert.pem
 │   ├── fonts.conf
-│   ├── init.rc
+│   ├── init.sh
 │   ├── ndk-pkg-core-2024.05.15-linux-x86_64.tar.xz
 │   ├── ndk-pkg-core-latest-release-version
 │   ├── uppm

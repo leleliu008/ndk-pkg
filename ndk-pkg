@@ -104,20 +104,6 @@ bppend_to_ACLOCAL_PATH() {
     esac
 }
 
-sedInPlace() {
-    if [ "${DUMP_SED:-0}" = 1 ] ; then
-        if [ -z "$SED" ] ; then
-            SED="$(command -v gsed || command -v sed)" || abort 1 "command not found: gsed"
-        fi
-
-        export SED
-
-        "$NDKPKG_CORE_DIR/sed-in-place" "$@"
-    else
-        sed -i "$@"
-    fi
-}
-
 git() {
     if [ -z "$SSL_CERT_FILE" ] ; then
         command git "$@"
