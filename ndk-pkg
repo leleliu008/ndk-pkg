@@ -9773,7 +9773,9 @@ EOF
         exit
         ;;
     android-versions)
+        # https://apilevels.com/
         cat <<EOF
+Android 15          35  VANILLA_ICE_CREAM
 Android 14          34  UPSIDE_DOWN_CAKE
 Android 13          33  TIRAMISU
 Android 12          32  S_V2
