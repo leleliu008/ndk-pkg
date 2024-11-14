@@ -4930,6 +4930,28 @@ xbuilder() {
     run sh "$XBUILDER" install "$@" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$NDKPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
 }
 
+__get_NATIVE_PLATFORM_TRIPLE() {
+    case $NATIVE_PLATFORM_TYPE in
+        macos)
+            NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
+
+            if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+                X='10.15'
+            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                X='15.0'
+            else
+                X="$NATIVE_PLATFORM_VERS_MAJOR.0"
+            fi
+
+            NATIVE_PLATFORM_TRIPLE="macos-$X-$NATIVE_PLATFORM_ARCH"
+            ;;
+        linux)
+            NATIVE_PLATFORM_TRIPLE="linux-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
+    esac
+
+    printf '%s\n' "$NATIVE_PLATFORM_TRIPLE"
+}
+
 __install_the_given_package_onexit() {
     is_package_installed "$PACKAGE_SPEC" || {
         abort 1 "package installation failure: $PACKAGE_SPEC\n"
@@ -5547,6 +5569,7 @@ $DOT_CONTENT
     unset PACKAGE_DEP_UPP_LIBZ
     unset PACKAGE_DEP_UPP_LIBOPENSSL
     unset PACKAGE_DEP_UPP_PYTHON3
+    unset PACKAGE_DEP_UPP_RUBY
 
     # these native packages are not relocatable and would be fetched to a fixed location /opt/non-relocatable-*
     unset PACKAGE_DEP_UPP_T2
@@ -5596,10 +5619,6 @@ $DOT_CONTENT
                     PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER libopenssl"
                     continue
                     ;;
-                ruby)
-                    PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER ruby"
-                    continue
-                    ;;
                 autotools)
                     PACKAGE_DEP_UPP_T2="$PACKAGE_DEP_UPP_T2 perl autoconf automake"
                     UPPM_PACKAGE_NAME=gm4
@@ -5610,6 +5629,10 @@ $DOT_CONTENT
                     ;;
                 python3)
                     PACKAGE_DEP_UPP_PYTHON3=1
+                    continue
+                    ;;
+                ruby)
+                    PACKAGE_DEP_UPP_RUBY=1
                     continue
                     ;;
             esac
@@ -5651,25 +5674,7 @@ $DOT_CONTENT
 
     [ -n "$PACKAGE_DEP_UPP_T2" ] && {
         if [ "$GITHUB_ACTIONS" = true ] ; then
-            case $NATIVE_PLATFORM_TYPE in
-                macos)
-                    NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
-
-                    if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
-                        X='10.15'
-                    elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
-                        X='15.0'
-                    else
-                        X="$NATIVE_PLATFORM_VERS_MAJOR.0"
-                    fi
-
-                    T="macos-$X-$NATIVE_PLATFORM_ARCH"
-                    ;;
-                linux)
-                    T="linux-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
-            esac
-
-            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
+            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$(__get_NATIVE_PLATFORM_TRIPLE)"
             NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
 
             if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
@@ -5722,26 +5727,24 @@ $DOT_CONTENT
 
     #########################################################################################
 
+    [ "$PACKAGE_DEP_UPP_RUBY" = 1 ] && {
+        RUBY_DISTRIBUTION_FILENAME_PREFIX="ruby-3.3.6-$(__get_NATIVE_PLATFORM_TRIPLE)"
+        RUBY_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/ruby"
+
+        if [ ! -f "$RUBY_DISTRIBUTION_INSTALL_DIR/ok" ] ; then
+            wfetch "https://github.com/leleliu008/ruby-distribution/releases/download/3.3.6/$RUBY_DISTRIBUTION_FILENAME_PREFIX.tar.xz"
+            run install -d "$RUBY_DISTRIBUTION_INSTALL_DIR"
+            run bsdtar xf  "$RUBY_DISTRIBUTION_FILENAME_PREFIX.tar.xz" -C "$RUBY_DISTRIBUTION_INSTALL_DIR" --strip-components=1
+            run touch "$RUBY_DISTRIBUTION_INSTALL_DIR/ok"
+        fi
+
+        export PATH="$RUBY_DISTRIBUTION_INSTALL_DIR/bin:$PATH"
+    }
+
+    #########################################################################################
+
     [ "$PACKAGE_DEP_UPP_PYTHON3" = 1 ] && {
-        case $NATIVE_PLATFORM_TYPE in
-            macos)
-                NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
-
-                if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
-                    X='10.15'
-                elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
-                    X='15.0'
-                else
-                    X="$NATIVE_PLATFORM_VERS_MAJOR.0"
-                fi
-
-                T="macos-$X-$NATIVE_PLATFORM_ARCH"
-                ;;
-            linux)
-                T="linux-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
-        esac
-
-        PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-distribution-2024.10.27-$T"
+        PYTHON3_DISTRIBUTION_FILENAME_PREFIX="python-distribution-2024.10.27-$(__get_NATIVE_PLATFORM_TRIPLE)"
         PYTHON3_DISTRIBUTION_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/python3"
 
         if [ ! -f "$PYTHON3_DISTRIBUTION_INSTALL_DIR/ok" ] ; then
@@ -8807,15 +8810,15 @@ __setup() {
             fi
 
             NATIVE_PLATFORM_ARCH="$(uname -m)"
-            NATIVE_PLATFORM_TARGET="macos-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
+            NATIVE_PLATFORM_TRIPLE="macos-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
             ;;
         Linux)
             if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
                 NATIVE_PLATFORM_VERS="$(getprop ro.build.version.sdk)"
-                NATIVE_PLATFORM_TARGET="android-$NATIVE_PLATFORM_VERS-arm64-v8a"
+                NATIVE_PLATFORM_TRIPLE="android-$NATIVE_PLATFORM_VERS-arm64-v8a"
             else
                 NATIVE_PLATFORM_ARCH="$(uname -m)"
-                NATIVE_PLATFORM_TARGET="linux-$NATIVE_PLATFORM_ARCH"
+                NATIVE_PLATFORM_TRIPLE="linux-$NATIVE_PLATFORM_ARCH"
 
                 LINUX=1
 
@@ -8934,7 +8937,7 @@ __setup() {
 
     NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
     NDKPKG_CORE_LATEST_RELEASE_TAG="ndk-pkg-core-$NDKPKG_CORE_LATEST_RELEASE_VERSION"
-    NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="$NDKPKG_CORE_LATEST_RELEASE_TAG-$NATIVE_PLATFORM_TARGET.tar.xz"
+    NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="$NDKPKG_CORE_LATEST_RELEASE_TAG-$NATIVE_PLATFORM_TRIPLE.tar.xz"
     NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL="https://github.com/leleliu008/ndk-pkg/releases/download/$NDKPKG_CORE_LATEST_RELEASE_TAG/$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME"
 
     wfetch "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL" --no-buffer
@@ -9648,7 +9651,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.18.6
+NDKPKG_VERSION=0.19.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"

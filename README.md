@@ -81,10 +81,10 @@ docker exec -it ndk-pkg ndk-pkg setup
 docker exec -it ndk-pkg ndk-pkg update
 ```
 
-If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package for target `android-34-arm64-v8a`:
+If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package for target `android-35-arm64-v8a`:
 
 ```bash
-docker exec -it ndk-pkg ndk-pkg install curl --target=android-34-arm64-v8a
+docker exec -it ndk-pkg ndk-pkg install curl --target=android-35-arm64-v8a
 ```
 
 **Note:** you can use `podman` instead of `docker`
@@ -170,25 +170,25 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 │   ├── b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30.tgz
 │   └── c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4.tgz
 ├── installed
-│   ├── android-34-arm64-v8a
+│   ├── android-35-arm64-v8a
 │   │   ├── f39a5f7836ac7ca1e04de14c8103e663d0b375a524a40e537258747e2deb3c0b
 │   │   │   ├── include
 │   │   │   ├── lib
 │   │   │   └── share
 │   │   └── zlib -> f39a5f7836ac7ca1e04de14c8103e663d0b375a524a40e537258747e2deb3c0b
-│   ├── android-34-armeabi-v7a
+│   ├── android-35-armeabi-v7a
 │   │   ├── cc9b367d5068ef6b8aaaee38ec2a25691da35e02757c7e0d83aff3775aef3323
 │   │   │   ├── include
 │   │   │   ├── lib
 │   │   │   └── share
 │   │   └── zlib -> cc9b367d5068ef6b8aaaee38ec2a25691da35e02757c7e0d83aff3775aef3323
-│   ├── android-34-x86
+│   ├── android-35-x86
 │   │   ├── a0718632fe829426c1d946e6658cc7586da0039e99d5a140d1e402a6b4a4e2f3
 │   │   │   ├── include
 │   │   │   ├── lib
 │   │   │   └── share
 │   │   └── zlib -> a0718632fe829426c1d946e6658cc7586da0039e99d5a140d1e402a6b4a4e2f3
-│   └── android-34-x86_64
+│   └── android-35-x86_64
 │       ├── c099047714d4ce1402d66346da88d14f25c313b0d4c879520198426ebc2f36fe
 │       │   ├── include
 │       │   ├── lib
@@ -429,13 +429,13 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 - **show information of the given installed package**
 
     ```bash
-    ndk-pkg info-installed android-34-arm64-v8a/curl --prefix
-    ndk-pkg info-installed android-34-arm64-v8a/curl --files
-    ndk-pkg info-installed android-34-arm64-v8a/curl builtat
-    ndk-pkg info-installed android-34-arm64-v8a/curl builtat-iso-8601
-    ndk-pkg info-installed android-34-arm64-v8a/curl builtat-rfc-3339
-    ndk-pkg info-installed android-34-arm64-v8a/curl builtat-iso-8601-utc
-    ndk-pkg info-installed android-34-arm64-v8a/curl builtat-rfc-3339-utc
+    ndk-pkg info-installed android-35-arm64-v8a/curl --prefix
+    ndk-pkg info-installed android-35-arm64-v8a/curl --files
+    ndk-pkg info-installed android-35-arm64-v8a/curl builtat
+    ndk-pkg info-installed android-35-arm64-v8a/curl builtat-iso-8601
+    ndk-pkg info-installed android-35-arm64-v8a/curl builtat-rfc-3339
+    ndk-pkg info-installed android-35-arm64-v8a/curl builtat-iso-8601-utc
+    ndk-pkg info-installed android-35-arm64-v8a/curl builtat-rfc-3339-utc
     ```
 
 - **show packages that are depended by the given package**
@@ -473,29 +473,29 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
     ```bash
     ndk-pkg install curl
-    ndk-pkg install android-34-arm64-v8a/curl
-    ndk-pkg install android-34-arm64-v8a/curl --static
+    ndk-pkg install android-35-arm64-v8a/curl
+    ndk-pkg install android-35-arm64-v8a/curl --static
     ```
 
 - **reinstall packages**
 
     ```bash
     ndk-pkg reinstall curl
-    ndk-pkg reinstall android-34-arm64-v8a/curl --static
+    ndk-pkg reinstall android-35-arm64-v8a/curl --static
     ```
 
 - **uninstall packages**
 
     ```bash
     ndk-pkg uninstall curl
-    ndk-pkg uninstall android-34-arm64-v8a/curl
+    ndk-pkg uninstall android-35-arm64-v8a/curl
     ```
 
 - **upgrade the outdated packages**
 
     ```bash
     ndk-pkg upgrade curl
-    ndk-pkg upgrade android-34-arm64-v8a/curl --static
+    ndk-pkg upgrade android-35-arm64-v8a/curl --static
     ```
 
 - **upgrade this software**
@@ -557,64 +557,64 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
     ```bash
     ndk-pkg is-installed curl
-    ndk-pkg is-installed android-34-arm64-v8a/curl
+    ndk-pkg is-installed android-35-arm64-v8a/curl
     ```
 
 - **check if the given package is outdated**
 
     ```bash
     ndk-pkg is-outdated  curl
-    ndk-pkg is-outdated  android-34-arm64-v8a/curl
+    ndk-pkg is-outdated  android-35-arm64-v8a/curl
     ```
 
 - **list installed files of the given installed package in a tree-like format**
 
     ```bash
     ndk-pkg tree curl
-    ndk-pkg tree android-34-arm64-v8a/curl -L 3
+    ndk-pkg tree android-35-arm64-v8a/curl -L 3
     ```
 
 - **show logs of the given installed package**
 
     ```bash
     ndk-pkg logs curl
-    ndk-pkg logs android-34-arm64-v8a/curl
+    ndk-pkg logs android-35-arm64-v8a/curl
     ```
 
 - **pack the given installed package**
 
     ```bash
     ndk-pkg pack curl
-    ndk-pkg pack android-34-arm64-v8a/curl
-    ndk-pkg pack android-34-arm64-v8a/curl -t tar.xz
-    ndk-pkg pack android-34-arm64-v8a/curl -t tar.gz
-    ndk-pkg pack android-34-arm64-v8a/curl -t tar.lz
-    ndk-pkg pack android-34-arm64-v8a/curl -t tar.bz2
-    ndk-pkg pack android-34-arm64-v8a/curl -t zip
-    ndk-pkg pack android-34-arm64-v8a/curl -t zip -o a/
-    ndk-pkg pack android-34-arm64-v8a/curl -o a/x.zip
+    ndk-pkg pack android-35-arm64-v8a/curl
+    ndk-pkg pack android-35-arm64-v8a/curl -t tar.xz
+    ndk-pkg pack android-35-arm64-v8a/curl -t tar.gz
+    ndk-pkg pack android-35-arm64-v8a/curl -t tar.lz
+    ndk-pkg pack android-35-arm64-v8a/curl -t tar.bz2
+    ndk-pkg pack android-35-arm64-v8a/curl -t zip
+    ndk-pkg pack android-35-arm64-v8a/curl -t zip -o a/
+    ndk-pkg pack android-35-arm64-v8a/curl -o a/x.zip
     ```
 
 - **export the given installed package as the google prefab aar**
 
     ```bash
-    ndk-pkg export android-34-arm64-v8a,x86_64/curl -o .
-    ndk-pkg export android-34-arm64-v8a,x86_64/curl -o curl-8.1.2.aar
+    ndk-pkg export android-35-arm64-v8a,x86_64/curl -o .
+    ndk-pkg export android-35-arm64-v8a,x86_64/curl -o curl-8.1.2.aar
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Maven Local Repository**
 
     ```bash
-    ndk-pkg depoly android-34-arm64-v8a,x86_64/curl
-    ndk-pkg depoly android-34-arm64-v8a,x86_64/curl --debug
-    ndk-pkg depoly android-34-arm64-v8a,x86_64/curl --local=/somewhere
+    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl
+    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl --debug
+    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl --local=/somewhere
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Sonatype OSSRH**
 
     ```bash
-    ndk-pkg depoly android-34-arm64-v8a,x86_64/curl --remote < ~/OSSRH-config
-    ndk-pkg depoly android-34-arm64-v8a,x86_64/curl --remote <<EOF
+    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl --remote < ~/OSSRH-config
+    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl --remote <<EOF
     SERVER_ID=OSSRH
     SERVER_URL=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
     SERVER_USERNAME=your-sonatype-account-username
@@ -713,7 +713,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     **Example**:
 
     ```bash
-    export NDKPKG_DEFAULT_TARGET='android-34-arm64-v8a'
+    export NDKPKG_DEFAULT_TARGET='android-35-arm64-v8a'
     ```
 
 **Note:** some commonly used environment variables are override by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
@@ -1197,16 +1197,16 @@ In the next two sections, I will show you how to configure with `Android Gradle 
 
 **step1. build and install libpng**
 
-Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-34` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
+Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-35` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
 
 ```bash
-ndk-pkg install android-34-arm64-v8a,armeabi-v7a/libpng
+ndk-pkg install android-35-arm64-v8a,armeabi-v7a/libpng
 ```
 
 **step2. export the installed libpng package as the google prefab aar and deploy it to your Maven Local Repository**
 
 ```bash
-ndk-pkg deploy  android-34-arm64-v8a,armeabi-v7a/libpng
+ndk-pkg deploy  android-35-arm64-v8a,armeabi-v7a/libpng
 ```
 
 **step3. enable prefab feature for Android Gradle Plugin**
@@ -1292,16 +1292,16 @@ android {
 
 **step1. build and install libpng**
 
-Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-34` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
+Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-35` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
 
 ```bash
-ndk-pkg install android-34-arm64-v8a,armeabi-v7a/libpng
+ndk-pkg install android-35-arm64-v8a,armeabi-v7a/libpng
 ```
 
 **step2. export the installed libpng package as the google prefab aar and deploy it to your Maven Local Repository**
 
 ```bash
-ndk-pkg deploy  android-34-arm64-v8a,armeabi-v7a/libpng
+ndk-pkg deploy  android-35-arm64-v8a,armeabi-v7a/libpng
 ```
 
 **step3. enable prefab feature for Android Gradle Plugin**
