@@ -5271,6 +5271,8 @@ EOF
 
     export CCFLAGS_FOR_BUILD
 
+    CFLAGS_FOR_BUILD="$CCFLAGS_FOR_BUILD"
+
      CC_FOR_BUILD="$NDKPKG_CORE_DIR/wrapper-native-cc"
    OBJC_FOR_BUILD="$NDKPKG_CORE_DIR/wrapper-native-objc"
     CXX_FOR_BUILD="$NDKPKG_CORE_DIR/wrapper-native-c++"
@@ -5585,15 +5587,21 @@ $DOT_CONTENT
         for item in $PACKAGE_DEP_UPP
         do
             case $item in
-                python3)  TERMUX_PKGS="$TERMUX_PKGS python" ;;
-                libz)     TERMUX_PKGS="$TERMUX_PKGS zlib"   ;;
-                *)        TERMUX_PKGS="$TERMUX_PKGS $item"  ;;
+                gm4)      TERMUX_PKGS="$TERMUX_PKGS m4"         ;;
+                gsed)     TERMUX_PKGS="$TERMUX_PKGS sed"        ;;
+                gtar)     TERMUX_PKGS="$TERMUX_PKGS tar"        ;;
+                gmake)    TERMUX_PKGS="$TERMUX_PKGS make"       ;;
+                xz)       TERMUX_PKGS="$TERMUX_PKGS xz-utils"   ;;
+                bsdtar)   TERMUX_PKGS="$TERMUX_PKGS libarchive" ;;
+                python3)  TERMUX_PKGS="$TERMUX_PKGS python"     ;;
+                libz)     TERMUX_PKGS="$TERMUX_PKGS zlib"       ;;
+                *)        TERMUX_PKGS="$TERMUX_PKGS $item"      ;;
             esac
         done
 
         step "install needed packages via pkg"
 
-        run pkg install -y "$TERMUX_PKGS"
+        run pkg install -y $TERMUX_PKGS
     else
         step "install needed packages via uppm"
 
@@ -9651,7 +9659,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.0
+NDKPKG_VERSION=0.19.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
