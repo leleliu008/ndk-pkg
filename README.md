@@ -44,7 +44,9 @@ For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-
 
 ## Using ndk-pkg via [Docker](https://www.docker.com/)
 
-This is the recommended way of using this software if you prefer to use this software locally due to docker container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
+This is the recommended way of using this software if you want to use this software locally.
+
+`docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
 
 **step1. create the ndk-pkg docker container**
 
@@ -89,9 +91,11 @@ docker exec -it ndk-pkg ndk-pkg install curl --target=android-35-arm64-v8a --sta
 
 **Note:** you can use `podman` instead of `docker`
 
-## Using ndk-pkg via chroot on linux-x86_64
+## Using ndk-pkg via chroot
 
-This is the recommended way of using this software if you prefer to use this software locally due to chroot likes docker container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
+This is the recommended way of using this software if you want to use this software locally and your host is `linux-x86_64`.
+
+`chroot` likes `docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
 
 ```bash
 curl -LO http://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
