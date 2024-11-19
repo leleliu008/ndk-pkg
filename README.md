@@ -108,7 +108,7 @@ cp -p /etc/resolv.conf alpine-rootfs/etc/
 
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 chmod a+x ndk-pkg
-cp ndk-pkg alpine-rootfs/bin/
+mv ndk-pkg alpine-rootfs/bin/
 
 sudo mount -o bind  /dev alpine-rootfs/dev
 sudo mount -t proc  none alpine-rootfs/proc
