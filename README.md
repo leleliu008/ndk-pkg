@@ -113,9 +113,9 @@ sudo mount -t sysfs none alpine-rootfs/sys
 sudo chroot alpine-rootfs apk update
 sudo chroot alpine-rootfs apk add gcompat
 
-sudo chroot alpine-rootfs /bin/ndk-pkg setup
-sudo chroot alpine-rootfs /bin/ndk-pkg update
-sudo chroot alpine-rootfs /bin/ndk-pkg install curl --target=android-35-arm64-v8a --static
+sudo chroot alpine-rootfs ndk-pkg setup
+sudo chroot alpine-rootfs ndk-pkg update
+sudo chroot alpine-rootfs ndk-pkg install curl --target=android-35-arm64-v8a --static
 ```
 
 ## Install ndk-pkg via cURL
