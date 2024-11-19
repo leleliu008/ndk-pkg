@@ -44,7 +44,7 @@ For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-
 
 ## Using ndk-pkg via [Docker](https://www.docker.com/)
 
-This is the recommended way of using this software if you prefer to use this software locally due to docker container is an isolated environment where the running process can not be affected by your host system's environemt variables.
+This is the recommended way of using this software if you prefer to use this software locally due to docker container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
 
 **step1. create the ndk-pkg docker container**
 
@@ -84,10 +84,39 @@ docker exec -it ndk-pkg ndk-pkg update
 If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package for target `android-35-arm64-v8a`:
 
 ```bash
-docker exec -it ndk-pkg ndk-pkg install curl --target=android-35-arm64-v8a
+docker exec -it ndk-pkg ndk-pkg install curl --target=android-35-arm64-v8a --static
 ```
 
 **Note:** you can use `podman` instead of `docker`
+
+## Using ndk-pkg via chroot on linux-x86_64
+
+This is the recommended way of using this software if you prefer to use this software locally due to chroot likes docker container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
+
+```bash
+curl -LO http://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
+
+install -d alpine-rootfs
+
+tar xf alpine-minirootfs-3.20.3-x86_64.tar.gz -C alpine-rootfs
+
+cp -p /etc/resolv.conf alpine-rootfs/etc/
+
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
+chmod a+x ndk-pkg
+cp ndk-pkg alpine-rootfs/bin/
+
+sudo mount -o bind  /dev alpine-rootfs/dev
+sudo mount -t proc  none alpine-rootfs/proc
+sudo mount -t sysfs none alpine-rootfs/sys
+
+sudo chroot alpine-rootfs apk update
+sudo chroot alpine-rootfs apk add gcompat
+
+sudo chroot alpine-rootfs /bin/ndk-pkg setup
+sudo chroot alpine-rootfs /bin/ndk-pkg update
+sudo chroot alpine-rootfs /bin/ndk-pkg install curl --target=android-35-arm64-v8a --static
+```
 
 ## Install ndk-pkg via cURL
 
