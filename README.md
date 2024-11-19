@@ -118,27 +118,7 @@ sudo chroot alpine-rootfs ndk-pkg update
 sudo chroot alpine-rootfs ndk-pkg install curl --target=android-35-arm64-v8a --static
 ```
 
-## Install ndk-pkg via cURL
-
-```bash
-curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
-chmod a+x ndk-pkg
-./ndk-pkg setup
-```
-
-Please try the following URLs if above url is not reachable:
-
-- https://gitee.com/fpliu/ndk-pkg/raw/master/ndk-pkg
-- https://cdn.jsdelivr.net/gh/leleliu008/ndk-pkg/ndk-pkg
-
-## Install ndk-pkg via git
-
-```bash
-git clone --depth 1 https://github.com/leleliu008/ndk-pkg
-ndk-pkg/ndk-pkg setup
-```
-
-## Install ndk-pkg in [WSL](https://docs.microsoft.com/en-us/windows/wsl)
+## Using ndk-pkg via [WSL](https://docs.microsoft.com/en-us/windows/wsl)
 
 **Note** :
 
@@ -171,6 +151,26 @@ sudo apt -y install curl
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 chmod a+x ndk-pkg
 ./ndk-pkg setup
+```
+
+## Install ndk-pkg via cURL
+
+```bash
+curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
+chmod a+x ndk-pkg
+./ndk-pkg setup
+```
+
+Please try the following URLs if above url is not reachable:
+
+- https://gitee.com/fpliu/ndk-pkg/raw/master/ndk-pkg
+- https://cdn.jsdelivr.net/gh/leleliu008/ndk-pkg/ndk-pkg
+
+## Install ndk-pkg via git
+
+```bash
+git clone --depth 1 https://github.com/leleliu008/ndk-pkg
+ndk-pkg/ndk-pkg setup
 ```
 
 ## ~/.ndk-pkg
