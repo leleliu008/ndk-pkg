@@ -184,6 +184,10 @@ chmod a+x ndk-pkg
 
 ## Install ndk-pkg via cURL
 
+**Caveats**:
+
+- Running `ndk-pkg` locally directly on your local host is not recommended due to build tools(e.g. autotools, cmake, etc) are easy to be affected by environment variables. Running `ndk-pkg` in an isolated clean environment (`docker`, `chroot`) are highly recommended.
+
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 chmod a+x ndk-pkg
