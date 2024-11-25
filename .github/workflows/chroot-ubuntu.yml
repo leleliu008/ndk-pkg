@@ -1,4 +1,4 @@
-name: chroot/AlpineLinux
+name: chroot/Ubuntu
 
 on:
   push:
@@ -8,20 +8,22 @@ on:
 
 jobs:
   test:
+
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - run: curl -LO http://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
-      - run: install -d alpine-rootfs
-      - run: tar xf alpine-minirootfs-3.20.3-x86_64.tar.gz -C alpine-rootfs
-      - run: cp -p /etc/resolv.conf alpine-rootfs/etc/
-      - run: mv ndk-pkg alpine-rootfs/bin/
+      - run: curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.1-base-amd64.tar.gz
+      - run: install -d ubuntu-rootfs
+      - run: tar xf ubuntu-base-24.04.1-base-amd64.tar.gz -C ubuntu-rootfs
+      - run: cp -p /etc/resolv.conf ubuntu-rootfs/etc/
+      - run: mv ndk-pkg ubuntu-rootfs/bin/
 
-      - run: sudo mount -o bind  /dev alpine-rootfs/dev
-      - run: sudo mount -t proc  none alpine-rootfs/proc
-      - run: sudo mount -t sysfs none alpine-rootfs/sys
+      - run: sudo mount -o bind  /dev ubuntu-rootfs/dev
+      - run: sudo mount -t proc  none ubuntu-rootfs/proc
+      - run: sudo mount -t sysfs none ubuntu-rootfs/sys
+      - run: sudo mount -t tmpfs none ubuntu-rootfs/tmp
 
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg --help
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg -h
@@ -34,6 +36,7 @@ jobs:
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg setup -y
 
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg sysinfo
+
 
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg integrate zsh
 
@@ -55,6 +58,8 @@ jobs:
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip git-ref
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip src-url
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip src-sha
+
+
 
 
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg depends libzip
@@ -87,11 +92,6 @@ jobs:
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg pack libzip -o .
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg pack libzip -o xx.tar.xz
 
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg export android-21-arm64-v8a/libzip
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg export android-21-arm64-v8a/libzip -o .
-
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg deploy android-21-arm64-v8a/libzip
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg deploy android-21-arm64-v8a/libzip --local=xxxxx
 
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg formula-repo-list
 
