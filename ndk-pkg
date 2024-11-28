@@ -1480,6 +1480,9 @@ EOF
 
     unset RECEIPT_PACKAGE_PKGNAME
     unset RECEIPT_PACKAGE_PKGTYPE
+
+    unset RECEIPT_PACKAGE_PROFILE
+
     unset RECEIPT_PACKAGE_SUMMARY
     unset RECEIPT_PACKAGE_VERSION
     unset RECEIPT_PACKAGE_LICENSE
@@ -1547,6 +1550,9 @@ EOF
 
     RECEIPT_PACKAGE_PKGNAME="$(yq '.pkgname | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_PKGTYPE="$(yq '.pkgtype | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_PROFILE="$(yq '.profile | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
     RECEIPT_PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -2639,6 +2645,8 @@ __fetch_resources_of_the_given_package() {
     else
         PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
     fi
+
+    PACKED_DIR_NAME="$PACKED_DIR_NAME.$RECEIPT_PACKAGE_PROFILE"
 
     ###########################################################################################
 
@@ -8681,13 +8689,6 @@ EOF
             uppm install "$ANDROID_NDK_PKG"
 
             case $NATIVE_PLATFORM_KIND in
-                linux)
-                    # https://github.com/microsoft/WSL/issues/8681
-                    # https://github.com/microsoft/WSL/issues/4071
-                    if grep -q -i Microsoft /proc/version ; then
-                        patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang-17"
-                    fi
-                    ;;
                 darwin)
                     # https://github.com/android/ndk/issues/1549
                     # remove the yasm shipped with Android NDK and use our own
@@ -9659,7 +9660,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.1
+NDKPKG_VERSION=0.19.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
