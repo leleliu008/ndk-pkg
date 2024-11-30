@@ -9010,36 +9010,50 @@ EOF
             wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
             run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
         else
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/gcc-13.1.0-linux-glibc-x86_64.tar.xz' --no-buffer
-        run $TAR xf gcc-13.1.0-linux-glibc-x86_64.tar.xz --strip-components=1
+        run install -d gcc
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/gcc-13.3.0-linux-glibc@2.27-x86_64.release.tar.xz' --no-buffer
+        run $TAR xf gcc-13.3.0-linux-glibc@2.27-x86_64.release.tar.xz -C gcc --strip-components=1
 
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/binutils-2.41-linux-glibc-x86_64.tar.xz' --no-buffer
-        run $TAR xf binutils-2.41-linux-glibc-x86_64.tar.xz --strip-components=1
+        run install -d binutils
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/binutils-2.43.1-linux-glibc@2.27-x86_64.release.tar.xz' --no-buffer
+        run $TAR xf binutils-2.43.1-linux-glibc@2.27-x86_64.release.tar.xz -C binutils --strip-components=1
+
+        run install -d mold
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/mold-2.34.1-linux-glibc-x86_64.release.tar.xz' --no-buffer
+        run $TAR xf mold-*.tar.xz -C mold --strip-components=1
+
+        install -d bin
+        ln -sf ../mold/bin/mold bin/ld
+
+        for item in addr2line ar as nm objdump readelf strip objcopy ranlib size strings
+        do
+            ln -sf ../binutils/bin/$item bin/$item
+        done
 
         run install -d sysroot
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc-x86_64.tar.xz' --no-buffer
-        run $TAR xf glibc-2.40-linux-glibc-x86_64.tar.xz -C sysroot --strip-components=1
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc@2.27-x86_64.tar.xz' --no-buffer
+        run $TAR xf glibc-2.40-linux-glibc@2.27-x86_64.tar.xz -C sysroot --strip-components=1
 
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/linux-headers-6.8-linux-x86_64.tar.xz' --no-buffer
         run $TAR xf linux-headers-6.8-linux-x86_64.tar.xz -C sysroot --strip-components=1
 
-        ln -s gcc/x86_64-pc-linux-gnu/13.1.0/libgcc.a lib/libgcc.a
+        ln -s gcc/x86_64-pc-linux-gnu/13.1.0/libgcc.a gcc/lib/libgcc.a
 
-        "$UPPM_HOME/installed/gsed/bin/gsed" -i "s|/home/leleliu008/.ppkg/installed/linux-glibc-x86_64/bebfceb3d2ea2461fde461b6c32a3e3cafc29d18ecec16e136e32b175caab53d|$NDKPKG_HOME/core/sysroot|g" sysroot/lib/libc.so sysroot/lib/libm.a sysroot/lib/libm.so
+        "$UPPM_HOME/installed/gsed/bin/gsed" -i "s|/root/.ppkg/installed/linux-glibc-x86_64/97f07af98431513742c8e4c89c21cecd470e8e59062419ed285d4207a5d51082|$NDKPKG_HOME/core/sysroot|g" sysroot/lib/libc.so sysroot/lib/libm.a sysroot/lib/libm.so
 
-        mv bin/gcc bin/gcc.exe
-        mv bin/g++ bin/g++.exe
+        mv gcc/bin/gcc gcc/bin/gcc.exe
+        mv gcc/bin/g++ gcc/bin/g++.exe
 
-        cat > bin/gcc <<EOF
+        cat > gcc/bin/gcc <<EOF
 #!/bin/sh
-exec "$NDKPKG_HOME/core/bin/gcc.exe" "\$@" -specs "$NDKPKG_HOME/core/gcc.specs"
+exec "$NDKPKG_HOME/core/gcc/bin/gcc.exe" "\$@" -specs "$NDKPKG_HOME/core/gcc.specs"
 EOF
-        cat > bin/g++ <<EOF
+        cat > gcc/bin/g++ <<EOF
 #!/bin/sh
-exec "$NDKPKG_HOME/core/bin/g++.exe" "\$@" -specs "$NDKPKG_HOME/core/g++.specs"
+exec "$NDKPKG_HOME/core/gcc/bin/g++.exe" "\$@" -specs "$NDKPKG_HOME/core/g++.specs"
 EOF
-        chmod +x bin/gcc
-        chmod +x bin/g++
+        chmod +x gcc/bin/gcc
+        chmod +x gcc/bin/g++
 
         # https://gcc.gnu.org/onlinedocs/gcc/Spec-Files.html
         cat > gcc.specs <<EOF
@@ -9064,7 +9078,7 @@ libgcc.a%s %:if-exists(libgcc_eh.a%s)
 crtendS.o%s $NDKPKG_HOME/core/sysroot/lib/crtn.o
 
 *link:
--dynamic-linker $NDKPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $NDKPKG_HOME/core/sysroot/lib -rpath $NDKPKG_HOME/core/lib -L $NDKPKG_HOME/core/sysroot/lib -L $NDKPKG_HOME/core/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
+-dynamic-linker $NDKPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $NDKPKG_HOME/core/sysroot/lib -rpath $NDKPKG_HOME/core/gcc/lib -L $NDKPKG_HOME/core/sysroot/lib -L $NDKPKG_HOME/core/gcc/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
 
 *esp_link:
 
@@ -9099,7 +9113,7 @@ libgcc.a%s %:if-exists(libgcc_eh.a%s)
 crtendS.o%s $NDKPKG_HOME/core/sysroot/lib/crtn.o
 
 *link:
--dynamic-linker $NDKPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $NDKPKG_HOME/core/sysroot/lib -rpath $NDKPKG_HOME/core/lib -L $NDKPKG_HOME/core/sysroot/lib -L $NDKPKG_HOME/core/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
+-dynamic-linker $NDKPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $NDKPKG_HOME/core/sysroot/lib -rpath $NDKPKG_HOME/core/gcc/lib -L $NDKPKG_HOME/core/sysroot/lib -L $NDKPKG_HOME/core/gcc/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
 
 *esp_link:
 
@@ -9114,7 +9128,7 @@ EOF
 
         fi
 
-        ln -s ../wrapper-native-cc bin/cc
+        ln -s ../../wrapper-native-cc gcc/bin/cc
     fi
 
     ##################################################################################
@@ -9659,7 +9673,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.1
+NDKPKG_VERSION=0.19.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9842,6 +9856,10 @@ bppend_to_PATH "$CARGO_HOME/bin"
 
 if [ -d         "$NDKPKG_CORE_DIR/bin" ] ; then
     export PATH="$NDKPKG_CORE_DIR/bin:$PATH"
+fi
+
+if [ -d         "$NDKPKG_CORE_DIR/gcc/bin" ] ; then
+    export PATH="$NDKPKG_CORE_DIR/gcc/bin:$PATH"
 fi
 
 ##################################################################################
