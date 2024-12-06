@@ -9039,7 +9039,7 @@ EOF
             done
         fi
 
-        ln -s ../../wrapper-native-cc bin/cc
+        ln -s ../wrapper-native-cc bin/cc
     fi
 
     ##################################################################################
