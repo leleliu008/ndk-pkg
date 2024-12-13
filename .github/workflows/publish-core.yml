@@ -200,7 +200,7 @@ jobs:
 
     steps:
       - run: apt -y update
-      - run: apt -y install curl
+      - run: apt -y install curl tar gzip xz-utils
 
       - run: curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
       - run: chmod +x ndk-pkg
