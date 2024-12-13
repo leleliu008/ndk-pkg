@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: ['10.7', '11.3']
+        tag: [12, 11]
 
     container: debian:${{ matrix.tag }}
 
