@@ -173,7 +173,7 @@ jobs:
 
       # https://github.com/multiarch/qemu-user-static
       - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-      - run: docker run -v $PWD:/root -w /root --name alpine arm64v8/alpine sh run.sh
+      - run: docker run -v $PWD:/root -w /root --name alpine arm64v8/alpine:3.16 sh run.sh
 
       - run: |
           DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-aarch64"
