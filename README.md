@@ -102,7 +102,7 @@ curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-ba
 install -d ubuntu-rootfs
 tar xf ubuntu-base-24.04.1-base-amd64.tar.gz -C ubuntu-rootfs
 
-cp -p /etc/resolv.conf alpine-rootfs/etc/
+cp -p /etc/resolv.conf ubuntu-rootfs/etc/
 
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 chmod a+x ndk-pkg
