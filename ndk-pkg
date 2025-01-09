@@ -9236,10 +9236,10 @@ int main(int argc, const char *argv[]) {
 EOF
         unset CC CXX AS LD
         run ./zig cc -flto -Os -s -o check-if-has-dynamic-section check-if-has-dynamic-section.c
-    fi
 
-    run ln -s ../wrapper-native-cc  bin/cc
-    run ln -s ../wrapper-native-c++ bin/c++
+        run ln -s ../wrapper-native-cc  bin/cc
+        run ln -s ../wrapper-native-c++ bin/c++
+    fi
 
     ##################################################################################
 
