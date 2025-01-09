@@ -3076,6 +3076,7 @@ rm -rf $SESSION_DIR\n"
                 DRYRUN=1
                 ;;
             -K) ;;
+            -o) shift ;;
             --groupId=*)
                 GROUPID="${1#*=}"
                 ;;
