@@ -885,7 +885,7 @@ __list_available_formula_repositories() {
 
 # }}}
 ##############################################################################
-# {{{ formula parse
+# {{{ formula
 
 filetype_from_url() {
     # remove query params
@@ -995,12 +995,12 @@ filetype_from_url() {
 
     unset PACKAGE_ONSTART
     unset PACKAGE_ONREADY
-    unset PACKAGE_ONFINAL
 
     unset PACKAGE_DO12345
     unset PACKAGE_DOPATCH
     unset PACKAGE_PREPARE
     unset PACKAGE_DOBUILD
+    unset PACKAGE_DOEXTRA
     unset PACKAGE_DOTWEAK
 
     unset PACKAGE_PATCHES
@@ -1085,12 +1085,12 @@ filetype_from_url() {
 
     PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_ONFINAL="$(yq '.onfinal | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1407,65 +1407,7 @@ filetype_from_url() {
 
 # }}}
 ##############################################################################
-# {{{ operations of receipt
-
-# __generate_receipt_of_the_given_package <PACKAGE-NAME>
-  __generate_receipt_of_the_given_package() {
-    [ -z "$1" ] && {
-        error "__generate_receipt_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
-        return 1
-    }
-
-    cp "$PACKAGE_FORMULA_FILEPATH" "$PACKAGE_RECEIPT_FILEPATH"
-
-    sed -i '/^#src-url: dir:/d' "$PACKAGE_RECEIPT_FILEPATH"
-
-    sed -i "1i pkgname: $PACKAGE_NAME" "$PACKAGE_RECEIPT_FILEPATH"
-
-    grep -q '^pkgtype: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^version: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^pkgtype:/a version: $PACKAGE_VERSION" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^web-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^summary:/a web-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^git-url: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^bsystem: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^binbstd: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" "$PACKAGE_RECEIPT_FILEPATH"
-    grep -q '^parallel: ' "$PACKAGE_RECEIPT_FILEPATH" || sed -i "\$a parallel: $PACKAGE_PARALLEL" "$PACKAGE_RECEIPT_FILEPATH"
-
-    [ -n "$PACKAGE_GIT_SHA" ] && {
-        grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-            sed -i "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
-        }
-
-        grep -q '^git-sha: ' "$PACKAGE_RECEIPT_FILEPATH" || {
-            sed -i "3i git-sha: $PACKAGE_GIT_SHA" "$PACKAGE_RECEIPT_FILEPATH"
-        }
-    }
-
-    [ -n "$PACKAGE_DEP_UPP" ] && {
-        if grep -q '^dep-upp: ' "$PACKAGE_RECEIPT_FILEPATH" ; then
-            sed -i "/^dep-upp: /c dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
-        else
-            sed -i "/^bsystem: /i dep-upp: $PACKAGE_DEP_UPP" "$PACKAGE_RECEIPT_FILEPATH"
-        fi
-    }
-
-    cat >> "$PACKAGE_RECEIPT_FILEPATH" <<EOF
-ndkvers: $ANDROID_NDK_VERSION
-builtby: ndk-pkg-$NDKPKG_VERSION
-builtat: $TIMESTAMP_UNIX
-buildon:
-    os-arch: $NATIVE_PLATFORM_ARCH
-    os-kind: $NATIVE_PLATFORM_KIND
-    os-type: $NATIVE_PLATFORM_TYPE
-    os-code: $NATIVE_PLATFORM_CODE
-    os-name: $NATIVE_PLATFORM_NAME
-    os-vers: $NATIVE_PLATFORM_VERS
-    os-ncpu: $NATIVE_PLATFORM_NCPU
-    os-euid: $NATIVE_PLATFORM_EUID
-    os-egid: $NATIVE_PLATFORM_EGID
-builtfor: $TARGET_PLATFORM_SPEC
-profile: $PROFILE
-EOF
-}
+# {{{ receipt
 
 # __load_receipt_of_the_given_package <PACKAGE-NAME|PACKAGE-SPEC>
   __load_receipt_of_the_given_package() {
@@ -1521,12 +1463,12 @@ EOF
 
     unset RECEIPT_PACKAGE_ONSTART
     unset RECEIPT_PACKAGE_ONREADY
-    unset RECEIPT_PACKAGE_ONFINAL
 
     unset RECEIPT_PACKAGE_DO12345
     unset RECEIPT_PACKAGE_DOPATCH
     unset RECEIPT_PACKAGE_PREPARE
     unset RECEIPT_PACKAGE_DOBUILD
+    unset RECEIPT_PACKAGE_DOEXTRA
     unset RECEIPT_PACKAGE_DOTWEAK
 
     unset RECEIPT_PACKAGE_CAVEATS
@@ -1596,12 +1538,12 @@ EOF
 
     RECEIPT_PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_ONFINAL="$(yq '.onfinal | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1663,45 +1605,6 @@ EOF
     RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS="$(printf '%s\n' "$RECEIPT_PACKAGE_BUILTFOR" | cut -d- -f2)"
 
     RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME=android
-}
-
-# }}}
-##############################################################################
-# {{{ operations of manifest
-
-# __generate_manifest_of_the_given_package <PACKAGE-NAME>
-  __generate_manifest_of_the_given_package() {
-    # fuck, some package's filename has space
-    export IFS='
-'
-
-    exec 7> "$PACKAGE_MANIFEST_FILEPATH"
-
-    for d in *
-    do
-        [ -d "$d" ] || continue
-
-        for item in $(find "$d" -printf '%y:%p\n')
-        do
-            X=$(printf '%s\n' "$item" | cut -c1)
-            Y=${item#$X:}
-
-            case $X in
-                l)  if [ -d "$Y" ] ; then
-                        printf 'D|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7
-                    else
-                        printf 'l|%s|%s\n' "$(sha256sum "$Y" | cut -d ' ' -f1)"                           "$Y" >&7
-                    fi
-                    ;;
-                d)  printf 'd|0000000000000000000000000000000000000000000000000000000000000000|%s/\n' "$Y" >&7 ;;
-                *)  printf '%s|%s|%s\n' "$X" "$(sha256sum "$Y" | cut -d ' ' -f1)"                     "$Y" >&7 ;;
-            esac
-        done
-    done
-
-    exec 7>&-
-
-    unset IFS
 }
 
 # }}}
@@ -1948,11 +1851,11 @@ __search_packages() {
         --arg dep_plm "$PACKAGE_DEP_PLM" \
         --arg onstart "$PACKAGE_ONSTART" \
         --arg onready "$PACKAGE_ONREADY" \
-        --arg onfinal "$PACKAGE_ONFINAL" \
         --arg do12345 "$PACKAGE_DO12345" \
         --arg dopatch "$PACKAGE_DOPATCH" \
         --arg prepare "$PACKAGE_PREPARE" \
         --arg install "$PACKAGE_DOBUILD" \
+        --arg doextra "$PACKAGE_DOEXTRA" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
         --arg caveats "$PACKAGE_CAVEATS" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
@@ -2002,11 +1905,11 @@ __search_packages() {
     "developer":$developer,
     "onstart":$onstart,
     "onready":$onready,
-    "onfinal":$onfinal,
     "do12345":$do12345,
     "dopatch":$dopatch,
     "prepare":$prepare,
     "install":$install,
+    "doextra":$doextra,
     "dotweak":$dotweak,
     "caveats":$caveats
 }' | jq 'with_entries(select(.value != ""))'
@@ -2155,10 +2058,6 @@ EOF
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_ONREADY"
             ;;
-        onfinal)
-            __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_ONFINAL"
-            ;;
         do12345)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DO12345"
@@ -2174,6 +2073,10 @@ EOF
         install)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOBUILD"
+            ;;
+        doextra)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_DOEXTRA"
             ;;
         dotweak)
             __load_formula_of_the_given_package "$1"
@@ -2328,11 +2231,11 @@ EOF
         --arg dep_plm "$RECEIPT_PACKAGE_DEP_PLM" \
         --arg onstart "$RECEIPT_PACKAGE_ONSTART" \
         --arg onready "$RECEIPT_PACKAGE_ONREADY" \
-        --arg onfinal "$RECEIPT_PACKAGE_ONFINAL" \
         --arg do12345 "$RECEIPT_PACKAGE_DO12345" \
         --arg dopatch "$RECEIPT_PACKAGE_DOPATCH" \
         --arg prepare "$RECEIPT_PACKAGE_PREPARE" \
         --arg install "$RECEIPT_PACKAGE_DOBUILD" \
+        --arg doextra "$RECEIPT_PACKAGE_DOEXTRA" \
         --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
         --arg caveats "$RECEIPT_PACKAGE_CAVEATS" \
         --arg bsystem "$RECEIPT_PACKAGE_BSYSTEM" \
@@ -2383,11 +2286,11 @@ EOF
     "developer":$developer,
     "onstart":$onstart,
     "onready":$onready,
-    "onfinal":$onfinal,
     "do12345":$do12345,
     "dopatch":$dopatch,
     "prepare":$prepare,
     "install":$install,
+    "doextra":$doextra,
     "dotweak":$dotweak,
     "caveats":$caveats,
     "builtby":$builtby,
@@ -2521,64 +2424,91 @@ __fetch_resources_of_the_given_package() {
 
 # }}}
 ##############################################################################
-# {{{ ndk-pkg pack
+# {{{ ndk-pkg bundle
 
-# examples:
-# __pack_the_given_installed_package <PACKAGE-NAME> [-t <zip|tar.gz|tar.xz|tar.lz|tar.bz2>] [-o <OUTPUT-PATH>] [--exclude <PATH>] [-K]
-# __pack_the_given_installed_package    autoconf     -t tar.xz
-  __pack_the_given_installed_package() {
+# __bundle_the_given_installed_package <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>] [--exclude <EXCLUDE-PATH>] [-K]
+  __bundle_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
-    shift
+    #######################################################
 
-    ###########################################################################################
-
+    unset OUTPUT_DIR
     unset OUTPUT_PATH
     unset OUTPUT_TYPE
+    unset OUTPUT_NAME
 
-    unset EXCLUDES
+    case $2 in
+        '') abort 1 "$NDKPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>], forth argument is unspecified."
+            ;;
+        */*)
+            OUTPUT_DIR="${2%/*}"
+            [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=/
+            OUTPUT_NAME="${2##*/}"
+            ;;
+        *)  OUTPUT_NAME="$2"
+    esac
+
+    case $OUTPUT_NAME in
+        '') abort 1 "$NDKPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>, <BUNDLE-TYPE> is unspecified."
+            ;;
+        *.tar.gz)
+            OUTPUT_TYPE=.tar.gz
+            ;;
+        *.tar.xz)
+            OUTPUT_TYPE=.tar.xz
+            ;;
+        *.tar.lz)
+            OUTPUT_TYPE=.tar.lz
+            ;;
+        *.tar.bz2)
+            OUTPUT_TYPE=.tar.bz2
+            ;;
+        *.zip)
+            OUTPUT_TYPE=.zip
+            ;;
+        *)  abort 1 "$NDKPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>, invalid forth argument: $2"
+    esac
+
+    if [ "$OUTPUT_NAME" = "$OUTPUT_TYPE" ] ; then
+        if [ -z "$OUTPUT_DIR"  ] ; then
+            OUTPUT_PATH=.
+        else
+            OUTPUT_PATH="$OUTPUT_DIR/"
+        fi
+    else
+        OUTPUT_PATH="$2"
+    fi
+
+    #######################################################
+
+    shift 2
 
     unset REQUEST_TO_KEEP_SESSION_DIR
+
+    unset EXCLUDES
 
     while [ -n "$1" ]
     do
         case $1 in
-            -K) REQUEST_TO_KEEP_SESSION_DIR=1
-                ;;
-            -t) shift
-
-                if [ -z "$1" ] ; then
-                    abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], -t option is specified but <OUTPUT-TYPE> is unspecified."
-                else
-                    OUTPUT_TYPE="$1"
-                fi
-
-                case $OUTPUT_TYPE in
-                    zip|tar.gz|tar.xz|tar.lz|tar.bz2) ;;
-                    *) abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>], unsupported <OUTPU-TYPE>: $OUTPUT_TYPE, <OUTPU-TYPE> should be one of zip|tar.gz|tar.xz|tar.lz|tar.bz2"
-                esac
-                ;;
-            -o) shift
-                if [ -z "$1" ] ; then
-                    abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPU-TYPE>] [-o <OUTPUT-PATH>], -o option is specified but <OUTPUT-PATH> is unspecified."
-                else
-                    OUTPUT_PATH="$1"
-                fi
+            -K)
+                REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
             --exclude)
                 shift
                 if [ -z "$1" ] ; then
-                    abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
+                    abort 1 "$NDKPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>] [--exclude <PATH>], --exclude option is specified but <PATH> is unspecified."
                 else
                     EXCLUDES="$EXCLUDES $1"
                 fi
                 ;;
-            *)  abort 1 "$NDKPKG_ARG0 pack <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-K], unrecognized option: $1"
+            *)  abort 1 "$NDKPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>], unrecognized option: $1"
         esac
         shift
     done
 
-    ###########################################################################################
+    #######################################################
+
+    OLDCWD="$PWD"
 
     SESSION_DIR="$NDKPKG_HOME/run/$$"
 
@@ -2586,122 +2516,104 @@ __fetch_resources_of_the_given_package() {
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
 
-    if [ -z "$EXCLUDES" ] ; then
-        run ln -s "$PACKAGE_INSTALLED_DIR" packed
-    else
-        run install -d packed
+    #######################################################
 
-        run cp -r "$PACKAGE_INSTALLED_DIR/." packed/
+    if [ -n "$EXCLUDES" ] ; then
+        run install -d bundle.d/
+
+        run cp -r "$PACKAGE_INSTALLED_DIR/." bundle.d/
 
         for EXCLUDE in $EXCLUDES
         do
-            run rm -rf "packed/$EXCLUDE"
+            run rm -rf "bundle.d/$EXCLUDE"
         done
+    else
+        run ln -s "$PACKAGE_INSTALLED_DIR" bundle.d
     fi
 
     ###########################################################################################
 
-    unset OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME
+    unset OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL
 
-    if [ -d packed/lib ] ; then
-        for FILEPATH in $(find packed/lib -type f)
-        do
-            case $FILEPATH in
-                */lib*.a)   OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
-                */lib*.so*) OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
-                */*.o)      OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1; break ;;
-            esac
-        done
-    fi
-
-    if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-        if [ -d packed/bin ] ; then
-            for FILEPATH in $(find packed/bin -type f)
+    if [ -d bundle.d/lib ] ; then
+        if [ "$OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL" != 1 ] ; then
+            for FILEPATH in $(find bundle.d/lib -type f -name 'lib*.a' -print -quit)
             do
-                FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
+                OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL=1
+            done
+        fi
 
-                if [ "$FILEMAGIC" = '7F454C46' ] ; then
-                    # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                    PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+        if [ "$OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL" != 1 ] ; then
+            for FILEPATH in $(find bundle.d/lib -type f -name 'lib*.so' -print -quit)
+            do
+                OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL=1
+            done
+        fi
 
-                    if [ -n "$PT_INTERP" ] ; then
-                        OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
-                        break
-                    fi
-                fi
+        if [ "$OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL" != 1 ] ; then
+            for FILEPATH in $(find bundle.d/lib -type f -name '*.o' -print -quit)
+            do
+                OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL=1
             done
         fi
     fi
 
-    if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" != 1 ] ; then
-        for FILEPATH in $(find packed -type f -name '*.a' -print -quit)
+    if [ "$OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL" != 1 ] ; then
+        for d in bin sbin libexec
         do
-            OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME=1
+            if [ -d "bundle.d/$d" ] ; then
+                for FILEPATH in $(find "bundle.d/$d" -type f)
+                do
+                    FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
+
+                    if [ "$FILEMAGIC" = '7F454C46' ] ; then
+                        # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
+                        DYNAMIC_LINKER_PATH="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                        if [ -n "$DYNAMIC_LINKER_PATH" ] ; then
+                            OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL=1
+                            break
+                        fi
+                    fi
+                done
+            fi
         done
     fi
 
-    if [ "$OUTPUT_FILENAME_NEED_CONTAIN_LIBC_NAME" = 1 ] ; then
-        PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
+    if [ "$OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL" != 1 ] ; then
+        for FILEPATH in $(find bundle.d/ -type f -name '*.a' -print -quit)
+        do
+            OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL=1
+        done
+    fi
+
+    if [ "$OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL" = 1 ] ; then
+        BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM"
     else
-        PACKED_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
+        BUNDLE_DIR_NAME="${RECEIPT_PACKAGE_PKGNAME%@*}-$RECEIPT_PACKAGE_VERSION-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_NAME-$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH"
     fi
 
-    PACKED_DIR_NAME="$PACKED_DIR_NAME.$RECEIPT_PACKAGE_PROFILE"
+    BUNDLE_DIR_NAME="$BUNDLE_DIR_NAME.$RECEIPT_PACKAGE_PROFILE"
 
-    ###########################################################################################
+    OUTPUT_FILENAME="$BUNDLE_DIR_NAME$OUTPUT_TYPE"
 
-    if [ -z "$OUTPUT_TYPE" ] ; then
-        case $OUTPUT_PATH in
-            *.tar.gz|*.tgz)
-                OUTPUT_TYPE=tar.gz
-                ;;
-            *.tar.xz|*.txz)
-                OUTPUT_TYPE=tar.xz
-                ;;
-            *.tar.lz|*.tlz)
-                OUTPUT_TYPE=tar.lz
-                ;;
-            *.tar.bz2|*.tbz2)
-                OUTPUT_TYPE=tar.bz2
-                ;;
-            *.zip)
-                OUTPUT_TYPE=zip
-                ;;
-            *.7z)
-                OUTPUT_TYPE=7z
-                ;;
-            *)  OUTPUT_TYPE=tar.xz
-        esac
-    fi
+    #######################################################
 
-    ###########################################################################################
+    run mv bundle.d "$BUNDLE_DIR_NAME"
 
-    OUTPUT_FILENAME="$PACKED_DIR_NAME.$OUTPUT_TYPE"
-
-    run mv packed "$PACKED_DIR_NAME"
-
-    run bsdtar cvaf "$OUTPUT_FILENAME" "$PACKED_DIR_NAME/*" "$PACKED_DIR_NAME/.ndk-pkg"
+    run bsdtar cvaf "$OUTPUT_FILENAME" "$BUNDLE_DIR_NAME/*" "$BUNDLE_DIR_NAME/.ndk-pkg"
 
     run du -sh "$OUTPUT_FILENAME"
 
-    run cd -
+    run cd "$OLDCWD"
 
-    ###########################################################################################
-
-    case $OUTPUT_PATH in
-        '') OUTPUT_PATH=.
-            ;;
-        */*)
-            OUTPUT_DIR="${OUTPUT_PATH%/*}"
-
-            [ -d "$OUTPUT_DIR" ] || run install -d "$OUTPUT_DIR"
-    esac
-
-    ###########################################################################################
+    if [ -n "$OUTPUT_DIR" ] && [ "$OUTPUT_DIR" != . ] && [ "$OUTPUT_DIR" != .. ] && [ "$OUTPUT_DIR" != / ] && [ ! -d "$OUTPUT_DIR" ] ; then
+        run install -d "$OUTPUT_DIR"
+    fi
 
     run mv "$SESSION_DIR/$OUTPUT_FILENAME" "$OUTPUT_PATH"
 
-    ###########################################################################################
+    #######################################################
 
     if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
         echo
@@ -2710,6 +2622,10 @@ __fetch_resources_of_the_given_package() {
         run rm -rf "$SESSION_DIR"
     fi
 }
+
+# }}}
+##############################################################################
+# {{{ ndk-pkg export
 
 # https://developer.android.com/studio/projects/android-library#aar-contents
 # https://google.github.io/prefab/#package-structure
@@ -3020,17 +2936,17 @@ EOF
                 fi
             else
                 # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
-                DT_SONAME="$(patchelf --print-soname "$LIBRARY_FILEPATH")"
+                SONAME="$(patchelf --print-soname "$LIBRARY_FILEPATH")"
 
-                # On Android, a so file must have the DT_SONAME
+                # On Android, a so file must have the SONAME
                 # https://github.com/android/ndk/issues/1865
                 # https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md
-                if [ -z "$DT_SONAME" ] ; then
-                    abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    DT_SONAME: not set"
+                if [ -z "$SONAME" ] ; then
+                    abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    SONAME: not set"
                 fi
 
-                if [ "$DT_SONAME" != "$LIBRARY_FILENAME" ] ; then
-                    abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    DT_SONAME: $DT_SONAME"
+                if [ "$SONAME" != "$LIBRARY_FILENAME" ] ; then
+                    abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    SONAME: $SONAME"
                 fi
 
                 DT_NEEDED_LIST="$(patchelf --print-needed "$LIBRARY_FILEPATH")"
@@ -5216,6 +5132,25 @@ $PACKAGE_ONSTART
             CCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
             LDFLAGS_FOR_BUILD='-Wl,-search_paths_first'
         else
+            if true ; then
+                CXX_FOR_BUILD="$NDKPKG_CORE_DIR/zig-c++"
+                 CC_FOR_BUILD="$NDKPKG_CORE_DIR/zig-cc"
+               OBJC_FOR_BUILD="$NDKPKG_CORE_DIR/zig-cc"
+                 AS_FOR_BUILD="$NDKPKG_CORE_DIR/bin/as"
+                 AR_FOR_BUILD="$NDKPKG_CORE_DIR/bin/ar"
+             RANLIB_FOR_BUILD="$NDKPKG_CORE_DIR/bin/ranlib"
+                 LD_FOR_BUILD="$NDKPKG_CORE_DIR/bin/ld"
+                 NM_FOR_BUILD="$NDKPKG_CORE_DIR/bin/nm"
+               SIZE_FOR_BUILD="$NDKPKG_CORE_DIR/bin/size"
+              STRIP_FOR_BUILD="$NDKPKG_CORE_DIR/bin/strip"
+            STRINGS_FOR_BUILD="$NDKPKG_CORE_DIR/bin/strings"
+            OBJDUMP_FOR_BUILD="$NDKPKG_CORE_DIR/bin/objdump"
+            OBJCOPY_FOR_BUILD="$NDKPKG_CORE_DIR/bin/objcopy"
+            READELF_FOR_BUILD="$NDKPKG_CORE_DIR/bin/readelf"
+
+                CCFLAGS_FOR_BUILD="-fPIC -fno-common"
+                LDFLAGS_FOR_BUILD="-Wl,--as-needed"
+            else
                 CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || __install_gcc_via_syspm
                 CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
                  CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
@@ -5236,6 +5171,7 @@ $PACKAGE_ONSTART
             LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
             #LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition -fno-use-linker-plugin"
             # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
+            fi
         fi
 
         if [ "$DEBUG_CC" = 1 ] ; then
@@ -7031,11 +6967,27 @@ $PACKAGE_DOBUILD
 
     #########################################################################################
 
-    step "dotweak for target"
+    [ -n "$PACKAGE_DOEXTRA" ] && {
+        step "doextra"
+
+        eval "
+doextra() {
+$PACKAGE_DOEXTRA
+}"
+        doextra
+    }
+
+    #########################################################################################
 
     __tweak_pc_files
 
+    #########################################################################################
+
     [ -n "$PACKAGE_DOTWEAK" ] && {
+        step "dotweak"
+
+        cd "$PACKAGE_INSTALL_DIR"
+
         eval "
 dotweak() {
 $PACKAGE_DOTWEAK
@@ -7045,90 +6997,109 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    [ -d  "$PACKAGE_INSTALL_DIR/lib" ] && {
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    if [ -d  lib ] ; then
         # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
         # remove Libtool Archive (.la) files
-        find "$PACKAGE_INSTALL_DIR/lib" -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm '{}' \;
+        find lib -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm -v {} +
+    fi
+
+    #########################################################################################
+
+    step "generate MANIFEST.txt"
+    run install -d .ndk-pkg
+    find -not -path . -a -not -path ./.ndk-pkg -a -not -path './.ndk-pkg/*' -printf '%y|%P\n' > .ndk-pkg/MANIFEST.txt
+
+    #########################################################################################
+
+    step "docheck"
+
+    unset NEEDED_SYSTEM_SHARED_LIBS
+    unset NEEDED_EXTERN_SHARED_LIBS
+
+    unset FILENAME_RPATH_MAP
+
+    __check_elf_files
+
+    [ -n "$NEEDED_EXTERN_SHARED_LIBS" ] && {
+        step "copy dependent external shared libraries"
+
+        echo "NEEDED_EXTERN_SHARED_LIBS=$NEEDED_EXTERN_SHARED_LIBS"
+
+        install -d -v .ndk-pkg/dependencies/lib
+
+        for f in $NEEDED_EXTERN_SHARED_LIBS
+        do
+            n="${f##*/}"
+            F=".ndk-pkg/dependencies/lib/$n"
+
+            [ -f "$F" ] || {
+                cp -L -v "$f" .ndk-pkg/dependencies/lib/
+                run patchelf --set-rpath "'\$ORIGIN'" "$F"
+            }
+        done
     }
 
-    #########################################################################################
+    [ -n "$FILENAME_RPATH_MAP" ] && {
+        step "set rpath for ELF files"
 
-    PACKAGE_METAINFO_DIR="$PACKAGE_INSTALL_DIR/.ndk-pkg"
+        KVs="$(printf '%s\n' "$FILENAME_RPATH_MAP" | sort | uniq)"
 
-    PACKAGE_MANIFEST_FILEPATH="$PACKAGE_METAINFO_DIR/MANIFEST.txt"
-    PACKAGE_RECEIPT_FILEPATH="$PACKAGE_METAINFO_DIR/RECEIPT.yml"
+        for KV in $KVs
+        do
+            K="${KV%|*}"
+            V="${KV#*|}"
 
-    PACKAGE_DEPENDENT_SHARED_LIBS_DIR="$PACKAGE_METAINFO_DIR/dependencies/lib"
+            [ "$V" = 1 ] && V='.ndk-pkg/dependencies/lib'
 
-    install -d "$PACKAGE_METAINFO_DIR"
+            RELATIVE_PATH="$(realpath -m --relative-to="${K%/*}" "$V")"
 
-    #########################################################################################
+            run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
+        done
+    }
 
-    # executable that need to be set rpath : $ORIGIN/../lib
-    unset PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1
-
-    # executable that need to be set rpath : $ORIGIN/../.ndk-pkg/dependencies/lib
-    unset PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2
-
-    step "docheck for target"
-    __check_elf_files
+    [ -n "$NEEDED_SYSTEM_SHARED_LIBS" ] && {
+        printf '%s\n' $NEEDED_SYSTEM_SHARED_LIBS | sort | uniq > .ndk-pkg/needed-system-libs.txt
+    }
 
     #########################################################################################
 
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
-        rm -f "$PACKAGE_INSTALL_DIR/.crates.toml"
-        rm -f "$PACKAGE_INSTALL_DIR/.crates2.json"
+        run rm -f .crates.toml
+        run rm -f .crates2.json
     }
+
+    #########################################################################################
+
+    run cd .ndk-pkg
+
+    #########################################################################################
+
+    run mv "$TOOLCHAIN_CONFIG_NATIVE" .
+    run mv "$TOOLCHAIN_CONFIG_TARGET" .
 
     #########################################################################################
 
     for item in 'FAQ*' 'TODO*' 'NEWS*' 'THANKS*' 'README*' 'COPYING*' 'LICENSE*' 'AUTHORS*' 'CHANGES*' 'CHANGELOG*' 'CONTRIBUTORS*' 'CONTRIBUTING*'
     do
-        find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 \( -type f -or -type l \) -iname "$item" -exec cp -L {} "$PACKAGE_METAINFO_DIR/" \;
+        find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 \( -type f -or -type l \) -iname "$item" -exec cp -L {} . \;
     done
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1" ] && {
-        step "set rpath for executables"
-
-        PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1="$(printf '%s\n' $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1 | sort | uniq)"
-
-        for f in $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1
-        do
-            DIRNAME="${f%/*}"
-            RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" lib)"
-            run patchelf --set-rpath "\\\$ORIGIN/$RELATIVE_PATH" "$f"
-        done
-    }
-
-    [ -n "$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2" ] && {
-        step "set rpath for executables"
-
-        PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2="$(printf '%s\n' $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2 | sort | uniq)"
-
-        for f in $PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2
-        do
-            DIRNAME="${f%/*}"
-            RELATIVE_PATH="$(realpath -m --relative-to="$DIRNAME" .ndk-pkg/dependencies/lib)"
-            run patchelf --set-rpath "\\\$ORIGIN/$RELATIVE_PATH" "$f"
-        done
-    }
 
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PKG" ] && {
         step "install dependency graph files"
 
-        run mv "$PACKAGE_WORKING_DIR/dependencies.*" "$PACKAGE_METAINFO_DIR/"
+        run mv "$PACKAGE_WORKING_DIR/dependencies.*" .
 
         step "install dependency formulas"
 
-        install -d "$PACKAGE_METAINFO_DIR/dependencies"
+        install -d dependencies/
 
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
-            cp "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" "$PACKAGE_METAINFO_DIR/dependencies/"
+            cp "$SESSION_DIR/$DEPENDENT_PACKAGE_NAME.yml" dependencies/
         done
     }
 
@@ -7137,50 +7108,87 @@ $PACKAGE_DOTWEAK
     for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
     do
         if [ -f "$dir/config.log" ] ; then
-            mv  "$dir/config.log" "$PACKAGE_METAINFO_DIR/"
+            mv  "$dir/config.log" .
         fi
-    done
-
-    #########################################################################################
-
-    for dir in "$PACKAGE_BCACHED_DIR" "$PACKAGE_BSCRIPT_DIR"
-    do
         if [ -f "$dir/compile_commands.json" ] ; then
-            mv  "$dir/compile_commands.json" "$PACKAGE_METAINFO_DIR/"
+            mv  "$dir/compile_commands.json" .
         fi
     done
 
     #########################################################################################
-
-    mv "$TOOLCHAIN_CONFIG_NATIVE" "$PACKAGE_METAINFO_DIR/"
-    mv "$TOOLCHAIN_CONFIG_TARGET" "$PACKAGE_METAINFO_DIR/"
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_ONFINAL" ] && {
-        step "onfinal"
-
-        cd "$PACKAGE_INSTALL_DIR"
-
-        eval "
-onfinal() {
-$PACKAGE_ONFINAL
-}"
-        onfinal
-    }
-
-    #########################################################################################
-
-    cd "$PACKAGE_INSTALL_DIR"
-
-    step "generate MANIFEST.txt"
-    __generate_manifest_of_the_given_package "$1"
 
     step "generate RECEIPT.yml"
-    __generate_receipt_of_the_given_package "$1"
+
+    cp "$PACKAGE_FORMULA_FILEPATH" RECEIPT.yml
+
+    gsed -i '/^#src-url: dir:/d' RECEIPT.yml
+
+    gsed -i "1i pkgname: $PACKAGE_NAME" RECEIPT.yml
+
+    grep -q '^pkgtype: ' RECEIPT.yml || gsed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" RECEIPT.yml
+    grep -q '^version: ' RECEIPT.yml || gsed -i "/^pkgtype:/a version: $PACKAGE_VERSION" RECEIPT.yml
+    grep -q '^web-url: ' RECEIPT.yml || gsed -i "/^summary:/a web-url: $PACKAGE_GIT_URL" RECEIPT.yml
+    grep -q '^git-url: ' RECEIPT.yml || gsed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" RECEIPT.yml
+    grep -q '^bsystem: ' RECEIPT.yml || gsed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" RECEIPT.yml
+    grep -q '^binbstd: ' RECEIPT.yml || gsed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" RECEIPT.yml
+    grep -q '^parallel: ' RECEIPT.yml || printf "parallel: %s\n" "$PACKAGE_PARALLEL" >> RECEIPT.yml
+
+    [ -n "$PACKAGE_GIT_SHA" ] && {
+        grep -q '^git-sha: ' RECEIPT.yml || {
+            gsed -i "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" RECEIPT.yml
+        }
+
+        grep -q '^git-sha: ' RECEIPT.yml || {
+            gsed -i "3i git-sha: $PACKAGE_GIT_SHA" RECEIPT.yml
+        }
+    }
+
+    [ -n "$PACKAGE_DEP_UPP" ] && {
+        if grep -q '^dep-upp: ' RECEIPT.yml ; then
+            gsed -i "/^dep-upp: /c dep-upp: $PACKAGE_DEP_UPP" RECEIPT.yml
+        else
+            gsed -i "/^bsystem: /i dep-upp: $PACKAGE_DEP_UPP" RECEIPT.yml
+        fi
+    }
+
+    cat >> RECEIPT.yml <<EOF
+ndkvers: $ANDROID_NDK_VERSION
+profile: $PROFILE
+builtfor: $TARGET_PLATFORM_SPEC
+builtby: ndk-pkg-$NDKPKG_VERSION
+builtat: $TIMESTAMP_UNIX
+builton:
+    os-arch: $NATIVE_PLATFORM_ARCH
+    os-kind: $NATIVE_PLATFORM_KIND
+    os-type: $NATIVE_PLATFORM_TYPE
+    os-libc: $NATIVE_PLATFORM_LIBC
+    os-code: $NATIVE_PLATFORM_CODE
+    os-name: $NATIVE_PLATFORM_NAME
+    os-vers: $NATIVE_PLATFORM_VERS
+    os-ncpu: $NATIVE_PLATFORM_NCPU
+    os-euid: $NATIVE_PLATFORM_EUID
+    os-egid: $NATIVE_PLATFORM_EGID
+EOF
+
+    if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
+        if command -v getconf > /dev/null ; then
+            NATIVE_PLATFORM_LIBC_VERSION="$(getconf GNU_LIBC_VERSION | cut -d ' ' -f2)"
+            if [ -n "$NATIVE_PLATFORM_LIBC_VERSION" ] ; then
+                gsed -i "/os-libc: /s|$|-$NATIVE_PLATFORM_LIBC_VERSION|" RECEIPT.yml
+            fi
+        fi
+    fi
+
+    #########################################################################################
 
     step "generate index"
-    run ln -s -r -f -T "$PACKAGE_INSTALL_DIR" "$NDKPKG_PACKAGE_INSTALLED_ROOT/$PACKAGE_SPEC"
+    run cd "$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC"
+    run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$PACKAGE_NAME"
+
+    #########################################################################################
+
+    step "show installed files in tree-like format"
+    run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
 
     #########################################################################################
 
@@ -7199,115 +7207,108 @@ $PACKAGE_ONFINAL
 
     #########################################################################################
 
-    step "show installed files in tree-like format"
-    run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
-
-    #########################################################################################
-
     printf '\n%b\n' "${COLOR_PURPLE}✅️  ${COLOR_OFF}${COLOR_GREEN}${1} was successfully installed.${COLOR_OFF}${COLOR_PURPLE}${COLOR_OFF}"
 
     if [ -n "$PACKAGE_CAVEATS" ] ; then
-        printf '\n%b\n' "${COLOR_YELLOW}⚠️  Caveats:\n\n$PACKAGE_CAVEATS${COLOR_OFF}" >&2
+        printf '\n%b\n' "${COLOR_YELLOW}⚠️  Caveats:${COLOR_OFF}\n\n$PACKAGE_CAVEATS" >&2
     fi
 }
 
 __check_elf_files() {
-    cd "$PACKAGE_INSTALL_DIR"
+    CHECKER="$NDKPKG_CORE_DIR/check-if-has-dynamic-section"
 
-    FILEPATHs="$(find -not -name . -type f)"
-
-    export IFS='
-'
-
-    for FILEPATH in $FILEPATHs
+    while read -r LINE
     do
-        [ -f "$FILEPATH" ] || continue
+        FILETYPE="${LINE%%|*}"
+        FILEPATH="${LINE##*|}"
+
+        [ "$FILETYPE" = f ] || continue
+
+        "$CHECKER" "$FILEPATH" || continue
 
         FILE_HEADER_ACTUAL="$(xxd -u -p -l 20 "$FILEPATH")"
 
         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-        case $FILE_HEADER_ACTUAL in
-            7F454C46*)
-                ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
+        ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
 
-                case $TARGET_PLATFORM_ARCH in
-                    armv7a)  FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}002800" ;;
-                    aarch64) FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}00B700" ;;
-                    i686)    FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}000300" ;;
-                    x86_64)  FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}003E00" ;;
-                esac
-
-                if [ "$FILE_HEADER_EXPACT" != "$FILE_HEADER_ACTUAL" ] ; then
-                    abort 1 "ELF file header mismatch: $FILEPATH\n    expect : $FILE_HEADER_EXPACT\n    actual : $FILE_HEADER_ACTUAL"
-                fi
-
-                #####################################################################
-
-                # 03 means it is a shared library or dynamically linked executable
-                if [ "$ELF_TYPE" = '03' ] ; then
-                    # patchelf would report a error if there is no '.interp' section in a ELF file
-                    PT_INTERP="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
-
-                    if [ -n  "$PT_INTERP" ] ; then
-                        if [ "$PT_INTERP" != "$ANDROID_DYNAMIC_LINKER_PATH" ] ; then
-                            abort 1 "ELF file PT_INTERP mismatch: $FILEPATH\n    expect : $ANDROID_DYNAMIC_LINKER_PATH\n    actual : $PT_INTERP"
-                        fi
-
-                        # https://source.android.com/security/enhancements/enhancements50
-                        # Android 5.0 and later, a dynamically linked executable must be a PIE(Position Independent Executable)
-                        if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
-                            abort 1 "invalid ELF file: $FILEPATH\n    Android 5.0 and later requires dynamically linked executable to support PIE (position-independent executables)."
-                        fi
-
-                        # A dynamically linked executable always have the .interp section.
-                        # In general, a shared library would not have the .interp section, but that is not always the case, for example, libcap/lib/libpsx.so is not only a library but also a executable.
-                        case "${FILEPATH##*/}" in
-                            *.so)
-                                IS_SHARED_LIBRAY=1 ;;
-                            *.so.*)
-                                IS_SHARED_LIBRAY=1 ;;
-                            *)  IS_SHARED_LIBRAY=0 ;;
-                        esac
-                    else
-                        IS_SHARED_LIBRAY=1
-                    fi
-
-                    #####################################################################
-
-                    if [ "$IS_SHARED_LIBRAY" = 1 ] ; then
-                        # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
-                        DT_SONAME="$(patchelf --print-soname "$FILEPATH")"
-
-                        # On Android, a so file must have the DT_SONAME
-                        # https://github.com/android/ndk/issues/1865
-                        # https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md
-                        if [ -z "$DT_SONAME" ] ; then
-                            abort 1 "invalid .so file: $FILEPATH\n    no DT_SONAME was set in .dynamic section"
-                        fi
-
-                        IS_EXECUTABLE=0
-                    else
-                        IS_EXECUTABLE=1
-                    fi
-
-                    #####################################################################
-
-                    __check_DT_NEEDED "$FILEPATH" "$IS_EXECUTABLE"
-                fi
+        case $TARGET_PLATFORM_ARCH in
+            armv7a)  FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}002800" ;;
+            aarch64) FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}00B700" ;;
+            i686)    FILE_HEADER_EXPACT="7F454C46010101000000000000000000${ELF_TYPE}000300" ;;
+            x86_64)  FILE_HEADER_EXPACT="7F454C46020101000000000000000000${ELF_TYPE}003E00" ;;
         esac
-    done
 
-    unset IFS
+        if [ "$FILE_HEADER_EXPACT" != "$FILE_HEADER_ACTUAL" ] ; then
+            abort 1 "ELF file header mismatch: $FILEPATH\n    expect : $FILE_HEADER_EXPACT\n    actual : $FILE_HEADER_ACTUAL"
+        fi
+
+        #####################################################################
+
+        # 03 means it is a shared library or dynamically linked executable
+        [ "$ELF_TYPE" = '03' ] || continue
+
+        # patchelf would report a error if there is no '.interp' section in a ELF file
+        DYNAMIC_LINKER_PATH="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+        if [ -n  "$DYNAMIC_LINKER_PATH" ] ; then
+            if [ "$DYNAMIC_LINKER_PATH" != "$ANDROID_DYNAMIC_LINKER_PATH" ] ; then
+                abort 1 "invalid ELF file: $FILEPATH\n    dynamic linker mismatch\n    expect : $ANDROID_DYNAMIC_LINKER_PATH\n    actual : $DYNAMIC_LINKER_PATH"
+            fi
+
+            # https://source.android.com/security/enhancements/enhancements50
+            # Android 5.0 and later, a dynamically linked executable must be a PIE(Position Independent Executable)
+            if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
+                abort 1 "invalid ELF file: $FILEPATH\n    Android 5.0 and later requires dynamically linked executable to support PIE (position-independent executables)."
+            fi
+
+            # A dynamically linked executable always have the .interp section.
+            # In general, a shared library would not have the .interp section, but that is not always the case, for example, libcap/lib/libpsx.so is not only a library but also a executable.
+            case "${FILEPATH##*/}" in
+                *.so)
+                    IS_SHARED_LIBRAY=1 ;;
+                *.so.*)
+                    IS_SHARED_LIBRAY=1 ;;
+                *)  IS_SHARED_LIBRAY=0 ;;
+            esac
+        else
+            IS_SHARED_LIBRAY=1
+        fi
+
+        #####################################################################
+
+        if [ "$IS_SHARED_LIBRAY" = 1 ] ; then
+            # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
+            SONAME="$(patchelf --print-soname "$FILEPATH")"
+
+            # On Android, a so file must have the SONAME
+            # https://github.com/android/ndk/issues/1865
+            # https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md
+            if [ -z "$SONAME" ] ; then
+                abort 1 "invalid ELF file: $FILEPATH\n    SONAME was not set in .dynamic section"
+            fi
+        fi
+
+        #####################################################################
+
+        patchelf --remove-rpath "$FILEPATH"
+
+        #####################################################################
+
+        __check_needed_of "$FILEPATH"
+    done < .ndk-pkg/MANIFEST.txt
 }
 
-# __check_DT_NEEDED <ELF-FILE-PATH> <IS-EXECUTABLE>
-  __check_DT_NEEDED() {
-    # a \n-separated list
-    DT_NEEDED_LIST="$(patchelf --print-needed "$1")"
+# __check_needed_of <ELF-FILE-PATH>
+  __check_needed_of() {
+    NEEDED_SHARED_LIBRARY_FILENAMEs="$(patchelf --print-needed "$1")"
 
-    for DT_NEEDED in $DT_NEEDED_LIST
+    for NEEDED_SHARED_LIBRARY_FILENAME in $NEEDED_SHARED_LIBRARY_FILENAMEs
     do
-        case $DT_NEEDED in
+        NEEDED_SHARED_LIBRARY_FILEPATH=
+
+        NEEDED_UNKOWN=
+
+        case $NEEDED_SHARED_LIBRARY_FILENAME in
             libc.so)
                 ;;
             libm.so)
@@ -7345,51 +7346,76 @@ __check_elf_files() {
             libclang_rt.*.so)
                 ;;
             lib*.so)
-                DT_NEEDED_FILEPATH="$PACKAGE_INSTALL_DIR/lib/$DT_NEEDED"
-
-                if [ -f "$DT_NEEDED_FILEPATH" ] ; then
-                    if [ "$2" = 1 ] ; then
-                        PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1="$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S1 $1"
-                    fi
-                else
-                    unset DT_NEEDED_FILEPATH
-
-                    if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
-                        RECURSIVE_DEPENDENT_PACKAGE_NAMES2="$(printf '%s\n' "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" | tr ' ' '\n')"
-
-                        for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES2
-                        do
-                            DT_NEEDED_FILEPATH="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib/$DT_NEEDED"
-
-                            if [ -f "$DT_NEEDED_FILEPATH" ] ; then
-                                if [ !      -d    "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR" ] ; then
-                                    install -d -v "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR"
-                                fi
-
-                                if [ ! -f "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/$DT_NEEDED" ] ; then
-                                    cp -L -v "$DT_NEEDED_FILEPATH" "$PACKAGE_DEPENDENT_SHARED_LIBS_DIR/"
-                                fi
-
-                                if [ "$2" = 1 ] ; then
-                                    PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2="$PACKAGE_EXECUTABLES_NEED_SET_RPATH_S2 $1"
-                                fi
-
-                                break
-                            else
-                                unset DT_NEEDED_FILEPATH
-                            fi
-                        done
-                    fi
-                fi
-
-                if [ -z "$DT_NEEDED_FILEPATH" ] ; then
-                    abort 1 "NEEDED: $DT_NEEDED not found for ELF file: $1"
-                else
-                    __check_DT_NEEDED "$DT_NEEDED_FILEPATH" 0
-                fi
+                NEEDED_UNKOWN=1
                 ;;
-            *)  abort 1 "unexpected ELF file: $1\n    invalid DT_NEEDED: $DT_NEEDED"
         esac
+
+        #####################################################
+
+        if [ -z "$NEEDED_UNKOWN" ] ; then
+            NEEDED_SYSTEM_SHARED_LIBS="$NEEDED_SYSTEM_SHARED_LIBS
+$NEEDED_SHARED_LIBRARY_FILENAME"
+            continue
+        fi
+
+        #####################################################
+
+        case $1 in
+            /*) ;;
+            *)
+                if [ -d lib ] ; then
+                    NEEDED_SHARED_LIBRARY_FILEPATH="lib/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+                    [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+                        unset NEEDED_SHARED_LIBRARY_FILEPATH
+                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                    }
+
+                    [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
+                        FILENAME_RPATH_MAP="$FILENAME_RPATH_MAP
+$1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
+                    }
+                fi
+        esac
+
+        #####################################################
+
+        if [ -z "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+            if [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] ; then
+                for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
+                do
+                    NEEDED_SHARED_LIBRARY_ROOT_DIR="$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC/$DEPENDENT_PACKAGE_NAME/lib"
+
+                    [ -d "$NEEDED_SHARED_LIBRARY_ROOT_DIR" ] || continue
+
+                    NEEDED_SHARED_LIBRARY_FILEPATH="$NEEDED_SHARED_LIBRARY_ROOT_DIR/$NEEDED_SHARED_LIBRARY_FILENAME"
+
+                    [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
+                        unset NEEDED_SHARED_LIBRARY_FILEPATH
+                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                    }
+
+                    [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
+                        case $1 in
+                            /*) ;;
+                            *)  FILENAME_RPATH_MAP="$FILENAME_RPATH_MAP
+$1|1"
+                        esac
+
+                        NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
+$NEEDED_SHARED_LIBRARY_FILEPATH"
+                        break
+                    }
+                done
+            fi
+        fi
+
+        if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
+            __check_needed_of "$NEEDED_SHARED_LIBRARY_FILEPATH"
+        else
+            NEEDED_SYSTEM_SHARED_LIBS="$NEEDED_SYSTEM_SHARED_LIBS
+$NEEDED_SHARED_LIBRARY_FILENAME"
+        fi
     done
 }
 
@@ -7424,17 +7450,20 @@ __tweak_pc_files() {
         gsed -i "s|${NDKPKG_HOME}/.*/lib\(.*\)\.so|-l\1|g" "$pcfile"
         gsed -i "s|${NDKPKG_HOME}/.*/lib\(.*\)\.a|-l\1|g"  "$pcfile"
 
-        if grep -q 'Libs.private:' "$pcfile" ; then
-            LIBS_CONTENT=$(awk '/Libs:/{print}' "$pcfile")
-            LIBS_PRIVATE_CONTENT=$(awk -F: '/Libs.private:/{print $2}' "$pcfile")
-            gsed -i "s|$LIBS_CONTENT|$LIBS_CONTENT$LIBS_PRIVATE_CONTENT|" "$pcfile"
-            gsed -i '/Libs.private/d' "$pcfile"
+        if grep -q '^Libs.private:' "$pcfile" ; then
+            if grep -q '^Libs:' "$pcfile" ; then
+                LIBS_PRIVATE=$(gsed -n '/^Libs.private:/p' "$pcfile" | cut -c14-)
+                gsed -i "/Libs:/s|\$|$LIBS_PRIVATE|" "$pcfile"
+                gsed -i '/Libs.private/d' "$pcfile"
+            else
+                gsed -i 's|Libs.private:|Libs:|' "$pcfile"
+            fi
         fi
 
-        if grep -q 'Requires.private:' "$pcfile" ; then
-            if grep -q 'Requires:' "$pcfile" ; then
-                REQUIRES_PRIVATE_CONTENT=$(sed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
-                gsed -i "/Requires:/s|\$|$REQUIRES_PRIVATE_CONTENT|" "$pcfile"
+        if grep -q '^Requires.private:' "$pcfile" ; then
+            if grep -q '^Requires:' "$pcfile" ; then
+                REQUIRES_PRIVATE=$(gsed -n '/Requires.private:/p' "$pcfile" | cut -c18-)
+                gsed -i "/Requires:/s|\$|$REQUIRES_PRIVATE|" "$pcfile"
                 gsed -i '/Requires.private:/d' "$pcfile"
             else
                 gsed -i 's|Requires.private:|Requires:|' "$pcfile"
@@ -9004,119 +9033,212 @@ EOF
     ##################################################################################
 
     if [ "$LINUX" = 1 ] ; then
-        if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
-            cat >> init.sh <<EOF
-export LD_LIBRARY_PATH="\$NDKPKG_HOME/core/lib"
-EOF
-            wfetch 'https://musl.cc/x86_64-linux-musl-native.tgz' --no-buffer
-            run $TAR xvf x86_64-linux-musl-native.tgz --strip-components=1 --no-same-owner
-        else
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/gcc-13.1.0-linux-glibc-x86_64.tar.xz' --no-buffer
-        run $TAR xf gcc-13.1.0-linux-glibc-x86_64.tar.xz --strip-components=1
+        wfetch 'https://ziglang.org/builds/zig-linux-x86_64-0.14.0-dev.2627+6a21d18ad.tar.xz' --no-buffer
+        run $TAR xvf zig-linux-x86_64-*.tar.xz --strip-components=1 --no-same-owner
 
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/binutils-2.41-linux-glibc-x86_64.tar.xz' --no-buffer
-        run $TAR xf binutils-2.41-linux-glibc-x86_64.tar.xz --strip-components=1
+        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/binutils-2.43.1-linux-any-x86_64.release.tar.xz' --no-buffer
+        run $TAR xvf binutils-*.tar.xz --strip-components=1 --no-same-owner
 
-        run install -d sysroot
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/glibc-2.40-linux-glibc-x86_64.tar.xz' --no-buffer
-        run $TAR xf glibc-2.40-linux-glibc-x86_64.tar.xz -C sysroot --strip-components=1
-
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/linux-headers-6.8-linux-x86_64.tar.xz' --no-buffer
-        run $TAR xf linux-headers-6.8-linux-x86_64.tar.xz -C sysroot --strip-components=1
-
-        ln -s gcc/x86_64-pc-linux-gnu/13.1.0/libgcc.a lib/libgcc.a
-
-        "$UPPM_HOME/installed/gsed/bin/gsed" -i "s|/home/leleliu008/.ppkg/installed/linux-glibc-x86_64/bebfceb3d2ea2461fde461b6c32a3e3cafc29d18ecec16e136e32b175caab53d|$NDKPKG_HOME/core/sysroot|g" sysroot/lib/libc.so sysroot/lib/libm.a sysroot/lib/libm.so
-
-        mv bin/gcc bin/gcc.exe
-        mv bin/g++ bin/g++.exe
-
-        cat > bin/gcc <<EOF
+        # https://github.com/ziglang/zig/issues/19790
+        for item in cc c++
+        do
+            cat > "zig-$item" <<EOF
 #!/bin/sh
-exec "$NDKPKG_HOME/core/bin/gcc.exe" "\$@" -specs "$NDKPKG_HOME/core/gcc.specs"
+set -e
+unset CC CXX AS LD AR RANLIB
+exec "$NDKPKG_CORE_DIR/zig" "$item" "\$@"
 EOF
-        cat > bin/g++ <<EOF
-#!/bin/sh
-exec "$NDKPKG_HOME/core/bin/g++.exe" "\$@" -specs "$NDKPKG_HOME/core/g++.specs"
+            chmod +x "zig-$item"
+        done
+
+        cat > check-if-has-dynamic-section.c <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
+#include <elf.h>
+
+
+int handle_elf32(const int fd, const char * const fp) {
+    Elf32_Ehdr ehdr;
+
+    int ret = read(fd, &ehdr, sizeof(Elf32_Ehdr));
+
+    if (ret == -1) {
+        perror(fp);
+        return 11;
+    }
+
+    if (ret != sizeof(Elf32_Ehdr)) {
+        perror(fp);
+        return 12;
+    }
+
+    ///////////////////////////////////////////////////////////
+
+    Elf32_Phdr phdr;
+
+    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
+        ret = pread(fd, &phdr, sizeof(Elf32_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
+
+        if (ret == -1) {
+            perror(fp);
+            return 17;
+        }
+
+        if ((size_t)ret != sizeof(Elf32_Phdr)) {
+            perror(fp);
+            fprintf(stderr, "not fully read.\n");
+            return 18;
+        }
+
+        if (phdr.p_type == PT_DYNAMIC) {
+            return 0;
+        }
+    }
+
+    fprintf(stderr, "no .dynamic section in file: %s\n", fp);
+    return 200;
+}
+
+int handle_elf64(const int fd, const char * const fp) {
+    Elf64_Ehdr ehdr;
+
+    int ret = read(fd, &ehdr, sizeof(Elf64_Ehdr));
+
+    if (ret == -1) {
+        perror(fp);
+        return 11;
+    }
+
+    if (ret != sizeof(Elf64_Ehdr)) {
+        perror(fp);
+        return 12;
+    }
+
+    ///////////////////////////////////////////////////////////
+
+    Elf64_Phdr phdr;
+
+    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
+        ret = pread(fd, &phdr, sizeof(Elf64_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
+
+        if (ret == -1) {
+            perror(fp);
+            return 17;
+        }
+
+        if ((size_t)ret != sizeof(Elf64_Phdr)) {
+            perror(fp);
+            fprintf(stderr, "not fully read.\n");
+            return 18;
+        }
+
+        if (phdr.p_type == PT_DYNAMIC) {
+            return 0;
+        }
+    }
+
+    fprintf(stderr, "no .dynamic section in file: %s\n", fp);
+    return 200;
+}
+
+int main(int argc, const char *argv[]) {
+    if (argc != 2) {
+        printf("Usage: %s <ELF-FILEPATH>\n", argv[0]);
+        return 1;
+    }
+
+    if (argv[1][0] == '\0') {
+        printf("Usage: %s <ELF-FILEPATH>, <ELF-FILEPATH> is unspecified.\n", argv[0]);
+        return 2;
+    }
+
+    int fd = open(argv[1], O_RDONLY);
+
+    if (fd == -1) {
+        perror(argv[1]);
+        return 3;
+    }
+
+    struct stat st;
+
+    if (fstat(fd, &st) == -1) {
+        perror(argv[1]);
+        close(fd);
+        return 4;
+    }
+
+    if (st.st_size < 5) {
+        fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
+        close(fd);
+        return 100;
+    }
+
+    ///////////////////////////////////////////////////////////
+
+    unsigned char a[5];
+
+    ssize_t readBytes = read(fd, a, 5);
+
+    if (readBytes == -1) {
+        perror(argv[0]);
+        close(fd);
+        return 5;
+    }
+
+    if (readBytes != 5) {
+        perror(argv[0]);
+        close(fd);
+        fprintf(stderr, "not fully read.\n");
+        return 6;
+    }
+
+    ///////////////////////////////////////////////////////////
+
+    // https://www.sco.com/developers/gabi/latest/ch4.eheader.html
+    if ((a[0] != 0x7F) || (a[1] != 0x45) || (a[2] != 0x4C) || (a[3] != 0x46)) {
+        fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
+        close(fd);
+        return 100;
+    }
+
+    ///////////////////////////////////////////////////////////
+
+    off_t offset = lseek(fd, 0, SEEK_SET);
+
+    if (offset == -1) {
+        perror(argv[0]);
+        close(fd);
+        return 7;
+    }
+
+    ///////////////////////////////////////////////////////////
+
+    int ret;
+
+    switch (a[4]) {
+        case 1: ret = handle_elf32(fd, argv[1]); break;
+        case 2: ret = handle_elf64(fd, argv[1]); break;
+        default: 
+            fprintf(stderr, "Invalid ELF file: %s\n", argv[1]);
+            ret = 101;
+    }
+
+    close(fd);
+
+    return ret;
+}
 EOF
-        chmod +x bin/gcc
-        chmod +x bin/g++
-
-        # https://gcc.gnu.org/onlinedocs/gcc/Spec-Files.html
-        cat > gcc.specs <<EOF
-%rename cpp_options old_cpp_options
-
-*cpp_options:
--nostdinc -isystem $NDKPKG_HOME/core/sysroot/include -isystem include%s %(old_cpp_options)
-
-*cc1:
-%(cc1_cpu) -nostdinc -isystem $NDKPKG_HOME/core/sysroot/include -isystem include%s
-
-*link_libgcc:
--L$NDKPKG_HOME/core/sysroot/lib -L .%s
-
-*libgcc:
-libgcc.a%s %:if-exists(libgcc_eh.a%s)
-
-*startfile:
-%{!shared: $NDKPKG_HOME/core/sysroot/lib/Scrt1.o} $NDKPKG_HOME/core/sysroot/lib/crti.o crtbeginS.o%s
-
-*endfile:
-crtendS.o%s $NDKPKG_HOME/core/sysroot/lib/crtn.o
-
-*link:
--dynamic-linker $NDKPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $NDKPKG_HOME/core/sysroot/lib -rpath $NDKPKG_HOME/core/lib -L $NDKPKG_HOME/core/sysroot/lib -L $NDKPKG_HOME/core/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
-
-*esp_link:
-
-
-*esp_options:
-
-
-*esp_cpp_options:
-
-
-EOF
-
-        cat > g++.specs <<EOF
-%rename cpp_options old_cpp_options
-
-*cpp_options:
--nostdinc -isystem $NDKPKG_HOME/core/sysroot/include -I $NDKPKG_HOME/core/include/c++/13.1.0 -I $NDKPKG_HOME/core/include/c++/13.1.0/x86_64-pc-linux-gnu -isystem include%s %(old_cpp_options)
-
-*cc1:
-%(cc1_cpu) -nostdinc -isystem $NDKPKG_HOME/core/sysroot/include -I $NDKPKG_HOME/core/include/c++/13.1.0 -I $NDKPKG_HOME/core/include/c++/13.1.0/x86_64-pc-linux-gnu -isystem include%s
-
-*link_libgcc:
--L$NDKPKG_HOME/core/sysroot/lib -L .%s
-
-*libgcc:
-libgcc.a%s %:if-exists(libgcc_eh.a%s)
-
-*startfile:
-%{!shared: $NDKPKG_HOME/core/sysroot/lib/Scrt1.o} $NDKPKG_HOME/core/sysroot/lib/crti.o crtbeginS.o%s
-
-*endfile:
-crtendS.o%s $NDKPKG_HOME/core/sysroot/lib/crtn.o
-
-*link:
--dynamic-linker $NDKPKG_HOME/core/sysroot/lib/ld-linux-x86-64.so.2 -rpath $NDKPKG_HOME/core/sysroot/lib -rpath $NDKPKG_HOME/core/lib -L $NDKPKG_HOME/core/sysroot/lib -L $NDKPKG_HOME/core/lib -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
-
-*esp_link:
-
-
-*esp_options:
-
-
-*esp_cpp_options:
-
-
-EOF
-
-        fi
-
-        ln -s ../wrapper-native-cc bin/cc
+        unset CC CXX AS LD
+        run ./zig cc -flto -Os -s -o check-if-has-dynamic-section check-if-has-dynamic-section.c
     fi
+
+    run ln -s ../wrapper-native-cc  bin/cc
+    run ln -s ../wrapper-native-c++ bin/c++
 
     ##################################################################################
 
@@ -9432,36 +9554,29 @@ ${COLOR_GREEN}ndk-pkg logs <PACKAGE-SPEC>${COLOR_OFF}
 
     This will launch fzf finder. press ESC key to quit.
 
-${COLOR_GREEN}ndk-pkg pack <PACKAGE-SPEC> [OPTIONS]${COLOR_OFF}
-    pack the given installed package.
 
-    ${COLOR_BLUE}-t <OUTPUT-TYPE>${COLOR_OFF}
-        must be any one of tar.gz tar.xz tar.lz tar.bz2 zip
+${COLOR_GREEN}ndk-pkg bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE> [--exclude <PATH>] [-K]${COLOR_OFF}
+    bundle the given installed package into a single archive file.
 
-        If this option is unspecified, <OUTPUT-TYPE> would be assigned to .tar.xz
+    ${COLOR_BLUE}<OUTPUT-DIR>${COLOR_OFF}
+        If specified, should end with slash.
 
-    ${COLOR_BLUE}-o <OUTPUT-PATH>${COLOR_OFF}
-        specify where the packed archive file would be written to.
+    ${COLOR_BLUE}<OUTPUT-FILENAME-PREFIX>${COLOR_OFF}
+        If unspecified, use <PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH> as default.
 
-        <OUTPUT-PATH> can be either the filepath or directory.
-
-        If <OUTPUT-PATH> is . .. ./ ../ or ends with slash(/), then it would be treated as a directory, otherwise, it would be treated as a filepath.
-
-        If <OUTPUT-PATH> is treated as a filepath, then it must ends with one of .tar.gz .tar.xz .tar.lz .tar.bz2 .tgz .txz .tlz .tbz2 .zip , in this case, -t <OUTPUT-TYPE> option would be ignored if it also is specified.
-
-        If <OUTPUT-PATH> is treated as a directory, then it would be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
-
-        If this option is unspecified, <OUTPUT-PATH> would be assigned to ./<PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-ARCH><OUTPUT-TYPE>
+    ${COLOR_BLUE}<BUNDLE-TYPE>${COLOR_OFF}
+        should be any one of .tar.gz .tar.xz .tar.lz .tar.bz2 .zip
 
     ${COLOR_BLUE}--exclude <PATH>${COLOR_OFF}
-        exclude file that isn't mean to packed into the archive file.
+        exclude file that is not mean to be bundled into the final file.
 
         <PATH> is relative to the installed root directory.
 
         this option can be used multiple times.
 
     ${COLOR_BLUE}-K${COLOR_OFF}
-        keep the session directory even if this package is successfully packed.
+        keep the session directory even if this package is successfully bundled.
+
 
 ${COLOR_GREEN}ndk-pkg export android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [OPTIONS]${COLOR_OFF}
     export the given installed package as google prefab aar.
@@ -9505,7 +9620,7 @@ ${COLOR_GREEN}ndk-pkg deploy android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME>
         pass -X option to mvn command.
 
     ${COLOR_BLUE}--dry-run${COLOR_OFF}
-        just pack the aar file, do not actually export.
+        just bundle the aar file, do not actually export.
 
     ${COLOR_BLUE}-K${COLOR_OFF}
         keep the session directory even if this package is successfully exported.
@@ -9660,7 +9775,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.2
+NDKPKG_VERSION=0.19.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9687,6 +9802,8 @@ NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
 NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native"
 
 ##################################################################################
+
+ZIG="$NDKPKG_CORE_DIR/zig"
 
 UPPM="$NDKPKG_CORE_DIR/uppm"
 
@@ -9959,9 +10076,9 @@ case $1 in
     upgrade-self)
              shift; __upgrade_self "$NDKPKG_UPGRAGE_URL" "$@" ;;
 
-    logs) shift; __logs_the_given_installed_package "$@" ;;
-    tree) shift; __tree_the_given_installed_package "$@" ;;
-    pack) shift; __pack_the_given_installed_package "$@" ;;
+    logs)   shift; __logs_the_given_installed_package "$@" ;;
+    tree)   shift; __tree_the_given_installed_package "$@" ;;
+    bundle) shift; __bundle_the_given_installed_package "$@" ;;
 
     export) shift; __export_google_prefab_aar_for_the_given_installed_packages "$@" ;;
     deploy) shift; __deploy_google_prefab_aar_for_the_given_installed_packages "$@" ;;

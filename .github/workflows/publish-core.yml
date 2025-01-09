@@ -34,9 +34,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: install -d out/
+      - run: ./ppkg setup
+      - run: ./ppkg update
+      - run: ./ppkg install macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
+      - run: ./ppkg bundle  macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 .tar.xz
 
-      - run: mv fonts.conf out/
+      - run: rm check-if-has-dynamic-section.c list-section-names.c print-*-if-present.c wrapper-template.c
 
       - run: |
           set -ex
@@ -47,143 +50,73 @@ jobs:
 
           for f in *.c
           do
-            o="out/${f%.c}"
+            o="${f%.c}.exe"
             $CC $CFLAGS -std=c99 -Os -flto -o "$o" "$f"
             strip "$o"
           done
 
-      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/xcpkg/master/xcpkg
-      - run: chmod a+x xcpkg
-      - run: ./xcpkg setup
-      - run: ./xcpkg update
-      - run: ./xcpkg install MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
-      - run: ./xcpkg pack    MacOSX-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
-
-      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
-      - run: mv out/bin/uppm out/
-      - run: rm -rf out/bin
-      - run: rm -rf out/share
-      - run: rm -rf out/.xcpkg
-      - run: mv *.otf out/
-
-      - run: |
-          DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}"
-          mv out "$DIRNAME"
-          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+      - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ndk-pkg-core-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
-          path: ndk-pkg-core-*.tar.xz
+          name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
+          path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
 
 
-  linux-x86_64:
+  linux:
     needs: base
 
-    runs-on: ubuntu-latest
-
-    container: alpine:3.19
-
-    steps:
-      - run: apk update
-      - run: apk add curl xz g++ libc-dev linux-headers
-
-      - uses: actions/checkout@v4
-
-      - run: install -d out/
-
-      - run: mv fonts.conf out/
-
-      - run: |
-          for item in *.c
-          do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/${item%.c}" "$item"
-          done
-
-      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-      - run: chmod a+x ppkg
-      - run: ./ppkg setup
-      - run: ./ppkg update
-      - run: ./ppkg install uppm@0.15.4 --static
-      - run: ./ppkg pack    uppm@0.15.4
-
-      - run: tar vxf uppm*.tar.xz -C out --strip-components=1
-      - run: mv out/bin/uppm out/
-      - run: rm -rf out/bin
-      - run: rm -rf out/share
-      - run: rm -rf out/.ppkg
-      - run: mv *.otf out/
-
-      - run: |
-          DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64"
-          mv out "$DIRNAME"
-          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ndk-pkg-core-linux-x86_64.tar.xz
-          path: ndk-pkg-core-*.tar.xz
-
-
-
-  linux-aarch64:
-    needs: base
+    strategy:
+      fail-fast: false
+      matrix:
+        target-arch: [x86_64, aarch64]
 
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-      - run: chmod a+x ppkg
-
-      - run: install -d out/
-
-      - run: mv fonts.conf out/
-      - run: mv *.otf      out/
 
       - run: |
           cat > run.sh <<EOF
-          set -ex
+          set -e
 
-          apk update
-          apk add curl xz g++ libc-dev linux-headers
+          COLOR_GREEN='\033[0;32m'        # Green
+          COLOR_PURPLE='\033[0;35m'       # Purple
+          COLOR_OFF='\033[0m'             # Reset
 
-          for f in *.c
+          echo() {
+              printf '%b\n' "\$*"
+          }
+
+          run() {
+              echo "\${COLOR_PURPLE}==>\${COLOR_OFF} \${COLOR_GREEN}\$@\${COLOR_OFF}"
+              eval "\$*"
+          }
+
+          run uname -a
+
+          run apk update
+          run apk add curl tar xz g++ libc-dev linux-headers
+
+          for item in *.c
           do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "out/\${f%.c}" "\$f"
+            gcc -std=c99 -Os -flto -Wl,-s -static -o "\${item%.c}.exe" "\$item"
           done
 
-          ./ppkg setup
-          ./ppkg update
-          ./ppkg install uppm@0.15.4 --static
-          ./ppkg pack    uppm@0.15.4
+          export GITHUB_ACTIONS=true
 
-          tar vxf uppm*.tar.xz -C out --strip-components=1
-          mv out/bin/uppm out/
-          rm -rf out/bin
-          rm -rf out/share
-          rm -rf out/.ppkg
+          run ./ppkg setup --syspm
+          run ./ppkg update
+          run ./ppkg install uppm@0.15.4 --static
+          run ./ppkg bundle  uppm@0.15.4 .tar.xz
           EOF
 
-      # https://github.com/multiarch/qemu-user-static
-      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-      - run: docker run -v $PWD:/root -w /root --name alpine arm64v8/alpine:3.16 sh run.sh
-
-      - run: |
-          DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-aarch64"
-          mv out "$DIRNAME"
-          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+      - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} linux-${{ matrix.target-arch }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ndk-pkg-core-linux-aarch64.tar.xz
-          path: ndk-pkg-core-*.tar.xz
+          name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}.tar.xz
+          path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}.tar.xz
 
 
   android:
@@ -211,8 +144,8 @@ jobs:
       - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4
       - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core
 
-      - run: ./ndk-pkg pack    android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4  -o .
-      - run: ./ndk-pkg pack    android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core -o .
+      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4
+      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core
 
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
 
@@ -248,7 +181,7 @@ jobs:
 
   publish:
 
-    needs: [base, macos, linux-x86_64, linux-aarch64, android]
+    needs: [base, macos, linux, android]
 
     runs-on: ubuntu-latest
 

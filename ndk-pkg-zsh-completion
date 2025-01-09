@@ -36,7 +36,7 @@ _ndk_pkg_actions=(
     'depends:show the depends of the given package.'
     'tree:list files of the given installed package in a tree-like format.'
     'logs:show logs of the given installed package.'
-    'pack:pack the given installed package.'
+    'bundle:bundle the given installed package into a single archive file.'
     'export:export the given installed package as the google prefab aar.'
     'deploy:export the given installed package as the google prefab aar then deploy it to Maven Local Repository or Sonatype OSSRH.'
     'gen-url-transform-sample:generate url-transform sample.'
@@ -137,12 +137,12 @@ function _ndk_pkg() {
                         '-t[specify output format]:output-type:(d2 dot box svg png)' \
                         '-o[specify output filepath or directory]:output-path:_files'
                     ;;
-                pack)
+                bundle)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_packages' \
-                        '-t[specify output type]:output-type:(zip 7z tar.gz tar.xz tar.lz tar.bz2)' \
-                        '-o[specify output filepath or directory]:output-path:_files' \
-                        '-K[do not delete the session directory even if successfully packed]'
+                        ':output-path:_files' \
+                        '--exclude[specify exclude path]:exclude-path:_path_files -/' \
+                        '-K[do not delete the session directory even if exported successfully]'
                     ;;
                 export)
                     _arguments \

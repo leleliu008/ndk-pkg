@@ -109,12 +109,9 @@ jobs:
       - run: ./ndk-pkg tree libzip
       - run: ./ndk-pkg tree libzip -a
 
-      - run: ./ndk-pkg pack libzip
-      - run: ./ndk-pkg pack libzip -t tar.gz
-      - run: ./ndk-pkg pack libzip -t tar.xz
-      - run: ./ndk-pkg pack libzip -t tar.xz -o .
-      - run: ./ndk-pkg pack libzip -o .
-      - run: ./ndk-pkg pack libzip -o xx.tar.xz
+      - run: ./ndk-pkg bundle libzip .tar.gz
+      - run: ./ndk-pkg bundle libzip .tar.xz
+      - run: ./ndk-pkg bundle libzip xx.tar.xz
 
 
       - run: ./ndk-pkg formula-repo-list

@@ -80,12 +80,9 @@ jobs:
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg tree libzip
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg tree libzip -a
 
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg pack libzip
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg pack libzip -t tar.gz
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg pack libzip -t tar.xz
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg pack libzip -t tar.xz -o .
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg pack libzip -o .
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg pack libzip -o xx.tar.xz
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg bundle libzip .tar.gz
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg bundle libzip .tar.xz
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg bundle libzip xx.tar.xz
 
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg export android-21-arm64-v8a/libzip
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg export android-21-arm64-v8a/libzip -o .

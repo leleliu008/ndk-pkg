@@ -643,18 +643,17 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ndk-pkg logs android-35-arm64-v8a/curl
     ```
 
-- **pack the given installed package**
+- **bundle the given installed package into a single archive file**
 
     ```bash
-    ndk-pkg pack curl
-    ndk-pkg pack android-35-arm64-v8a/curl
-    ndk-pkg pack android-35-arm64-v8a/curl -t tar.xz
-    ndk-pkg pack android-35-arm64-v8a/curl -t tar.gz
-    ndk-pkg pack android-35-arm64-v8a/curl -t tar.lz
-    ndk-pkg pack android-35-arm64-v8a/curl -t tar.bz2
-    ndk-pkg pack android-35-arm64-v8a/curl -t zip
-    ndk-pkg pack android-35-arm64-v8a/curl -t zip -o a/
-    ndk-pkg pack android-35-arm64-v8a/curl -o a/x.zip
+    ndk-pkg bundle android-35-arm64-v8a/curl .tar.gz
+    ndk-pkg bundle android-35-arm64-v8a/curl .tar.xz
+    ndk-pkg bundle android-35-arm64-v8a/curl .tar.lz
+    ndk-pkg bundle android-35-arm64-v8a/curl .tar.bz2
+    ndk-pkg bundle android-35-arm64-v8a/curl .zip
+    ndk-pkg bundle android-35-arm64-v8a/curl xx.zip
+    ndk-pkg bundle android-35-arm64-v8a/curl a/.zip
+    ndk-pkg bundle android-35-arm64-v8a/curl a/xx.zip
     ```
 
 - **export the given installed package as the google prefab aar**
@@ -844,13 +843,13 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 ||||
 |`onstart`|optional|POSIX shell code to be run when this package's formula is loaded.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
 |`onready`|optional|POSIX shell code to be run when this package's needed resources all are ready.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
-|`onfinal`|optional|POSIX shell code to be run when this package is successfully installed.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
 ||||
 |`do12345`|optional|POSIX shell code to be run for native build.<br>It is only meaningful when requesting for cross building.<br>It is running in a separated process.|
 |`dopatch`|optional|POSIX shell code to be run to apply patches manually.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
 |`prepare`|optional|POSIX shell code to be run to do some additional preparation.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
 |`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
-|`dotweak`|optional|POSIX shell code to be run to do some tweaks immediately after installing.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
+|`doextra`|optional|POSIX shell code to be run to do some extra works immediately after installing.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
+|`dotweak`|optional|POSIX shell code to be run to do some tweaks after `doextra`.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
 ||||
 |`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
