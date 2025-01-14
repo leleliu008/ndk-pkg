@@ -5537,19 +5537,24 @@ $DOT_CONTENT
                 libz)
                     PACKAGE_DEP_AUX_LIBZ=1
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libz"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
                     ;;
                 libopenssl)
                     PACKAGE_DEP_AUX_LIBOPENSSL=1
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libopenssl"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake perl"
                     ;;
                 automake)
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY autoconf automake"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake gm4"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl"
                     ;;
                 autoconf|libtool|texinfo|help2man|intltool)
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY $UPPM_PACKAGE_NAME"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake gm4"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl"
+                    ;;
+                itstool)
+                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY itstool"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl python3"
                     ;;
                 *)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
             esac
@@ -6499,6 +6504,61 @@ $PACKAGE_DO12345
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
 
+        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
+
+        #########################################################################
+
+        RUST_TARGET_FOR_BUILD="$(rustc -vV | sed -n '/host: /p' | cut -c7- | tr 'a-z-' 'A-Z_')"
+
+        # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
+        # https://doc.rust-lang.org/cargo/reference/environment-variables.html
+        export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_AR"="$AR_FOR_BUILD"
+        export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_LINKER"="$CC_FOR_BUILD"
+
+        # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
+        RUSTFLAGS_FOR_BUILD="-Clinker=$CC_FOR_BUILD"
+
+        for LDARG in $LDFLAGS_FOR_BUILD
+        do
+            RUSTFLAGS_FOR_BUILD="$RUSTFLAGS_FOR_BUILD -Clink-arg=$LDARG"
+        done
+
+        [ "$PACKAGE_DEP_AUX_LIBZ" = 1 ] && {
+            RUSTFLAGS_FOR_BUILD="$RUSTFLAGS_FOR_BUILD -L native=$NATIVE_PACKAGE_INSTALLED_ROOT/libz"
+        }
+
+        export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_RUSTFLAGS"="$RUSTFLAGS_FOR_BUILD"
+
+        # https://libraries.io/cargo/pkg-config
+        # https://crates.io/crates/pkg-config
+        # https://docs.rs/pkg-config/latest/pkg_config/
+        # https://github.com/rust-lang/pkg-config-rs
+        export HOST_PKG_CONFIG_PATH="$PKG_CONFIG_PATH_FOR_BUILD"
+        export HOST_PKG_CONFIG_LIBDIR="$NDKPKG_CORE_DIR/lib/pkgconfig"
+
+        # https://libraries.io/cargo/cc
+        # https://crates.io/crates/cc
+        # https://docs.rs/cc/latest/cc/
+        # https://github.com/alexcrichton/cc-rs
+        export HOST_CC="$CC_FOR_BUILD"
+        export HOST_CFLAGS="$CFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD"
+
+        export HOST_CXX="$CXX_FOR_BUILD"
+        export HOST_CXXFLAGS="$CXXFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD"
+
+        export HOST_AR="$AR_FOR_BUILD"
+
+        #########################################################################
+
+        # https://docs.rs/openssl/latest/openssl/
+        [ "$PACKAGE_DEP_AUX_LIBOPENSSL" = 1 ] && {
+            eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/libopenssl'"
+            eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_NO_VENDOR=1"
+            export OPENSSL_NO_VENDOR=1
+        }
+
+        #########################################################################
+
         # this environment variable is not defined by Rust, but it is widely used by third-party project.
         case $TARGET_PLATFORM_ARCH in
             armv7a)  export RUST_TARGET='armv7-linux-androideabi' ;;
@@ -6514,8 +6574,6 @@ $PACKAGE_DO12345
         export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_AR"="$AR"
         export "CARGO_TARGET_${RUST_TARGET_UPPERCASE_UNDERSCORE}_LINKER"="$CC"
 
-        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
-
         #########################################################################
 
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
@@ -6530,23 +6588,6 @@ $PACKAGE_DO12345
             LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LIBCLANG_RT_BUILTINS_FILEPATH"
         #fi
-
-        #########################################################################
-
-        RUST_TARGET_FOR_BUILD="$(rustc -vV | sed -n '/host: /p' | cut -c7- | tr 'a-z-' 'A-Z_')"
-
-        # https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
-        # https://doc.rust-lang.org/cargo/reference/environment-variables.html
-        export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_AR"="$AR_FOR_BUILD"
-        export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_LINKER"="$CC_FOR_BUILD"
-
-        #########################################################################
-
-        # https://docs.rs/openssl/latest/openssl/
-        [ "$PACKAGE_DEP_AUX_LIBOPENSSL" = 1 ] && {
-            eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/libopenssl'"
-            eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_NO_VENDOR=1"
-        }
 
         #########################################################################
 
@@ -6601,14 +6642,6 @@ $PACKAGE_DO12345
         # https://crates.io/crates/cc
         # https://docs.rs/cc/latest/cc/
         # https://github.com/alexcrichton/cc-rs
-        export HOST_CC="$CC_FOR_BUILD"
-        export HOST_CFLAGS="$CFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD"
-
-        export HOST_CXX="$CXX_FOR_BUILD"
-        export HOST_CXXFLAGS="$CXXFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD"
-
-        export HOST_AR="$AR_FOR_BUILD"
-
         export TARGET_CC="$CC"
         export TARGET_CFLAGS="$CFLAGS $CPPFLAGS $LDFLAGS"
 
@@ -6624,9 +6657,6 @@ $PACKAGE_DO12345
         # https://docs.rs/pkg-config/latest/pkg_config/
         # https://github.com/rust-lang/pkg-config-rs
         export TARGET_PKG_CONFIG_ALLOW_CROSS=1
-
-        export HOST_PKG_CONFIG_PATH="$PKG_CONFIG_PATH_FOR_BUILD"
-        export HOST_PKG_CONFIG_LIBDIR="$NDKPKG_CORE_DIR/lib/pkgconfig"
 
         unset PKG_CONFIG_SYSROOT_DIR
 
@@ -8967,10 +8997,10 @@ EOF
 
     if [ "$LINUX" = 1 ] ; then
         wfetch 'https://ziglang.org/builds/zig-linux-x86_64-0.14.0-dev.2627+6a21d18ad.tar.xz' --no-buffer
-        run $TAR xvf zig-linux-x86_64-*.tar.xz --strip-components=1 --no-same-owner
+        run $TAR xf zig-linux-x86_64-*.tar.xz --strip-components=1 --no-same-owner
 
         wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/binutils-2.43.1-linux-any-x86_64.release.tar.xz' --no-buffer
-        run $TAR xvf binutils-*.tar.xz --strip-components=1 --no-same-owner
+        run $TAR xf binutils-*.tar.xz --strip-components=1 --no-same-owner
 
         # https://github.com/ziglang/zig/issues/19790
         for item in cc c++
@@ -9167,7 +9197,7 @@ int main(int argc, const char *argv[]) {
 }
 EOF
         unset CC CXX AS LD
-        run ./zig cc -flto -Os -s -o check-if-has-dynamic-section check-if-has-dynamic-section.c
+        run ./zig cc --target=x86_64-linux-musl -flto -Os -s -o check-if-has-dynamic-section check-if-has-dynamic-section.c
 
         run ln -s ../wrapper-native-cc  bin/cc
         run ln -s ../wrapper-native-c++ bin/c++

@@ -28,11 +28,12 @@ int main(int argc, char * argv[]) {
         }
     }
 
-    char* argv2[argc + 2];
+    char* argv2[argc + 3];
 
     argv2[0] = zig;
     argv2[1] = (char*)"cc";
-    argv2[argc+1] = NULL;
+    argv2[argc+1] = (char*)"--target=x86_64-linux-gnu";
+    argv2[argc+2] = NULL;
 
     for (int i = 1; i < argc; i++) {
         argv2[i+1] = argv[i];
