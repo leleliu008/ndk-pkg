@@ -69,60 +69,36 @@ jobs:
   linux:
     needs: base
 
-    strategy:
-      fail-fast: false
-      matrix:
-        target-arch: [x86_64, aarch64]
-
     runs-on: ubuntu-latest
+    container: alpine
 
     steps:
       - uses: actions/checkout@v4
 
+      - run: apk update
+      - run: apk add g++ linux-headers
+
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+      - run: chmod a+x ppkg
+
+      - run: ./ppkg setup
+      - run: ./ppkg update
+      - run: ./ppkg install uppm@0.15.4 --static
+      - run: ./ppkg bundle  uppm@0.15.4 .tar.xz
+
       - run: |
-          cat > run.sh <<EOF
-          set -e
-
-          COLOR_GREEN='\033[0;32m'        # Green
-          COLOR_PURPLE='\033[0;35m'       # Purple
-          COLOR_OFF='\033[0m'             # Reset
-
-          echo() {
-              printf '%b\n' "\$*"
-          }
-
-          run() {
-              echo "\${COLOR_PURPLE}==>\${COLOR_OFF} \${COLOR_GREEN}\$@\${COLOR_OFF}"
-              eval "\$*"
-          }
-
-          run uname -a
-
-          run apk update
-          run apk add curl tar xz g++ libc-dev linux-headers
-
+          set -ex
           for item in *.c
           do
-            gcc -std=c99 -Os -flto -Wl,-s -static -o "\${item%.c}.exe" "\$item"
+            gcc -std=c99 -Os -flto -s -static -o "\${item%.c}.exe" "\$item"
           done
 
-          export GITHUB_ACTIONS=true
-
-          run curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
-          run chmod a+x ppkg
-
-          run ./ppkg setup
-          run ./ppkg update
-          run ./ppkg install uppm@0.15.4 --static
-          run ./ppkg bundle  uppm@0.15.4 .tar.xz
-          EOF
-
-      - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} linux-${{ matrix.target-arch }}
+      - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} linux-x86_64
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}.tar.xz
-          path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-${{ matrix.target-arch }}.tar.xz
+          name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64.tar.xz
+          path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64.tar.xz
 
 
   android:
