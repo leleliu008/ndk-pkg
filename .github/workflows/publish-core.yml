@@ -42,7 +42,7 @@ jobs:
       - run: ./ppkg install macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
       - run: ./ppkg bundle  macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 .tar.xz
 
-      - run: rm check-if-has-dynamic-section.c list-section-names.c print-*-if-present.c wrapper-template.c
+      - run: rm check-if-has-dynamic-section.c
 
       - run: |
           set -ex
@@ -117,7 +117,7 @@ jobs:
       - run: apt -y update
       - run: apt -y install curl tar gzip xz-utils
 
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
+      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/dev/ndk-pkg
       - run: chmod +x ndk-pkg
 
       - run: ./ndk-pkg setup
@@ -126,8 +126,8 @@ jobs:
       - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4
       - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core
 
-      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4
-      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core
+      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4  .tar.xz
+      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core .tar.xz
 
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
 
@@ -142,6 +142,8 @@ jobs:
             tar vxf "$item" -C out --strip-components=1
             rm -v   "$item"
           done
+
+          tar vxf uppm*.tar.xz -C out --strip-components=1
 
           mv out/bin/* *.otf out/
 
