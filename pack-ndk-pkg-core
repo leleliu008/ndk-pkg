@@ -2,7 +2,7 @@
 
 set -ex
 
-if [ "$GITHUB_ACTIONS" != true ]
+if [ "$GITHUB_ACTIONS" != true ] ; then
     echo "this script only run via GitHub Actions."
     exit 1
 fi
