@@ -24,7 +24,7 @@ tar vxf uppm*.tar.xz -C out --strip-components=1
 
 mv out/bin/uppm *.otf fonts.conf config.sub config.guess out/
 
-rm -rf out/bin/ out/share/ out/.ndk-pkg/
+rm -rf out/share/ out/.ppkg/
 
 DIRNAME="ndk-pkg-core-$1-$2"
 mv out "$DIRNAME"

@@ -5130,7 +5130,6 @@ $PACKAGE_ONSTART
                 CCFLAGS_FOR_BUILD="-fPIC -fno-common"
                 LDFLAGS_FOR_BUILD="-Wl,--as-needed"
             else
-                CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || __install_gcc_via_syspm
                 CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
                  CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
                OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
@@ -7135,7 +7134,7 @@ EOF
 
     if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
         if command -v getconf > /dev/null ; then
-            NATIVE_PLATFORM_LIBC_VERSION="$(getconf GNU_LIBC_VERSION | cut -d ' ' -f2)"
+            NATIVE_PLATFORM_LIBC_VERSION="$(getconf GNU_LIBC_VERSION 2>/dev/null | cut -d ' ' -f2)"
             if [ -n "$NATIVE_PLATFORM_LIBC_VERSION" ] ; then
                 gsed -i "/os-libc: /s|$|-$NATIVE_PLATFORM_LIBC_VERSION|" RECEIPT.yml
             fi
@@ -8673,7 +8672,7 @@ EOF
 
         ANDROID_NDK_HOME="$UPPM_HOME/installed/$ANDROID_NDK_PKG"
 
-        if ! uppm is-installed "$ANDROID_NDK_PKG" ; then
+        if ! "$UPPM" is-installed "$ANDROID_NDK_PKG" ; then
             note "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK ($ANDROID_NDK_REVISION) will be installed via uppm."
 
             uppm about
@@ -8686,6 +8685,15 @@ EOF
                     # remove the yasm shipped with Android NDK and use our own
                     rm -rf "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/yasm"
                     ;;
+                linux)
+                    if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
+                        if [ ! -f '/lib64/ld-linux-x86-64.so.2' ] ; then
+                            if [ -f /sbin/apk ] && [ -x /sbin/apk ] ; then
+                                run $sudo /sbin/apk update
+                                run $sudo /sbin/apk add gcompat gcc
+                            fi
+                        fi
+                    fi
             esac
         fi
     else
@@ -8704,86 +8712,6 @@ EOF
 
 # }}}
 ##############################################################################
-# {{{ install_g++_via_system_package_manager
-
-__install_gcc_via_syspm_debian() {
-    $sudo apt-get -y update
-    $sudo apt-get -y install g++
-}
-
-__install_gcc_via_syspm_ubuntu() {
-    $sudo apt-get -y update
-    $sudo apt-get -y install g++
-}
-
-__install_gcc_via_syspm_linuxmint() {
-    $sudo apt-get -y update
-    $sudo apt-get -y install g++
-}
-
-__install_gcc_via_syspm_rocky() {
-    $sudo dnf -y update
-    $sudo dnf -y install gcc-c++
-}
-
-__install_gcc_via_syspm_centos() {
-    $sudo dnf -y update
-    $sudo dnf -y install gcc-c++
-}
-
-__install_gcc_via_syspm_fedora() {
-    $sudo dnf -y update
-    $sudo dnf -y install curl g++
-}
-
-__install_gcc_via_syspm_rhel() {
-:
-}
-
-__install_gcc_via_syspm_opensuse_leap() {
-    $sudo zypper update  -y
-    $sudo zypper install -y gcc-c++
-}
-
-__install_gcc_via_syspm_gentoo() {
-    $sudo emerge sys-devel/gcc
-}
-
-__install_gcc_via_syspm_manjaro() {
-    $sudo pacman -Syyuu --noconfirm
-    $sudo pacman -S     --noconfirm gcc
-}
-
-__install_gcc_via_syspm_arch() {
-    $sudo pacman -Syyuu --noconfirm
-    $sudo pacman -S     --noconfirm gcc
-}
-
-__install_gcc_via_syspm_void() {
-    $sudo xbps-install -Syu xbps
-    $sudo xbps-install -S
-    $sudo xbps-install -Syu gcc
-}
-
-__install_gcc_via_syspm_alpine() {
-    $sudo apk update
-    $sudo apk add gcompat g++ linux-headers
-}
-
-__install_gcc_via_syspm() {
-    if [ -f /etc/os-release ] ; then
-        .   /etc/os-release
-
-        if [ "$ID" = 'opensuse-leap' ] ; then
-            ID='opensuse_leap'
-        fi
-
-        __install_gcc_via_syspm_$ID
-    fi
-}
-
-# }}}
-##############################################################################
 # {{{ ndk-pkg setup
 
 __setup() {
@@ -8793,112 +8721,149 @@ __setup() {
         REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER=1
     fi
 
+    unset NATIVE_PLATFORM_KIND
     unset NATIVE_PLATFORM_ARCH
     unset NATIVE_PLATFORM_VERS
 
     unset LINUX
 
-    case "$(uname -s)" in
-        Darwin)
-            NATIVE_PLATFORM_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
+    __setup_Darwin() {
+        NATIVE_PLATFORM_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
 
-            if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
-                NATIVE_PLATFORM_VERS='10.15'
-            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
-                NATIVE_PLATFORM_VERS='15.0'
-            else
-                NATIVE_PLATFORM_VERS="$NATIVE_PLATFORM_VERS_MAJOR.0"
-            fi
+        if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+            NATIVE_PLATFORM_VERS='10.15'
+        elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+            NATIVE_PLATFORM_VERS='15.0'
+        else
+            NATIVE_PLATFORM_VERS="$NATIVE_PLATFORM_VERS_MAJOR.0"
+        fi
 
+        NATIVE_PLATFORM_ARCH="$(uname -m)"
+        NATIVE_PLATFORM_TRIPLE="macos-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
+    }
+
+    __setup_Linux() {
+        if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
+            NATIVE_PLATFORM_VERS="$(getprop ro.build.version.sdk)"
+            NATIVE_PLATFORM_TRIPLE="android-$NATIVE_PLATFORM_VERS-arm64-v8a"
+        else
             NATIVE_PLATFORM_ARCH="$(uname -m)"
-            NATIVE_PLATFORM_TRIPLE="macos-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
-            ;;
-        Linux)
-            if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
-                NATIVE_PLATFORM_VERS="$(getprop ro.build.version.sdk)"
-                NATIVE_PLATFORM_TRIPLE="android-$NATIVE_PLATFORM_VERS-arm64-v8a"
-            else
-                NATIVE_PLATFORM_ARCH="$(uname -m)"
-                NATIVE_PLATFORM_TRIPLE="linux-$NATIVE_PLATFORM_ARCH"
+            NATIVE_PLATFORM_TRIPLE="linux-$NATIVE_PLATFORM_ARCH"
 
-                LINUX=1
+            LINUX=1
 
-                if [ -f /etc/os-release ] ; then
-                    .   /etc/os-release
+            for FETCH_TOOL in curl wget http lynx aria2c axel
+            do
+                if command -v "$FETCH_TOOL" > /dev/null ; then
+                    break
+                else
+                    unset FETCH_TOOL
+                fi
+            done
 
-                    unset sudo
+            if [ -z "$FETCH_TOOL" ] ; then
+                if [ "$REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER" = 1 ] ; then
+                    __install_curl_via_syspm_on_debian() {
+                        apt-get -y update
+                        apt-get -y install curl
+                    }
 
-                    if [ "$(id -u)" -ne 0 ] ; then
-                        sudo=sudo
-                    fi
+                    __install_curl_via_syspm_on_ubuntu() {
+                        apt-get -y update
+                        apt-get -y install curl
+                    }
 
-                    # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
-                    if [ "$GITHUB_ACTIONS" = true ] ; then
-                        if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
-                            if [ ! -f '/lib64/ld-linux-x86-64.so.2' ] ; then
-                                case $ID in
-                                    alpine)
-                                        run $sudo apk update
-                                        run $sudo apk add gcompat gcc
-                                        ;;
-                                esac
-                            fi
+                    __install_curl_via_syspm_on_linuxmint() {
+                        apt-get -y update
+                        apt-get -y install curl
+                    }
+
+                    __install_curl_via_syspm_on_rocky() {
+                        dnf -y update
+                        dnf -y install curl
+                    }
+
+                    __install_curl_via_syspm_on_almalinux() {
+                        dnf -y update
+                        dnf -y install curl
+                    }
+
+                    __install_curl_via_syspm_on_centos() {
+                        dnf -y update
+                        dnf -y install curl
+                    }
+
+                    __install_curl_via_syspm_on_fedora() {
+                        dnf -y update
+                        dnf -y install curl
+                    }
+
+                    __install_curl_via_syspm_on_rhel() {
+                        dnf -y update
+                        dnf -y install curl
+                    }
+
+                    __install_curl_via_syspm_on_opensuse_leap() {
+                        zypper update  -y
+                        zypper install -y curl
+                    }
+
+                    __install_curl_via_syspm_on_gentoo() {
+                        emerge net-misc/curl
+                    }
+
+                    __install_curl_via_syspm_on_manjaro() {
+                        pacman -Syyuu --noconfirm
+                        pacman -S     --noconfirm curl
+                    }
+
+                    __install_curl_via_syspm_on_arch() {
+                        pacman -Syyuu --noconfirm
+                        pacman -S     --noconfirm curl
+                    }
+
+                    __install_curl_via_syspm_on_void() {
+                        xbps-install -Syu xbps
+                        xbps-install -S
+                        xbps-install -Syu curl
+                    }
+
+                    __install_curl_via_syspm_on_alpine() {
+                        apk update
+                        apk add curl
+                    }
+
+                    if [ -f /etc/os-release ] ; then
+                        .   /etc/os-release
+
+                        unset sudo
+
+                        if [ "$(id -u)" -ne 0 ] ; then
+                            sudo=sudo
                         fi
-                    fi
 
-                    for FETCH_TOOL in curl wget http lynx aria2c axel
-                    do
-                        if command -v "$FETCH_TOOL" > /dev/null ; then
-                            break
-                        else
-                            unset FETCH_TOOL
+                        if [ "$ID" = 'opensuse-leap' ] ; then
+                            ID='opensuse_leap'
                         fi
-                    done
+
+                        $sudo __install_curl_via_syspm_on_$ID
+
+                        FETCH_TOOL=curl
+                    else
+                        abort 1 "/etc/os-release file does not exist, ndk-pkg can not determine what is your host system and how to install curl package."
+                    fi
 
                     if [ -z "$FETCH_TOOL" ] ; then
-                        if [ "$REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER" = 1 ] ; then
-                            FETCH_TOOL=curl
-
-                            case $ID in
-                                debian|ubuntu|linuxmint)
-                                    run $sudo apt-get -y update
-                                    run $sudo apt-get -y install curl
-                                    ;;
-                                fedora|centos|rocky)
-                                    run $sudo dnf -y update
-                                    run $sudo dnf -y install curl
-                                    ;;
-                                opensuse-leap)
-                                    run $sudo zypper update  -y
-                                    run $sudo zypper install -y curl
-                                    ;;
-                                gentoo)
-                                    run $sudo emerge net-misc/curl
-                                    ;;
-                                arch|manjaro)
-                                    run $sudo pacman -Syyuu --noconfirm
-                                    run $sudo pacman -S     --noconfirm curl
-                                    ;;
-                                void)
-                                    run $sudo xbps-install -Syu xbps
-                                    run $sudo xbps-install -S
-                                    run $sudo xbps-install -Syu curl
-                                    ;;
-                                alpine)
-                                    run $sudo apk update
-                                    run $sudo apk add curl
-                                    ;;
-                                *)  unset FETCH_TOOL
-                            esac
-                        fi
-
-                        if [ -z "$FETCH_TOOL" ] ; then
-                            abort 1 "none of curl wget http lynx aria2c axel command was found, please install one of them then try again."
-                        fi
+                        abort 1 "none of curl wget http lynx aria2c axel command was found, please install one of them then try again."
                     fi
                 fi
             fi
-    esac
+        fi
+    }
+
+    NATIVE_PLATFORM_KIND="$(uname -s)"
+
+    __setup_$NATIVE_PLATFORM_KIND
 
     ##################################################################################
 
@@ -9697,16 +9662,6 @@ Please do NOT place your own files under ~/.ndk-pkg directory, as ndk-pkg will c
 Please do NOT run ndk-pkg command in parallel so as not to generate dirty data.
     "
 
-    if [ "$(uname -s)" = Linux ] ; then
-        if [ -f /etc/os-release ] ; then
-            .   /etc/os-release
-        fi
-
-        if [ "$ID" = alpine ] ; then
-            printf 'Due to Android NDK for Linux is linked dynamically against glibc, hence you might need to install glibc by yourself on this system(alpine-%s), to achieve this, please refer to https://wiki.alpinelinux.org/wiki/Running_glibc_programs\n\n' "$VERSION_ID"
-        fi
-    fi
-
     if [ -z "$1" ] ; then
         exit
     else
@@ -9738,7 +9693,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.4
+NDKPKG_VERSION=0.19.5
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"

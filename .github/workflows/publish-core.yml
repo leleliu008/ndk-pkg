@@ -161,11 +161,9 @@ jobs:
             rm -v   "$item"
           done
 
-          mv out/bin/* out/
-          mv *.otf out/
+          mv out/bin/* *.otf out/
 
-          rm -rf out/bin
-          rm -rf out/share
+          rm -rf out/share/
 
           DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-android-${{ matrix.target-version }}-arm64-v8a"
 

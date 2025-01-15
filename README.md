@@ -113,9 +113,9 @@ sudo mount -t proc  none ubuntu-rootfs/proc
 sudo mount -t sysfs none ubuntu-rootfs/sys
 sudo mount -t tmpfs none ubuntu-rootfs/tmp
 
-sudo chroot ubuntu-rootfs env GITHUB_ACTIONS=true ndk-pkg setup
-sudo chroot ubuntu-rootfs env GITHUB_ACTIONS=true ndk-pkg update
-sudo chroot ubuntu-rootfs env GITHUB_ACTIONS=true ndk-pkg install curl --target=android-35-arm64-v8a --static
+sudo chroot ubuntu-rootfs ndk-pkg setup -y
+sudo chroot ubuntu-rootfs ndk-pkg update
+sudo chroot ubuntu-rootfs ndk-pkg install curl --target=android-35-arm64-v8a --static
 ```
 
 ## Using ndk-pkg via chroot+alpine
@@ -139,12 +139,9 @@ sudo mount -o bind  /dev alpine-rootfs/dev
 sudo mount -t proc  none alpine-rootfs/proc
 sudo mount -t sysfs none alpine-rootfs/sys
 
-sudo chroot alpine-rootfs apk update
-sudo chroot alpine-rootfs apk add gcompat
-
-sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg setup
-sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg update
-sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg install curl --target=android-35-arm64-v8a --static
+sudo chroot alpine-rootfs ndk-pkg setup
+sudo chroot alpine-rootfs ndk-pkg update
+sudo chroot alpine-rootfs ndk-pkg install curl --target=android-35-arm64-v8a --static
 ```
 
 ## Using ndk-pkg via [WSL](https://docs.microsoft.com/en-us/windows/wsl)
@@ -196,8 +193,9 @@ chmod a+x ndk-pkg
 
 Please try the following URLs if above url is not reachable:
 
-- https://gitee.com/fpliu/ndk-pkg/raw/master/ndk-pkg
+- https://raw.githubusercontents.com/leleliu008/ndk-pkg/master/ndk-pkg
 - https://cdn.jsdelivr.net/gh/leleliu008/ndk-pkg/ndk-pkg
+- https://gitee.com/fpliu/ndk-pkg/raw/master/ndk-pkg
 
 ## Install ndk-pkg via git
 
