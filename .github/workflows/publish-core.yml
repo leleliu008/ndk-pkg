@@ -78,7 +78,7 @@ jobs:
       - run: apk update
       - run: apk add g++ linux-headers
 
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
+      - run: wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
       - run: chmod a+x ppkg
 
       - run: ./ppkg setup
@@ -142,8 +142,6 @@ jobs:
             tar vxf "$item" -C out --strip-components=1
             rm -v   "$item"
           done
-
-          tar vxf uppm*.tar.xz -C out --strip-components=1
 
           mv out/bin/* *.otf out/
 
