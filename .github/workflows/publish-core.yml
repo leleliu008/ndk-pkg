@@ -88,9 +88,9 @@ jobs:
 
       - run: |
           set -ex
-          for item in *.c
+          for f in *.c
           do
-            gcc -std=c99 -Os -flto -s -static -o "${item%.c}.exe" "$item"
+            gcc -std=c99 -Os -flto -s -static -o "${f%.c}.exe" "$f"
           done
 
       - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} linux-x86_64
@@ -114,49 +114,44 @@ jobs:
         target-version: [35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21]
 
     steps:
+      - uses: actions/checkout@v4
+
+      - run: |
+          cat > ndk-pkg-core.yml <<EOF
+          summary: xx
+          web-url: xx
+          install: |
+            run cd "${{ github.workspace }}"
+
+            for f in *.c
+            do
+                OUTFILE="${f%.c}.exe"
+                run "$CC" "$CFLAGS" "$CPPFLAGS" "$LDFLAGS" -std=c99 -Oz -flto -Wl,-s -static -o "$OUTFILE" "$"
+                install_bins "$OUTFILE"
+            done
+          EOF
+
       - run: apt -y update
       - run: apt -y install curl tar gzip xz-utils
-
-      - run: curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/dev/ndk-pkg
-      - run: chmod +x ndk-pkg
 
       - run: ./ndk-pkg setup
       - run: ./ndk-pkg update
 
       - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4
-      - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core
+      - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core -I .
 
-      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4  .tar.xz
-      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core .tar.xz
+      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4 .tar.xz
 
       - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
 
-      - name: repack
-        run: |
-          set -ex
+      - run: ls
 
-          install -d out
-
-          for item in *.tar.xz
-          do
-            tar vxf "$item" -C out --strip-components=1
-            rm -v   "$item"
-          done
-
-          mv out/bin/* *.otf out/
-
-          rm -rf out/share/
-
-          DIRNAME="ndk-pkg-core-${{ needs.base.outputs.release-version }}-android-${{ matrix.target-version }}-arm64-v8a"
-
-          mv out "$DIRNAME"
-
-          tar cJvf "$DIRNAME.tar.xz" "$DIRNAME"
+      - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} android-${{ matrix.target-version }}-arm64-v8a
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ndk-pkg-core-android-${{ matrix.target-version }}-arm64-v8a.tar.xz
-          path: ndk-pkg-core-*.tar.xz
+          name: ndk-pkg-core-${{ needs.base.outputs.release-version }} android-${{ matrix.target-version }}-arm64-v8a.tar.xz
+          path: ndk-pkg-core-${{ needs.base.outputs.release-version }} android-${{ matrix.target-version }}-arm64-v8a.tar.xz
 
 
   publish:
