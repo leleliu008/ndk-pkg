@@ -64,7 +64,8 @@ jobs:
       - run: ./ndk-pkg depends libzip -o libzip.box
 
 
-      - run: ./ndk-pkg install bat
+      - run: ./ndk-pkg install bat    --target=android-23-arm64-v8a
+      - run: ./ndk-pkg install uctags --target=android-24-arm64-v8a
       - run: ./ndk-pkg install libzip
 
 
