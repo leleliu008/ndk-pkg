@@ -5091,9 +5091,9 @@ $PACKAGE_ONSTART
     if [ -f "$TOOLCHAIN_CONFIG_NATIVE" ] ; then
         .   "$TOOLCHAIN_CONFIG_NATIVE"
     else
-        step "locate C/C++ toolchain for native build"
-
         if [ "$NATIVE_PLATFORM_KIND" = 'darwin' ] ; then
+            step "locate C/C++ toolchain for native build"
+
                  CC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
                OBJC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
                 CXX_FOR_BUILD="$(xcrun --sdk macosx --find clang++)"
@@ -5111,25 +5111,20 @@ $PACKAGE_ONSTART
             CCFLAGS_FOR_BUILD="-isysroot $SYSROOT_FOR_BUILD -mmacosx-version-min=$NATIVE_PLATFORM_VERS -arch $NATIVE_PLATFORM_ARCH -Qunused-arguments"
             LDFLAGS_FOR_BUILD='-Wl,-search_paths_first'
         else
-            if true ; then
-                CXX_FOR_BUILD="$NDKPKG_CORE_DIR/zig-c++"
-                 CC_FOR_BUILD="$NDKPKG_CORE_DIR/zig-cc"
-               OBJC_FOR_BUILD="$NDKPKG_CORE_DIR/zig-cc"
-                 AS_FOR_BUILD="$NDKPKG_CORE_DIR/bin/as"
-                 AR_FOR_BUILD="$NDKPKG_CORE_DIR/bin/ar"
-             RANLIB_FOR_BUILD="$NDKPKG_CORE_DIR/bin/ranlib"
-                 LD_FOR_BUILD="$NDKPKG_CORE_DIR/bin/ld"
-                 NM_FOR_BUILD="$NDKPKG_CORE_DIR/bin/nm"
-               SIZE_FOR_BUILD="$NDKPKG_CORE_DIR/bin/size"
-              STRIP_FOR_BUILD="$NDKPKG_CORE_DIR/bin/strip"
-            STRINGS_FOR_BUILD="$NDKPKG_CORE_DIR/bin/strings"
-            OBJDUMP_FOR_BUILD="$NDKPKG_CORE_DIR/bin/objdump"
-            OBJCOPY_FOR_BUILD="$NDKPKG_CORE_DIR/bin/objcopy"
-            READELF_FOR_BUILD="$NDKPKG_CORE_DIR/bin/readelf"
+            step "install C/C++ toolchain for native build"
 
-                CCFLAGS_FOR_BUILD="-fPIC -fno-common"
-                LDFLAGS_FOR_BUILD="-Wl,--as-needed"
-            else
+            if [ -f '/lib/ld-musl-x86_64.so.1' ] && ldd --version 2>&1 | grep -q musl ; then
+                NATIVE_PLATFORM_LIBC=musl
+
+                if [ ! -f '/lib64/ld-linux-x86-64.so.2' ] || ! command -v g++ > /dev/null ; then
+                    if [ -f /sbin/apk ] && [ -x /sbin/apk ] ; then
+                        run $sudo /sbin/apk update
+                        run $sudo /sbin/apk add gcompat g++
+                    else
+                        abort 1 'Due to Android NDK for Linux is linked dynamically against glibc, hence you need to install glibc and g++ by yourself for this system'
+                    fi
+                fi
+
                 CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
                  CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
                OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
@@ -5144,12 +5139,35 @@ $PACKAGE_ONSTART
             OBJDUMP_FOR_BUILD="$(command -v objdump)" || abort 1 "command not found: objdump"
             OBJCOPY_FOR_BUILD="$(command -v objcopy)" || abort 1 "command not found: objcopy"
             READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
+            else
+                NATIVE_PLATFORM_LIBC=glibc
 
-            CCFLAGS_FOR_BUILD="-fPIC -fno-common"
-            LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
-            #LDFLAGS_FOR_BUILD="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition -fno-use-linker-plugin"
-            # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
+                uppm about
+                uppm update
+                uppm install zig@0.14 binutils
+
+                export PATH="$UPPM_HOME/installed/binutils:$PATH"
+                export  ZIG="$UPPM_HOME/installed/zig@0.14/bin/zig"
+
+                CXX_FOR_BUILD="$NDKPKG_CORE_DIR/zig-c++"
+                 CC_FOR_BUILD="$NDKPKG_CORE_DIR/zig-cc"
+               OBJC_FOR_BUILD="$NDKPKG_CORE_DIR/zig-cc"
+                 AS_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/as"
+                 AR_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/ar"
+             RANLIB_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/ranlib"
+                 LD_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/ld"
+                 NM_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/nm"
+               SIZE_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/size"
+              STRIP_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/strip"
+            STRINGS_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/strings"
+            OBJDUMP_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/objdump"
+            OBJCOPY_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/objcopy"
+            READELF_FOR_BUILD="$UPPM_HOME/installed/binutils/bin/readelf"
             fi
+
+            # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
+            CCFLAGS_FOR_BUILD="-fPIC -fno-common"
+            LDFLAGS_FOR_BUILD="-Wl,--as-needed"
         fi
 
         if [ "$DEBUG_CC" = 1 ] ; then
@@ -5522,8 +5540,8 @@ $DOT_CONTENT
     else
         step "install needed packages via uppm"
 
-        run "$UPPM" about
-        run "$UPPM" update
+        uppm about
+        uppm update
 
         ####################################################################
 
@@ -5571,7 +5589,7 @@ $DOT_CONTENT
 
         for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP pkg-config patchelf tree
         do
-            run "$UPPM" install "$UPPM_PACKAGE_NAME" $UPPM_INSTALL_ARGS
+            uppm install "$UPPM_PACKAGE_NAME" $UPPM_INSTALL_ARGS
 
             UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
@@ -8685,15 +8703,6 @@ EOF
                     # remove the yasm shipped with Android NDK and use our own
                     rm -rf "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/yasm"
                     ;;
-                linux)
-                    if [ -f '/lib/ld-musl-x86_64.so.1' ] ; then
-                        if [ ! -f '/lib64/ld-linux-x86-64.so.2' ] ; then
-                            if [ -f /sbin/apk ] && [ -x /sbin/apk ] ; then
-                                run $sudo /sbin/apk update
-                                run $sudo /sbin/apk add gcompat gcc
-                            fi
-                        fi
-                    fi
             esac
         fi
     else
@@ -8725,8 +8734,6 @@ __setup() {
     unset NATIVE_PLATFORM_ARCH
     unset NATIVE_PLATFORM_VERS
 
-    unset LINUX
-
     __setup_Darwin() {
         NATIVE_PLATFORM_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
 
@@ -8749,8 +8756,6 @@ __setup() {
         else
             NATIVE_PLATFORM_ARCH="$(uname -m)"
             NATIVE_PLATFORM_TRIPLE="linux-$NATIVE_PLATFORM_ARCH"
-
-            LINUX=1
 
             for FETCH_TOOL in curl wget http lynx aria2c axel
             do
@@ -8960,39 +8965,10 @@ EOF
 
     ##################################################################################
 
-    if [ "$LINUX" = 1 ] ; then
-        wfetch 'https://ziglang.org/builds/zig-linux-x86_64-0.14.0-dev.2647+5322459a0.tar.xz' --no-buffer
-        run $TAR xf zig-linux-x86_64-*.tar.xz --strip-components=1 --no-same-owner
+    run ln -s ../wrapper-native-cc  bin/cc
+    run ln -s ../wrapper-native-c++ bin/c++
 
-        wfetch 'https://github.com/leleliu008/test/releases/download/2023.10.08/binutils-2.43.1-linux-any-x86_64.release.tar.xz' --no-buffer
-        run $TAR xf binutils-*.tar.xz --strip-components=1 --no-same-owner
-
-        run ln -s ../wrapper-native-cc  bin/cc
-        run ln -s ../wrapper-native-c++ bin/c++
-
-        if [ -f '/lib/ld-musl-x86_64.so.1' ] && ldd --version 2>&1 | "$UPPM_HOME/installed/grep/bin/grep" -q musl ; then
-            LIBC=musl
-        else
-            LIBC=gnu
-        fi
-
-        cat >> init.sh <<EOF
-export ZIG="$NDKPKG_CORE_DIR/zig"
-export ZIG_TARGET=x86_64-linux-$LIBC
-EOF
-
-        # https://github.com/ziglang/zig/issues/19790
-        for item in cc c++
-        do
-            cat > "zig-$item" <<EOF
-#!/bin/sh
-set -e
-unset CC CXX AS LD AR RANLIB
-exec "$NDKPKG_CORE_DIR/zig" $item "\$@" --target=x86_64-linux-$LIBC
-EOF
-            chmod +x "zig-$item"
-        done
-    fi
+    ##################################################################################
 
     ##################################################################################
 
@@ -9519,7 +9495,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.6
+NDKPKG_VERSION=0.19.7
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
