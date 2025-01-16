@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: apk update
-      - run: apk add curl g++ linux-headers
+      - run: apk add curl tar xz g++ linux-headers
 
       - run: wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
       - run: chmod a+x ppkg
