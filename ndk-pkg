@@ -5119,7 +5119,7 @@ $PACKAGE_ONSTART
                 if [ ! -f '/lib64/ld-linux-x86-64.so.2' ] || ! command -v g++ > /dev/null ; then
                     if [ -f /sbin/apk ] && [ -x /sbin/apk ] ; then
                         run $sudo /sbin/apk update
-                        run $sudo /sbin/apk add gcompat g++
+                        run $sudo /sbin/apk add gcompat g++ linux-headers
                     else
                         abort 1 'Due to Android NDK for Linux is linked dynamically against glibc, hence you need to install glibc and g++ by yourself for this system'
                     fi
