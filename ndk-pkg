@@ -8969,6 +8969,29 @@ EOF
 
         run ln -s ../wrapper-native-cc  bin/cc
         run ln -s ../wrapper-native-c++ bin/c++
+
+        if [ -f '/lib/ld-musl-x86_64.so.1' ] && ldd --version 2>&1 | "$UPPM_HOME/installed/grep/bin/grep" -q musl ; then
+            LIBC=musl
+        else
+            LIBC=gnu
+        fi
+
+        cat >> init.sh <<EOF
+export ZIG="$NDKPKG_CORE_DIR/zig"
+export ZIG_TARGET=x86_64-linux-$LIBC
+EOF
+
+        # https://github.com/ziglang/zig/issues/19790
+        for item in cc c++
+        do
+            cat > "zig-$item" <<EOF
+#!/bin/sh
+set -e
+unset CC CXX AS LD AR RANLIB
+exec "$NDKPKG_CORE_DIR/zig" $item "\$@" --target=x86_64-linux-$LIBC
+EOF
+            chmod +x "zig-$item"
+        done
     fi
 
     ##################################################################################
@@ -9523,8 +9546,6 @@ NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
 NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native"
 
 ##################################################################################
-
-export ZIG="$NDKPKG_CORE_DIR/zig"
 
 UPPM="$NDKPKG_CORE_DIR/uppm"
 
