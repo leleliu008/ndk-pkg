@@ -90,7 +90,7 @@ jobs:
           set -ex
           for f in *.c
           do
-            gcc -std=c99 -Os -flto -s -static -o "${f%.c}.exe" "$f"
+            gcc -std=gnu99 -Os -flto -s -static -o "${f%.c}.exe" "$f"
           done
 
       - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} linux-x86_64
@@ -121,7 +121,7 @@ jobs:
           summary: xx
           web-url: xx
           install: |
-            run cd "${{ github.workspace }}"
+            run cd "$PWD"
 
             for f in *.c
             do
