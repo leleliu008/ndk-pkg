@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: apk update
-      - run: apk add g++ linux-headers
+      - run: apk add curl g++ linux-headers
 
       - run: wget https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
       - run: chmod a+x ppkg
@@ -125,9 +125,9 @@ jobs:
 
             for f in *.c
             do
-                OUTFILE="${f%.c}.exe"
-                run "$CC" "$CFLAGS" "$CPPFLAGS" "$LDFLAGS" -std=c99 -Oz -flto -Wl,-s -static -o "$OUTFILE" "$"
-                install_bins "$OUTFILE"
+                OUTFILE="\${f%.c}.exe"
+                run "\$CC" "\$CFLAGS" "\$CPPFLAGS" "\$LDFLAGS" -std=c99 -Oz -flto -Wl,-s -static -o "\$OUTFILE" "\$f"
+                install_bins "\$OUTFILE"
             done
           EOF
 
