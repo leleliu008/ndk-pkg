@@ -90,7 +90,7 @@ jobs:
           set -ex
           for item in *.c
           do
-            gcc -std=c99 -Os -flto -s -static -o "\${item%.c}.exe" "\$item"
+            gcc -std=c99 -Os -flto -s -static -o "${item%.c}.exe" "$item"
           done
 
       - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} linux-x86_64
