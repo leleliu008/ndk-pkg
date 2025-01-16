@@ -9524,7 +9524,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native"
 
 ##################################################################################
 
-ZIG="$NDKPKG_CORE_DIR/zig"
+export ZIG="$NDKPKG_CORE_DIR/zig"
 
 UPPM="$NDKPKG_CORE_DIR/uppm"
 

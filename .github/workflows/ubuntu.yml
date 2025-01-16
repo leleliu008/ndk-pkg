@@ -65,6 +65,7 @@ jobs:
       - run: ./ndk-pkg depends libzip -o libzip.box
 
 
+      - run: ./ndk-pkg install bat
       - run: ./ndk-pkg install libzip
 
 
