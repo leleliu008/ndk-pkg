@@ -7204,9 +7204,12 @@ __check_elf_files() {
 
         [ "$FILETYPE" = f ] || continue
 
-        "$CHECKER" "$FILEPATH" || continue
-
         FILE_HEADER_ACTUAL="$(xxd -u -p -l 20 "$FILEPATH")"
+
+        case $FILE_HEADER_ACTUAL in
+            7F454C46*) ;;
+            *)  printf "NOT an ELF file: %s\n" "$FILEPATH" >&2 ; continue
+        esac
 
         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
         ELF_TYPE="$(printf '%s\n' "$FILE_HEADER_ACTUAL" | cut -c33-34)"
@@ -7226,6 +7229,8 @@ __check_elf_files() {
 
         # 03 means it is a shared library or dynamically linked executable
         [ "$ELF_TYPE" = '03' ] || continue
+
+        "$CHECKER" "$FILEPATH" || continue
 
         # patchelf would report a error if there is no '.interp' section in a ELF file
         DYNAMIC_LINKER_PATH="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
@@ -9495,7 +9500,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.7
+NDKPKG_VERSION=0.19.8
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
