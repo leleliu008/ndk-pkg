@@ -5146,7 +5146,7 @@ $PACKAGE_ONSTART
                 uppm update
                 uppm install zig@0.14 binutils
 
-                export PATH="$UPPM_HOME/installed/binutils:$PATH"
+                export PATH="$UPPM_HOME/installed/binutils/bin:$PATH"
                 export  ZIG="$UPPM_HOME/installed/zig@0.14/bin/zig"
 
                 CXX_FOR_BUILD="$NDKPKG_CORE_DIR/zig-c++"
