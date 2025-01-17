@@ -39,8 +39,11 @@ jobs:
 
       - run: ./ppkg setup
       - run: ./ppkg update
+      - run: ./ppkg install macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/elftool
       - run: ./ppkg install macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
       - run: ./ppkg bundle  macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 .tar.xz
+
+      - run: cp ~/.ppkg/installed/macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/elftool/bin/check-if-has-dynamic-section check-if-has-dynamic-section.exe
 
       - run: rm check-if-has-dynamic-section.c
 
