@@ -8971,13 +8971,8 @@ EOF
 
     run "$UPPM_HOME/installed/gsed/bin/gsed" -i "'s|NDKPKG_CORE_DIR|$NDKPKG_CORE_DIR|'" fonts.conf
 
-    ##################################################################################
-
-    wfetch 'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub'   --no-buffer
-    wfetch 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' --no-buffer
-
-    run chmod +x config.sub
-    run chmod +x config.guess
+    run "$UPPM_HOME/installed/curl/bin/curl" -LO 'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub'   && run chmod +x config.sub
+    run "$UPPM_HOME/installed/curl/bin/curl" -LO 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' && run chmod +x config.guess
 
     ##################################################################################
 
