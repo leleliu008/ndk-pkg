@@ -627,12 +627,10 @@ configure() {
         FILEPATH="$SESSION_DIR/$FILENAME"
 
         [ -f "$FILEPATH" ] || {
-            wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH"
-
-            run chmod a+x "$FILEPATH"
-
-            if [ "$FILENAME" = 'config.sub' ] ; then
-                sed -i.bak 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+            if wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH" ; then
+                run chmod a+x "$FILEPATH"
+            else
+                FILEPATH="$NDKPKG_HOME/core/$FILENAME"
             fi
         }
 

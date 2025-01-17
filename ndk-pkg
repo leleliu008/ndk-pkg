@@ -6008,12 +6008,10 @@ $DOT_CONTENT
             FILEPATH="$SESSION_DIR/$FILENAME"
 
             [ -f "$FILEPATH" ] || {
-                wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH"
-
-                run chmod a+x "$FILEPATH"
-
-                if [ "$FILENAME" = 'config.sub' ] ; then
-                    gsed -i 's/arm64-*/arm64-*|arm64e-*/g' "$FILEPATH"
+                if wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH" ; then
+                    run chmod a+x "$FILEPATH"
+                else
+                    FILEPATH="$NDKPKG_CORE_DIR/$FILENAME"
                 fi
             }
 
@@ -8922,6 +8920,11 @@ __setup() {
 
     ##################################################################################
 
+    run ln -s ../wrapper-native-cc  bin/cc
+    run ln -s ../wrapper-native-c++ bin/c++
+
+    ##################################################################################
+
     run ./uppm about
     run ./uppm update
 
@@ -8970,10 +8973,11 @@ EOF
 
     ##################################################################################
 
-    run ln -s ../wrapper-native-cc  bin/cc
-    run ln -s ../wrapper-native-c++ bin/c++
+    wfetch 'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub'   --no-buffer
+    wfetch 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' --no-buffer
 
-    ##################################################################################
+    run chmod +x config.sub
+    run chmod +x config.guess
 
     ##################################################################################
 
@@ -9500,7 +9504,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.8
+NDKPKG_VERSION=0.19.9
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
