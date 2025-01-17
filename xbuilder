@@ -863,8 +863,8 @@ package_info_automake() {
 }
 
 package_info_texinfo() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.1.tar.xz'
-    PACKAGE_SRC_SHA='deeec9f19f159e046fdf8ad22231981806dac332cc372f1c763504ad82b30953'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.2.tar.xz'
+    PACKAGE_SRC_SHA='0329d7788fbef113fa82cb80889ca197a344ce0df7646fe000974c5d714363a6'
     PACKAGE_DEP_BIN='perl'
     PACKAGE_DOPATCH='gsed -i "/libintl/d" tp/Texinfo/XS/parsetexi/api.c'
     PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
