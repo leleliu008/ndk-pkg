@@ -5014,6 +5014,9 @@ EOF
         perl)
             PACKAGE_INSTALL="run   $PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install && run install -d $PACKAGE_INSTALL_DIR"
             ;;
+        cmake)
+            PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -G Ninja -S . -B build.d && run cmake --build build.d -- -j$BUILD_NJOBS && run cmake --install build.d"
+            ;;
     esac
 
     eval "$PACKAGE_INSTALL"
@@ -5053,7 +5056,17 @@ src-sha: $PACKAGE_SRC_SHA
 dep-pkg: $PACKAGE_DEP_PKG
 install: $PACKAGE_INSTALL
 builtat: $PACKAGE_INSTALL_UTS
-builton: $NATIVE_PLATFORM_KIND
+builton:
+    os-arch: $NATIVE_PLATFORM_ARCH
+    os-kind: $NATIVE_PLATFORM_KIND
+    os-type: $NATIVE_PLATFORM_TYPE
+    os-libc: $NATIVE_PLATFORM_LIBC
+    os-code: $NATIVE_PLATFORM_CODE
+    os-name: $NATIVE_PLATFORM_NAME
+    os-vers: $NATIVE_PLATFORM_VERS
+    os-ncpu: $NATIVE_PLATFORM_NCPU
+    os-euid: $NATIVE_PLATFORM_EUID
+    os-egid: $NATIVE_PLATFORM_EGID
 EOF
 
     #########################################################################################
@@ -5063,9 +5076,10 @@ EOF
 }
 
 native_package_info_libz() {
-    PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
+    PACKAGE_SRC_URL='https://zlib.net/zlib-1.3.1.tar.gz'
     PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
-    PACKAGE_INSTALL='configure'
+    PACKAGE_DOPATCH='gsed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
+    PACKAGE_INSTALL='cmake -DZLIB_BUILD_EXAMPLES=OFF'
 }
 
 native_package_info_libopenssl() {
@@ -5882,7 +5896,7 @@ $DOT_CONTENT
                 libz)
                     PACKAGE_DEP_AUX_LIBZ=1
                     PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libz"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
+                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"
                     ;;
                 libopenssl)
                     PACKAGE_DEP_AUX_LIBOPENSSL=1
@@ -9805,7 +9819,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.11
+NDKPKG_VERSION=0.19.12
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
