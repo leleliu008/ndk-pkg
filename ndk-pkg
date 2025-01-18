@@ -6003,20 +6003,34 @@ $DOT_CONTENT
         [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ]
     } && {
-        for FILENAME in config.sub config.guess
-        do
-            FILEPATH="$SESSION_DIR/$FILENAME"
+        CONFIG_GIT_REPO_DIR="$SESSION_DIR/config.git"
 
-            [ -f "$FILEPATH" ] || {
-                if wfetch "https://git.savannah.gnu.org/cgit/config.git/plain/$FILENAME" -o "$FILEPATH" ; then
-                    run chmod a+x "$FILEPATH"
+        if [ ! -d "$CONFIG_GIT_REPO_DIR" ] ; then
+            run git clone --depth 1 https://git.savannah.gnu.org/git/config.git "$CONFIG_GIT_REPO_DIR" || true
+        fi
+
+        if [ -d "$CONFIG_GIT_REPO_DIR" ] ; then
+            find "$PACKAGE_BSCRIPT_DIR" -name config.sub   -exec cp -vf "$CONFIG_GIT_REPO_DIR/config.sub"   {} \;
+            find "$PACKAGE_BSCRIPT_DIR" -name config.guess -exec cp -vf "$CONFIG_GIT_REPO_DIR/config.guess" {} \;
+        else
+            if [ -f "$SESSION_DIR/config.sub" ] && [ -f "$SESSION_DIR/config.guess" ] ; then
+                find "$PACKAGE_BSCRIPT_DIR" -name config.sub   -exec cp -vf "$SESSION_DIR/config.sub"   {} \;
+                find "$PACKAGE_BSCRIPT_DIR" -name config.guess -exec cp -vf "$SESSION_DIR/config.guess" {} \;
+            else
+                if  run curl -L -o "$SESSION_DIR/_config.sub"   'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub'   &&
+                    run curl -L -o "$SESSION_DIR/_config.guess" 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' ; then
+                    run chmod +x   "$SESSION_DIR/_config.guess"
+                    run chmod +x   "$SESSION_DIR/_config.sub"
+                    run mv "$SESSION_DIR/_config.guess" "$SESSION_DIR/config.guess"
+                    run mv "$SESSION_DIR/_config.sub"   "$SESSION_DIR/config.sub"
+                    find "$PACKAGE_BSCRIPT_DIR" -name config.sub   -exec cp -vf "$SESSION_DIR/config.sub"   {} \;
+                    find "$PACKAGE_BSCRIPT_DIR" -name config.guess -exec cp -vf "$SESSION_DIR/config.guess" {} \;
                 else
-                    FILEPATH="$NDKPKG_CORE_DIR/$FILENAME"
+                    find "$PACKAGE_BSCRIPT_DIR" -name config.sub   -exec cp -vf "$NDKPKG_CORE_DIR/config.sub"   {} \;
+                    find "$PACKAGE_BSCRIPT_DIR" -name config.guess -exec cp -vf "$NDKPKG_CORE_DIR/config.guess" {} \;
                 fi
-            }
-
-            find "$PACKAGE_BSCRIPT_DIR" -name "$FILENAME" -exec cp -vf "$FILEPATH" {} \;
-        done
+            fi
+        fi
     }
 
     #########################################################################################
@@ -8973,11 +8987,6 @@ EOF
 
     ##################################################################################
 
-    #run "$UPPM_HOME/installed/curl/bin/curl" -LO 'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub'   && run chmod +x config.sub
-    #run "$UPPM_HOME/installed/curl/bin/curl" -LO 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' && run chmod +x config.guess
-
-    ##################################################################################
-
     if [ -d        "$NDKPKG_CORE_DIR" ] ; then
         run rm -rf "$NDKPKG_CORE_DIR"
     fi
@@ -9501,7 +9510,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.9
+NDKPKG_VERSION=0.19.10
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
