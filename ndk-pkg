@@ -4845,14 +4845,342 @@ __install_the_given_packages() {
     fi
 }
 
-xbuilder() {
-    XBUILDER="$SESSION_DIR/xbuilder"
+# https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
+# https://git.savannah.gnu.org/cgit/config.git/tree/
+# __update_config_sub_guess <ROOT_DIR>
+  __update_config_sub_guess() {
+    CONFIG_FILE_DIR="$SESSION_DIR/config.git"
 
-    if [ ! -f "$XBUILDER" ] ; then
-        wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/refs/heads/dev/xbuilder' -o "$XBUILDER" --no-buffer
+    if [ ! -d "$CONFIG_FILE_DIR" ] ; then
+        if [ -f "$SESSION_DIR/config.sub" ] && [ -f "$SESSION_DIR/config.guess" ] ; then
+            CONFIG_FILE_DIR="$SESSION_DIR"
+        else
+            if ! run git clone --depth 1 https://git.savannah.gnu.org/git/config.git "$CONFIG_FILE_DIR" ; then
+                if  run curl -L -o "$SESSION_DIR/_config.sub"   'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub'   &&
+                    run curl -L -o "$SESSION_DIR/_config.guess" 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' ; then
+                    run chmod +x   "$SESSION_DIR/_config.guess"
+                    run chmod +x   "$SESSION_DIR/_config.sub"
+                    run mv "$SESSION_DIR/_config.guess" "$SESSION_DIR/config.guess"
+                    run mv "$SESSION_DIR/_config.sub"   "$SESSION_DIR/config.sub"
+                    CONFIG_FILE_DIR="$SESSION_DIR"
+                else
+                    CONFIG_FILE_DIR="$NDKPKG_CORE_DIR"
+                fi
+            fi
+        fi
     fi
 
-    run sh "$XBUILDER" install "$@" --prefix="$NATIVE_PACKAGE_INSTALLED_ROOT" --download-dir="$NDKPKG_DOWNLOADS_DIR" --session-dir="$SESSION_DIR/native"
+    find "$1" -name config.sub   -exec cp -vf "$CONFIG_FILE_DIR/config.sub"   {} \;
+    find "$1" -name config.guess -exec cp -vf "$CONFIG_FILE_DIR/config.guess" {} \;
+}
+
+# should run in subshell
+install_the_given_native_package() {
+    [ -z "$1" ] && abort 1 "install_the_given_native_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
+
+    unset PACKAGE_SRC_URL
+    unset PACKAGE_SRC_URI
+    unset PACKAGE_SRC_SHA
+
+    unset PACKAGE_DEP_BIN
+    unset PACKAGE_DEP_PKG
+
+    unset PACKAGE_DOPATCH
+    unset PACKAGE_INSTALL
+    unset PACKAGE_DOTWEAK
+
+    if [ "$1" = 'perl-XML-Parser' ] ; then
+        native_package_info_perl_XML_Parser
+    else
+        native_package_info_$1
+    fi
+
+    #########################################################################################
+
+    for PACKAGE_DEPENDENCY in $PACKAGE_DEP_PKG
+    do
+        (install_the_given_native_package "$PACKAGE_DEPENDENCY")
+    done
+
+    #########################################################################################
+
+    printf '\n%b\n' "${COLOR_PURPLE}=>> install native package : $1${COLOR_OFF}"
+
+    if [ -f "$NATIVE_PACKAGE_INSTALLED_ROOT/$1/receipt.txt" ] ; then
+        note "native package '$1' already has been installed, skipped."
+        return 0
+    fi
+
+    #########################################################################################
+
+    PACKAGE_INSTALL_UTS=
+    PACKAGE_INSTALL_UTS="$(date +%s)"
+
+    PACKAGE_INSTALL_SHA=
+    PACKAGE_INSTALL_SHA="$(
+{
+    sha256sum <<EOF
+$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS
+EOF
+} | cut -d ' ' -f1)"
+
+    #########################################################################################
+
+    PACKAGE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
+
+    PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
+    PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
+    PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
+
+    PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
+
+    #########################################################################################
+
+    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
+    # because we only want to use our own
+    export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
+    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
+    export ACLOCAL_PATH="$PACKAGE_WORKING_DIR/share/aclocal"
+    export CPPFLAGS="-I$PACKAGE_WORKING_DIR/include $CPPFLAGS"
+    export LDFLAGS="-L$PACKAGE_WORKING_DIR/lib -Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
+
+    for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+    do
+        DEPENDENT_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/include" ] ; then
+            CPPFLAGS="-I$DEPENDENT_PACKAGE_INSTALLED_DIR/include $CPPFLAGS"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/lib" ] ; then
+            LDFLAGS="-L$DEPENDENT_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_PACKAGE_INSTALLED_DIR/lib $LDFLAGS"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/bin" ] ; then
+            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/bin:$PATH"
+        fi
+
+        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        fi
+
+        if [ -d          "$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+            ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        fi
+
+        for d in lib share
+        do
+            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
+
+            if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
+                PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
+            fi
+        done
+    done
+
+    #########################################################################################
+
+    wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+
+    #########################################################################################
+
+    run install -d "$PACKAGE_WORKING_DIR/src"
+    run cd         "$PACKAGE_WORKING_DIR/src"
+
+    #########################################################################################
+
+    run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner
+
+    #########################################################################################
+
+    if [ -n  "$PACKAGE_DOPATCH" ] ; then
+        eval "$PACKAGE_DOPATCH"
+    fi
+
+    #########################################################################################
+
+    if [ -z "$PACKAGE_INSTALL" ] ; then
+        abort 1 "PACKAGE_INSTALL variable is not set for native package '$1'"
+    fi
+
+    case "${PACKAGE_INSTALL%% *}" in
+        configure)
+            __update_config_sub_guess .
+            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install"
+            ;;
+        config)
+            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install_sw"
+            ;;
+        perl)
+            PACKAGE_INSTALL="run   $PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install && run install -d $PACKAGE_INSTALL_DIR"
+            ;;
+    esac
+
+    eval "$PACKAGE_INSTALL"
+
+    #########################################################################################
+
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    #########################################################################################
+
+    if [ -n  "$PACKAGE_DOTWEAK" ] ; then
+        eval "$PACKAGE_DOTWEAK"
+    fi
+
+    #########################################################################################
+
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    #########################################################################################
+
+    cat > toolchain.txt <<EOF
+     CC='$CC'
+    CXX='$CXX'
+     AS='$AS'
+     LD='$LD'
+     AR='$AR'
+ RANLIB='$RANLIB'
+SYSROOT='$SYSROOT'
+EOF
+
+    #########################################################################################
+
+    cat > receipt.txt <<EOF
+src-url: $PACKAGE_SRC_URL
+src-uri: $PACKAGE_SRC_URI
+src-sha: $PACKAGE_SRC_SHA
+dep-pkg: $PACKAGE_DEP_PKG
+install: $PACKAGE_INSTALL
+builtat: $PACKAGE_INSTALL_UTS
+builton: $NATIVE_PLATFORM_KIND
+EOF
+
+    #########################################################################################
+
+    run cd "$NATIVE_PACKAGE_INSTALLED_ROOT"
+    run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$1"
+}
+
+native_package_info_libz() {
+    PACKAGE_SRC_URL='https://zlib.net/fossils/zlib-1.3.1.tar.gz'
+    PACKAGE_SRC_SHA='9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_libopenssl() {
+    PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.3.1.tar.gz'
+    PACKAGE_SRC_SHA='777cd596284c883375a2a7a11bf5d2786fc5413255efab20c50d6ffe6d020b7e'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_INSTALL='config no-tests no-ssl3 no-ssl3-method no-zlib --libdir=lib --openssldir=etc/ssl'
+    # https://github.com/openssl/openssl/blob/master/INSTALL.md
+}
+
+native_package_info_libtool() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
+    PACKAGE_SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
+    PACKAGE_INSTALL='configure --enable-ltdl-install'
+    PACKAGE_DEP_BIN='gm4'
+    PACKAGE_DOTWEAK='
+run ln -s libtool    bin/glibtool
+run ln -s libtoolize bin/glibtoolize
+'
+}
+
+native_package_info_autoconf() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
+    PACKAGE_SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_automake() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
+    PACKAGE_SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_DEP_PKG='autoconf'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_texinfo() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.2.tar.xz'
+    PACKAGE_SRC_SHA='0329d7788fbef113fa82cb80889ca197a344ce0df7646fe000974c5d714363a6'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_DOPATCH='gsed -i "/libintl/d" tp/Texinfo/XS/parsetexi/api.c'
+    PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
+}
+
+native_package_info_help2man() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
+    PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_libexpat() {
+    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_6_3/expat-2.6.3.tar.xz'
+    PACKAGE_SRC_SHA='274db254a6979bde5aad404763a704956940e465843f2a9bd9ed7af22e2c0efc'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
+}
+
+native_package_info_intltool() {
+    PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
+    PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_DEP_PKG='libexpat perl-XML-Parser'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_perl_XML_Parser() {
+    PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
+    PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
+    PACKAGE_DEP_BIN='perl'
+    PACKAGE_DEP_PKG='libexpat'
+    PACKAGE_DOPATCH='
+run export EXPATLIBPATH="$PACKAGE_INSTALL_DIR/lib"
+run export EXPATINCPATH="$PACKAGE_INSTALL_DIR/include"
+run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
+'
+    if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+        PACKAGE_INSTALL='perl Makefile.PL'
+    else
+        PACKAGE_INSTALL='perl Makefile.PL LDDLFLAGS="\"-shared -L$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib\""'
+    fi
+}
+
+native_package_info_libiconv() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
+    PACKAGE_SRC_SHA='8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --enable-extra-encodings'
+}
+
+native_package_info_libxml2() {
+    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.6.tar.xz'
+    PACKAGE_SRC_SHA='889c593a881a3db5fdd96cc9318c87df34eb648edfc458272ad46fd607353fbb'
+    PACKAGE_DEP_PKG='libz libiconv'
+    PACKAGE_INSTALL='configure --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
+}
+
+native_package_info_itstool() {
+    PACKAGE_SRC_URL='https://github.com/itstool/itstool/archive/2.0.7.tar.gz'
+    PACKAGE_SRC_SHA='fba78a37dc3535e4686c7f57407b97d03c676e3a57beac5fb2315162b0cc3176'
+    PACKAGE_DEP_BIN='perl python3'
+    PACKAGE_DEP_PKG='libxml2 autoconf automake'
+    PACKAGE_INSTALL='configure'
+    PACKAGE_DOPATCH='
+    run autoreconf -ivf
+    export PYTHON="$(command -v python3)"
+    export PYTHONPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libxml2/lib/python3.11/site-packages"
+    '
+    PACKAGE_DOTWEAK='
+run mv bin/itstool bin/itstool.py
+cat > bin/itstool <<EOF
+#!/bin/sh
+export PYTHONPATH="$PYTHONPATH"
+exec "$PYTHON" "$PACKAGE_INSTALL_DIR/bin/itstool.py" "\$@"
+EOF
+run chmod +x bin/itstool
+    '
 }
 
 __install_the_given_package_onexit() {
@@ -5624,44 +5952,42 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY" ] && {
-        xbuilder "$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY"
+    for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY
+    do
+        (install_the_given_native_package "$NATIVE_PACKAGE_NAME")
 
-        for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY
+        NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
+
+        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
+            CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
+        fi
+
+        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
+            LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
+        fi
+
+        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
+            PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
+        fi
+
+        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+            PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        fi
+
+        if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+            ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        fi
+
+        for d in lib share
         do
-            NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
+            NATIVE_PACKAGE_PKGCONF_DIR="$NATIVE_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
 
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
-                CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
+            if [ -d "$NATIVE_PACKAGE_PKGCONF_DIR" ] ; then
+                PKG_CONFIG_PATH_FOR_BUILD="$PKG_CONFIG_PATH_FOR_BUILD:$NATIVE_PACKAGE_PKGCONF_DIR"
+                break
             fi
-
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
-                LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
-            fi
-
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
-            fi
-
-            if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-            fi
-
-            if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-                ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-            fi
-
-            for d in lib share
-            do
-                NATIVE_PACKAGE_PKGCONF_DIR="$NATIVE_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
-
-                if [ -d "$NATIVE_PACKAGE_PKGCONF_DIR" ] ; then
-                    PKG_CONFIG_PATH_FOR_BUILD="$PKG_CONFIG_PATH_FOR_BUILD:$NATIVE_PACKAGE_PKGCONF_DIR"
-                    break
-                fi
-            done
         done
-    }
+    done
 
     #########################################################################################
 
@@ -5696,7 +6022,7 @@ $DOT_CONTENT
         done
 
         if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
-            xbuilder perl_XML_Parser
+            (install_the_given_native_package perl_XML_Parser)
         fi
 
         if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
@@ -5993,44 +6319,13 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
-    # https://git.savannah.gnu.org/cgit/config.git/tree/
-
-    step "update config.{sub,guess}"
-
     {
         [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ]
     } && {
-        CONFIG_GIT_REPO_DIR="$SESSION_DIR/config.git"
-
-        if [ ! -d "$CONFIG_GIT_REPO_DIR" ] ; then
-            run git clone --depth 1 https://git.savannah.gnu.org/git/config.git "$CONFIG_GIT_REPO_DIR" || true
-        fi
-
-        if [ -d "$CONFIG_GIT_REPO_DIR" ] ; then
-            find "$PACKAGE_BSCRIPT_DIR" -name config.sub   -exec cp -vf "$CONFIG_GIT_REPO_DIR/config.sub"   {} \;
-            find "$PACKAGE_BSCRIPT_DIR" -name config.guess -exec cp -vf "$CONFIG_GIT_REPO_DIR/config.guess" {} \;
-        else
-            if [ -f "$SESSION_DIR/config.sub" ] && [ -f "$SESSION_DIR/config.guess" ] ; then
-                find "$PACKAGE_BSCRIPT_DIR" -name config.sub   -exec cp -vf "$SESSION_DIR/config.sub"   {} \;
-                find "$PACKAGE_BSCRIPT_DIR" -name config.guess -exec cp -vf "$SESSION_DIR/config.guess" {} \;
-            else
-                if  run curl -L -o "$SESSION_DIR/_config.sub"   'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub'   &&
-                    run curl -L -o "$SESSION_DIR/_config.guess" 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' ; then
-                    run chmod +x   "$SESSION_DIR/_config.guess"
-                    run chmod +x   "$SESSION_DIR/_config.sub"
-                    run mv "$SESSION_DIR/_config.guess" "$SESSION_DIR/config.guess"
-                    run mv "$SESSION_DIR/_config.sub"   "$SESSION_DIR/config.sub"
-                    find "$PACKAGE_BSCRIPT_DIR" -name config.sub   -exec cp -vf "$SESSION_DIR/config.sub"   {} \;
-                    find "$PACKAGE_BSCRIPT_DIR" -name config.guess -exec cp -vf "$SESSION_DIR/config.guess" {} \;
-                else
-                    find "$PACKAGE_BSCRIPT_DIR" -name config.sub   -exec cp -vf "$NDKPKG_CORE_DIR/config.sub"   {} \;
-                    find "$PACKAGE_BSCRIPT_DIR" -name config.guess -exec cp -vf "$NDKPKG_CORE_DIR/config.guess" {} \;
-                fi
-            fi
-        fi
+        step "update config.{sub,guess}"
+        __update_config_sub_guess "$PACKAGE_BSCRIPT_DIR"
     }
 
     #########################################################################################
@@ -9510,7 +9805,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.19.10
+NDKPKG_VERSION=0.19.11
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
