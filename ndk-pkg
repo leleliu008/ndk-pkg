@@ -5132,9 +5132,9 @@ native_package_info_help2man() {
 }
 
 native_package_info_libexpat() {
-    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_6_3/expat-2.6.3.tar.xz'
-    PACKAGE_SRC_SHA='274db254a6979bde5aad404763a704956940e465843f2a9bd9ed7af22e2c0efc'
-    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
+    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.xz'
+    PACKAGE_SRC_SHA='a695629dae047055b37d50a0ff4776d1d45d0a4c842cf4ccee158441f55ff7ee'
+    PACKAGE_INSTALL='cmake -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TOOLS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON'
 }
 
 native_package_info_intltool() {
@@ -5151,8 +5151,8 @@ native_package_info_perl_XML_Parser() {
     PACKAGE_DEP_BIN='perl'
     PACKAGE_DEP_PKG='libexpat'
     PACKAGE_DOPATCH='
-run export EXPATLIBPATH="$PACKAGE_INSTALL_DIR/lib"
-run export EXPATINCPATH="$PACKAGE_INSTALL_DIR/include"
+run export EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib"
+run export EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/include"
 run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
 '
     if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
