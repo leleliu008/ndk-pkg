@@ -7319,10 +7319,21 @@ $PACKAGE_DOTWEAK
 
     unset NEEDED_SYSTEM_SHARED_LIBS
     unset NEEDED_EXTERN_SHARED_LIBS
+    unset NEEDED_LIBCXX_SHARED
 
     unset FILENAME_RPATH_MAP
 
     __check_elf_files
+
+    [ "$NEEDED_LIBCXX_SHARED" = 1 ] && {
+        if [ "$TARGET_PLATFORM_ARCH" = armv7a ] ; then
+            LIBCXX_SHARED_FILEPATH="$ANDROID_NDK_SYSROOT/usr/lib/arm-linux-androideabi/libc++_shared.so"
+        else
+            LIBCXX_SHARED_FILEPATH="$ANDROID_NDK_SYSROOT/usr/lib/$TARGET_PLATFORM_ARCH-linux-android/libc++_shared.so"
+        fi
+
+        NEEDED_EXTERN_SHARED_LIBS="$LIBCXX_SHARED_FILEPATH$NEEDED_EXTERN_SHARED_LIBS"
+    }
 
     [ -n "$NEEDED_EXTERN_SHARED_LIBS" ] && {
         step "copy dependent external shared libraries"
@@ -7644,6 +7655,12 @@ __check_elf_files() {
             libstdc++.so)
                 ;;
             libc++_shared.so)
+                NEEDED_LIBCXX_SHARED=1
+                case $1 in
+                    /*) ;;
+                    *)  FILENAME_RPATH_MAP="$FILENAME_RPATH_MAP
+$1|1"
+                esac
                 ;;
             libclang_rt.*.so)
                 ;;
@@ -9815,7 +9832,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.1
+NDKPKG_VERSION=0.20.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
