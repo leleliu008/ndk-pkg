@@ -5134,11 +5134,12 @@ native_package_info_help2man() {
 native_package_info_libexpat() {
     PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.xz'
     PACKAGE_SRC_SHA='a695629dae047055b37d50a0ff4776d1d45d0a4c842cf4ccee158441f55ff7ee'
-    PACKAGE_INSTALL='cmake -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_TOOLS=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_FUZZERS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
 }
 
 native_package_info_intltool() {
     PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
+    PACKAGE_SRC_URI='https://fossies.org/linux/privat/intltool-0.51.0.tar.gz'
     PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
     PACKAGE_DEP_BIN='perl'
     PACKAGE_DEP_PKG='libexpat perl-XML-Parser'
@@ -7566,33 +7567,28 @@ __check_elf_files() {
             if ! "$READELF" -d "$FILEPATH" | grep FLAGS_1 | grep -q PIE ; then
                 abort 1 "invalid ELF file: $FILEPATH\n    Android 5.0 and later requires dynamically linked executable to support PIE (position-independent executables)."
             fi
-
-            # A dynamically linked executable always have the .interp section.
-            # In general, a shared library would not have the .interp section, but that is not always the case, for example, libcap/lib/libpsx.so is not only a library but also a executable.
-            case "${FILEPATH##*/}" in
-                *.so)
-                    IS_SHARED_LIBRAY=1 ;;
-                *.so.*)
-                    IS_SHARED_LIBRAY=1 ;;
-                *)  IS_SHARED_LIBRAY=0 ;;
-            esac
-        else
-            IS_SHARED_LIBRAY=1
         fi
 
         #####################################################################
 
-        if [ "$IS_SHARED_LIBRAY" = 1 ] ; then
-            # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
-            SONAME="$(patchelf --print-soname "$FILEPATH")"
+        # A dynamically linked executable always have the .interp section.
+        # In general, a shared library would not have the .interp section, but that is not always the case, for example, libcap/lib/libpsx.so is not only a library but also a executable.
 
-            # On Android, a so file must have the SONAME
-            # https://github.com/android/ndk/issues/1865
-            # https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md
-            if [ -z "$SONAME" ] ; then
-                abort 1 "invalid ELF file: $FILEPATH\n    SONAME was not set in .dynamic section"
-            fi
-        fi
+        #####################################################################
+
+        # On Android, if a shared library is supposed to be linked by other shared libraries, then it must have the SONAME, otherwise, the shared library who link this library will use the full path to gen the DT_NEEDED
+        # https://github.com/android/ndk/issues/1865
+        # https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md
+
+        case "${FILEPATH##*/}" in
+            lib*.so|lib*.so.*)
+                # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
+                SONAME="$(patchelf --print-soname "$FILEPATH")"
+
+                if [ -z "$SONAME" ] ; then
+                    abort 1 "invalid ELF file: $FILEPATH\n    SONAME was not set in .dynamic section"
+                fi
+        esac
 
         #####################################################################
 
@@ -9819,7 +9815,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.0
+NDKPKG_VERSION=0.20.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
