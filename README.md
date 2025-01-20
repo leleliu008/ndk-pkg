@@ -20,6 +20,7 @@ Please read these caveats carefully before starting to use this software.
 |[GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.en.html)|`x86_64`||✔︎|✔︎|✔︎|
 |[Windows](https://www.microsoft.com/en-us/windows/)|`x86_64`|[WSL](https://docs.microsoft.com/en-us/windows/wsl/)||||
 |[macOS](https://www.apple.com.cn/mac/)|`x86_64` `arm64`|||✔︎||
+|[Android](https://www.apple.com.cn/mac/)|`aarch64`|[Termux](https://termux.dev/)||✔︎||
 
 **Notes** :
 
