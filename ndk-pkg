@@ -5517,10 +5517,6 @@ $PACKAGE_ONSTART
             android)
                 step "install C/C++ toolchain for native build"
 
-                if command -v termux-info > /dev/null && command -v pkg > /dev/null ; then
-                    TERMUX=1
-                fi
-
                     CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
                      CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
                    OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
@@ -9116,6 +9112,11 @@ __setup() {
         if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
             NATIVE_PLATFORM_VERS="$(getprop ro.build.version.sdk)"
             NATIVE_PLATFORM_TRIPLE="android-$NATIVE_PLATFORM_VERS-arm64-v8a"
+
+            if command -v termux-info > /dev/null && command -v pkg > /dev/null ; then
+                TERMUX=1
+                export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/leleliu008/uppm-package-repository-android-$NATIVE_PLATFORM_VERS-aarch64"
+            fi
         else
             NATIVE_PLATFORM_ARCH="$(uname -m)"
             NATIVE_PLATFORM_TRIPLE="linux-$NATIVE_PLATFORM_ARCH"
@@ -9326,6 +9327,13 @@ if [ -d "\$UPPM_HOME/installed/git/libexec/git-core" ] ; then
     export GIT_CONFIG_NOSYSTEM=1
 fi
 EOF
+
+    if [ "$TERMUX" = 1 ] ; then
+        cat >> init.sh <<EOF
+TERMUX=1
+export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE='$UPPM_FORMULA_REPO_URL_OFFICIAL_CORE'
+EOF
+    fi
 
     ##################################################################################
 
@@ -9856,7 +9864,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.3
+NDKPKG_VERSION=0.20.4
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9919,6 +9927,8 @@ TIMESTAMP_UNIX="$(date +%s)"
 ##################################################################################
 
 export BAT_THEME=Dracula
+
+unset TERMUX
 
 ##################################################################################
 
@@ -10059,8 +10069,6 @@ if [ "$NATIVE_PLATFORM_TYPE" = linux ] ; then
         NATIVE_PLATFORM_LIBC=glibc
     fi
 fi
-
-unset TERMUX
 
 ##################################################################################
 
