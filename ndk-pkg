@@ -7289,6 +7289,13 @@ $PACKAGE_DOBUILD
 
     #########################################################################################
 
+    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
+        run rm -f .crates.toml
+        run rm -f .crates2.json
+    }
+
+    #########################################################################################
+
     [ -n "$PACKAGE_DOEXTRA" ] && {
         step "doextra"
 
@@ -7394,13 +7401,6 @@ $PACKAGE_DOTWEAK
 
     [ -n "$NEEDED_SYSTEM_SHARED_LIBS" ] && {
         printf '%s\n' $NEEDED_SYSTEM_SHARED_LIBS | sort | uniq > .ndk-pkg/needed-system-libs.txt
-    }
-
-    #########################################################################################
-
-    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
-        run rm -f .crates.toml
-        run rm -f .crates2.json
     }
 
     #########################################################################################
