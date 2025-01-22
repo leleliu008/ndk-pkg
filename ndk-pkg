@@ -5517,7 +5517,7 @@ $PACKAGE_ONSTART
             android)
                 step "install C/C++ toolchain for native build"
 
-                run pkg install -y llvm clang
+                run pkg install -y clang binutils
 
                     CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
                      CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
