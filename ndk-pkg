@@ -5517,6 +5517,8 @@ $PACKAGE_ONSTART
             android)
                 step "install C/C++ toolchain for native build"
 
+                run pkg install -y llvm clang
+
                     CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
                      CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
                    OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
@@ -5873,117 +5875,118 @@ $DOT_CONTENT
 
     unset PACKAGE_DEP_AUX_LIBZ
     unset PACKAGE_DEP_AUX_LIBOPENSSL
+    unset PACKAGE_DEP_AUX_PERL
+    unset PACKAGE_DEP_AUX_PYTHON3
+    unset PACKAGE_DEP_AUX_GOLANG
 
     # these native packages would be built from source locally due to they are not relocatable or libraries
     unset PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY
 
+    PACKAGE_DEP_AUX="$PACKAGE_DEP_UPP"
+    PACKAGE_DEP_UPP=
+
+    for UPPM_PACKAGE_NAME in $PACKAGE_DEP_AUX
+    do
+        case $UPPM_PACKAGE_NAME in
+            libz)
+                PACKAGE_DEP_AUX_LIBZ=1
+                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libz"
+                PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"
+                ;;
+            libopenssl)
+                PACKAGE_DEP_AUX_LIBOPENSSL=1
+                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libopenssl"
+                PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
+                PACKAGE_DEP_AUX_PERL=1
+                ;;
+            automake)
+                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY autoconf automake"
+                PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4"
+                PACKAGE_DEP_AUX_PERL=1
+                ;;
+            autoconf|libtool|texinfo|help2man|intltool)
+                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY $UPPM_PACKAGE_NAME"
+                PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4"
+                PACKAGE_DEP_AUX_PERL=1
+                ;;
+            itstool)
+                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY itstool"
+                PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4"
+                PACKAGE_DEP_AUX_PERL=1
+                PACKAGE_DEP_AUX_PYTHON3=1
+                ;;
+            perl)
+                PACKAGE_DEP_AUX_PERL=1
+                ;;
+            python3)
+                PACKAGE_DEP_AUX_PYTHON3=1
+                ;;
+            golang)
+                PACKAGE_DEP_AUX_GOLANG=1
+                ;;
+            *)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
+        esac
+    done
+
     #########################################################################################
 
     if [ "$TERMUX" = 1 ] ; then
-        TERMUX_PKGS='pkg-config patchelf tree'
+        unset TERMUX_PKGS
 
-        for item in $PACKAGE_DEP_UPP
-        do
-            case $item in
-                gm4)      TERMUX_PKGS="$TERMUX_PKGS m4"         ;;
-                gsed)     TERMUX_PKGS="$TERMUX_PKGS sed"        ;;
-                gtar)     TERMUX_PKGS="$TERMUX_PKGS tar"        ;;
-                gmake)    TERMUX_PKGS="$TERMUX_PKGS make"       ;;
-                xz)       TERMUX_PKGS="$TERMUX_PKGS xz-utils"   ;;
-                bsdtar)   TERMUX_PKGS="$TERMUX_PKGS libarchive" ;;
-                python3)  TERMUX_PKGS="$TERMUX_PKGS python"     ;;
-                libz)     TERMUX_PKGS="$TERMUX_PKGS zlib"       ;;
-                *)        TERMUX_PKGS="$TERMUX_PKGS $item"      ;;
-            esac
-        done
+        [ "$PACKAGE_DEP_AUX_PERL" = 1 ]    && TERMUX_PKGS="$TERMUX_PKGS perl"
+        [ "$PACKAGE_DEP_AUX_PYTHON3" = 1 ] && TERMUX_PKGS="$TERMUX_PKGS python"
+        [ "$PACKAGE_DEP_AUX_GOLANG" = 1 ]  && TERMUX_PKGS="$TERMUX_PKGS golang"
 
-        step "install needed packages via pkg"
-
-        run pkg install -y $TERMUX_PKGS
+        if [ -n "$TERMUX_PKGS" ] ; then
+            step "install needed packages via pkg"
+            run pkg install -y $TERMUX_PKGS
+        fi
     else
-        step "install needed packages via uppm"
+        [ "$PACKAGE_DEP_AUX_PERL" = 1 ]    && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl"
+        [ "$PACKAGE_DEP_AUX_PYTHON3" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
+        [ "$PACKAGE_DEP_AUX_GOLANG" = 1 ]  && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
+    fi
 
-        uppm about
-        uppm update
+    #########################################################################################
 
-        ####################################################################
+    step "install needed packages via uppm"
 
-        PACKAGE_DEP_AUX="$PACKAGE_DEP_UPP"
-        PACKAGE_DEP_UPP=
+    uppm about
+    uppm update
 
-        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_AUX
-        do
-            case $UPPM_PACKAGE_NAME in
-                libz)
-                    PACKAGE_DEP_AUX_LIBZ=1
-                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libz"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"
-                    ;;
-                libopenssl)
-                    PACKAGE_DEP_AUX_LIBOPENSSL=1
-                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libopenssl"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake perl"
-                    ;;
-                automake)
-                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY autoconf automake"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl"
-                    ;;
-                autoconf|libtool|texinfo|help2man|intltool)
-                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY $UPPM_PACKAGE_NAME"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl"
-                    ;;
-                itstool)
-                    PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY itstool"
-                    PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4 perl python3"
-                    ;;
-                *)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
-            esac
-        done
+    for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP pkg-config patchelf tree
+    do
+        uppm install "$UPPM_PACKAGE_NAME" $UPPM_INSTALL_ARGS
 
-        ####################################################################
+        UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
-        unset UPPM_INSTALL_ARGS
-
-        if [ "$DUMP_UPPM" = 1 ] ; then
-            UPPM_INSTALL_ARGS=-v
+        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
+            PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
         fi
 
-        ####################################################################
+        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
+            PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        fi
 
-        for UPPM_PACKAGE_NAME in $PACKAGE_DEP_UPP pkg-config patchelf tree
-        do
-            uppm install "$UPPM_PACKAGE_NAME" $UPPM_INSTALL_ARGS
+        if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
+            ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        fi
 
-            UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
-
-            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-                PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
-            fi
-
-            if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-                PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-            fi
-
-            if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-                ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-            fi
-
-            case $UPPM_PACKAGE_NAME in
-                swig)
-                    # https://www.swig.org/Doc4.0/Library.html
-                    X="$(ls $UPPM_PACKAGE_INSTALLED_DIR/share/swig/*/swig.swg)"
-                    export SWIG_LIB="${X%/*}"
-                    ;;
-                file)
-                    export MAGIC="$UPPM_PACKAGE_INSTALLED_DIR/share/misc/magic.mgc"
-                    ;;
-                docbook-xsl)
-                    # http://xmlsoft.org/xslt/xsltproc.html
-                    export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
-                    printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
-            esac
-        done
-    fi
+        case $UPPM_PACKAGE_NAME in
+            swig)
+                # https://www.swig.org/Doc4.0/Library.html
+                X="$(ls $UPPM_PACKAGE_INSTALLED_DIR/share/swig/*/swig.swg)"
+                export SWIG_LIB="${X%/*}"
+                ;;
+            file)
+                export MAGIC="$UPPM_PACKAGE_INSTALLED_DIR/share/misc/magic.mgc"
+                ;;
+            docbook-xsl)
+                # http://xmlsoft.org/xslt/xsltproc.html
+                export XML_CATALOG_FILES="$UPPM_PACKAGE_INSTALLED_DIR/catalog.xml"
+                printf '%s\n' "XML_CATALOG_FILES=$XML_CATALOG_FILES"
+        esac
+    done
 
     #########################################################################################
 
@@ -7331,7 +7334,7 @@ $PACKAGE_DOTWEAK
     if [ -d  lib ] ; then
         # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
         # remove Libtool Archive (.la) files
-        find lib -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm -v {} +
+        find lib -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm -v {} \;
     fi
 
     #########################################################################################
@@ -9864,7 +9867,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.4
+NDKPKG_VERSION=0.20.5
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -9897,7 +9900,15 @@ UPPM="$NDKPKG_CORE_DIR/uppm"
 export UPPM_HOME="$NDKPKG_HOME/uppm"
 
 uppm() {
-    run "$UPPM" "$@"
+    if [ "$1" = install ] ; then
+        if [ "$DUMP_UPPM" = 1 ] ; then
+            run "$UPPM" "$@" -v
+        else
+            run "$UPPM" "$@"
+        fi
+    else
+            run "$UPPM" "$@"
+    fi
 }
 
 if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
