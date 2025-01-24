@@ -4851,7 +4851,7 @@ __install_the_given_packages() {
     run cd "$SESSION_DIR"
 
     if [ -f config/config.sub ] && [ -f config/config.guess ] ; then
-        CONFIG_FILE_DIR="$SESSION_DIR"
+        CONFIG_FILE_DIR="$SESSION_DIR/config"
     else
         if [    -d config.git ] ; then
             rm -rf config.git
