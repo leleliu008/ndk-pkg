@@ -4847,31 +4847,47 @@ __install_the_given_packages() {
 
 # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
 # https://git.savannah.gnu.org/cgit/config.git/tree/
-# __update_config_sub_guess <ROOT_DIR>
   __update_config_sub_guess() {
-    CONFIG_FILE_DIR="$SESSION_DIR/config.git"
+    run cd "$SESSION_DIR"
 
-    if [ ! -d "$CONFIG_FILE_DIR" ] ; then
-        if [ -f "$SESSION_DIR/config.sub" ] && [ -f "$SESSION_DIR/config.guess" ] ; then
-            CONFIG_FILE_DIR="$SESSION_DIR"
+    if [ -f config/config.sub ] && [ -f config/config.guess ] ; then
+        CONFIG_FILE_DIR="$SESSION_DIR"
+    else
+        if [    -d config.git ] ; then
+            rm -rf config.git
+        fi
+
+        if run git clone --depth 1 https://git.savannah.gnu.org/git/config.git ; then
+            CONFIG_FILE_DIR="$SESSION_DIR/config"
         else
-            if ! run git clone --depth 1 https://git.savannah.gnu.org/git/config.git "$CONFIG_FILE_DIR" ; then
-                if  run curl -L -o "$SESSION_DIR/_config.sub"   'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub'   &&
-                    run curl -L -o "$SESSION_DIR/_config.guess" 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' ; then
-                    run chmod +x   "$SESSION_DIR/_config.guess"
-                    run chmod +x   "$SESSION_DIR/_config.sub"
-                    run mv "$SESSION_DIR/_config.guess" "$SESSION_DIR/config.guess"
-                    run mv "$SESSION_DIR/_config.sub"   "$SESSION_DIR/config.sub"
-                    CONFIG_FILE_DIR="$SESSION_DIR"
-                else
-                    CONFIG_FILE_DIR="$NDKPKG_CORE_DIR"
-                fi
+            if  run curl -L -o _config.sub   "'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'" &&
+                sh _config.sub x86_64-pc-linux &&
+                run curl -L -o _config.guess "'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'" &&
+                sh _config.guess > /dev/null ; then
+                run chmod +x _config.guess
+                run chmod +x _config.sub
+                run mv _config.guess config.guess
+                run mv _config.sub   config.sub
+                CONFIG_FILE_DIR="$SESSION_DIR"
+            elif run curl -L -o _config.sub   'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub' &&
+                sh _config.sub x86_64-pc-linux &&
+                run curl -L -o _config.guess 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' &&
+                sh _config.guess > /dev/null ; then
+                run chmod +x _config.guess
+                run chmod +x _config.sub
+                run mv _config.guess config.guess
+                run mv _config.sub   config.sub
+                CONFIG_FILE_DIR="$SESSION_DIR"
+            else
+                CONFIG_FILE_DIR="$NDKPKG_CORE_DIR"
             fi
         fi
     fi
 
-    find "$1" -name config.sub   -exec cp -vf "$CONFIG_FILE_DIR/config.sub"   {} \;
-    find "$1" -name config.guess -exec cp -vf "$CONFIG_FILE_DIR/config.guess" {} \;
+    run cd -
+
+    find -type f -name config.sub   -exec cp -vf "$CONFIG_FILE_DIR/config.sub"   {} \;
+    find -type f -name config.guess -exec cp -vf "$CONFIG_FILE_DIR/config.guess" {} \;
 }
 
 # should run in subshell
@@ -5005,7 +5021,7 @@ EOF
 
     case "${PACKAGE_INSTALL%% *}" in
         configure)
-            __update_config_sub_guess .
+            __update_config_sub_guess
             PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install"
             ;;
         config)
@@ -6357,23 +6373,24 @@ $DOT_CONTENT
 
     #########################################################################################
 
+    step "change to the build script directory"
+    run cd "$PACKAGE_BSCRIPT_DIR"
+
+    #########################################################################################
+
     {
         [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ||
         [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ]
     } && {
         step "update config.{sub,guess}"
-        __update_config_sub_guess "$PACKAGE_BSCRIPT_DIR"
+        __update_config_sub_guess
     }
 
     #########################################################################################
 
     if [ -n "$PACKAGE_ONREADY" ] ; then
         step "onready"
-
-        if [ "$PWD" != "$PACKAGE_BSCRIPT_DIR" ] ; then
-            run     cd "$PACKAGE_BSCRIPT_DIR"
-        fi
 
         eval "
 onready() {
@@ -9867,7 +9884,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.5
+NDKPKG_VERSION=0.20.6
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
