@@ -9135,6 +9135,7 @@ __setup() {
 
             if command -v termux-info > /dev/null && command -v pkg > /dev/null ; then
                 TERMUX=1
+                export CURLOPT_DNS_SERVERS='8.8.8.8,1.1.1.1'
                 export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/leleliu008/uppm-package-repository-android-$NATIVE_PLATFORM_VERS-aarch64"
             fi
         else
@@ -9351,6 +9352,7 @@ EOF
     if [ "$TERMUX" = 1 ] ; then
         cat >> init.sh <<EOF
 TERMUX=1
+export CURLOPT_DNS_SERVERS='8.8.8.8,1.1.1.1'
 export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE='$UPPM_FORMULA_REPO_URL_OFFICIAL_CORE'
 EOF
     fi
