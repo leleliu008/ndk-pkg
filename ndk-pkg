@@ -6668,7 +6668,7 @@ $PACKAGE_DO12345
             libposix_spawn)
                 if [ "$TARGET_PLATFORM_VERS" -lt 28 ] ; then
                     PPFLAGS="$PPFLAGS -include $libposix_spawn_INCLUDE_DIR/posix_spawn.h"
-                    LDFLAGS="$LDFLAGS -l:libposix_spawn.a"
+                    LDFLAGS="$LDFLAGS -l:libposix_spawn.a -lc++"
                 fi
                 ;;
             libglob)
