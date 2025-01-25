@@ -9077,18 +9077,18 @@ EOF
             uppm update
             uppm install "$ANDROID_NDK_PKG"
 
+            if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+                ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
+            else
+                ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_PLATFORM_ARCH"
+            fi
+
+            f="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/sysroot/usr/include/time.h"
+
             # https://github.com/termux/termux-packages/issues/21113
             # https://github.com/termux/termux-packages/blob/master/ndk-patches/27c/time.h.patch
-            gsed -i '41c #if __ANDROID_API__ >= 35' "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/time.h"
-            gsed -i '53c #endif'                    "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/time.h"
-
-            case $NATIVE_PLATFORM_KIND in
-                darwin)
-                    # https://github.com/android/ndk/issues/1549
-                    # remove the yasm shipped with Android NDK and use our own
-                    rm -rf "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/yasm"
-                    ;;
-            esac
+            gsed -i '41c #if __ANDROID_API__ >= 35' "$f"
+            gsed -i '53c #endif'                    "$f"
         fi
     else
         ANDROID_NDK_HOME="$1"
