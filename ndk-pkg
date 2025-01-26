@@ -5107,8 +5107,8 @@ native_package_info_libopenssl() {
 }
 
 native_package_info_libtool() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz'
-    PACKAGE_SRC_SHA='4f7f217f057ce655ff22559ad221a0fd8ef84ad1fc5fcb6990cecc333aa1635d'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.5.4.tar.xz'
+    PACKAGE_SRC_SHA='f81f5860666b0bc7d84baddefa60d1cb9fa6fceb2398cc3baca6afaa60266675'
     PACKAGE_INSTALL='configure --enable-ltdl-install'
     PACKAGE_DEP_BIN='gm4'
     PACKAGE_DOTWEAK='
@@ -5118,15 +5118,15 @@ run ln -s libtoolize bin/glibtoolize
 }
 
 native_package_info_autoconf() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.gz'
-    PACKAGE_SRC_SHA='431075ad0bf529ef13cb41e9042c542381103e80015686222b8a9d4abef42a1c'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.gz'
+    PACKAGE_SRC_SHA='afb181a76e1ee72832f6581c0eddf8df032b83e2e0239ef79ebedc4467d92d6e'
     PACKAGE_DEP_BIN='perl'
     PACKAGE_INSTALL='configure'
 }
 
 native_package_info_automake() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz'
-    PACKAGE_SRC_SHA='f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.17.tar.xz'
+    PACKAGE_SRC_SHA='8920c1fc411e13b90bf704ef9db6f29d540e76d232cb3b2c9f4dc4cc599bd990'
     PACKAGE_DEP_BIN='perl'
     PACKAGE_DEP_PKG='autoconf'
     PACKAGE_INSTALL='configure'
@@ -6511,15 +6511,22 @@ $PACKAGE_DO12345
     #########################################################################################
 
     # https://gcc.gnu.org/onlinedocs/gcc-4.3.6/gcc/Warning-Options.html
-    CCFLAGS="-Qunused-arguments -fPIC -Wall"
-    XXFLAGS="-Qunused-arguments -fPIC -Wall"
+    CCFLAGS='-Qunused-arguments -fPIC -Wall'
+    XXFLAGS='-Qunused-arguments -fPIC -Wall'
     PPFLAGS="-Qunused-arguments -include $NDKPKG_COMMON_H_FILEPATH"
-    LDFLAGS="-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition"
+    LDFLAGS='-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition'
 
     CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
     XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
     PPFLAGS="$PPFLAGS $PACKAGE_PPFLAGS"
-    LDFLAGS="$LDFLAGS $PACKAGE_LDFLAGS"
+
+    for FLAG in $PACKAGE_LDFLAGS
+    do
+        case $FLAG in
+            --static|-static) ;;
+            *)  LDFLAGS="$LDFLAGS $FLAG"
+        esac
+    done
 
     ##############################################
 
@@ -6552,12 +6559,6 @@ $PACKAGE_DO12345
     if [ "$_F_COMMON_OPT_IS_SET" = 0 ] ; then
         XXFLAGS="$XXFLAGS -fno-common"
     fi
-
-    ##############################################
-
-    CCFLAGS="$(printf '%s\n' "$CCFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-    XXFLAGS="$(printf '%s\n' "$XXFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
-    LDFLAGS="$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')"
 
     ##############################################
 
@@ -7066,7 +7067,7 @@ set(CMAKE_CXX_FLAGS "$CPPFLAGS $CXXFLAGS")
 
 set(CMAKE_ASM_COMPILER "$CC")
 
-set(CMAKE_SHARED_LINKER_FLAGS "$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')")
+set(CMAKE_SHARED_LINKER_FLAGS "$LDFLAGS")
 set(CMAKE_EXE_LINKER_FLAGS    "$LDFLAGS")
 
 set(CMAKE_C_COMPILER_AR     "$AR")
@@ -8701,7 +8702,7 @@ set(CMAKE_CXX_FLAGS "$CPPFLAGS $CXXFLAGS")
 
 set(CMAKE_ASM_COMPILER "$CC")
 
-set(CMAKE_SHARED_LINKER_FLAGS "$(printf '%s\n' "$LDFLAGS" | sed -e 's|--static||g' -e 's|-static||g')")
+set(CMAKE_SHARED_LINKER_FLAGS "$LDFLAGS")
 set(CMAKE_EXE_LINKER_FLAGS    "$LDFLAGS")
 
 set(CMAKE_C_COMPILER_AR     "$AR")
