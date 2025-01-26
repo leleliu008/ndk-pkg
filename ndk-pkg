@@ -6565,6 +6565,10 @@ $PACKAGE_DO12345
         LDFLAGS="-static --static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wl,--no-dynamic-linker $LDFLAGS"
     fi
 
+    if [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+        LDFLAGS="-static-libstdc++ $LDFLAGS"
+    fi
+
     ##############################################
 
     if [ "$DEBUG_CC" = 1 ] ; then
@@ -9892,7 +9896,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.9
+NDKPKG_VERSION=0.20.10
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
