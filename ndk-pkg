@@ -5947,6 +5947,7 @@ $DOT_CONTENT
         [ "$PACKAGE_DEP_AUX_PERL" = 1 ]    && TERMUX_PKGS="$TERMUX_PKGS perl"
         [ "$PACKAGE_DEP_AUX_PYTHON3" = 1 ] && TERMUX_PKGS="$TERMUX_PKGS python"
         [ "$PACKAGE_DEP_AUX_GOLANG" = 1 ]  && TERMUX_PKGS="$TERMUX_PKGS golang"
+        [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && TERMUX_PKGS="$TERMUX_PKGS rust"
 
         if [ -n "$TERMUX_PKGS" ] ; then
             step "install needed packages via pkg"
@@ -6093,7 +6094,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
+    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && [ "$TERMUX" != 1 ] && {
         command -v rustup > /dev/null || {
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
@@ -6161,7 +6162,9 @@ $DOT_CONTENT
     }
 
     [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
+        [ "$TERMUX" = 1 ] ||
         RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
+
         CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
     }
 
@@ -8046,7 +8049,7 @@ gow() {
 }
 
 cargow() {
-    run rustup target add "$RUST_TARGET"
+    [ "$TERMUX" = 1 ] || run rustup target add "$RUST_TARGET"
 
     case $1 in
         build)
@@ -9897,7 +9900,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.10
+NDKPKG_VERSION=0.20.11
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
