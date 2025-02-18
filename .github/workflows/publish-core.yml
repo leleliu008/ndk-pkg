@@ -45,7 +45,7 @@ jobs:
 
       - run: cp ~/.ppkg/installed/macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/elftool/bin/check-if-has-dynamic-section check-if-has-dynamic-section.exe
 
-      - run: rm check-if-has-dynamic-section.c
+      - run: rm core/check-if-has-dynamic-section.c
 
       - run: |
           set -ex
@@ -54,14 +54,16 @@ jobs:
           SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
           CFLAGS="-isysroot $SYSROOT -mmacosx-version-min=${{ matrix.target-version }} -arch ${{ matrix.target-arch }} -Qunused-arguments"
 
+          cd core/
+
           for f in *.c
           do
-            o="${f%.c}.exe"
+            o="../${f%.c}.exe"
             $CC $CFLAGS -std=c99 -Os -flto -o "$o" "$f"
             strip "$o"
           done
 
-      - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
+      - run: .github/bundle.sh ${{ needs.base.outputs.release-version }} macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -91,12 +93,15 @@ jobs:
 
       - run: |
           set -ex
+
+          cd core/
+
           for f in *.c
           do
-            gcc -std=gnu99 -Os -flto -s -static -o "${f%.c}.exe" "$f"
+            gcc -std=gnu99 -Os -flto -s -static -o "../${f%.c}.exe" "$f"
           done
 
-      - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} linux-x86_64
+      - run: .github/bundle.sh ${{ needs.base.outputs.release-version }} linux-x86_64
 
       - uses: actions/upload-artifact@v4
         with:
@@ -124,11 +129,11 @@ jobs:
           summary: xx
           web-url: xx
           install: |
-            run cd "$PWD"
+            run cd "$PWD/core"
 
             for f in *.c
             do
-                OUTFILE="\${f%.c}.exe"
+                OUTFILE="../\${f%.c}.exe"
                 run "\$CC" "\$CFLAGS" "\$CPPFLAGS" "\$LDFLAGS" -std=c99 -Oz -flto -Wl,-s -static -o "\$OUTFILE" "\$f"
                 install_bins "\$OUTFILE"
             done
@@ -145,11 +150,9 @@ jobs:
 
       - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4 .tar.xz
 
-      - run: curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-
       - run: ls
 
-      - run: ./pack-ndk-pkg-core ${{ needs.base.outputs.release-version }} android-${{ matrix.target-version }}-arm64-v8a
+      - run: .github/bundle.sh ${{ needs.base.outputs.release-version }} android-${{ matrix.target-version }}-arm64-v8a
 
       - uses: actions/upload-artifact@v4
         with:
