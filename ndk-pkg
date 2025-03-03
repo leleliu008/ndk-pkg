@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2021-2024 刘富频
+# Copyright (c) 2021-2025 刘富频
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -3298,23 +3298,11 @@ rm -rf $SESSION_DIR\n"
 
     #########################################################################################
 
-    MVN="$(command -v mvn || true)"
-
-    if [ -z "$MVN" ] ; then
+    MVN="$(command -v mvn)" || {
         step install maven
         uppm install maven
-
-        unset  JAVA_HOME
-        unset MAVEN_HOME
-
-        export JAVA_HOME="$UPPM_HOME/installed/jdk17"
-        export PATH="$JAVA_HOME/bin:$PATH"
-        export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
-
-        MAVEN_HOME="$UPPM_HOME/installed/maven"
-
-        MVN="$MAVEN_HOME/bin/mvn"
-    fi
+        MVN="$UPPM_HOME/installed/maven/bin/mvn"
+    }
 
     #########################################################################################
 
@@ -4668,7 +4656,7 @@ $FORMULA_SEARCH_DIR"
 
     unset LIBS
 
-    # these environment variables are override by this script
+    # these environment variables are overridden by this script
     unset        CC_FOR_BUILD
     unset      OBJC_FOR_BUILD
     unset       CXX_FOR_BUILD
@@ -5186,8 +5174,9 @@ native_package_info_libiconv() {
 }
 
 native_package_info_libxml2() {
-    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.6.tar.xz'
-    PACKAGE_SRC_SHA='889c593a881a3db5fdd96cc9318c87df34eb648edfc458272ad46fd607353fbb'
+    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.5.tar.xz'
+    PACKAGE_SRC_URI='https://distfiles.macports.org/libxml2/libxml2-2.13.5.tar.xz'
+    PACKAGE_SRC_SHA='74fc163217a3964257d3be39af943e08861263c4231f9ef5b496b6f6d4c7b2b6'
     PACKAGE_DEP_PKG='libz libiconv'
     PACKAGE_INSTALL='configure --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
 }
@@ -9900,7 +9889,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.11
+NDKPKG_VERSION=0.20.12
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"

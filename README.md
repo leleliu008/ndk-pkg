@@ -776,7 +776,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     export NDKPKG_DEFAULT_TARGET='android-35-arm64-v8a'
     ```
 
-**Note:** some commonly used environment variables are override by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
+**Note:** some commonly used environment variables are overridden by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
 
 ## ndk-pkg formula scheme
 
