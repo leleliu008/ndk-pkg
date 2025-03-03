@@ -14,9 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.1-base-amd64.tar.gz
+      - run: curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.2-base-amd64.tar.gz
       - run: install -d ubuntu-rootfs
-      - run: tar xf ubuntu-base-24.04.1-base-amd64.tar.gz -C ubuntu-rootfs
+      - run: tar xf ubuntu-base-24.04.2-base-amd64.tar.gz -C ubuntu-rootfs
       - run: cp -p /etc/resolv.conf ubuntu-rootfs/etc/
       - run: mv ndk-pkg ubuntu-rootfs/bin/
 
