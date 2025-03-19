@@ -5924,6 +5924,11 @@ $DOT_CONTENT
             golang)
                 PACKAGE_DEP_AUX_GOLANG=1
                 ;;
+            depot_tools)
+                run git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+                export PATH="$PACKAGE_WORKING_DIR/depot_tools:$PATH"
+                export DEPOT_TOOLS_UPDATE=0
+                ;;
             *)  PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP $UPPM_PACKAGE_NAME"
         esac
     done
@@ -9889,7 +9894,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.12
+NDKPKG_VERSION=0.20.13
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
