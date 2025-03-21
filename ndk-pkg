@@ -993,9 +993,7 @@ filetype_from_url() {
     unset PACKAGE_XXFLAGS
     unset PACKAGE_LDFLAGS
 
-    unset PACKAGE_ONSTART
-    unset PACKAGE_ONREADY
-
+    unset PACKAGE_DOFETCH
     unset PACKAGE_DO12345
     unset PACKAGE_DOPATCH
     unset PACKAGE_PREPARE
@@ -1008,11 +1006,19 @@ filetype_from_url() {
 
     unset PACKAGE_CAVEATS
 
+    unset PACKAGE_SUPPORT
+    unset PACKAGE_SUPPORT_LTO
+    unset PACKAGE_SUPPORT_STRIP
+    unset PACKAGE_SUPPORT_BUILD_IN_PARALLEL
+    unset PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
+    unset PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
+
     unset PACKAGE_BSYSTEM
     unset PACKAGE_BSYSTEM_MASTER
 
     unset PACKAGE_USE_BSYSTEM_WAF
     unset PACKAGE_USE_BSYSTEM_GO
+    unset PACKAGE_USE_BSYSTEM_GN
     unset PACKAGE_USE_BSYSTEM_RAKE
     unset PACKAGE_USE_BSYSTEM_NINJA
     unset PACKAGE_USE_BSYSTEM_GMAKE
@@ -1030,9 +1036,6 @@ filetype_from_url() {
 
     # whether to build in build script directory, otherwise build in build dir
     unset PACKAGE_BINBSTD
-
-    # whether to build in parallel
-    unset PACKAGE_PARALLEL
 
     unset PACKAGE_DEVELOPER
 
@@ -1083,9 +1086,7 @@ filetype_from_url() {
     PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-
+    PACKAGE_DOFETCH="$(yq '.dofetch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1098,7 +1099,7 @@ filetype_from_url() {
 
     PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_SUPPORT="$(yq '.boolean | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1290,6 +1291,7 @@ filetype_from_url() {
                     gmakew)       PACKAGE_BSYSTEM=gmake ; break ;;
                     cargow)       PACKAGE_BSYSTEM=cargo ; break ;;
                     go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
+                    gn|gnw)       PACKAGE_BSYSTEM=gn    ; break ;;
                     waf)          PACKAGE_BSYSTEM=waf   ; break ;;
                 esac
             done
@@ -1317,6 +1319,7 @@ filetype_from_url() {
             rake)        PACKAGE_USE_BSYSTEM_RAKE=1      ;;
             cargo)       PACKAGE_USE_BSYSTEM_CARGO=1     ;;
             go)          PACKAGE_USE_BSYSTEM_GO=1        ;;
+            gn)          PACKAGE_USE_BSYSTEM_GN=1        ;;
             waf)         PACKAGE_USE_BSYSTEM_WAF=1       ;;
         esac
     done
@@ -1335,6 +1338,7 @@ filetype_from_url() {
             gmake)     PACKAGE_DOBUILD='gmakew clean && gmakew && gmakew install' ;;
             cargo)     PACKAGE_DOBUILD='cargow install' ;;
             go)        PACKAGE_DOBUILD='gow' ;;
+            gn)        PACKAGE_DOBUILD='gnw' ;;
             waf)       PACKAGE_DOBUILD='waf' ;;
         esac
     }
@@ -1360,6 +1364,7 @@ filetype_from_url() {
     [ "$PACKAGE_USE_BSYSTEM_NINJA"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"
     [ "$PACKAGE_USE_BSYSTEM_RAKE"      = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"
     [ "$PACKAGE_USE_BSYSTEM_GO"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
+    [ "$PACKAGE_USE_BSYSTEM_GN"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gn ninja"
     [ "$PACKAGE_USE_BSYSTEM_WAF"       = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
 
     #########################################################################################
@@ -1379,8 +1384,46 @@ filetype_from_url() {
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_PARALLEL" ] ; then
-        PACKAGE_PARALLEL=1
+    for item in $PACKAGE_SUPPORT
+    do
+        case $item in
+            ~*) V=0 ; K="${item#'~'}" ;;
+             *) V=1 ; K="$item" ;;
+        esac
+
+        case $K in
+            lto)      PACKAGE_SUPPORT_LTO="$V" ;;
+            strip)    PACKAGE_SUPPORT_STRIP="$V" ;;
+            static)   PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE="$V" ;;
+            mostly)   PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE="$V" ;;
+            parallel) PACKAGE_SUPPORT_PARALLEL_BUILD="$V" ;;
+            *)  abort 1 "unrecognized boolean item '$item' in $PACKAGE_FORMULA_FILEPATH"
+        esac
+    done
+
+    # https://github.com/golang/go/issues/59942
+    if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
+        PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
+    fi
+
+    if [ -z "$PACKAGE_SUPPORT_LTO" ] ; then
+        PACKAGE_SUPPORT_LTO=1
+    fi
+
+    if [ -z "$PACKAGE_SUPPORT_STRIP" ] ; then
+        PACKAGE_SUPPORT_STRIP=1
+    fi
+
+    if [ -z "$PACKAGE_SUPPORT_PARALLEL_BUILD" ] ; then
+        PACKAGE_SUPPORT_PARALLEL_BUILD=1
+    fi
+
+    if [ -z "$PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" ] ; then
+        PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+    fi
+
+    if [ -z "$PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" ] ; then
+        PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
     fi
 
     #########################################################################################
@@ -1394,13 +1437,7 @@ filetype_from_url() {
             lib*)   PACKAGE_PKGTYPE=lib ;;
             *lib)   PACKAGE_PKGTYPE=lib ;;
             *-dev)  PACKAGE_PKGTYPE=lib ;;
-               *)
-                # https://github.com/golang/go/issues/59942
-                if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
-                    PACKAGE_PKGTYPE=pie
-                else
-                    PACKAGE_PKGTYPE=exe
-                fi
+               *)   PACKAGE_PKGTYPE=exe ;;
         esac
     fi
 }
@@ -1461,9 +1498,7 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_BSYSTEM
     unset RECEIPT_PACKAGE_BSCRIPT
 
-    unset RECEIPT_PACKAGE_ONSTART
-    unset RECEIPT_PACKAGE_ONREADY
-
+    unset RECEIPT_PACKAGE_DOFETCH
     unset RECEIPT_PACKAGE_DO12345
     unset RECEIPT_PACKAGE_DOPATCH
     unset RECEIPT_PACKAGE_PREPARE
@@ -1472,6 +1507,8 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_DOTWEAK
 
     unset RECEIPT_PACKAGE_CAVEATS
+
+    unset RECEIPT_PACKAGE_SUPPORT
 
     unset RECEIPT_PACKAGE_BUILTBY
     unset RECEIPT_PACKAGE_BUILTAT
@@ -1482,7 +1519,6 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_BUILTFOR_PLATFORM_VERS
     unset RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH
 
-    unset RECEIPT_PACKAGE_PARALLEL
     unset RECEIPT_PACKAGE_DEVELOPER
 
     unset RECEIPT_PACKAGE_API_MIN
@@ -1536,9 +1572,7 @@ filetype_from_url() {
     RECEIPT_PACKAGE_PPFLAGS="$(yq '.ppflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_LDFLAGS="$(yq '.ldflags | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    RECEIPT_PACKAGE_ONSTART="$(yq '.onstart | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_ONREADY="$(yq '.onready | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-
+    RECEIPT_PACKAGE_DOFETCH="$(yq '.dofetch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DO12345="$(yq '.do12345 | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1548,6 +1582,8 @@ filetype_from_url() {
 
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
+    RECEIPT_PACKAGE_SUPPORT="$(yq '.boolean | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
     RECEIPT_PACKAGE_API_MIN="$(yq '.api-min | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_NDKVERS="$(yq '.ndkvers | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
@@ -1555,8 +1591,6 @@ filetype_from_url() {
     RECEIPT_PACKAGE_BUILTAT="$(yq '.builtat | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_BUILTFOR="$(yq '.builtfor | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-
-    RECEIPT_PACKAGE_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
@@ -1849,14 +1883,14 @@ __search_packages() {
         --arg dep_upp "$PACKAGE_DEP_UPP" \
         --arg dep_pym "$PACKAGE_DEP_PYM" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
-        --arg onstart "$PACKAGE_ONSTART" \
-        --arg onready "$PACKAGE_ONREADY" \
+        --arg dofetch "$PACKAGE_DOFETCH" \
         --arg do12345 "$PACKAGE_DO12345" \
         --arg dopatch "$PACKAGE_DOPATCH" \
         --arg prepare "$PACKAGE_PREPARE" \
         --arg install "$PACKAGE_DOBUILD" \
         --arg doextra "$PACKAGE_DOEXTRA" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
+        --arg boolean "$PACKAGE_SUPPORT" \
         --arg caveats "$PACKAGE_CAVEATS" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
@@ -1865,7 +1899,6 @@ __search_packages() {
         --arg ppflags "$PACKAGE_PPFLAGS" \
         --arg ldflags "$PACKAGE_LDFLAGS" \
         --arg api_min "$PACKAGE_API_MIN" \
-        --arg parallel $PACKAGE_PARALLEL \
         --arg developer "$PACKAGE_DEVELOPER" \
 '{
     "pkgname":$pkgname,
@@ -1901,16 +1934,15 @@ __search_packages() {
     "ppflags":$ppflags,
     "ldflags":$ldflags,
     "api-min":$api_min,
-    "parallel":$parallel,
     "developer":$developer,
-    "onstart":$onstart,
-    "onready":$onready,
+    "dofetch":$dofetch,
     "do12345":$do12345,
     "dopatch":$dopatch,
     "prepare":$prepare,
     "install":$install,
     "doextra":$doextra,
     "dotweak":$dotweak,
+    "boolean":$boolean,
     "caveats":$caveats
 }' | jq 'with_entries(select(.value != ""))'
 }
@@ -1962,7 +1994,7 @@ ccflags: $PACKAGE_CCFLAGS
 xxflags: $PACKAGE_XXFLAGS
 ldflags: $PACKAGE_LDFLAGS
 api-min: $PACKAGE_API_MIN
-parallel: $PACKAGE_PARALLEL
+boolean: $PACKAGE_SUPPORT
 installed: $PACKAGE_INSTALLED
 EOF
     } | yq eval '. | with_entries(select(.value != null))'
@@ -2012,6 +2044,7 @@ PACKAGE_BSCRIPT
 PACKAGE_BSYSTEM
 PACKAGE_BINBSTD
 PACKAGE_USE_BSYSTEM_GO
+PACKAGE_USE_BSYSTEM_GN
 PACKAGE_USE_BSYSTEM_RAKE
 PACKAGE_USE_BSYSTEM_NINJA
 PACKAGE_USE_BSYSTEM_GMAKE
@@ -2033,7 +2066,6 @@ PACKAGE_PPFLAGS
 PACKAGE_LDFLAGS
 PACKAGE_API_MIN
 PACKAGE_FORMULA_FILEPATH
-PACKAGE_PARALLEL
 PACKAGE_DEVELOPER
 EOF
 }
@@ -2050,17 +2082,13 @@ EOF
         --json)
             __info_the_given_available_package_as_json "$1"
             ;;
-        onstart)
-            __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_ONSTART"
-            ;;
-        onready)
-            __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_ONREADY"
-            ;;
         do12345)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DO12345"
+            ;;
+        dofetch)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_DOFETCH"
             ;;
         dopatch)
             __load_formula_of_the_given_package "$1"
@@ -2081,6 +2109,10 @@ EOF
         dotweak)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOTWEAK"
+            ;;
+        boolean)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_SUPPORT"
             ;;
         caveats)
             __load_formula_of_the_given_package "$1"
@@ -2229,14 +2261,14 @@ EOF
         --arg dep_upp "$RECEIPT_PACKAGE_DEP_UPP" \
         --arg dep_pym "$RECEIPT_PACKAGE_DEP_PYM" \
         --arg dep_plm "$RECEIPT_PACKAGE_DEP_PLM" \
-        --arg onstart "$RECEIPT_PACKAGE_ONSTART" \
-        --arg onready "$RECEIPT_PACKAGE_ONREADY" \
+        --arg dofetch "$RECEIPT_PACKAGE_DOFETCH" \
         --arg do12345 "$RECEIPT_PACKAGE_DO12345" \
         --arg dopatch "$RECEIPT_PACKAGE_DOPATCH" \
         --arg prepare "$RECEIPT_PACKAGE_PREPARE" \
         --arg install "$RECEIPT_PACKAGE_DOBUILD" \
         --arg doextra "$RECEIPT_PACKAGE_DOEXTRA" \
         --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
+        --arg boolean "$RECEIPT_PACKAGE_SUPPORT" \
         --arg caveats "$RECEIPT_PACKAGE_CAVEATS" \
         --arg bsystem "$RECEIPT_PACKAGE_BSYSTEM" \
         --arg binbstd "$RECEIPT_PACKAGE_BINBSTD" \
@@ -2244,7 +2276,6 @@ EOF
         --arg xxflags "$RECEIPT_PACKAGE_XXFLAGS" \
         --arg ppflags "$RECEIPT_PACKAGE_PPFLAGS" \
         --arg ldflags "$RECEIPT_PACKAGE_LDFLAGS" \
-        --arg parallel $RECEIPT_PACKAGE_PARALLEL \
         --arg developer "$RECEIPT_PACKAGE_DEVELOPER" \
         --arg builtby "$RECEIPT_PACKAGE_BUILTBY" \
         --arg builtat "$RECEIPT_PACKAGE_BUILTAT" \
@@ -2282,16 +2313,15 @@ EOF
     "xxflags":$xxflags,
     "ppflags":$ppflags,
     "ldflags":$ldflags,
-    "parallel":$parallel,
     "developer":$developer,
-    "onstart":$onstart,
-    "onready":$onready,
+    "dofetch":$dofetch,
     "do12345":$do12345,
     "dopatch":$dopatch,
     "prepare":$prepare,
     "install":$install,
     "doextra":$doextra,
     "dotweak":$dotweak,
+    "boolean":$boolean,
     "caveats":$caveats,
     "builtby":$builtby,
     "builtat":$builtat,
@@ -5309,33 +5339,40 @@ EOF
     unset PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
     unset PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
 
-    case $PACKAGE_PKGTYPE in
-        exe)
-            if [ "$REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-                PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
-
+    [ "$PACKAGE_PKGTYPE" = exe ] && {
+        if [ "$REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+            if [ "$PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                 if [ "$TARGET_PLATFORM_VERS" -ne "$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL" ] ; then
                     abort 1 "You are requesting to create fully statically linked executables, but NDK only provide the libc.a for the latest Android API level $ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL. That's to say you're supposed to use Android API level $ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL to compile with this package. For more details, please read https://github.com/android/ndk/issues/2017"
                 fi
+
+                PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
             else
+                if [ "$PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
+                    note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create dynamically linked executables, so we will downgrade to create mostly statically linked executables."
+                    export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
+                else
+                    note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create dynamically linked executables."
+                fi
+            fi
+        else
+            if [ "$PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                 export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
             fi
-            ;;
-        pie)
-            export PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-
-            if [ "$REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-                note "You are requesting to create fully statically linked executables, but package '$PACKAGE_NAME' is supposed to create dynamically linked executables, so we will downgrade to create mostly statically linked executables."
-            fi
-    esac
+        fi
+    }
 
     #########################################################################################
 
-    if [ "$PACKAGE_PARALLEL" = 1 ] ; then
-        BUILD_NJOBS="$NATIVE_PLATFORM_NCPU"
+    if [ "$PACKAGE_SUPPORT_PARALLEL_BUILD" = 1 ] ; then
+        if [ -z "$BUILD_NJOBS" ] ; then
+            BUILD_NJOBS="$NATIVE_PLATFORM_NCPU"
+        fi
     else
         BUILD_NJOBS=1
     fi
+
+    #########################################################################################
 
     if [ -z "$PACKAGE_API_MIN" ] ; then
         PACKAGE_API_MIN="$ANDROID_NDK_SUPPORTED_MIN_SDK_API_LEVEL"
@@ -5406,18 +5443,6 @@ EOF
     PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
     PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
     PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
-
-    #########################################################################################
-
-    [ -n "$PACKAGE_ONSTART" ] && {
-        step "onstart"
-
-        eval "
-onstart() {
-$PACKAGE_ONSTART
-}"
-        onstart
-    }
 
     #########################################################################################
 
@@ -6181,172 +6206,180 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "fetching resources"
+    step "dofetch"
 
-    case $PACKAGE_SRC_URL in
-        '')
-            if [ -n "$PACKAGE_GIT_URL" ] ; then
-                unset GIT_FETCH_URL
+    if [ -n "$PACKAGE_DOFETCH" ] ; then
+        eval "
+dofetch() {
+$PACKAGE_DOFETCH
+}"
+        dofetch
+    else
+        case $PACKAGE_SRC_URL in
+            '')
+                if [ -n "$PACKAGE_GIT_URL" ] ; then
+                    unset GIT_FETCH_URL
 
-                if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
-                    GIT_FETCH_URL="$PACKAGE_GIT_URL"
-                else
-                    GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
-                fi
+                    if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
+                        GIT_FETCH_URL="$PACKAGE_GIT_URL"
+                    else
+                        GIT_FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$PACKAGE_GIT_URL")" || return 1
+                    fi
 
-                if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                    if [ -z "$PACKAGE_GIT_REF" ] ; then
+                    if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                        if [ -z "$PACKAGE_GIT_REF" ] ; then
+                            GIT_BRANCH_NAME=master
+                            GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+                        else
+                            GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
+                            GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+                        fi
+                    else
                         GIT_BRANCH_NAME=master
-                        GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
+                        GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
+                    fi
+
+                    if [ -z "$PACKAGE_GIT_NTH" ] ; then
+                        PACKAGE_GIT_NTH=1
+                    fi
+
+                    if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
+                        if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
+                            GIT_FETCH_EXTRA_OPTIONS='--unshallow'
+                        else
+                            GIT_FETCH_EXTRA_OPTIONS=
+                        fi
                     else
-                        GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
-                        GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
+                        GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
                     fi
-                else
-                    GIT_BRANCH_NAME=master
-                    GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
-                fi
 
-                if [ -z "$PACKAGE_GIT_NTH" ] ; then
-                    PACKAGE_GIT_NTH=1
-                fi
+                    run cd "$PACKAGE_INSTALLING_SRC_DIR"
 
-                if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
-                    if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
-                        GIT_FETCH_EXTRA_OPTIONS='--unshallow'
-                    else
-                        GIT_FETCH_EXTRA_OPTIONS=
-                    fi
-                else
-                    GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
-                fi
+                    run git -c init.defaultBranch=master init
+                    run git remote add origin "$GIT_FETCH_URL"
+                    run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
+                    run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
 
-                run cd "$PACKAGE_INSTALLING_SRC_DIR"
-
-                run git -c init.defaultBranch=master init
-                run git remote add origin "$GIT_FETCH_URL"
-                run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
-                run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-
-                git_submodule_update_recursive
-            fi
-            ;;
-        dir://*)
-            note "$PACKAGE_SRC_URL is local path, no need to fetch."
-            ;;
-        file://*)
-            note "$PACKAGE_SRC_URL is local path, no need to fetch."
-            ;;
-        *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
-    esac
-
-    if [ -n    "$PACKAGE_FIX_URL" ] ; then
-        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
-    fi
-
-    if [ -n    "$PACKAGE_RES_URL" ] ; then
-        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
-    fi
-
-    #########################################################################################
-
-    step "unpack/copy resources to proper location"
-
-    if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
-        case $PACKAGE_SRC_FILETYPE in
-            .dir)
-                if [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
-                    if [ -d "$PACKAGE_SRC_FILEPATH/.git" ] && command -v git > /dev/null ; then
-                        PACKAGE_GIT_SHA=$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD || true)
-                    fi
-                    run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
-                else
-                    abort 1 "src-url point to dir '$PACKAGE_SRC_FILEPATH' does not exist."
+                    git_submodule_update_recursive
                 fi
                 ;;
-            .git)
-                if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                    PACKAGE_GIT_SHA="$(git rev-parse HEAD)"
-                fi
+            dir://*)
+                note "$PACKAGE_SRC_URL is local path, no need to fetch."
                 ;;
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
+            file://*)
+                note "$PACKAGE_SRC_URL is local path, no need to fetch."
                 ;;
-            *)  run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
+            *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
         esac
-    fi
 
-    if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
-        case $PACKAGE_FIX_FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
-                ;;
-            *)  run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
-                printf '%s|%s\n' "$PACKAGE_FIX_FILENAME" "$PACKAGE_FIX_OPT" > "$PACKAGE_INSTALLING_FIX_DIR/index"
-        esac
-    fi
-
-    if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
-        case $PACKAGE_RES_FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
-                ;;
-            *)  run cp "$PACKAGE_RES_FILEPATH" "$PACKAGE_INSTALLING_RES_DIR/"
-        esac
-    fi
-
-    for LINE in $PACKAGE_PATCHES
-    do
-        SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
-        URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
-        URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
-        OPT="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
-
-        FILETYPE="$(filetype_from_url "$URL")"
-        FILENAME="$SHA$FILETYPE"
-        FILEPATH="$NDKPKG_DOWNLOADS_DIR/$FILENAME"
-
-        wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
-
-        case $FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
-                ;;
-            *)  run cp "$FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
-                printf '%s|%s\n' "$FILENAME" "$OPT" >> "$PACKAGE_INSTALLING_FIX_DIR/index"
-        esac
-    done
-
-    for LINE in $PACKAGE_RESLIST
-    do
-        SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
-        URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
-        URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
-        DIR="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
-        LEV="$(printf '%s\n' "$LINE" | cut -d '|' -f5)"
-
-        [ -z "$LEV" ] && LEV=1
-
-        FILETYPE="$(filetype_from_url "$URL")"
-        FILENAME="$SHA$FILETYPE"
-        FILEPATH="$NDKPKG_DOWNLOADS_DIR/$FILENAME"
-
-        wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
-
-        if [ -z "$DIR" ] ; then
-            DEST="$PACKAGE_INSTALLING_RES_DIR"
-        else
-            DEST="$PACKAGE_INSTALLING_RES_DIR/$DIR"
-            run install -d "$DEST"
+        if [ -n    "$PACKAGE_FIX_URL" ] ; then
+            wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
         fi
 
-        case $FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "$LEV" --no-same-owner
-                ;;
-            *)  run cp "$FILEPATH" "$DEST/"
-        esac
-    done
+        if [ -n    "$PACKAGE_RES_URL" ] ; then
+            wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+        fi
+
+        #########################################################################################
+
+        step "unpack/copy resources to proper location"
+
+        if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
+            case $PACKAGE_SRC_FILETYPE in
+                .dir)
+                    if [ -d "$PACKAGE_SRC_FILEPATH" ] ; then
+                        if [ -d "$PACKAGE_SRC_FILEPATH/.git" ] && command -v git > /dev/null ; then
+                            PACKAGE_GIT_SHA=$(git -C "$PACKAGE_SRC_FILEPATH" rev-parse HEAD || true)
+                        fi
+                        run cp -r "$PACKAGE_SRC_FILEPATH/." "$PACKAGE_INSTALLING_SRC_DIR"
+                    else
+                        abort 1 "src-url point to dir '$PACKAGE_SRC_FILEPATH' does not exist."
+                    fi
+                    ;;
+                .git)
+                    if [ -z "$PACKAGE_GIT_SHA" ] ; then
+                        PACKAGE_GIT_SHA="$(git rev-parse HEAD)"
+                    fi
+                    ;;
+                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                    run bsdtar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
+                    ;;
+                *)  run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
+            esac
+        fi
+
+        if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
+            case $PACKAGE_FIX_FILETYPE in
+                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                    run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
+                    ;;
+                *)  run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+                    printf '%s|%s\n' "$PACKAGE_FIX_FILENAME" "$PACKAGE_FIX_OPT" > "$PACKAGE_INSTALLING_FIX_DIR/index"
+            esac
+        fi
+
+        if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
+            case $PACKAGE_RES_FILETYPE in
+                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                    run bsdtar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
+                    ;;
+                *)  run cp "$PACKAGE_RES_FILEPATH" "$PACKAGE_INSTALLING_RES_DIR/"
+            esac
+        fi
+
+        for LINE in $PACKAGE_PATCHES
+        do
+            SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+            URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+            URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
+            OPT="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
+
+            FILETYPE="$(filetype_from_url "$URL")"
+            FILENAME="$SHA$FILETYPE"
+            FILEPATH="$NDKPKG_DOWNLOADS_DIR/$FILENAME"
+
+            wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
+
+            case $FILETYPE in
+                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                    run bsdtar xf "$FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
+                    ;;
+                *)  run cp "$FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+                    printf '%s|%s\n' "$FILENAME" "$OPT" >> "$PACKAGE_INSTALLING_FIX_DIR/index"
+            esac
+        done
+
+        for LINE in $PACKAGE_RESLIST
+        do
+            SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+            URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+            URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
+            DIR="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
+            LEV="$(printf '%s\n' "$LINE" | cut -d '|' -f5)"
+
+            [ -z "$LEV" ] && LEV=1
+
+            FILETYPE="$(filetype_from_url "$URL")"
+            FILENAME="$SHA$FILETYPE"
+            FILEPATH="$NDKPKG_DOWNLOADS_DIR/$FILENAME"
+
+            wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
+
+            if [ -z "$DIR" ] ; then
+                DEST="$PACKAGE_INSTALLING_RES_DIR"
+            else
+                DEST="$PACKAGE_INSTALLING_RES_DIR/$DIR"
+                run install -d "$DEST"
+            fi
+
+            case $FILETYPE in
+                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                    run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "$LEV" --no-same-owner
+                    ;;
+                *)  run cp "$FILEPATH" "$DEST/"
+            esac
+        done
+    fi
 
     #########################################################################################
 
@@ -6378,18 +6411,6 @@ $DOT_CONTENT
         step "update config.{sub,guess}"
         __update_config_sub_guess
     }
-
-    #########################################################################################
-
-    if [ -n "$PACKAGE_ONREADY" ] ; then
-        step "onready"
-
-        eval "
-onready() {
-$PACKAGE_ONREADY
-}"
-        onready
-    fi
 
     #########################################################################################
 
@@ -7172,7 +7193,7 @@ EOF
     #########################################################################################
 
     [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] && {
-        if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
+        if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
             step "copy dependent libraries to linker first search dir"
 
             for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
@@ -7487,7 +7508,6 @@ $PACKAGE_DOTWEAK
     grep -q '^git-url: ' RECEIPT.yml || gsed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" RECEIPT.yml
     grep -q '^bsystem: ' RECEIPT.yml || gsed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" RECEIPT.yml
     grep -q '^binbstd: ' RECEIPT.yml || gsed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" RECEIPT.yml
-    grep -q '^parallel: ' RECEIPT.yml || printf "parallel: %s\n" "$PACKAGE_PARALLEL" >> RECEIPT.yml
 
     [ -n "$PACKAGE_GIT_SHA" ] && {
         grep -q '^git-sha: ' RECEIPT.yml || {
@@ -7944,6 +7964,12 @@ __record_installed_files_of_the_given_package() {
             fi
         done
     fi
+}
+
+gnw() {
+    run gn gen "$PACKAGE_BCACHED_DIR" --root="$PACKAGE_BSCRIPT_DIR" "'--args=$*'"
+    run ninja --version
+    run ninja --verbose
 }
 
 gow() {
@@ -8436,7 +8462,7 @@ configure() {
         fi
 
         if [ -z "$CONFIGURE_ARG_ENABLE_SHARED" ] ; then
-            if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
+            if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
                 CONFIGURE_ARGS="$CONFIGURE_ARGS --disable-shared"
             else
                 CONFIGURE_ARGS="$CONFIGURE_ARGS --enable-shared"
@@ -8626,7 +8652,7 @@ cmakew_internal() {
     else
         unset CMAKE_PROJECT_INCLUDE
 
-        if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
+        if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
             # https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_INCLUDE.html
             CMAKE_PROJECT_INCLUDE="$PACKAGE_WORKING_DIR/project-after.cmake"
 
@@ -8872,7 +8898,7 @@ EOF
 
     MESON_SETUP_ARGS="--prefix=$PACKAGE_INSTALL_DIR --buildtype=$PROFILE --backend=ninja --pkg-config-path=$PKG_CONFIG_PATH --build.pkg-config-path=$PKG_CONFIG_PATH_FOR_BUILD --cross-file=$MESON_CROSS_FILE -Dlibdir=lib"
 
-    if [ "$PACKAGE_PKGTYPE" = exe ] || [ "$PACKAGE_PKGTYPE" = pie ] ; then
+    if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
         MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=static --prefer-static"
     else
         MESON_SETUP_ARGS="$MESON_SETUP_ARGS -Ddefault_library=both"
@@ -9894,7 +9920,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.20.13
+NDKPKG_VERSION=0.21.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"

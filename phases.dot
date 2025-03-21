@@ -1,10 +1,7 @@
 digraph {
     rankdir="LR"
 
-    onstart -> dosetup -> dofetch -> onready -> do12345 -> dopatch -> prepare -> install -> doextra -> tweak_pc_files -> dotweak -> docheck -> caveats
-
-    onstart [fillcolor="green";style=filled]
-    onready [fillcolor="green";style=filled]
+    dosetup -> dofetch -> do12345 -> dopatch -> prepare -> install -> doextra -> tweak_pc_files -> dotweak -> docheck -> caveats
 
     do12345 [shape="box"; style="dashed"];
     dopatch [shape="box"; style="dashed"];

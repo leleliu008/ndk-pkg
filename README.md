@@ -99,9 +99,9 @@ This is the recommended way of using this software if you want to use this softw
 `chroot` likes `docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
 
 ```bash
-curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.1-base-amd64.tar.gz
+curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.2-base-amd64.tar.gz
 install -d ubuntu-rootfs
-tar xf ubuntu-base-24.04.1-base-amd64.tar.gz -C ubuntu-rootfs
+tar xf ubuntu-base-24.04.2-base-amd64.tar.gz -C ubuntu-rootfs
 
 cp -p /etc/resolv.conf ubuntu-rootfs/etc/
 
@@ -792,7 +792,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 
 |KEY|required?|overview|
 |-|-|-|
-|`pkgtype`|optional|indicates what type of this package. value shall be any one of `exe`, `pie`, `lib`, `exe+lib`.<br>To `exe` type package, `ndk-pkg` would add `--static -static` options to `LDFLAGS` if `--static` install option is given.<br>To `pie` type package, it means that it doesn't support fully statically linking, it is supposed to be dynamically linked.<br>If this mapping is not present, `ndk-pkg` will determine the package type by package name, if a package name starts/ends with `lib`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
+|`pkgtype`|optional|indicates what type of this package. value shall be any one of `exe`, `lib`, `exe+lib`.<br>If this mapping is not present, `ndk-pkg` will determine the package type by package name, if the package name starts/ends with `lib` or ends with `-dev`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
 |`summary`|required|describe this package in one sentence.|
 |`license`|optional|a space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
 |`version`|optional|the version of this package.<br>If this mapping is not present, it will be extracted from `src-url` if present, otherwise it will be calculated by running command `date +%Y.%m.%d`|
@@ -832,18 +832,16 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`ppflags`|optional|append to `CPPFLAGS`|
 |`ldflags`|optional|append to `LDFLAGS`|
 ||||
-|`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `rake` `ndk-build`|
+|`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `gn` `rake` `waf` `ndk-build`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
-|`movable`|optional|whether can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
-|`parallel`|optional|whether to allow build system running jobs in parallel.<br>value shall be `0` or `1`. default value is `1`.|
+||||
+|`boolean`|optional|a space-separated list of features that are supported/unsupported by this package.<br>feature name starts with `~` means that it is unsupported.<br>feature name can be any one of `lto` `parallel` `static` `mostly` `relocatable`.<br>`lto` indicates whether to support Link Time Optimization https://llvm.org/docs/LinkTimeOptimization.html.<br>`parallel` indicates whether to support building in parallel.<br>`static` indicates whether to support creating fully statically linked executables.<br>`mostly` indicates whether to support creating mostly statically linked executables.<br>`relocatable` indicates if this package (the installed files) can be moved/copied to other locations.|
 ||||
 |`api-min`|optional|specify which minimum Android SDK API level is supported for this package.|
 ||||
-|`onstart`|optional|POSIX shell code to be run when this package's formula is loaded.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
-|`onready`|optional|POSIX shell code to be run when this package's needed resources all are ready.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
-||||
-|`do12345`|optional|POSIX shell code to be run for native build.<br>It is only meaningful when requesting for cross building.<br>It is running in a separated process.|
+|`dofetch`|optional|POSIX shell code to be run to take over the fetching process.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
+|`do12345`|optional|POSIX shell code to be run for native build.<br>It would be run in a separate process.<br>It is only meaningful when requesting for cross building.|
 |`dopatch`|optional|POSIX shell code to be run to apply patches manually.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
 |`prepare`|optional|POSIX shell code to be run to do some additional preparation.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
 |`install`|optional|POSIX shell code to be run when user run `ndk-pkg install <PKG>`. If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
@@ -865,6 +863,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`xmake`|`xmake.lua`|
 |`cargo`|`Cargo.toml`|
 |`go`|`go.mod`|
+|`gn`|`BUILD.gn`|
 |`rake`|`Rakefile`|
 |`autogen`|`autogen.sh`|
 |`autotools`|`configure.ac`|
