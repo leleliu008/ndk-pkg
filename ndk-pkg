@@ -8890,7 +8890,7 @@ xmakew() {
         run $XMAKE --jobs=$BUILD_NJOBS &&
         run $XMAKE install -o "$PACKAGE_INSTALL_DIR"
     else
-        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_PLATFORM_ABI --ndk_sdkver=$TARGET_PLATFORM_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$PACKAGE_BCACHED_DIR --cc=$CC --cxx=$CXX --cflags='$CFLAGS' --cxxflags='$CXXFLAGS' --ldflags='$LDFLAGS' --shflags='$LDFLAGS'"
+        XMAKE_CONFIG_OPTIONS="$XMAKE_CONFIG_OPTIONS --plat=android --arch=$TARGET_PLATFORM_ABI --ndk_sdkver=$TARGET_PLATFORM_VERS --toolchain=ndk --ndk=$ANDROID_NDK_HOME --buildir=$PACKAGE_BCACHED_DIR --cc=$CC --cxx=$CXX --cflags='$CFLAGS $CPPFLAGS' --cxxflags='$CXXFLAGS $CPPFLAGS' --ldflags='$LDFLAGS' --shflags='$LDFLAGS'"
 
         run $XMAKE config $XMAKE_CONFIG_OPTIONS &&
         run $XMAKE --jobs=$BUILD_NJOBS &&
@@ -9968,7 +9968,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.21.1
+NDKPKG_VERSION=0.21.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
