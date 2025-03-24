@@ -2960,7 +2960,7 @@ EOF
             # https://github.com/google/prefab/blob/master/api/src/main/kotlin/com/google/prefab/api/Android.kt#L202
             if [ "$IS_STATIC_LIBRARY" = true ] ; then
                 if   "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'T __cxa_' ; then
-                    abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may case problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
+                    abort 1 "libc++_static.a has been merged into $LIBRARY_FILEPATH, this may cause problems. For more details, please refer to https://developer.android.com/ndk/guides/cpp-support"
                 elif "$ANDROID_NDK_NM" "$LIBRARY_FILEPATH" | grep -q 'U __cxa_' ; then
                     STL=c++_shared
                 fi
@@ -5964,13 +5964,10 @@ $DOT_CONTENT
             libz)
                 PACKAGE_DEP_AUX_LIBZ=1
                 PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libz"
-                PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake ninja"
                 ;;
             libopenssl)
                 PACKAGE_DEP_AUX_LIBOPENSSL=1
                 PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libopenssl"
-                PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
-                PACKAGE_DEP_AUX_PERL=1
                 ;;
             automake)
                 PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY autoconf automake"
@@ -5998,6 +5995,9 @@ $DOT_CONTENT
                 PACKAGE_DEP_AUX_GOLANG=1
                 ;;
             depot_tools)
+                PACKAGE_DEP_AUX_PYTHON3=1
+                PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gn ninja"
+
                 run git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
                 export PATH="$PACKAGE_WORKING_DIR/depot_tools:$PATH"
                 export DEPOT_TOOLS_UPDATE=0
