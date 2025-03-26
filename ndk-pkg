@@ -1006,7 +1006,10 @@ filetype_from_url() {
 
     unset PACKAGE_CAVEATS
 
-    unset PACKAGE_SUPPORT
+    unset PACKAGE_MOVABLE
+
+    unset PACKAGE_DISABLE
+
     unset PACKAGE_SUPPORT_LTO
     unset PACKAGE_SUPPORT_STRIP
     unset PACKAGE_SUPPORT_BUILD_IN_PARALLEL
@@ -1099,7 +1102,8 @@ filetype_from_url() {
 
     PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_SUPPORT="$(yq '.boolean | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_MOVABLE="$(yq '.movable | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DISABLE="$(yq '.disable | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1384,20 +1388,16 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for item in $PACKAGE_SUPPORT
+    for item in $PACKAGE_DISABLE
     do
         case $item in
-            ~*) V=0 ; K="${item#'~'}" ;;
-             *) V=1 ; K="$item" ;;
-        esac
-
-        case $K in
-            lto)      PACKAGE_SUPPORT_LTO="$V" ;;
-            strip)    PACKAGE_SUPPORT_STRIP="$V" ;;
-            static)   PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE="$V" ;;
-            mostly)   PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE="$V" ;;
-            parallel) PACKAGE_SUPPORT_PARALLEL_BUILD="$V" ;;
-            *)  abort 1 "unrecognized boolean item '$item' in $PACKAGE_FORMULA_FILEPATH"
+            lto)      PACKAGE_SUPPORT_LTO=0 ;;
+            strip)    PACKAGE_SUPPORT_STRIP=0 ;;
+            macos)    PACKAGE_SUPPORT_BUILD_ON_MACOS=0 ;;
+            static)   PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
+            mostly)   PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
+            parallel) PACKAGE_SUPPORT_BUILD_IN_PARALLEL=0 ;;
+            *)  abort 1 "unrecognized disable item '$item' in $PACKAGE_FORMULA_FILEPATH"
         esac
     done
 
@@ -1414,8 +1414,12 @@ filetype_from_url() {
         PACKAGE_SUPPORT_STRIP=1
     fi
 
-    if [ -z "$PACKAGE_SUPPORT_PARALLEL_BUILD" ] ; then
-        PACKAGE_SUPPORT_PARALLEL_BUILD=1
+    if [ -z "$PACKAGE_SUPPORT_BUILD_ON_MACOS" ] ; then
+        PACKAGE_SUPPORT_BUILD_ON_MACOS=1
+    fi
+
+    if [ -z "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" ] ; then
+        PACKAGE_SUPPORT_BUILD_IN_PARALLEL=1
     fi
 
     if [ -z "$PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" ] ; then
@@ -1508,7 +1512,8 @@ filetype_from_url() {
 
     unset RECEIPT_PACKAGE_CAVEATS
 
-    unset RECEIPT_PACKAGE_SUPPORT
+    unset RECEIPT_PACKAGE_MOVABLE
+    unset RECEIPT_PACKAGE_DISABLE
 
     unset RECEIPT_PACKAGE_BUILTBY
     unset RECEIPT_PACKAGE_BUILTAT
@@ -1582,7 +1587,8 @@ filetype_from_url() {
 
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
-    RECEIPT_PACKAGE_SUPPORT="$(yq '.boolean | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_MOVABLE="$(yq '.movable | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DISABLE="$(yq '.disable | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_API_MIN="$(yq '.api-min | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_NDKVERS="$(yq '.ndkvers | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1890,7 +1896,8 @@ __search_packages() {
         --arg install "$PACKAGE_DOBUILD" \
         --arg doextra "$PACKAGE_DOEXTRA" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
-        --arg boolean "$PACKAGE_SUPPORT" \
+        --arg movable "$PACKAGE_MOVABLE" \
+        --arg disable "$PACKAGE_DISABLE" \
         --arg caveats "$PACKAGE_CAVEATS" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
@@ -1942,7 +1949,8 @@ __search_packages() {
     "install":$install,
     "doextra":$doextra,
     "dotweak":$dotweak,
-    "boolean":$boolean,
+    "disable":$disable,
+    "movable":$movable,
     "caveats":$caveats
 }' | jq 'with_entries(select(.value != ""))'
 }
@@ -1994,7 +2002,8 @@ ccflags: $PACKAGE_CCFLAGS
 xxflags: $PACKAGE_XXFLAGS
 ldflags: $PACKAGE_LDFLAGS
 api-min: $PACKAGE_API_MIN
-boolean: $PACKAGE_SUPPORT
+disable: $PACKAGE_DISABLE
+movable: $PACKAGE_MOVABLE
 installed: $PACKAGE_INSTALLED
 EOF
     } | yq eval '. | with_entries(select(.value != null))'
@@ -2043,6 +2052,8 @@ PACKAGE_RES_FILEPATH
 PACKAGE_BSCRIPT
 PACKAGE_BSYSTEM
 PACKAGE_BINBSTD
+PACKAGE_MOVABLE
+PACKAGE_DISABLE
 PACKAGE_USE_BSYSTEM_GO
 PACKAGE_USE_BSYSTEM_GN
 PACKAGE_USE_BSYSTEM_RAKE
@@ -2110,9 +2121,13 @@ EOF
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOTWEAK"
             ;;
-        boolean)
+        movable)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_SUPPORT"
+            printf '%s\n' "$PACKAGE_MOVABLE"
+            ;;
+        disable)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_DISABLE"
             ;;
         caveats)
             __load_formula_of_the_given_package "$1"
@@ -2268,7 +2283,8 @@ EOF
         --arg install "$RECEIPT_PACKAGE_DOBUILD" \
         --arg doextra "$RECEIPT_PACKAGE_DOEXTRA" \
         --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
-        --arg boolean "$RECEIPT_PACKAGE_SUPPORT" \
+        --arg movable "$RECEIPT_PACKAGE_MOVABLE" \
+        --arg disable "$RECEIPT_PACKAGE_DISABLE" \
         --arg caveats "$RECEIPT_PACKAGE_CAVEATS" \
         --arg bsystem "$RECEIPT_PACKAGE_BSYSTEM" \
         --arg binbstd "$RECEIPT_PACKAGE_BINBSTD" \
@@ -2321,7 +2337,8 @@ EOF
     "install":$install,
     "doextra":$doextra,
     "dotweak":$dotweak,
-    "boolean":$boolean,
+    "movable":$movable,
+    "disable":$disable,
     "caveats":$caveats,
     "builtby":$builtby,
     "builtat":$builtat,
@@ -5384,6 +5401,12 @@ EOF
 
     #########################################################################################
 
+    if [ "$PACKAGE_SUPPORT_BUILD_ON_MACOS" != 1 ] && [ "$NATIVE_PLATFORM_NAME" = macos ] ; then
+        abort 1 "package '$PACKAGE_NAME' is only supported built on GNU/Linux"
+    fi
+
+    #########################################################################################
+
     unset PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
     unset PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
 
@@ -5412,16 +5435,6 @@ EOF
 
     #########################################################################################
 
-    if [ "$PACKAGE_SUPPORT_PARALLEL_BUILD" = 1 ] ; then
-        if [ -z "$BUILD_NJOBS" ] ; then
-            BUILD_NJOBS="$NATIVE_PLATFORM_NCPU"
-        fi
-    else
-        BUILD_NJOBS=1
-    fi
-
-    #########################################################################################
-
     if [ -z "$PACKAGE_API_MIN" ] ; then
         PACKAGE_API_MIN="$ANDROID_NDK_SUPPORTED_MIN_SDK_API_LEVEL"
     fi
@@ -5435,6 +5448,16 @@ EOF
 
     if [ "$PACKAGE_API_MIN" -gt "$TARGET_PLATFORM_VERS" ] ; then
         abort 1 "package installation failure: '$1'\n    supported min sdk api level: $PACKAGE_API_MIN\n    requested min sdk api level: $TARGET_PLATFORM_VERS"
+    fi
+
+    #########################################################################################
+
+    if [ "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" = 1 ] ; then
+        if [ -z "$BUILD_NJOBS" ] ; then
+            BUILD_NJOBS="$NATIVE_PLATFORM_NCPU"
+        fi
+    else
+        BUILD_NJOBS=1
     fi
 
     #########################################################################################
@@ -9968,7 +9991,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.21.2
+NDKPKG_VERSION=0.22.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
