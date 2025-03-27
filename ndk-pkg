@@ -998,7 +998,6 @@ filetype_from_url() {
     unset PACKAGE_DOPATCH
     unset PACKAGE_PREPARE
     unset PACKAGE_DOBUILD
-    unset PACKAGE_DOEXTRA
     unset PACKAGE_DOTWEAK
 
     unset PACKAGE_PATCHES
@@ -1094,7 +1093,6 @@ filetype_from_url() {
     PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1507,7 +1505,6 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_DOPATCH
     unset RECEIPT_PACKAGE_PREPARE
     unset RECEIPT_PACKAGE_DOBUILD
-    unset RECEIPT_PACKAGE_DOEXTRA
     unset RECEIPT_PACKAGE_DOTWEAK
 
     unset RECEIPT_PACKAGE_CAVEATS
@@ -1582,7 +1579,6 @@ filetype_from_url() {
     RECEIPT_PACKAGE_DOPATCH="$(yq '.dopatch | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_DOEXTRA="$(yq '.doextra | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1894,7 +1890,6 @@ __search_packages() {
         --arg dopatch "$PACKAGE_DOPATCH" \
         --arg prepare "$PACKAGE_PREPARE" \
         --arg install "$PACKAGE_DOBUILD" \
-        --arg doextra "$PACKAGE_DOEXTRA" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
         --arg movable "$PACKAGE_MOVABLE" \
         --arg disable "$PACKAGE_DISABLE" \
@@ -1947,7 +1942,6 @@ __search_packages() {
     "dopatch":$dopatch,
     "prepare":$prepare,
     "install":$install,
-    "doextra":$doextra,
     "dotweak":$dotweak,
     "disable":$disable,
     "movable":$movable,
@@ -2113,10 +2107,6 @@ EOF
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOBUILD"
             ;;
-        doextra)
-            __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_DOEXTRA"
-            ;;
         dotweak)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOTWEAK"
@@ -2281,7 +2271,6 @@ EOF
         --arg dopatch "$RECEIPT_PACKAGE_DOPATCH" \
         --arg prepare "$RECEIPT_PACKAGE_PREPARE" \
         --arg install "$RECEIPT_PACKAGE_DOBUILD" \
-        --arg doextra "$RECEIPT_PACKAGE_DOEXTRA" \
         --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
         --arg movable "$RECEIPT_PACKAGE_MOVABLE" \
         --arg disable "$RECEIPT_PACKAGE_DISABLE" \
@@ -2335,7 +2324,6 @@ EOF
     "dopatch":$dopatch,
     "prepare":$prepare,
     "install":$install,
-    "doextra":$doextra,
     "dotweak":$dotweak,
     "movable":$movable,
     "disable":$disable,
@@ -2915,7 +2903,7 @@ EOF
     unset LIBRARIes
 
     if [ -d "$PACKAGE_LIBRARY_DIR" ] ; then
-        LIBRARIes="$(find "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 \( -type f -or -type l \) \( -name 'lib*.a' -or -name 'lib*.so' \) -printf '%f:%l\n')"
+        LIBRARIes="$(find -L "$PACKAGE_LIBRARY_DIR" -maxdepth 1 -mindepth 1 -type f \( -name 'lib*.a' -or -name 'lib*.so' \) -printf '%f:%l\n')"
     fi
 
     for LIBRARY in $LIBRARIes
@@ -7411,22 +7399,6 @@ $PACKAGE_DOBUILD
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DOEXTRA" ] && {
-        step "doextra"
-
-        eval "
-doextra() {
-$PACKAGE_DOEXTRA
-}"
-        doextra
-    }
-
-    #########################################################################################
-
-    __tweak_pc_files
-
-    #########################################################################################
-
     [ -n "$PACKAGE_DOTWEAK" ] && {
         step "dotweak"
 
@@ -7441,13 +7413,15 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
+    __tweak_pc_files
+
+    #########################################################################################
+
     run cd "$PACKAGE_INSTALL_DIR"
 
-    if [ -d  lib ] ; then
-        # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
-        # remove Libtool Archive (.la) files
-        find lib -maxdepth 1 -mindepth 1 \( -type f -or -type l \) -name '*.la' -exec rm -v {} \;
-    fi
+    # https://www.linuxfromscratch.org/blfs/view/stable-systemd/introduction/la-files.html
+    # remove Libtool Archive (.la) files
+    [ -d lib ] && find -L lib -maxdepth 1 -mindepth 1 -type f -name '*.la' -exec rm -v {} +
 
     #########################################################################################
 
@@ -7531,7 +7505,7 @@ $PACKAGE_DOTWEAK
 
     for item in 'FAQ*' 'TODO*' 'NEWS*' 'THANKS*' 'README*' 'COPYING*' 'LICENSE*' 'AUTHORS*' 'CHANGES*' 'CHANGELOG*' 'CONTRIBUTORS*' 'CONTRIBUTING*'
     do
-        find "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 \( -type f -or -type l \) -iname "$item" -exec cp -L {} . \;
+        find -L "$PACKAGE_INSTALLING_SRC_DIR" -mindepth 1 -maxdepth 1 -type f -iname "$item" -exec cp -L {} . \;
     done
 
     #########################################################################################
@@ -7821,7 +7795,7 @@ $NEEDED_SHARED_LIBRARY_FILENAME"
 
                     [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
                         unset NEEDED_SHARED_LIBRARY_FILEPATH
-                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find lib \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find -L lib -type f -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
                     }
 
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
@@ -7845,7 +7819,7 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
 
                     [ -f "$NEEDED_SHARED_LIBRARY_FILEPATH" ] || {
                         unset NEEDED_SHARED_LIBRARY_FILEPATH
-                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find "$NEEDED_SHARED_LIBRARY_ROOT_DIR" \( -type f -or -type l \) -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
+                        NEEDED_SHARED_LIBRARY_FILEPATH="$(find -L "$NEEDED_SHARED_LIBRARY_ROOT_DIR" -type f -name "$NEEDED_SHARED_LIBRARY_FILENAME" -print -quit)"
                     }
 
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
@@ -9991,7 +9965,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.22.0
+NDKPKG_VERSION=0.23.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
