@@ -1,0 +1,47 @@
+direction: right
+
+dosetup: { shape: oval }
+
+process1: {
+    dofetch: {
+        shape: oval
+    }
+}
+
+process2: {
+    do12345: {
+        shape: oval
+        style.stroke-dash: 2
+    }
+}
+
+process3: {
+    dopatch: {
+        shape: oval
+        style.stroke-dash: 2
+    }
+
+    prepare: {
+        shape: oval
+        style.stroke-dash: 2
+    }
+
+    dotweak: {
+        shape: oval
+        style.stroke-dash: 2
+    }
+
+    install: { shape: oval }
+    docheck: { shape: oval }
+
+    dopatch -> prepare -> install -> dotweak -> docheck
+}
+
+caveats: {
+    shape: oval
+    style.stroke-dash: 2
+}
+
+dosetup -> process1.dofetch -> process2.do12345 -> process3.dopatch
+
+process3.docheck -> caveats

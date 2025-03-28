@@ -835,13 +835,14 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `gn` `rake` `waf` `ndk-build`|
 |`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
-|`movable`|optional|whether this package (the installed files) can be moved/copied to other locations.|
+||||
+|`movable`|optional|whether the installed files can be moved/copied to other locations.|
 ||||
 |`disable`|optional|a space-separated list of feature names that are unsupported by this package.<br>feature name can be any one of `lto` `parallel` `static` `mostly` `macos`.<br>`lto` indicates this package does NOT support Link Time Optimization https://llvm.org/docs/LinkTimeOptimization.html.<br>`parallel` indicates this package does NOT support building in parallel.<br>`static` indicates this package does NOT support creating fully statically linked executables.<br>`mostly` indicates this package does NOT support creating mostly statically linked executables.<br>`macos` indicates this package does NOT support building on `macos`, it is only supported built on `GNU/Linux`|
 ||||
 |`api-min`|optional|specify which minimum Android SDK API level is supported for this package.|
 ||||
-|`dofetch`|optional|POSIX shell code to be run to take over the fetching process.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
+|`dofetch`|optional|POSIX shell code to be run to take over the fetching process.<br>It would be run in a separate process.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
 |`do12345`|optional|POSIX shell code to be run for native build.<br>It would be run in a separate process.|
 |`dopatch`|optional|POSIX shell code to be run to apply patches manually.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
 |`prepare`|optional|POSIX shell code to be run to do some additional preparation.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
@@ -850,9 +851,9 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 ||||
 |`caveats`|optional|multiple lines of plain text to be displayed after installation.|
 
-|phases of a package's installation|
-|-|
-|![phases](phases.svg)|
+**phases of a package's installation:**
+
+![phases](phases.svg)
 
 |build system name|build script file name|
 |-|-|
