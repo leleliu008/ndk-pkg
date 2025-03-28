@@ -3609,7 +3609,7 @@ EOF
 ##############################################################################
 # {{{ ndk-pkg depends
 
-# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <d2|dot|box|svg|png>] [-o <OUTPUT-PATH>]
+# __show_packages_depended_by_the_given_package <PACKAGE-NAME> [-t <d2|dot|box|svg|png>] [-o <OUTPUT-PATH>] [--engine=<d2|dot>]
 __show_packages_depended_by_the_given_package() {
     [ -z "$1" ] && abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>], <PACKAGE-NAME> is unspecified."
 
@@ -3621,6 +3621,8 @@ __show_packages_depended_by_the_given_package() {
 
     unset OUTPUT_TYPE
     unset OUTPUT_PATH
+
+    unset ENGINE
 
     while [ -n "$1" ]
     do
@@ -3639,6 +3641,13 @@ __show_packages_depended_by_the_given_package() {
                 else
                     OUTPUT_PATH="$1"
                 fi
+                ;;
+            --engine=*)
+                ENGINE="${1#*=}"
+                case $ENGINE in
+                    d2|dot) ;;
+                    *)  abort 1 "unrecognized diagram engine '$ENGINE', ndk-pkg only support d2 and dot diagram engine."
+                esac
                 ;;
             *)  abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-K], unrecognized option: $1"
         esac
@@ -3705,25 +3714,39 @@ __show_packages_depended_by_the_given_package() {
 
     ###########################################################################################
 
-    unset ENGIN
-
-    if [ "$OUTPUT_TYPE" = svg ] || [ "$OUTPUT_TYPE" = png ] ; then
-        if command -v dot > /dev/null ; then
-            ENGIN=dot
-        elif command -v dot_static > /dev/null ; then
-            ENGIN=dot_static
-        elif command -v d2 > /dev/null ; then
-            ENGIN=d2
-        else
-            abort 1 'none of dot, dot_static, d2 commands was found. please install graphviz or d2 package, then try again.'
+    if [ -z "$ENGINE" ] ; then
+        if [ "$OUTPUT_TYPE" = svg ] || [ "$OUTPUT_TYPE" = png ] ; then
+            if command -v dot > /dev/null ; then
+                ENGINE=dot
+            elif command -v dot_static > /dev/null ; then
+                ENGINE=dot_static
+            elif command -v d2 > /dev/null ; then
+                ENGINE=d2
+            else
+                abort 1 'none of dot, dot_static, d2 command was found. please install graphviz or d2 package, then try again.'
+            fi
         fi
+    else
+        if [ "$ENGINE" = dot ] ; then
+            ENGINE=dot_static
+        fi
+    fi
+
+    ###########################################################################################
+
+    unset GENERATE_D2
+
+    if [ "$OUTPUT_TYPE" = d2 ] || [ "$ENGINE" = d2 ] ; then
+        GENERATE_D2=1
     fi
 
     ###########################################################################################
 
     unset LINES
 
-    unset DIRECTED_PATH_LIST
+    unset HANDLED_PACKAGE_NAME_LIST
+
+    unset STACK
 
     STACK="$PACKAGE_NAME"
 
@@ -3736,6 +3759,26 @@ __show_packages_depended_by_the_given_package() {
 
         ################################################################
 
+        HANDLED=0
+
+        for HANDLED_PACKAGE_NAME in $HANDLED_PACKAGE_NAME_LIST
+        do
+            if [ "$HANDLED_PACKAGE_NAME" = "$PACKAGE_NAME" ] ; then
+                HANDLED=1
+                break
+            fi
+        done
+
+        if [ "$HANDLED" = 1 ] ; then
+            continue
+        else
+            HANDLED_PACKAGE_NAME_LIST="$HANDLED_PACKAGE_NAME_LIST $PACKAGE_NAME"
+        fi
+
+        #echo "HANDLED_PACKAGE_NAME_LIST=$HANDLED_PACKAGE_NAME_LIST"
+
+        ################################################################
+
         __load_formula_of_the_given_package "$PACKAGE_NAME"
 
         ################################################################
@@ -3744,78 +3787,31 @@ __show_packages_depended_by_the_given_package() {
 
         ################################################################
 
-        if [ "$OUTPUT_TYPE" = d2 ] || [ "$ENGIN" = d2 ] ; then
+        if [ "$GENERATE_D2" = 1 ] ; then
             for item in $PACKAGE_DEP_PKG
             do
-                if [ -z "$LINES" ] ; then
-                    LINES="$PACKAGE_NAME -> $item"
-                else
-                    LINES="$LINES
+                LINES="$LINES
 $PACKAGE_NAME -> $item"
-                fi
             done
         else
-            unset X; X="$(printf '"%s" ' $PACKAGE_DEP_PKG)"
-            unset Y; Y="$(printf '    "%s" -> { %s}\n' "$PACKAGE_NAME" "$X")"
+            DOUBLE_QUOTE_LIST=
 
-            if [ -z "$LINES" ] ; then
-                LINES="$Y"
-            else
-                LINES="$(printf '%s\n%s\n' "$LINES" "$Y")"
-            fi
+            for item in $PACKAGE_DEP_PKG
+            do
+                DOUBLE_QUOTE_LIST="$DOUBLE_QUOTE_LIST \"$item\""
+            done
+
+            LINES="$LINES
+\"$PACKAGE_NAME\" -> {$DOUBLE_QUOTE_LIST }"
         fi
-
-        ################################################################
-
-        DIRECTED_PATH_LIST_PART1=
-        DIRECTED_PATH_LIST_PART2=
-
-        for DIRECTED_PATH in $DIRECTED_PATH_LIST
-        do
-            case $DIRECTED_PATH in
-                *\>"$PACKAGE_NAME")
-                    DIRECTED_PATH_LIST_PART1="$DIRECTED_PATH_LIST_PART1 $DIRECTED_PATH" ;;
-                *)  DIRECTED_PATH_LIST_PART2="$DIRECTED_PATH_LIST_PART2 $DIRECTED_PATH" ;;
-            esac
-        done
-
-        ################################################################
-
-        # it will be recalculated
-        DIRECTED_PATH_LIST=
 
         ################################################################
 
         for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
         do
             if [ "$DEPENDENT_PACKAGE_NAME" = "$PACKAGE_NAME" ] ; then
-                abort 1 "package [$PACKAGE_NAME] depends itself."
+                abort 1 "package '$PACKAGE_NAME' depends itself."
             fi
-
-            ############################################################
-
-            if [ -z "$DIRECTED_PATH_LIST_PART1" ] ; then
-                DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $PACKAGE_NAME>$DEPENDENT_PACKAGE_NAME"
-            else
-                for DIRECTED_PATH in $DIRECTED_PATH_LIST_PART1
-                do
-                    export IFS='>'
-
-                    # check if have duplicate nodes in every directed path
-                    for node in $DIRECTED_PATH
-                    do
-                        if [ "$node" = "$DEPENDENT_PACKAGE_NAME" ] ; then
-                            abort 1 "depends has circle: $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
-                        fi
-                    done
-
-                    unset IFS
-
-                    DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH>$DEPENDENT_PACKAGE_NAME"
-                done
-            fi
-
-            ############################################################
 
             if [ -z "$STACK" ] ; then
                 STACK="$DEPENDENT_PACKAGE_NAME"
@@ -3823,8 +3819,6 @@ $PACKAGE_NAME -> $item"
                 STACK="$STACK;$DEPENDENT_PACKAGE_NAME"
             fi
         done
-
-        DIRECTED_PATH_LIST="$DIRECTED_PATH_LIST $DIRECTED_PATH_LIST_PART2"
     done
 
     ###########################################################################################
@@ -3915,7 +3909,7 @@ $LINES
             fi
             ;;
         svg|png)
-            if [ "$ENGIN" = d2 ] ; then
+            if [ "$ENGINE" = d2 ] ; then
                 if [ -z "$OUTPUT_FILEPATH" ] ; then
                     printf '%s\n' "$LINES" | d2 -
                 else
@@ -3935,9 +3929,9 @@ $LINES
                 printf 'digraph G {\n%s\n}\n' "$LINES" > dependencies.dot
 
                 if [ -z "$OUTPUT_FILEPATH" ] ; then
-                    "$ENGIN" "-T$OUTPUT_TYPE" dependencies.dot
+                    "$ENGINE" "-T$OUTPUT_TYPE" dependencies.dot
                 else
-                    "$ENGIN" "-T$OUTPUT_TYPE" -o dependencies.tmp dependencies.dot
+                    "$ENGINE" "-T$OUTPUT_TYPE" -o dependencies.tmp dependencies.dot
 
                     if [ -n "$OUTPUT_DIR" ] && [ ! -d "$OUTPUT_DIR" ] ; then
                         install -d "$OUTPUT_DIR"
@@ -3950,6 +3944,7 @@ $LINES
             fi
     esac
 }
+
 
 # }}}
 ##############################################################################
@@ -5868,50 +5863,48 @@ EOF
 
             TOPE_DEP_PKG="$(eval echo \$PACKAGE_DEP_PKG_"${TOPE_UPPERCASE_UNDERSCORE}")"
 
-            if [ -n "$TOPE_DEP_PKG" ] ; then
-                unset X; X="$(printf '"%s" ' $TOPE_DEP_PKG)"
-                unset Y; Y="$(printf '    "%s" -> { %s}\n' "$TOPE" "$X")"
+            [ -z "$TOPE_DEP_PKG" ] && continue
 
-                if [ -z "$DOT_CONTENT" ] ; then
-                    DOT_CONTENT="$Y"
-                else
-                    DOT_CONTENT="$(printf '%s\n%s\n' "$DOT_CONTENT" "$Y")"
-                fi
-            fi
+            DOUBLE_QUOTE_LIST=
 
             for item in $TOPE_DEP_PKG
             do
-                if [ -z "$D2__CONTENT" ] ; then
-                    D2__CONTENT="$TOPE -> $item"
-                else
-                    D2__CONTENT="$D2__CONTENT
-$TOPE -> $item"
+                if [ "$item" = "$TOPE" ] ; then
+                    abort 1 "package '$TOPE' depends itself."
                 fi
 
-                if [ -z "$item" ] ; then
+                D2__CONTENT="$D2__CONTENT
+$TOPE -> $item"
+
+                DOUBLE_QUOTE_LIST="$DOUBLE_QUOTE_LIST \"$item\""
+
+                if [ -z "$STACK" ] ; then
                     STACK="$item"
                 else
                     STACK="$STACK;$item"
                 fi
             done
+
+            DOT_CONTENT="$DOT_CONTENT
+\"$TOPE\" -> {$DOUBLE_QUOTE_LIST }"
         done
 
         DOT_CONTENT="digraph G {
 $DOT_CONTENT
 }"
 
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+        ##################################################
 
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_D2_="$PACKAGE_WORKING_DIR/dependencies.d2"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT="$PACKAGE_WORKING_DIR/dependencies.dot"
         PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX="$PACKAGE_WORKING_DIR/dependencies.box"
 
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+        ##################################################
 
         printf '%s\n' "$D2__CONTENT" > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_D2_"
         printf '%s\n' "$DOT_CONTENT" > "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_DOT"
 
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+        ##################################################
 
         # https://github.com/ggerganov/dot-to-ascii
         curl \
@@ -5922,7 +5915,7 @@ $DOT_CONTENT
             --data-urlencode "src=$DOT_CONTENT" \
             "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
 
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+        ##################################################
 
         DOT="$(command -v dot || command -v dot_static || true)"
 
@@ -5936,7 +5929,7 @@ $DOT_CONTENT
             fi
         fi
 
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+        ##################################################
 
         if [ -f "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" ] ; then
             cat "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX"
@@ -9578,7 +9571,7 @@ ${COLOR_GREEN}ndk-pkg search <REGULAR-EXPRESSION-PATTERN> [-v]${COLOR_OFF}
     search all available packages whose name matches the given regular expression pattern.
 
 
-${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [--engine=<d2|dot>]${COLOR_OFF}
     show the packages that are depended by the given package.
 
     <OUTPUT-TYPE> must be any one of d2 dot box svg png
@@ -9592,6 +9585,8 @@ ${COLOR_GREEN}ndk-pkg depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH
     If -o <OUTPUT-PATH> option is unspecified, the result will be written to stdout.
 
     If -t <OUTPUT-TYPE> option is unspecified, and if <OUTPUT-PATH> ends with one of .d2 .dot .box .svg .png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.
+
+    You are allowd to choose the diagram engine for generating svg/png format diagram. ndk-pkg only support d2 and dot diagram engine at the moment.
 
 
 ${COLOR_GREEN}ndk-pkg fetch <PACKAGE-NAME>${COLOR_OFF}

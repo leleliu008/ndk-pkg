@@ -521,6 +521,9 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ndk-pkg depends curl -o curl-dependencies.box
     ndk-pkg depends curl -o curl-dependencies.png
     ndk-pkg depends curl -o curl-dependencies.svg
+
+    ndk-pkg depends curl -t svg -o . --engine=d2
+    ndk-pkg depends curl -t svg -o . --engine=dot
     ```
 
 - **download resources of the given package to the local cache**

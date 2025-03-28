@@ -135,7 +135,8 @@ function _ndk_pkg() {
                     _arguments \
                         '1:package-name:_ndk_pkg_available_packages' \
                         '-t[specify output format]:output-type:(d2 dot box svg png)' \
-                        '-o[specify output filepath or directory]:output-path:_files'
+                        '-o[specify output filepath or directory]:output-path:_files' \
+                        '--engine=-[specify diagram engine]:engine:(d2 dot)'
                     ;;
                 bundle)
                     _arguments \
