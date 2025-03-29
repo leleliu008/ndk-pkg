@@ -30,16 +30,13 @@ Please read these caveats carefully before starting to use this software.
 
 This is the recommended way of using this software.
 
-In this way, you don't need to care about other things than:
+In this way, you don't need a computer in hand, you could use GitHub mobile Apps.
 
-- which package would you like to build? [lookup package names](https://github.com/leleliu008/ndk-pkg-formula-repository-official-core/tree/master/formula)
-- which minimum Android SDK API level would you like to support?
-- which Android ABI would you like to build for?
-- which build profile would you like to use?
+In this way, you will be liberated from the rut of setting up the build environment.
 
-||
-|-|
-|<img src="1.png" width="311px" >|
+In this way, you do NOT need to frequently update this software, you always use the latest version.
+
+In this way, all you need to do is just clicking the buttons and waiting for finishing. After finishing, a url refers to a zip archive will be provided to download.
 
 For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-manually-build>
 
