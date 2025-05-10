@@ -802,7 +802,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`git-url`|optional|the source code git repository.<br>If `src-url` is not present, this mapping must be present.|
 |`git-ref`|optional|reference: <https://git-scm.com/book/en/v2/Git-Internals-Git-References> <br>example values: `HEAD` `refs/heads/master` `refs/heads/main` `refs/tags/v1`, default value is `HEAD`|
 |`git-sha`|optional|the full git commit id, 40-byte hexadecimal string, if `git-ref` and `git-sha` both are present, `git-sha` takes precedence over `git-ref`|
-|`git-nth`|optional|tell `ndk-pkg` that how many depth commits would you like to be fetched. default is `1`, this would save your time and storage. If you want to fetch all commits, set this to `0`|
+|`git-nth`|optional|tell `ndk-pkg` how many commits you want to fetch. default is `1`, this would save your time and storage. If you want to fetch all commits, set this to `0`|
 ||||
 |`src-url`|optional|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` when this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
 |`src-uri`|optional|the mirror of `src-url`.|
@@ -821,11 +821,11 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 ||||
 |`reslist`|optional|multiple lines of `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
 ||||
-|`dep-pkg`|optional|a space-separated list of   `ndk-pkg packages` that are depended by this package when installing and/or runtime, which will be installed via [ndk-pkg](https://github.com/leleliu008/ndk-pkg).|
+|`dep-pkg`|optional|a space-separated list of   `ndk-pkg packages` that are depended by this package at install time and/or run time, which will be installed via [ndk-pkg](https://github.com/leleliu008/ndk-pkg).|
 |`dep-lib`|optional|a space-separated list of libraries that will be linked. library name starts with `-l` will be directly passed to the linker. otherwise, it will be recognized as a `pkg-config` package name and it will be calculated via `pkg-config --libs-only-l ` then passed to the linker.|
-|`dep-upp`|optional|a space-separated list of   `uppm packages` that are depended by this package when installing and/or runtime, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
-|`dep-pym`|optional|a space-separated list of `python packages` that are depended by this package when installing and/or runtime, which will be installed via [pip3](https://github.com/pypa/pip).|
-|`dep-plm`|optional|a space-separated list of    `perl modules` that are depended by this package when installing and/or runtime, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
+|`dep-upp`|optional|a space-separated list of   `uppm packages` that are depended by this package at install time and/or run time, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
+|`dep-pym`|optional|a space-separated list of `python packages` that are depended by this package at install time and/or run time, which will be installed via [pip3](https://github.com/pypa/pip).|
+|`dep-plm`|optional|a space-separated list of    `perl modules` that are depended by this package at install time and/or run time, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
 ||||
 |`ccflags`|optional|append to `CFLAGS`|
 |`xxflags`|optional|append to `CXXFLAGS`|
@@ -833,8 +833,8 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`ldflags`|optional|append to `LDFLAGS`|
 ||||
 |`bsystem`|optional|build system name.<br>values can be one or a combination of `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `go` `gn` `rake` `waf` `ndk-build`|
-|`bscript`|optional|the directory where the build script is located in, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
-|`binbstd`|optional|whether to build in the directory where the build script is located in, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
+|`bscript`|optional|the directory where the build script is located, relative to `PACKAGE_WORKING_DIR`. build script is a file that usually has name such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
+|`binbstd`|optional|whether to build in the directory where the build script is located, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
 ||||
 |`movable`|optional|whether the installed files can be moved/copied to other locations.|
 ||||
@@ -979,8 +979,8 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`NM`|a command line tool to list symbols from object files.|
 |`STRIP`|a command line tool to discard symbols and other data from object files.|
 |||
-|`PACKAGE_WORKING_DIR`|the working directory when installing.|
-|`PACKAGE_BSCRIPT_DIR`|the directory where the build script (e.g. `Makefile`, `configure`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc) is located in.|
+|`PACKAGE_WORKING_DIR`|the working directory for installing.|
+|`PACKAGE_BSCRIPT_DIR`|the directory where the build script (e.g. `Makefile`, `configure`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc) is located.|
 |`PACKAGE_BCACHED_DIR`|the directory where the temporary files are stored in when building.|
 |`PACKAGE_INSTALL_DIR`|the directory where the final files will be installed to.|
 |||
@@ -1020,9 +1020,9 @@ created: 1673684639
 updated: 1673684767
 ```
 
-If a ndk-pkg formula repository is `pinned`, which means it would not be updated.
+If a ndk-pkg formula repository is `pinned`, it would not be updated.
 
-If a ndk-pkg formula repository is `disabled`, which means ndk-pkg would not search formulas in this formula repository.
+If a ndk-pkg formula repository is `disabled`, it would not be searched.
 
 ## ndk-pkg formula repository management
 
