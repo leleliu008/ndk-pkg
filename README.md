@@ -93,7 +93,7 @@ docker exec -it ndk-pkg ndk-pkg install curl --target=android-35-arm64-v8a --sta
 
 This is the recommended way of using this software if you want to use this software locally and your host is `linux-x86_64`.
 
-`chroot` likes `docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
+`chroot`, like `docker` container, is an isolated clean environment where the running process can not be affected by your host system's environment variables.
 
 ```bash
 curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.2-base-amd64.tar.gz
@@ -120,7 +120,7 @@ sudo chroot ubuntu-rootfs ndk-pkg install curl --target=android-35-arm64-v8a --s
 
 This is the recommended way of using this software if you want to use this software locally and your host is `linux-x86_64`.
 
-`chroot` likes `docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
+`chroot`, like `docker` container, is an isolated clean environment where the running process can not be affected by your host system's environment variables.
 
 ```bash
 curl -LO http://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
