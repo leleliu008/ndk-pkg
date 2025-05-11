@@ -10151,6 +10151,17 @@ fi
 
 ##################################################################################
 
+unset NATIVE_PLATFORM_KIND
+unset NATIVE_PLATFORM_TYPE
+unset NATIVE_PLATFORM_CODE
+unset NATIVE_PLATFORM_NAME
+unset NATIVE_PLATFORM_VERS
+unset NATIVE_PLATFORM_ARCH
+unset NATIVE_PLATFORM_NCPU
+unset NATIVE_PLATFORM_LIBC
+unset NATIVE_PLATFORM_EUID
+unset NATIVE_PLATFORM_EGID
+
 eval "$("$UPPM" sysinfo --shell)"
 
 ##################################################################################
