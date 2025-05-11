@@ -22,7 +22,7 @@ done
 
 tar vxf uppm*.tar.xz -C out --strip-components=1
 
-mv out/bin/uppm *.otf fonts.conf config.sub config.guess out/
+mv out/bin/uppm *.otf core/fonts.conf config.sub config.guess out/
 
 rm -rf out/share/ out/.ppkg/
 
