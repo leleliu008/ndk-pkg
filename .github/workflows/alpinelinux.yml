@@ -63,7 +63,7 @@ jobs:
       - run: ./ndk-pkg depends libzip -t svg -o . --engine=d2
       - run: ./ndk-pkg depends libzip -t svg -o . --engine=dot
       - run: ./ndk-pkg depends libzip -t png -o .
-      - run: ./ndk-pkg depends libzip -t png -o . --engine=d2
+        #- run: ./ndk-pkg depends libzip -t png -o . --engine=d2
       - run: ./ndk-pkg depends libzip -t png -o . --engine=dot
 
 
