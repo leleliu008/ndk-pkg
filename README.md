@@ -335,8 +335,6 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 │   │   ├── pkg-config
 │   │   │   ├── bin
 │   │   │   └── share
-│   │   ├── sysinfo
-│   │   │   └── bin
 │   │   ├── tree
 │   │   │   ├── bin
 │   │   │   └── share
@@ -426,7 +424,6 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     - [GNU grep](https://www.gnu.org/software/grep/manual/grep.html)
     - [BSD tar](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)
     - [patchelf](https://github.com/NixOS/patchelf)
-    - [sysinfo](https://github.com/leleliu008/C-examples/tree/master/utils/sysinfo)
     - [tree](https://linux.die.net/man/1/tree)
     - [curl](https://curl.se/docs/manpage.html)
     - [git](https://git-scm.com/docs/git)
@@ -894,7 +891,6 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`bsdtar`|[Reference](https://man.archlinux.org/man/core/libarchive/bsdtar.1.en)|
 |`pkg-config`|[Reference](https://people.freedesktop.org/~dbn/pkg-config-guide.html)|
 |`patchelf`|[Reference](https://github.com/NixOS/patchelf)|
-|`sysinfo`|[Reference](https://github.com/leleliu008/C-examples/tree/master/utils/sysinfo)|
 |||
 |`echo`|`echo 'your message.'`|
 |`info`|`info 'your information.'`|
