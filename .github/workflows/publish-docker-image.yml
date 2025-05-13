@@ -32,13 +32,16 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
 
+      - id: version
+        run: printf 'version=%s\n' "$(./ndk-pkg -V)"
+
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{ github.repository }}:latest,ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Generate artifact attestation
