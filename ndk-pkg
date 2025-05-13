@@ -9319,6 +9319,8 @@ __setup() {
         fi
     }
 
+    unset TERMUX
+
     NATIVE_PLATFORM_KIND="$(uname -s)"
 
     __setup_$NATIVE_PLATFORM_KIND
@@ -9381,7 +9383,13 @@ __setup() {
     unset UPPM_PACKAGE_EXEFIND_PATH
     unset UPPM_PACKAGE_ACLOCAL_PATH
 
-    for UPPM_PACKAGE_NAME in bash coreutils findutils gawk gsed grep bsdtar zip git curl tree patchelf xxd fzf bat jq yq d2 dot_static
+    unset EXTRA_UPPM_PACKAGE_NAME
+
+    if [ "$TERMUX" != 1 ] ; then
+        EXTRA_UPPM_PACKAGE_NAME=coreutils
+    fi
+
+    for UPPM_PACKAGE_NAME in bash $EXTRA_UPPM_PACKAGE_NAME findutils gawk gsed grep bsdtar zip git curl tree patchelf xxd fzf bat jq yq d2 dot_static
     do
         run ./uppm install "$UPPM_PACKAGE_NAME"
 
@@ -9956,7 +9964,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.24.1
+NDKPKG_VERSION=0.24.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
