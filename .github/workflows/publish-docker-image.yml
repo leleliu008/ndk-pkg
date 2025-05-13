@@ -33,7 +33,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}
 
       - id: version
-        run: printf 'version=%s\n' "$(./ndk-pkg -V)"
+        run: printf 'version=%s\n' "$(./ndk-pkg -V)" >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker image
         id: push
