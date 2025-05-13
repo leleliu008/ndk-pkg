@@ -46,36 +46,28 @@ This is the recommended way of using this software if you want to use this softw
 
 `docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
 
-**step1. build the ndk-pkg docker image**
-
-```bash
-git clone --depth=1 https://github.com/leleliu008/ndk-pkg
-cd ndk-pkg
-docker build --platform linux/amd64 -t leleliu008/ndk-pkg .
-```
-
-**step2. create the ndk-pkg docker container**
+**step1. create the ndk-pkg docker container**
 
 ```bash
 mkdir -p ~/ndk-pkg-home
 mkdir -p ~/.m2
 
-docker create -it --name ndk-pkg -v ~/ndk-pkg-home:/root/.ndk-pkg -v ~/.m2:/root/.m2 leleliu008/ndk-pkg
+docker create -it --name ndk-pkg -v ~/ndk-pkg-home:/root/.ndk-pkg -v ~/.m2:/root/.m2 ghcr.io/leleliu008/ndk-pkg
 ```
 
-**step3. start the ndk-pkg docker container**
+**step2. start the ndk-pkg docker container**
 
 ```bash
 docker start ndk-pkg
 ```
 
-**step4. install essential tools**
+**step3. install essential tools**
 
 ```bash
 docker exec -it ndk-pkg ndk-pkg setup
 ```
 
-**step5. update formula repositories**
+**step4. update formula repositories**
 
 ```bash
 docker exec -it ndk-pkg ndk-pkg update
