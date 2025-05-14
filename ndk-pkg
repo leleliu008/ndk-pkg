@@ -3583,10 +3583,10 @@ __gen_url_transform_sample() {
 
 case \$1 in
     *githubusercontent.com/*)
-        printf 'https://ghp.ci/%s\n' "\$1"
+        printf 'https://ghfast.top/%s\n' "\$1"
         ;;
     https://github.com/*)
-        printf 'https://ghp.ci/%s\n' "\$1"
+        printf 'https://ghfast.top/%s\n' "\$1"
         ;;
     '') printf '%s\n' "\$0 <URL>, <URL> is unspecified." >&2 ; exit 1 ;;
     *)  printf '%s\n' "\$1"
@@ -6980,12 +6980,16 @@ $PACKAGE_DO12345
 
         export "CARGO_TARGET_${RUST_TARGET_FOR_BUILD}_RUSTFLAGS"="$RUSTFLAGS_FOR_BUILD"
 
+        #########################################################################
+
         # https://libraries.io/cargo/pkg-config
         # https://crates.io/crates/pkg-config
         # https://docs.rs/pkg-config/latest/pkg_config/
         # https://github.com/rust-lang/pkg-config-rs
         export HOST_PKG_CONFIG_PATH="$PKG_CONFIG_PATH_FOR_BUILD"
         export HOST_PKG_CONFIG_LIBDIR="$NDKPKG_CORE_DIR/lib/pkgconfig"
+
+        #########################################################################
 
         # https://libraries.io/cargo/cc
         # https://crates.io/crates/cc
@@ -6998,6 +7002,16 @@ $PACKAGE_DO12345
         export HOST_CXXFLAGS="$CXXFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD"
 
         export HOST_AR="$AR_FOR_BUILD"
+
+        RUST_TARGET_FOR_BUILD_UNDERSCORE="$(rustc -vV | sed -n '/host: /p' | cut -c7- | tr '-' '_')"
+
+        eval export "AR_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$AR_FOR_BUILD'"
+
+        eval export "CC_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$CC_FOR_BUILD'"
+        eval export "CFLAGS_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$CFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD'"
+
+        eval export "CXX_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$CXX_FOR_BUILD'"
+        eval export "CXXFLAGS_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$CXXFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD'"
 
         #########################################################################
 
@@ -9964,7 +9978,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.24.2
+NDKPKG_VERSION=0.24.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
