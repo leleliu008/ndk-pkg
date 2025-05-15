@@ -138,7 +138,7 @@ sudo chroot alpine-rootfs ndk-pkg install curl --target=android-35-arm64-v8a --s
 
 **Note** :
 
-- As of Android NDK r25, due to use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt) to optimize the binaries of Android NDK for Linux , Android NDK for Linux is incompatible with WSL1. For more details please refer to https://github.com/android/ndk/issues/1755
+- As of Android NDK r25, Android NDK for Linux is incompatible with WSL1 due to the use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt). For more details please refer to https://github.com/android/ndk/issues/1755
 
 **/etc/wsl.conf** :
 
@@ -173,7 +173,7 @@ chmod a+x ndk-pkg
 
 **Caveats**:
 
-- Running `ndk-pkg` locally directly on your local host is not recommended due to build tools(e.g. autotools, cmake, etc) are easy to be affected by environment variables. Running `ndk-pkg` in an isolated clean environment (`docker`, `chroot`) are highly recommended.
+- Running `ndk-pkg` locally directly on your local host is not recommended due to build tools(e.g. autotools, cmake, etc) are easy to be affected by environment variables. Running `ndk-pkg` in an isolated clean environment (`docker`, `chroot`) is highly recommended.
 
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
@@ -181,9 +181,9 @@ chmod a+x ndk-pkg
 ./ndk-pkg setup
 ```
 
-Please try the following URLs if above url is not reachable:
+中国大陆的用户亦可将上面的地址替换为下面的地址:
 
-- https://raw.githubusercontents.com/leleliu008/ndk-pkg/master/ndk-pkg
+- https://ghfast.top/https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 - https://cdn.jsdelivr.net/gh/leleliu008/ndk-pkg/ndk-pkg
 - https://gitee.com/fpliu/ndk-pkg/raw/master/ndk-pkg
 
