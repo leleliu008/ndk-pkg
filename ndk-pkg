@@ -7010,15 +7010,15 @@ $PACKAGE_DO12345
 
         export HOST_AR="$AR_FOR_BUILD"
 
+        #########################################################################
+
         RUST_TARGET_FOR_BUILD_UNDERSCORE="$(rustc -vV | sed -n '/host: /p' | cut -c7- | tr '-' '_')"
 
-        eval export "AR_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$AR_FOR_BUILD'"
-
-        eval export "CC_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$CC_FOR_BUILD'"
-        eval export "CFLAGS_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$CFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD'"
-
-        eval export "CXX_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$CXX_FOR_BUILD'"
-        eval export "CXXFLAGS_${RUST_TARGET_FOR_BUILD_UNDERSCORE}='$CXXFLAGS_FOR_BUILD $CPPFLAGS_FOR_BUILD $LDFLAGS_FOR_BUILD'"
+        eval unset "AR_${RUST_TARGET_FOR_BUILD_UNDERSCORE}"
+        eval unset "CC_${RUST_TARGET_FOR_BUILD_UNDERSCORE}"
+        eval unset "CFLAGS_${RUST_TARGET_FOR_BUILD_UNDERSCORE}"
+        eval unset "CXX_${RUST_TARGET_FOR_BUILD_UNDERSCORE}"
+        eval unset "CXXFLAGS_${RUST_TARGET_FOR_BUILD_UNDERSCORE}"
 
         #########################################################################
 
