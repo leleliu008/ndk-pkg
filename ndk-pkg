@@ -6554,7 +6554,7 @@ $PACKAGE_DO12345
         TARGET_TRIPLE="$TARGET_PLATFORM_ARCH-linux-android"
     fi
 
-    export ANDROID_NDK_COMPILER_ARGS="--target=${TARGET_TRIPLE}${TARGET_PLATFORM_VERS} --sysroot=$ANDROID_NDK_SYSROOT"
+    export ANDROID_NDK_COMPILER_ARGS="--target=${TARGET_TRIPLE}${TARGET_PLATFORM_VERS} --sysroot=$ANDROID_NDK_SYSROOT -Qunused-arguments"
 
     export ANDROID_NDK_CC
     export ANDROID_NDK_CXX
@@ -6584,9 +6584,9 @@ $PACKAGE_DO12345
     #########################################################################################
 
     # https://gcc.gnu.org/onlinedocs/gcc-4.3.6/gcc/Warning-Options.html
-    CCFLAGS='-Qunused-arguments -fPIC -Wall'
-    XXFLAGS='-Qunused-arguments -fPIC -Wall'
-    PPFLAGS="-Qunused-arguments -include $NDKPKG_COMMON_H_FILEPATH"
+    CCFLAGS='-fPIC -Wall'
+    XXFLAGS='-fPIC -Wall'
+    PPFLAGS="-include $NDKPKG_COMMON_H_FILEPATH"
     LDFLAGS='-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition'
 
     CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
