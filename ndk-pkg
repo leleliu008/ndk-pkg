@@ -1244,6 +1244,9 @@ filetype_from_url() {
 
     #########################################################################################
 
+    export IFS='
+'
+
     for LINE in $PACKAGE_PATCHES $PACKAGE_RESLIST
     do
         SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
@@ -1262,6 +1265,8 @@ filetype_from_url() {
                 PACKAGE_NEED_BTAR=1
         esac
     done
+
+    unset IFS
 
     #########################################################################################
 
@@ -6382,58 +6387,62 @@ $PACKAGE_DOFETCH
             esac
         fi
 
-        for LINE in $PACKAGE_PATCHES
-        do
-            SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
-            URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
-            URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
-            OPT="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
+        [ -n "$PACKAGE_PATCHES" ] && {
+            printf '%s\n' "$PACKAGE_PATCHES" | while read -r LINE
+            do
+                SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+                URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+                URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
+                OPT="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
 
-            FILETYPE="$(filetype_from_url "$URL")"
-            FILENAME="$SHA$FILETYPE"
-            FILEPATH="$NDKPKG_DOWNLOADS_DIR/$FILENAME"
+                FILETYPE="$(filetype_from_url "$URL")"
+                FILENAME="$SHA$FILETYPE"
+                FILEPATH="$NDKPKG_DOWNLOADS_DIR/$FILENAME"
 
-            wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
+                wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
 
-            case $FILETYPE in
-                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                    run bsdtar xf "$FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
-                    ;;
-                *)  run cp "$FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
-                    printf '%s|%s\n' "$FILENAME" "$OPT" >> "$PACKAGE_INSTALLING_FIX_DIR/index"
-            esac
-        done
+                case $FILETYPE in
+                    .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                        run bsdtar xf "$FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
+                        ;;
+                    *)  run cp "$FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
+                        printf '%s|%s\n' "$FILENAME" "$OPT" >> "$PACKAGE_INSTALLING_FIX_DIR/index"
+                esac
+            done
+        }
 
-        for LINE in $PACKAGE_RESLIST
-        do
-            SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
-            URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
-            URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
-            DIR="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
-            LEV="$(printf '%s\n' "$LINE" | cut -d '|' -f5)"
+        [ -n "$PACKAGE_RESLIST" ] && {
+            printf '%s\n' "$PACKAGE_RESLIST" | while read -r LINE
+            do
+                SHA="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
+                URL="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
+                URI="$(printf '%s\n' "$LINE" | cut -d '|' -f3)"
+                DIR="$(printf '%s\n' "$LINE" | cut -d '|' -f4)"
+                LEV="$(printf '%s\n' "$LINE" | cut -d '|' -f5)"
 
-            [ -z "$LEV" ] && LEV=1
+                [ -z "$LEV" ] && LEV=1
 
-            FILETYPE="$(filetype_from_url "$URL")"
-            FILENAME="$SHA$FILETYPE"
-            FILEPATH="$NDKPKG_DOWNLOADS_DIR/$FILENAME"
+                FILETYPE="$(filetype_from_url "$URL")"
+                FILENAME="$SHA$FILETYPE"
+                FILEPATH="$NDKPKG_DOWNLOADS_DIR/$FILENAME"
 
-            wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
+                wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
 
-            if [ -z "$DIR" ] ; then
-                DEST="$PACKAGE_INSTALLING_RES_DIR"
-            else
-                DEST="$PACKAGE_INSTALLING_RES_DIR/$DIR"
-                run install -d "$DEST"
-            fi
+                if [ -z "$DIR" ] ; then
+                    DEST="$PACKAGE_INSTALLING_RES_DIR"
+                else
+                    DEST="$PACKAGE_INSTALLING_RES_DIR/$DIR"
+                    run install -d "$DEST"
+                fi
 
-            case $FILETYPE in
-                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
-                    run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "$LEV" --no-same-owner
-                    ;;
-                *)  run cp "$FILEPATH" "$DEST/"
-            esac
-        done
+                case $FILETYPE in
+                    .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                        run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "$LEV" --no-same-owner
+                        ;;
+                    *)  run cp "$FILEPATH" "$DEST/"
+                esac
+            done
+        }
     fi
 
     #########################################################################################
@@ -7294,13 +7303,13 @@ EOF
     [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] && {
         cd "$PACKAGE_BSCRIPT_DIR"
 
-        for LINE in $(cat "$PACKAGE_INSTALLING_FIX_DIR/index")
+        while read -r LINE
         do
             FILE="$(printf '%s\n' "$LINE" | cut -d '|' -f1)"
             OPTS="$(printf '%s\n' "$LINE" | cut -d '|' -f2)"
             [ -z "$OPTS" ] && OPTS='-p1'
             run "patch $OPTS < $PACKAGE_INSTALLING_FIX_DIR/$FILE"
-        done
+        done < "$PACKAGE_INSTALLING_FIX_DIR/index"
     }
 
     [ -n "$PACKAGE_DOPATCH" ] && {
@@ -9985,7 +9994,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.24.3
+NDKPKG_VERSION=0.24.4
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
