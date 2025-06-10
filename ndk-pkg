@@ -851,15 +851,22 @@ __list_available_formula_repositories() {
   __path_of_formula_of_the_given_package() {
     [ -z "$1" ] && abort 1 "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
 
-    for FORMULA_SEARCH_DIR in $NDKPKG_FORMULA_SEARCH_DIRS
-    do
-        FORMULA_FILEPATH="$FORMULA_SEARCH_DIR/$1.yml"
+    if [ -n "$NDKPKG_FORMULA_SEARCH_DIRS" ] ; then
+        export IFS=':'
 
-        if [ -f           "$FORMULA_FILEPATH" ] ; then
-            printf '%s\n' "$FORMULA_FILEPATH"
-            return 0
-        fi
-    done
+        for FORMULA_SEARCH_DIR in $NDKPKG_FORMULA_SEARCH_DIRS
+        do
+            FORMULA_FILEPATH="$FORMULA_SEARCH_DIR/$1.yml"
+
+            if [ -f           "$FORMULA_FILEPATH" ] ; then
+                printf '%s\n' "$FORMULA_FILEPATH"
+                unset IFS
+                return 0
+            fi
+        done
+
+        unset IFS
+    fi
 
     [ -d "$NDKPKG_FORMULA_REPO_ROOT" ] || return 0
 
@@ -4618,8 +4625,7 @@ inspect_install_arguments() {
                 [ -e "$1" ] || abort 1 "'$1' was expected to be exist, but it was not."
                 [ -d "$1" ] || abort 1 "'$1' was expected to be a directory, but it was not."
                 FORMULA_SEARCH_DIR="$(realpath "$1")"
-                SPECIFIED_FORMULA_SEARCH_DIRS="$SPECIFIED_FORMULA_SEARCH_DIRS
-$FORMULA_SEARCH_DIR"
+                SPECIFIED_FORMULA_SEARCH_DIRS="$SPECIFIED_FORMULA_SEARCH_DIRS:$FORMULA_SEARCH_DIR"
                 ;;
             -K) REQUEST_TO_KEEP_SESSION_DIR=1 ;;
             -U) REQUEST_TO_UPGRADE_IF_POSSIBLE=1 ;;
@@ -4636,7 +4642,11 @@ $FORMULA_SEARCH_DIR"
 
     #########################################################################################
 
-    NDKPKG_FORMULA_SEARCH_DIRS="$SPECIFIED_FORMULA_SEARCH_DIRS"
+    if [ -z "$NDKPKG_FORMULA_SEARCH_DIRS" ] ; then
+        NDKPKG_FORMULA_SEARCH_DIRS="${SPECIFIED_FORMULA_SEARCH_DIRS#:}"
+    else
+        NDKPKG_FORMULA_SEARCH_DIRS="${SPECIFIED_FORMULA_SEARCH_DIRS#:}:$NDKPKG_FORMULA_SEARCH_DIRS"
+    fi
 
     #########################################################################################
 
@@ -4871,16 +4881,20 @@ __install_the_given_packages() {
 # https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
 # https://git.savannah.gnu.org/cgit/config.git/tree/
   __update_config_sub_guess() {
+    UPDATE_GNU_CONFIG_OLDCWD="$PWD"
+
     run cd "$SESSION_DIR"
 
     if [ -f config/config.sub ] && [ -f config/config.guess ] ; then
         CONFIG_FILE_DIR="$SESSION_DIR/config"
     else
-        if [    -d config.git ] ; then
-            rm -rf config.git
+        if [    -d config ] ; then
+            rm -rf config
         fi
 
-        if run git clone --depth 1 https://git.savannah.gnu.org/git/config.git ; then
+        if run git_checkout https://github.com/leleliu008/gnu-config --depth=1 -C config ; then
+            CONFIG_FILE_DIR="$SESSION_DIR/config"
+        elif run git clone --depth 1 https://git.savannah.gnu.org/git/config.git ; then
             CONFIG_FILE_DIR="$SESSION_DIR/config"
         else
             if  run curl -L -o _config.sub   "'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'" &&
@@ -4907,7 +4921,7 @@ __install_the_given_packages() {
         fi
     fi
 
-    run cd -
+    run cd "$UPDATE_GNU_CONFIG_OLDCWD"
 
     find -type f -name config.sub   -exec cp -vf "$CONFIG_FILE_DIR/config.sub"   {} \;
     find -type f -name config.guess -exec cp -vf "$CONFIG_FILE_DIR/config.guess" {} \;
@@ -9994,7 +10008,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.24.4
+NDKPKG_VERSION=0.24.5
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -10011,8 +10025,6 @@ NDKPKG_CORE_DIR="$NDKPKG_HOME/core"
 NDKPKG_DOWNLOADS_DIR="$NDKPKG_HOME/downloads"
 
 NDKPKG_FORMULA_REPO_ROOT="$NDKPKG_HOME/repos.d"
-
-NDKPKG_FORMULA_SEARCH_DIRS=
 
 NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
 
