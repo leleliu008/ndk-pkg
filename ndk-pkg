@@ -5256,11 +5256,7 @@ run export EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib"
 run export EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/include"
 run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
 '
-    if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
-        PACKAGE_INSTALL='perl Makefile.PL'
-    else
-        PACKAGE_INSTALL='perl Makefile.PL LDDLFLAGS="\"-shared -L$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib\""'
-    fi
+    PACKAGE_INSTALL='perl Makefile.PL'
 }
 
 native_package_info_libiconv() {
@@ -5612,7 +5608,7 @@ EOF
                 fi
 
                 # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-                CCFLAGS_FOR_BUILD="-fPIC -fno-common"
+                CCFLAGS_FOR_BUILD="-fPIC -fno-common -Doff64_t=off_t"
                 LDFLAGS_FOR_BUILD="-Wl,--as-needed"
                 ;;
             android)
@@ -10008,7 +10004,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.24.5
+NDKPKG_VERSION=0.24.6
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
