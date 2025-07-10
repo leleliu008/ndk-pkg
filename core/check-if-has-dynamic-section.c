@@ -118,7 +118,7 @@ int main(int argc, const char *argv[]) {
         return 4;
     }
 
-    if (st.st_size < 5) {
+    if (st.st_size < 52) {
         fprintf(stderr, "NOT an ELF file: %s\n", argv[1]);
         close(fd);
         return 100;
@@ -167,8 +167,8 @@ int main(int argc, const char *argv[]) {
     int ret;
 
     switch (a[4]) {
-        case 1: ret = handle_elf32(fd, argv[1]); break;
-        case 2: ret = handle_elf64(fd, argv[1]); break;
+        case ELFCLASS32: ret = handle_elf32(fd, argv[1]); break;
+        case ELFCLASS64: ret = handle_elf64(fd, argv[1]); break;
         default: 
             fprintf(stderr, "Invalid ELF file: %s\n", argv[1]);
             ret = 101;

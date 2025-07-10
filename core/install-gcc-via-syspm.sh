@@ -17,6 +17,11 @@ __install_gcc_via_syspm_on_linuxmint() {
     apt-get -y install g++
 }
 
+__install_gcc_via_syspm_on_openEuler() {
+    dnf -y update
+    dnf -y install gcc-c++
+}
+
 __install_gcc_via_syspm_on_rocky() {
     dnf -y update
     dnf -y install gcc-c++

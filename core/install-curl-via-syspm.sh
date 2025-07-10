@@ -17,6 +17,11 @@ __install_curl_via_syspm_on_linuxmint() {
     apt-get -y install curl
 }
 
+__install_curl_via_syspm_on_openEuler() {
+    dnf -y update
+    dnf -y install curl
+}
+
 __install_curl_via_syspm_on_rocky() {
     dnf -y update
     dnf -y install curl
