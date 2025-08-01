@@ -9172,7 +9172,7 @@ EOF
             # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
             ANDROID_NDK_REVISION='r27b'
         else
-            ANDROID_NDK_REVISION='r27c'
+            ANDROID_NDK_REVISION='r27d'
         fi
 
         ANDROID_NDK_PKG="android-ndk-$ANDROID_NDK_REVISION"
@@ -9186,18 +9186,15 @@ EOF
             uppm update
             uppm install "$ANDROID_NDK_PKG"
 
-            if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
-                ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
-            else
-                ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_PLATFORM_ARCH"
-            fi
-
-            f="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/sysroot/usr/include/time.h"
+            #if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+            #    ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
+            #else
+            #    ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_PLATFORM_ARCH"
+            #fi
 
             # https://github.com/termux/termux-packages/issues/21113
             # https://github.com/termux/termux-packages/blob/master/ndk-patches/27c/time.h.patch
-            gsed -i '41c #if __ANDROID_API__ >= 35' "$f"
-            gsed -i '53c #endif'                    "$f"
+            # gsed -i -e '41c #if __ANDROID_API__ >= 35' -e '53c #endif' "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/sysroot/usr/include/time.h"
         fi
     else
         ANDROID_NDK_HOME="$1"
@@ -9229,17 +9226,19 @@ __setup() {
     unset NATIVE_PLATFORM_VERS
 
     __setup_Darwin() {
+        NATIVE_PLATFORM_ARCH="$(uname -m)"
+
         NATIVE_PLATFORM_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
 
         if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
             NATIVE_PLATFORM_VERS='10.15'
         elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
             NATIVE_PLATFORM_VERS='15.0'
+            export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/leleliu008/uppm-package-repository-macos-15.0-$NATIVE_PLATFORM_ARCH"
         else
             NATIVE_PLATFORM_VERS="$NATIVE_PLATFORM_VERS_MAJOR.0"
         fi
 
-        NATIVE_PLATFORM_ARCH="$(uname -m)"
         NATIVE_PLATFORM_TRIPLE="macos-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
     }
 
@@ -10011,7 +10010,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.24.6
+NDKPKG_VERSION=0.24.7
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -10216,6 +10215,12 @@ unset NATIVE_PLATFORM_EUID
 unset NATIVE_PLATFORM_EGID
 
 eval "$("$UPPM" sysinfo --shell)"
+
+if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+    case $NATIVE_PLATFORM_VERS in
+        1[5-9].*) export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/leleliu008/uppm-package-repository-macos-15.0-$NATIVE_PLATFORM_ARCH"
+    esac
+fi
 
 ##################################################################################
 
