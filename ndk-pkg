@@ -984,8 +984,14 @@ filetype_from_url() {
     # space-separated    perl modules that are depended by this package when installing, which will be installed via cpan
     unset PACKAGE_DEP_PLM
 
-    # space-separated python packages that are depended by this package when installing, which will be installed via pip3
-    unset PACKAGE_DEP_PYM
+    # space-separated python packages that are depended by this package when installing, which will be installed via pip
+    unset PACKAGE_DEP_PIP
+
+    # space-separated   ruby packages that are depended by this package when installing, which will be installed via gem
+    unset PACKAGE_DEP_GEM
+
+    # space-separated nodejs packages that are depended by this package when installing, which will be installed via npm
+    unset PACKAGE_DEP_NPM
 
     # space-separated   uppm packages that are depended by this package when installing, which will be installed via uppm
     unset PACKAGE_DEP_UPP
@@ -1012,33 +1018,36 @@ filetype_from_url() {
 
     unset PACKAGE_CAVEATS
 
+    unset PACKAGE_LINKAGE
+
+    unset PACKAGE_LTOABLE
+
+    # whether the installed files can be moved/copied to other locations
     unset PACKAGE_MOVABLE
 
-    unset PACKAGE_DISABLE
-
-    unset PACKAGE_SUPPORT_LTO
-    unset PACKAGE_SUPPORT_STRIP
+    unset PACKAGE_SUPPORT_BUILD_ON_MACOS
     unset PACKAGE_SUPPORT_BUILD_IN_PARALLEL
+
     unset PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE
     unset PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE
 
     unset PACKAGE_BSYSTEM
     unset PACKAGE_BSYSTEM_MASTER
 
-    unset PACKAGE_USE_BSYSTEM_WAF
-    unset PACKAGE_USE_BSYSTEM_GO
-    unset PACKAGE_USE_BSYSTEM_GN
-    unset PACKAGE_USE_BSYSTEM_RAKE
-    unset PACKAGE_USE_BSYSTEM_NINJA
-    unset PACKAGE_USE_BSYSTEM_GMAKE
-    unset PACKAGE_USE_BSYSTEM_CMAKE
-    unset PACKAGE_USE_BSYSTEM_XMAKE
-    unset PACKAGE_USE_BSYSTEM_MESON
-    unset PACKAGE_USE_BSYSTEM_CARGO
-    unset PACKAGE_USE_BSYSTEM_AUTOGENSH
-    unset PACKAGE_USE_BSYSTEM_AUTOTOOLS
-    unset PACKAGE_USE_BSYSTEM_CONFIGURE
-    unset PACKAGE_USE_BSYSTEM_NDK_BUILD
+    unset PACKAGE_USE_WAF
+    unset PACKAGE_USE_GO
+    unset PACKAGE_USE_GN
+    unset PACKAGE_USE_RAKE
+    unset PACKAGE_USE_NINJA
+    unset PACKAGE_USE_GMAKE
+    unset PACKAGE_USE_CMAKE
+    unset PACKAGE_USE_XMAKE
+    unset PACKAGE_USE_MESON
+    unset PACKAGE_USE_CARGO
+    unset PACKAGE_USE_AUTOGENSH
+    unset PACKAGE_USE_AUTOTOOLS
+    unset PACKAGE_USE_CONFIGURE
+    unset PACKAGE_USE_NDK_BUILD
 
     # directory relative to $PACKAGE_WORKING_DIR/src, which contains build script such as autogen.sh, configure, Makefile, CMakeLists.txt, meson.build, Cargo.toml, xmake.lua, etc.
     unset PACKAGE_BSCRIPT
@@ -1056,6 +1065,7 @@ filetype_from_url() {
     PACKAGE_API_MIN="$(yq '.api-min | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_PKGTYPE="$(yq '.pkgtype | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_LINKAGE="$(yq '.linkage | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_SUMMARY="$(yq '.summary | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_LICENSE="$(yq '.license | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_VERSION="$(yq '.version | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1083,12 +1093,16 @@ filetype_from_url() {
     PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_LIB="$(yq '.dep-lib | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_UPP="$(yq '.dep-upp | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_DEP_PYM="$(yq '.dep-pym | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_PLM="$(yq '.dep-plm | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DEP_PIP="$(yq '.dep-pip | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DEP_GEM="$(yq '.dep-gem | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_DEP_NPM="$(yq '.dep-npm | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_BSYSTEM="$(yq '.bsystem | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_BSCRIPT="$(yq '.bscript | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_BINBSTD="$(yq '.binbstd | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_LTOABLE="$(yq '.ltoable | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_MOVABLE="$(yq '.movable | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_CCFLAGS="$(yq '.ccflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_XXFLAGS="$(yq '.xxflags | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1105,12 +1119,25 @@ filetype_from_url() {
     PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RESLIST="$(yq '.reslist | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
+    PACKAGE_BINDENV="$(yq '.bindenv | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_WRAPPER="$(yq '.wrapper | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
-    PACKAGE_MOVABLE="$(yq '.movable | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
-    PACKAGE_DISABLE="$(yq '.disable | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_SUPPORT_BUILD_IN_PARALLEL="$(yq '.parallel | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEVELOPER="$(yq '.developer | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    #########################################################################################
+
+    PACKAGE_DISABLE="$(yq '.disable | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+
+    for item in $PACKAGE_DISABLE
+    do
+        case $item in
+            macos) PACKAGE_SUPPORT_BUILD_ON_MACOS=0 ;;
+            *)  abort 1 "unrecognized disable item '$item' in $PACKAGE_FORMULA_FILEPATH"
+        esac
+    done
 
     #########################################################################################
 
@@ -1319,22 +1346,22 @@ filetype_from_url() {
     for BSTSTEM in $PACKAGE_BSYSTEM
     do
         case $BSTSTEM in
-            ndk-build)   PACKAGE_USE_BSYSTEM_NDK_BUILD=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
-            autogen)     PACKAGE_USE_BSYSTEM_AUTOGENSH=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
-            autotools)   PACKAGE_USE_BSYSTEM_AUTOTOOLS=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
-            configure)   PACKAGE_USE_BSYSTEM_CONFIGURE=1 ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
-            cmake+gmake) PACKAGE_USE_BSYSTEM_CMAKE=1     ; PACKAGE_USE_BSYSTEM_GMAKE=1 ;;
-            cmake+ninja) PACKAGE_USE_BSYSTEM_CMAKE=1     ; PACKAGE_USE_BSYSTEM_NINJA=1 ;;
-            cmake)       PACKAGE_USE_BSYSTEM_CMAKE=1     ; PACKAGE_USE_BSYSTEM_NINJA=1 ;;
-            xmake)       PACKAGE_USE_BSYSTEM_XMAKE=1     ;;
-            meson)       PACKAGE_USE_BSYSTEM_MESON=1     ; PACKAGE_USE_BSYSTEM_NINJA=1 ;;
-            ninja)       PACKAGE_USE_BSYSTEM_NINJA=1     ;;
-            gmake)       PACKAGE_USE_BSYSTEM_GMAKE=1     ;;
-            rake)        PACKAGE_USE_BSYSTEM_RAKE=1      ;;
-            cargo)       PACKAGE_USE_BSYSTEM_CARGO=1     ;;
-            go)          PACKAGE_USE_BSYSTEM_GO=1        ;;
-            gn)          PACKAGE_USE_BSYSTEM_GN=1        ;;
-            waf)         PACKAGE_USE_BSYSTEM_WAF=1       ;;
+            ndk-build)   PACKAGE_USE_NDK_BUILD=1 ; PACKAGE_USE_GMAKE=1 ;;
+            autogen)     PACKAGE_USE_AUTOGENSH=1 ; PACKAGE_USE_GMAKE=1 ;;
+            autotools)   PACKAGE_USE_AUTOTOOLS=1 ; PACKAGE_USE_GMAKE=1 ;;
+            configure)   PACKAGE_USE_CONFIGURE=1 ; PACKAGE_USE_GMAKE=1 ;;
+            cmake+gmake) PACKAGE_USE_CMAKE=1     ; PACKAGE_USE_GMAKE=1 ;;
+            cmake+ninja) PACKAGE_USE_CMAKE=1     ; PACKAGE_USE_NINJA=1 ;;
+            cmake)       PACKAGE_USE_CMAKE=1     ; PACKAGE_USE_NINJA=1 ;;
+            xmake)       PACKAGE_USE_XMAKE=1     ;;
+            meson)       PACKAGE_USE_MESON=1     ; PACKAGE_USE_NINJA=1 ;;
+            ninja)       PACKAGE_USE_NINJA=1     ;;
+            gmake)       PACKAGE_USE_GMAKE=1     ;;
+            rake)        PACKAGE_USE_RAKE=1      ;;
+            cargo)       PACKAGE_USE_CARGO=1     ;;
+            go)          PACKAGE_USE_GO=1        ;;
+            gn)          PACKAGE_USE_GN=1        ;;
+            waf)         PACKAGE_USE_WAF=1       ;;
         esac
     done
 
@@ -1363,30 +1390,32 @@ filetype_from_url() {
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP patch"
     fi
 
-    [ -n "$PACKAGE_DEP_PYM" ]                && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
-    [ -n "$PACKAGE_DEP_PLM" ]                && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake"
+    [ -n "$PACKAGE_DEP_PIP" ]        && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
+    [ -n "$PACKAGE_DEP_PLM" ]        && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl gmake"
 
-    [ "$PACKAGE_USE_BSYSTEM_NDK_BUILD" = 1 ] && PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM gmake"
-    [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP automake"
-    [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP automake"
-    [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
-    [ "$PACKAGE_USE_BSYSTEM_MESON"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
-    [ "$PACKAGE_USE_BSYSTEM_MESON"     = 1 ] && PACKAGE_DEP_PYM="$PACKAGE_DEP_PYM meson"
-    [ "$PACKAGE_USE_BSYSTEM_CMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake"
-    [ "$PACKAGE_USE_BSYSTEM_GMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
-    [ "$PACKAGE_USE_BSYSTEM_XMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"
-    [ "$PACKAGE_USE_BSYSTEM_NINJA"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"
-    [ "$PACKAGE_USE_BSYSTEM_RAKE"      = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"
-    [ "$PACKAGE_USE_BSYSTEM_GO"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
-    [ "$PACKAGE_USE_BSYSTEM_GN"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gn ninja"
-    [ "$PACKAGE_USE_BSYSTEM_WAF"       = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
+    [ "$PACKAGE_USE_NDK_BUILD" = 1 ] && PACKAGE_DEP_PIP="$PACKAGE_DEP_PIP gmake"
+    [ "$PACKAGE_USE_AUTOGENSH" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP automake"
+    [ "$PACKAGE_USE_AUTOTOOLS" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP automake"
+    [ "$PACKAGE_USE_CONFIGURE" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
+    [ "$PACKAGE_USE_MESON"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
+    [ "$PACKAGE_USE_MESON"     = 1 ] && PACKAGE_DEP_PIP="$PACKAGE_DEP_PIP meson"
+    [ "$PACKAGE_USE_CMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP cmake"
+    [ "$PACKAGE_USE_GMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake"
+    [ "$PACKAGE_USE_XMAKE"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP xmake"
+    [ "$PACKAGE_USE_NINJA"     = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ninja"
+    [ "$PACKAGE_USE_RAKE"      = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP ruby"
+    [ "$PACKAGE_USE_GO"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
+    [ "$PACKAGE_USE_GN"        = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gn ninja"
+    [ "$PACKAGE_USE_WAF"       = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
+
+    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
 
     #########################################################################################
 
-    [ "$PACKAGE_USE_BSYSTEM_WAF"   = 1 ] && PACKAGE_BINBSTD=1
-    [ "$PACKAGE_USE_BSYSTEM_GO"    = 1 ] && PACKAGE_BINBSTD=1
-    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && PACKAGE_BINBSTD=1
-    [ "$PACKAGE_USE_BSYSTEM_XMAKE" = 1 ] && PACKAGE_BINBSTD=1
+    [ "$PACKAGE_USE_WAF"   = 1 ] && PACKAGE_BINBSTD=1
+    [ "$PACKAGE_USE_GO"    = 1 ] && PACKAGE_BINBSTD=1
+    [ "$PACKAGE_USE_CARGO" = 1 ] && PACKAGE_BINBSTD=1
+    [ "$PACKAGE_USE_XMAKE" = 1 ] && PACKAGE_BINBSTD=1
 
     if [ -z  "$PACKAGE_BINBSTD" ] ; then
         if [ "$PACKAGE_BSYSTEM_MASTER" = gmake ] ; then
@@ -1398,51 +1427,11 @@ filetype_from_url() {
 
     #########################################################################################
 
-    for item in $PACKAGE_DISABLE
-    do
-        case $item in
-            lto)      PACKAGE_SUPPORT_LTO=0 ;;
-            strip)    PACKAGE_SUPPORT_STRIP=0 ;;
-            macos)    PACKAGE_SUPPORT_BUILD_ON_MACOS=0 ;;
-            static)   PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
-            mostly)   PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0 ;;
-            parallel) PACKAGE_SUPPORT_BUILD_IN_PARALLEL=0 ;;
-            *)  abort 1 "unrecognized disable item '$item' in $PACKAGE_FORMULA_FILEPATH"
-        esac
-    done
+    [ -z "$PACKAGE_LTOABLE" ] && PACKAGE_LTOABLE=1
+    [ -z "$PACKAGE_MOVABLE" ] && PACKAGE_MOVABLE=1
 
-    # https://github.com/golang/go/issues/59942
-    if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
-        PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
-    fi
-
-    if [ -z "$PACKAGE_SUPPORT_LTO" ] ; then
-        PACKAGE_SUPPORT_LTO=1
-    fi
-
-    if [ -z "$PACKAGE_SUPPORT_STRIP" ] ; then
-        PACKAGE_SUPPORT_STRIP=1
-    fi
-
-    if [ -z "$PACKAGE_SUPPORT_BUILD_ON_MACOS" ] ; then
-        PACKAGE_SUPPORT_BUILD_ON_MACOS=1
-    fi
-
-    if [ -z "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" ] ; then
-        PACKAGE_SUPPORT_BUILD_IN_PARALLEL=1
-    fi
-
-    if [ -z "$PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" ] ; then
-        PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
-    fi
-
-    if [ -z "$PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" ] ; then
-        PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
-    fi
-
-    #########################################################################################
-
-    PACKAGE_DEP_UPP="${PACKAGE_DEP_UPP#' '}"
+    [ -z "$PACKAGE_SUPPORT_BUILD_ON_MACOS"    ] && PACKAGE_SUPPORT_BUILD_ON_MACOS=1
+    [ -z "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" ] && PACKAGE_SUPPORT_BUILD_IN_PARALLEL=1
 
     #########################################################################################
 
@@ -1453,6 +1442,41 @@ filetype_from_url() {
             *-dev)  PACKAGE_PKGTYPE=lib ;;
                *)   PACKAGE_PKGTYPE=exe ;;
         esac
+    fi
+
+    #########################################################################################
+
+    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
+        case $PACKAGE_LINKAGE in
+            '')
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
+                ;;
+            static)
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0
+                ;;
+            static/pie)
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0
+                ;;
+            shared)
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=1
+                ;;
+            shared/most)
+                PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
+                PACKAGE_SUPPORT_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE=0
+                ;;
+            *)  abort 1 "unsupported linkage: $PACKAGE_LINKAGE"
+        esac
+    fi
+
+    #########################################################################################
+
+    # https://github.com/golang/go/issues/59942
+    if [ "$PACKAGE_USE_GO" = 1 ] ; then
+        PACKAGE_SUPPORT_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=0
     fi
 }
 
@@ -1506,7 +1530,7 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_DEP_PKG
     unset RECEIPT_PACKAGE_DEP_LIB
     unset RECEIPT_PACKAGE_DEP_UPP
-    unset RECEIPT_PACKAGE_DEP_PYM
+    unset RECEIPT_PACKAGE_DEP_PIP
     unset RECEIPT_PACKAGE_DEP_PLM
 
     unset RECEIPT_PACKAGE_BSYSTEM
@@ -1522,7 +1546,7 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_CAVEATS
 
     unset RECEIPT_PACKAGE_MOVABLE
-    unset RECEIPT_PACKAGE_DISABLE
+    unset RECEIPT_PACKAGE_LTOABLE
 
     unset RECEIPT_PACKAGE_BUILTBY
     unset RECEIPT_PACKAGE_BUILTAT
@@ -1574,7 +1598,7 @@ filetype_from_url() {
     RECEIPT_PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DEP_LIB="$(yq '.dep-lib | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DEP_UPP="$(yq '.dep-upp | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_DEP_PYM="$(yq '.dep-pym | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_DEP_PIP="$(yq '.dep-pip | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DEP_PLM="$(yq '.dep-plm | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_BSYSTEM="$(yq '.bsystem | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1596,7 +1620,7 @@ filetype_from_url() {
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_MOVABLE="$(yq '.movable | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
-    RECEIPT_PACKAGE_DISABLE="$(yq '.disable | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_LTOABLE="$(yq '.ltoable | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_API_MIN="$(yq '.api-min | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_NDKVERS="$(yq '.ndkvers | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -1895,7 +1919,7 @@ __search_packages() {
         --arg dep_pkg "$PACKAGE_DEP_PKG" \
         --arg dep_lib "$PACKAGE_DEP_LIB" \
         --arg dep_upp "$PACKAGE_DEP_UPP" \
-        --arg dep_pym "$PACKAGE_DEP_PYM" \
+        --arg dep_pip "$PACKAGE_DEP_PIP" \
         --arg dep_plm "$PACKAGE_DEP_PLM" \
         --arg dofetch "$PACKAGE_DOFETCH" \
         --arg do12345 "$PACKAGE_DO12345" \
@@ -1904,7 +1928,7 @@ __search_packages() {
         --arg install "$PACKAGE_DOBUILD" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
         --arg movable "$PACKAGE_MOVABLE" \
-        --arg disable "$PACKAGE_DISABLE" \
+        --arg ltoable "$PACKAGE_LTOABLE" \
         --arg caveats "$PACKAGE_CAVEATS" \
         --arg bsystem "$PACKAGE_BSYSTEM" \
         --arg binbstd "$PACKAGE_BINBSTD" \
@@ -1939,7 +1963,7 @@ __search_packages() {
     "dep-pkg":$dep_pkg,
     "dep-lib":$dep_lib,
     "dep-upp":$dep_upp,
-    "dep-pym":$dep_pym,
+    "dep-pip":$dep_pip,
     "dep-plm":$dep_plm,
     "bsystem":$bsystem,
     "binbstd":$binbstd,
@@ -1955,7 +1979,7 @@ __search_packages() {
     "prepare":$prepare,
     "install":$install,
     "dotweak":$dotweak,
-    "disable":$disable,
+    "ltoable":$ltoable,
     "movable":$movable,
     "caveats":$caveats
 }' | jq 'with_entries(select(.value != ""))'
@@ -1999,7 +2023,7 @@ res-sha: $PACKAGE_RES_SHA
 dep-pkg: $PACKAGE_DEP_PKG
 dep-lib: $PACKAGE_DEP_LIB
 dep-upp: $PACKAGE_DEP_UPP
-dep-pym: $PACKAGE_DEP_PYM
+dep-pip: $PACKAGE_DEP_PIP
 dep-plm: $PACKAGE_DEP_PLM
 bsystem: $PACKAGE_BSYSTEM
 binbstd: $PACKAGE_BINBSTD
@@ -2008,7 +2032,7 @@ ccflags: $PACKAGE_CCFLAGS
 xxflags: $PACKAGE_XXFLAGS
 ldflags: $PACKAGE_LDFLAGS
 api-min: $PACKAGE_API_MIN
-disable: $PACKAGE_DISABLE
+ltoable: $PACKAGE_LTOABLE
 movable: $PACKAGE_MOVABLE
 installed: $PACKAGE_INSTALLED
 EOF
@@ -2059,23 +2083,23 @@ PACKAGE_BSCRIPT
 PACKAGE_BSYSTEM
 PACKAGE_BINBSTD
 PACKAGE_MOVABLE
-PACKAGE_DISABLE
-PACKAGE_USE_BSYSTEM_GO
-PACKAGE_USE_BSYSTEM_GN
-PACKAGE_USE_BSYSTEM_RAKE
-PACKAGE_USE_BSYSTEM_NINJA
-PACKAGE_USE_BSYSTEM_GMAKE
-PACKAGE_USE_BSYSTEM_CMAKE
-PACKAGE_USE_BSYSTEM_XMAKE
-PACKAGE_USE_BSYSTEM_MESON
-PACKAGE_USE_BSYSTEM_CARGO
-PACKAGE_USE_BSYSTEM_AUTOGENSH
-PACKAGE_USE_BSYSTEM_AUTOTOOLS
-PACKAGE_USE_BSYSTEM_CONFIGURE
+PACKAGE_LTOABLE
+PACKAGE_USE_GO
+PACKAGE_USE_GN
+PACKAGE_USE_RAKE
+PACKAGE_USE_NINJA
+PACKAGE_USE_GMAKE
+PACKAGE_USE_CMAKE
+PACKAGE_USE_XMAKE
+PACKAGE_USE_MESON
+PACKAGE_USE_CARGO
+PACKAGE_USE_AUTOGENSH
+PACKAGE_USE_AUTOTOOLS
+PACKAGE_USE_CONFIGURE
 PACKAGE_DEP_PKG
 PACKAGE_DEP_LIB
 PACKAGE_DEP_UPP
-PACKAGE_DEP_PYM
+PACKAGE_DEP_PIP
 PACKAGE_DEP_PLM
 PACKAGE_CCFLAGS
 PACKAGE_XXFLAGS
@@ -2127,9 +2151,9 @@ EOF
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_MOVABLE"
             ;;
-        disable)
+        ltoable)
             __load_formula_of_the_given_package "$1"
-            printf '%s\n' "$PACKAGE_DISABLE"
+            printf '%s\n' "$PACKAGE_LTOABLE"
             ;;
         caveats)
             __load_formula_of_the_given_package "$1"
@@ -2276,7 +2300,7 @@ EOF
         --arg dep_pkg "$RECEIPT_PACKAGE_DEP_PKG" \
         --arg dep_lib "$RECEIPT_PACKAGE_DEP_LIB" \
         --arg dep_upp "$RECEIPT_PACKAGE_DEP_UPP" \
-        --arg dep_pym "$RECEIPT_PACKAGE_DEP_PYM" \
+        --arg dep_pip "$RECEIPT_PACKAGE_DEP_PIP" \
         --arg dep_plm "$RECEIPT_PACKAGE_DEP_PLM" \
         --arg dofetch "$RECEIPT_PACKAGE_DOFETCH" \
         --arg do12345 "$RECEIPT_PACKAGE_DO12345" \
@@ -2285,7 +2309,7 @@ EOF
         --arg install "$RECEIPT_PACKAGE_DOBUILD" \
         --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
         --arg movable "$RECEIPT_PACKAGE_MOVABLE" \
-        --arg disable "$RECEIPT_PACKAGE_DISABLE" \
+        --arg ltoable "$RECEIPT_PACKAGE_LTOABLE" \
         --arg caveats "$RECEIPT_PACKAGE_CAVEATS" \
         --arg bsystem "$RECEIPT_PACKAGE_BSYSTEM" \
         --arg binbstd "$RECEIPT_PACKAGE_BINBSTD" \
@@ -2322,7 +2346,7 @@ EOF
     "dep-pkg":$dep_pkg,
     "dep-lib":$dep_lib,
     "dep-upp":$dep_upp,
-    "dep-pym":$dep_pym,
+    "dep-pip":$dep_pip,
     "dep-plm":$dep_plm,
     "bsystem":$bsystem,
     "binbstd":$binbstd,
@@ -2338,7 +2362,7 @@ EOF
     "install":$install,
     "dotweak":$dotweak,
     "movable":$movable,
-    "disable":$disable,
+    "ltoable":$ltoable,
     "caveats":$caveats,
     "builtby":$builtby,
     "builtat":$builtat,
@@ -5701,7 +5725,7 @@ EOF
 
     #########################################################################################
 
-    if [ "$PACKAGE_USE_BSYSTEM_CMAKE" = 1 ] ; then
+    if [ "$PACKAGE_USE_CMAKE" = 1 ] ; then
         # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
 
         unset CMAKE_APPBUNDLE_PATH
@@ -5743,7 +5767,7 @@ EOF
         export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
 
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
-        if [ "$PACKAGE_USE_BSYSTEM_NINJA" = 1 ] ; then
+        if [ "$PACKAGE_USE_NINJA" = 1 ] ; then
             export CMAKE_GENERATOR='Ninja'
         else
             export CMAKE_GENERATOR='Unix Makefiles'
@@ -5965,7 +5989,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    if [ "$PACKAGE_USE_BSYSTEM_GMAKE" = 1 ] && [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
+    if [ "$PACKAGE_USE_GMAKE" = 1 ] && [ "$REQUEST_TO_EXPORT_COMPILE_COMMANDS_JSON" = 1 ] && [ "$BEAR_ENABLED" = 1 ] ; then
         PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP bear"
     fi
 
@@ -5975,14 +5999,15 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    unset PACKAGE_DEP_AUX_LIBZ
-    unset PACKAGE_DEP_AUX_LIBOPENSSL
-    unset PACKAGE_DEP_AUX_PERL
-    unset PACKAGE_DEP_AUX_PYTHON3
-    unset PACKAGE_DEP_AUX_GOLANG
+    unset PACKAGE_USE_PERL
+    unset PACKAGE_USE_PYTHON3
+    unset PACKAGE_USE_GOLANG
+
+    unset PACKAGE_AUX_LIBZ
+    unset PACKAGE_AUX_LIBOPENSSL
 
     # these native packages would be built from source locally due to they are not relocatable or libraries
-    unset PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY
+    unset PACKAGE_AUX_NEED_TO_BUILD_LOCALLY
 
     PACKAGE_DEP_AUX="$PACKAGE_DEP_UPP"
     PACKAGE_DEP_UPP=
@@ -5991,40 +6016,40 @@ $DOT_CONTENT
     do
         case $UPPM_PACKAGE_NAME in
             libz)
-                PACKAGE_DEP_AUX_LIBZ=1
-                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libz"
+                PACKAGE_AUX_LIBZ=1
+                PACKAGE_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_AUX_NEED_TO_BUILD_LOCALLY libz"
                 ;;
             libopenssl)
-                PACKAGE_DEP_AUX_LIBOPENSSL=1
-                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY libopenssl"
+                PACKAGE_AUX_LIBOPENSSL=1
+                PACKAGE_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_AUX_NEED_TO_BUILD_LOCALLY libopenssl"
                 ;;
             automake)
-                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY autoconf automake"
+                PACKAGE_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_AUX_NEED_TO_BUILD_LOCALLY autoconf automake"
                 PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4"
-                PACKAGE_DEP_AUX_PERL=1
+                PACKAGE_USE_PERL=1
                 ;;
             autoconf|libtool|texinfo|help2man|intltool)
-                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY $UPPM_PACKAGE_NAME"
+                PACKAGE_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_AUX_NEED_TO_BUILD_LOCALLY $UPPM_PACKAGE_NAME"
                 PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4"
-                PACKAGE_DEP_AUX_PERL=1
+                PACKAGE_USE_PERL=1
                 ;;
             itstool)
-                PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY itstool"
+                PACKAGE_AUX_NEED_TO_BUILD_LOCALLY="$PACKAGE_AUX_NEED_TO_BUILD_LOCALLY itstool"
                 PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gmake gm4"
-                PACKAGE_DEP_AUX_PERL=1
-                PACKAGE_DEP_AUX_PYTHON3=1
+                PACKAGE_USE_PERL=1
+                PACKAGE_USE_PYTHON3=1
                 ;;
             perl)
-                PACKAGE_DEP_AUX_PERL=1
+                PACKAGE_USE_PERL=1
                 ;;
             python3)
-                PACKAGE_DEP_AUX_PYTHON3=1
+                PACKAGE_USE_PYTHON3=1
                 ;;
             golang)
-                PACKAGE_DEP_AUX_GOLANG=1
+                PACKAGE_USE_GOLANG=1
                 ;;
             depot_tools)
-                PACKAGE_DEP_AUX_PYTHON3=1
+                PACKAGE_USE_PYTHON3=1
                 PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP gn ninja"
 
                 run git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
@@ -6040,19 +6065,19 @@ $DOT_CONTENT
     if [ "$TERMUX" = 1 ] ; then
         unset TERMUX_PKGS
 
-        [ "$PACKAGE_DEP_AUX_PERL" = 1 ]    && TERMUX_PKGS="$TERMUX_PKGS perl"
-        [ "$PACKAGE_DEP_AUX_PYTHON3" = 1 ] && TERMUX_PKGS="$TERMUX_PKGS python"
-        [ "$PACKAGE_DEP_AUX_GOLANG" = 1 ]  && TERMUX_PKGS="$TERMUX_PKGS golang"
-        [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && TERMUX_PKGS="$TERMUX_PKGS rust"
+        [ "$PACKAGE_USE_PERL"    = 1 ] && TERMUX_PKGS="$TERMUX_PKGS perl"
+        [ "$PACKAGE_USE_PYTHON3" = 1 ] && TERMUX_PKGS="$TERMUX_PKGS python"
+        [ "$PACKAGE_USE_GOLANG"  = 1 ] && TERMUX_PKGS="$TERMUX_PKGS golang"
+        [ "$PACKAGE_USE_CARGO"   = 1 ] && TERMUX_PKGS="$TERMUX_PKGS rust"
 
         if [ -n "$TERMUX_PKGS" ] ; then
             step "install needed packages via pkg"
             run pkg install -y $TERMUX_PKGS
         fi
     else
-        [ "$PACKAGE_DEP_AUX_PERL" = 1 ]    && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl"
-        [ "$PACKAGE_DEP_AUX_PYTHON3" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
-        [ "$PACKAGE_DEP_AUX_GOLANG" = 1 ]  && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
+        [ "$PACKAGE_USE_PERL"    = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP perl"
+        [ "$PACKAGE_USE_PYTHON3" = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP python3"
+        [ "$PACKAGE_USE_GOLANG"  = 1 ] && PACKAGE_DEP_UPP="$PACKAGE_DEP_UPP golang"
     fi
 
     #########################################################################################
@@ -6098,7 +6123,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    for NATIVE_PACKAGE_NAME in $PACKAGE_DEP_AUX_NEED_TO_BUILD_LOCALLY
+    for NATIVE_PACKAGE_NAME in $PACKAGE_AUX_NEED_TO_BUILD_LOCALLY
     do
         (install_the_given_native_package "$NATIVE_PACKAGE_NAME")
 
@@ -6137,20 +6162,17 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ -n "$PACKAGE_DEP_PYM" ] && {
+    [ -n "$PACKAGE_DEP_PIP" ] && {
         step "install needed python packages via pip"
 
         PYTHON3="$(command -v python3)" || abort 1 "command not found: python3"
 
         run "$PYTHON3" --version
         run "$PYTHON3" -m pip install --upgrade pip
-        run "$PYTHON3" -m pip install --upgrade "$PACKAGE_DEP_PYM"
+        run "$PYTHON3" -m pip install --upgrade "$PACKAGE_DEP_PIP"
     }
 
     #########################################################################################
-
-    # cpan use the C/C++ compiler same as perl was built with
-    # so make sure C/C++ compiler be found before reaching here
 
     [ -n "$PACKAGE_DEP_PLM" ] && {
         step "install needed perl modules via cpan"
@@ -6190,7 +6212,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && [ "$TERMUX" != 1 ] && {
+    [ "$PACKAGE_USE_CARGO" = 1 ] && [ "$TERMUX" != 1 ] && {
         command -v rustup > /dev/null || {
             # https://www.rust-lang.org/tools/install
             note "${COLOR_GREEN}rustup cargo rustc${COLOR_OFF} ${COLOR_YELLOW}commands are required, but it was not found, let's install it.${COLOR_OFF}"
@@ -6222,7 +6244,7 @@ $DOT_CONTENT
     unset CCACHE
     unset PKG_CONFIG
 
-    if [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] || [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ; then
+    if [ "$PACKAGE_USE_AUTOGENSH" = 1 ] || [ "$PACKAGE_USE_AUTOTOOLS" = 1 ] ; then
         AUTORECONF=$(command -v autoreconf) || abort 1 "command not found: autoreconf"
         AUTOCONF=$(command -v autoconf)     || abort 1 "command not found: autoconf"
         AUTOMAKE=$(command -v automake)     || abort 1 "command not found: automake"
@@ -6231,15 +6253,15 @@ $DOT_CONTENT
         M4=$(command -v m4)                 || abort 1 "command not found: m4"
     fi
 
-    [ "$PACKAGE_USE_BSYSTEM_MESON" = 1 ] && {
+    [ "$PACKAGE_USE_MESON" = 1 ] && {
         MESON=$(command -v meson) || abort 1 "command not found: meson"
     }
 
-    [ "$PACKAGE_USE_BSYSTEM_CMAKE" = 1 ] && {
+    [ "$PACKAGE_USE_CMAKE" = 1 ] && {
         CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
     }
 
-    [ "$PACKAGE_USE_BSYSTEM_XMAKE" = 1 ] && {
+    [ "$PACKAGE_USE_XMAKE" = 1 ] && {
         XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
 
         # error: Running xmake as root is extremely dangerous and no longer supported.
@@ -6249,22 +6271,22 @@ $DOT_CONTENT
         export XMAKE_ROOT=y
     }
 
-    [ "$PACKAGE_USE_BSYSTEM_GMAKE" = 1 ] && {
+    [ "$PACKAGE_USE_GMAKE" = 1 ] && {
         GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake and make"
     }
 
-    [ "$PACKAGE_USE_BSYSTEM_NINJA" = 1 ] && {
+    [ "$PACKAGE_USE_NINJA" = 1 ] && {
         NINJA=$(command -v ninja) || abort 1 "command not found: ninja"
     }
 
-    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
+    [ "$PACKAGE_USE_CARGO" = 1 ] && {
         [ "$TERMUX" = 1 ] ||
         RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
 
         CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
     }
 
-    [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] && {
+    [ "$PACKAGE_USE_GO" = 1 ] && {
         GO=$(command -v go) || abort 1 "command not found: go"
     }
 
@@ -6485,9 +6507,9 @@ $PACKAGE_DOFETCH
     #########################################################################################
 
     {
-        [ "$PACKAGE_USE_BSYSTEM_AUTOGENSH" = 1 ] ||
-        [ "$PACKAGE_USE_BSYSTEM_AUTOTOOLS" = 1 ] ||
-        [ "$PACKAGE_USE_BSYSTEM_CONFIGURE" = 1 ]
+        [ "$PACKAGE_USE_AUTOGENSH" = 1 ] ||
+        [ "$PACKAGE_USE_AUTOTOOLS" = 1 ] ||
+        [ "$PACKAGE_USE_CONFIGURE" = 1 ]
     } && {
         step "update config.{sub,guess}"
         __update_config_sub_guess
@@ -6904,7 +6926,7 @@ $PACKAGE_DO12345
 
     #########################################################################################
 
-    if [ "$PACKAGE_USE_BSYSTEM_CMAKE" = 1 ] ; then
+    if [ "$PACKAGE_USE_CMAKE" = 1 ] ; then
         # https://cmake.org/cmake/help/latest/manual/cmake-env-variables.7.html#manual:cmake-env-variables(7)
 
         unset CMAKE_PREFIX_PATH
@@ -6939,7 +6961,7 @@ $PACKAGE_DO12345
         export CMAKE_BUILD_PARALLEL_LEVEL="$BUILD_NJOBS"
 
         # https://cmake.org/cmake/help/latest/envvar/CMAKE_GENERATOR.html
-        if [ "$PACKAGE_USE_BSYSTEM_NINJA" = 1 ] ; then
+        if [ "$PACKAGE_USE_NINJA" = 1 ] ; then
             export CMAKE_GENERATOR='Ninja'
         else
             export CMAKE_GENERATOR='Unix Makefiles'
@@ -6984,7 +7006,7 @@ $PACKAGE_DO12345
 
     #########################################################################################
 
-    if [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] ; then
+    if [ "$PACKAGE_USE_CARGO" = 1 ] ; then
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
 
@@ -7007,7 +7029,7 @@ $PACKAGE_DO12345
             RUSTFLAGS_FOR_BUILD="$RUSTFLAGS_FOR_BUILD -Clink-arg=$LDARG"
         done
 
-        [ "$PACKAGE_DEP_AUX_LIBZ" = 1 ] && {
+        [ "$PACKAGE_AUX_LIBZ" = 1 ] && {
             RUSTFLAGS_FOR_BUILD="$RUSTFLAGS_FOR_BUILD -L native=$NATIVE_PACKAGE_INSTALLED_ROOT/libz"
         }
 
@@ -7049,7 +7071,7 @@ $PACKAGE_DO12345
         #########################################################################
 
         # https://docs.rs/openssl/latest/openssl/
-        [ "$PACKAGE_DEP_AUX_LIBOPENSSL" = 1 ] && {
+        [ "$PACKAGE_AUX_LIBOPENSSL" = 1 ] && {
             eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_DIR='$NATIVE_PACKAGE_INSTALLED_ROOT/libopenssl'"
             eval export "${RUST_TARGET_FOR_BUILD}_OPENSSL_NO_VENDOR=1"
             export OPENSSL_NO_VENDOR=1
@@ -7208,7 +7230,7 @@ EOF
 
     #########################################################################################
 
-    if [ "$PACKAGE_USE_BSYSTEM_GO" = 1 ] ; then
+    if [ "$PACKAGE_USE_GO" = 1 ] ; then
         # https://pkg.go.dev/cmd/cgo
         export CGO_ENABLED=1
         export CGO_CFLAGS="$CFLAGS"
@@ -7428,7 +7450,7 @@ $PACKAGE_DOBUILD
 
     #########################################################################################
 
-    [ "$PACKAGE_USE_BSYSTEM_CARGO" = 1 ] && {
+    [ "$PACKAGE_USE_CARGO" = 1 ] && {
         run rm -f .crates.toml
         run rm -f .crates2.json
     }
@@ -7522,10 +7544,6 @@ $PACKAGE_DOTWEAK
 
             run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
         done
-    }
-
-    [ -n "$NEEDED_SYSTEM_SHARED_LIBS" ] && {
-        printf '%s\n' $NEEDED_SYSTEM_SHARED_LIBS | sort | uniq > .ndk-pkg/needed-system-libs.txt
     }
 
     #########################################################################################
@@ -10010,7 +10028,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.24.7
+NDKPKG_VERSION=0.25.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
