@@ -1543,6 +1543,7 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_DOBUILD
     unset RECEIPT_PACKAGE_DOTWEAK
 
+    unset RECEIPT_PACKAGE_BINDENV
     unset RECEIPT_PACKAGE_CAVEATS
 
     unset RECEIPT_PACKAGE_MOVABLE
@@ -1617,6 +1618,7 @@ filetype_from_url() {
     RECEIPT_PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
+    RECEIPT_PACKAGE_BINDENV="$(yq '.bindenv | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_MOVABLE="$(yq '.movable | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -2497,7 +2499,7 @@ __fetch_resources_of_the_given_package() {
 ##############################################################################
 # {{{ ndk-pkg bundle
 
-# __bundle_the_given_installed_package <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>] [--exclude <EXCLUDE-PATH>] [-K]
+# __bundle_the_given_installed_package <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>] [--exclude <EXCLUDE-PATH>] [-K] [--portable]
   __bundle_the_given_installed_package() {
     __load_receipt_of_the_given_package "$1"
 
@@ -2558,11 +2560,12 @@ __fetch_resources_of_the_given_package() {
 
     unset EXCLUDES
 
+    unset PORTABLE
+
     while [ -n "$1" ]
     do
         case $1 in
-            -K)
-                REQUEST_TO_KEEP_SESSION_DIR=1
+            -K) REQUEST_TO_KEEP_SESSION_DIR=1
                 ;;
             --exclude)
                 shift
@@ -2571,6 +2574,9 @@ __fetch_resources_of_the_given_package() {
                 else
                     EXCLUDES="$EXCLUDES $1"
                 fi
+                ;;
+            --portable)
+                PORTABLE=1
                 ;;
             *)  abort 1 "$NDKPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>], unrecognized option: $1"
         esac
@@ -2589,7 +2595,7 @@ __fetch_resources_of_the_given_package() {
 
     #######################################################
 
-    if [ -n "$EXCLUDES" ] ; then
+    if [ -n "$EXCLUDES" ] || [ "$PORTABLE" = 1 ] ; then
         run install -d bundle.d/
 
         run cp -r "$PACKAGE_INSTALLED_DIR/." bundle.d/
@@ -2602,7 +2608,58 @@ __fetch_resources_of_the_given_package() {
         run ln -s "$PACKAGE_INSTALLED_DIR" bundle.d
     fi
 
-    ###########################################################################################
+    #######################################################
+
+    if [ "$PORTABLE" = 1 ] ; then
+        FILEPATHs=
+
+        find bundle.d -type f -not -path 'bundle.d/.ndk-pkg/*' > fs.txt
+
+        while read -r FILEPATH
+        do
+            FILEMAGIC="$(xxd -u -p -l 4 "$FILEPATH")"
+
+            [ "$FILEMAGIC" = '7F454C46' ] || continue
+
+            ELFTYPE="$(xxd -u -p -l 2 -s 16 "$FILEPATH")"
+
+            case $ELFTYPE in
+                0200)
+                    if [ -f "$FILEPATH.c" ] || [ -n "$RECEIPT_PACKAGE_BINDENV" ] ; then
+                        FILEPATHs="$FILEPATHs $FILEPATH"
+                    fi
+                    ;;
+                0300)
+                    DYNAMIC_LOADER_FILEPATH="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+
+                    if [ -n "$DYNAMIC_LOADER_FILEPATH" ] ; then
+                        FILEPATHs="$FILEPATHs $FILEPATH"
+                    fi
+            esac
+        done < fs.txt
+
+        if [ -n "$FILEPATHs" ] ; then
+            setup_android_ndk_env "$ANDROID_NDK_HOME"
+
+            if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH" = armv7a ] ; then
+                TARGET_TRIPLE='armv7a-linux-androideabi'
+            else
+                TARGET_TRIPLE="$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH-linux-android"
+            fi
+
+            ANDROID_NDK_CC="$ANDROID_NDK_CC --target=${TARGET_TRIPLE}${ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL} --sysroot=$ANDROID_NDK_SYSROOT"
+
+            for FILEPATH in $FILEPATHs
+            do
+                [ -f "$FILEPATH.c" ] || __generate_wrapper_c_source_file
+
+                run mv "$FILEPATH" "$FILEPATH.exe"
+                run "$ANDROID_NDK_CC" -static -Os -s -flto -o "$FILEPATH" "$FILEPATH.c"
+            done
+        fi
+    fi
+
+    #######################################################
 
     unset OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL
 
@@ -2692,6 +2749,127 @@ __fetch_resources_of_the_given_package() {
     else
         run rm -rf "$SESSION_DIR"
     fi
+}
+
+__generate_wrapper_c_source_file() {
+    cat > "$FILEPATH.c" <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <unistd.h>
+#include <limits.h>
+
+int main(int argc, char* argv[]) {
+    char selfExePath[PATH_MAX];
+
+    int n = readlink("/proc/self/exe", selfExePath, PATH_MAX);
+
+    if (n == -1) {
+        perror("/proc/self/exe");
+        return 1;
+    }
+
+    selfExePath[n] = '\\0';
+
+    ////////////////////////////////////////////////////
+
+    const char * s = ".exe";
+
+    int j;
+
+    for (j = 0; s[j] != '\0'; j++);
+
+    char realExePath[n + j + 1];
+
+    int slashIndex = -1;
+
+    int i;
+
+    for (i = 0; i < n; i++) {
+        realExePath[i] = selfExePath[i];
+
+        if (selfExePath[i] == '/') {
+            slashIndex = i;
+        }
+    }
+
+    char * p = realExePath + n;
+
+    for (i = 0; i <= j; i++) {
+        p[i] = s[i];
+    }
+EOF
+
+    ####################################
+
+    I=0
+
+    for LINE in $RECEIPT_PACKAGE_BINDENV
+    do
+        VALUE="${LINE#*=}"
+
+        case $VALUE in
+            %s/*)
+                I="$(($I + 1))"
+                KEY="${LINE%%=*}"
+                VALUE="$(printf "$VALUE\n" 'bundle.d')"
+                VALUE_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" "$VALUE")"
+
+                cat >> "$FILEPATH.c" <<EOF
+
+    ////////////////////////////////////////////////////
+
+    p = getenv("$KEY");
+
+    if (p == NULL || p[0] == '\0') {
+        s = "$VALUE_RELATIVE_TO_SELF_EXE_PATH";
+
+        for (j = 0; s[j] != '\0'; j++);
+
+        char pathBuf[slashIndex + j + 1];
+
+        for (i = 0; i <= slashIndex; i++) {
+            pathBuf[i] = selfExePath[i];
+        }
+
+        p = pathBuf + slashIndex + 1;
+
+        for (i = 0U; i <= j; i++) {
+            p[i] = s[i];
+        }
+
+        if (setenv("$KEY", pathBuf, 1) != 0) {
+            perror("$KEY");
+            return 10;
+        }
+    }
+EOF
+                ;;
+            *)  cat >> "$FILEPATH.c" <<EOF
+
+    ////////////////////////////////////////////////////
+
+    if (putenv("$LINE") != 0) {
+        perror(NULL);
+        return 10;
+    }
+EOF
+        esac
+    done
+
+    ####################################
+
+    cat >> "$FILEPATH.c" <<EOF
+
+    ////////////////////////////////////////////////////
+
+    argv[0] = realExePath;
+
+    execv (realExePath, argv);
+    perror(realExePath);
+    return 255;
+}
+EOF
 }
 
 # }}}

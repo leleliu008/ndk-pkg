@@ -774,7 +774,7 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
 ## ndk-pkg formula scheme
 
-a ndk-pkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file which is used to config a ndk-pkg package's meta-information including one sentence description, package version, installation instructions, etc.
+a ndk-pkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file, which is used to config a ndk-pkg package's meta-information such as one sentence description, package version, installation instructions, etc.
 
 a ndk-pkg formula's filename suffix must be `.yml`
 
@@ -782,7 +782,7 @@ a ndk-pkg formula'a filename prefix would be treated as the package name.
 
 a ndk-pkg formula'a filename prefix must match regular expression pattern `^[A-Za-z0-9+-._@]{1,50}$`
 
-a ndk-pkg formula's file content only has one level mapping and shall has following `KEY`s:
+a ndk-pkg formula's file content only has one level mapping and shall/might have the following `KEY`s:
 
 |KEY|required?|TYPE|overview|
 |-|-|-|-|
@@ -830,7 +830,7 @@ a ndk-pkg formula's file content only has one level mapping and shall has follow
 |`ldflags`|optional|`LIST`|A space-separated list of arguments to be passed to the linker.<br>`ndk-pkg` supports a custom option `-p<PKG-CONFIG-PACKAGE-NAME>`. It will be substituted by the result of `pkg-config --libs-only-l <PKG-CONFIG-PACKAGE-NAME>`|
 ||||
 |`bsystem`|optional|`LIST`|A space-separated list of build system names (e.g. `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `cabal` `go` `rake` `ndk-build`)|
-|`bscript`|optional|`PATH`|the directory where the build script is located, relative to `PACKAGE_WORKING_DIR`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
+|`bscript`|optional|`PATH`|the directory where the build script is located, relative to `$PACKAGE_WORKING_DIR/src`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|`BOOL`|whether to build in the directory where the build script is located, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
 |`ltoable`|optional|`BOOL`|whether support [LTO](https://gcc.gnu.org/wiki/LinkTimeOptimization).<br>value shall be `0` or `1`. default value is `1`.|
 |`movable`|optional|`BOOL`|whether can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
