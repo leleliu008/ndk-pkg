@@ -5718,7 +5718,7 @@ EOF
 
     run cd "$PACKAGE_WORKING_DIR"
 
-    run install -d src/_ fix res bin lib include
+    run install -d src/_ fix res bin lib include map
 
     #########################################################################################
 
@@ -7662,54 +7662,35 @@ $PACKAGE_DOTWEAK
     #########################################################################################
 
     step "generate MANIFEST.txt"
-    run install -d .ndk-pkg
+    run install -d .ndk-pkg/dependencies/lib/
     find -not -path . -a -not -path ./.ndk-pkg -a -not -path './.ndk-pkg/*' -printf '%y|%P\n' > .ndk-pkg/MANIFEST.txt
 
     #########################################################################################
 
+    if [ "$TARGET_PLATFORM_ARCH" = armv7a ] ; then
+        ANDROID_NDK_SYSTEM_LIBRARY_DIR="$ANDROID_NDK_SYSROOT/usr/lib/arm-linux-androideabi"
+    else
+        ANDROID_NDK_SYSTEM_LIBRARY_DIR="$ANDROID_NDK_SYSROOT/usr/lib/$TARGET_PLATFORM_ARCH-linux-android"
+    fi
+
     step "docheck"
 
-    unset NEEDED_SYSTEM_SHARED_LIBS
-    unset NEEDED_EXTERN_SHARED_LIBS
-    unset NEEDED_LIBCXX_SHARED
+    unset FILES_NEED_TO_BE_SET_RPATH
 
-    unset FILENAME_RPATH_MAP
+    unset NEEDED_LIBCXX_SHARED
 
     __check_elf_files
 
-    [ "$NEEDED_LIBCXX_SHARED" = 1 ] && {
-        if [ "$TARGET_PLATFORM_ARCH" = armv7a ] ; then
-            LIBCXX_SHARED_FILEPATH="$ANDROID_NDK_SYSROOT/usr/lib/arm-linux-androideabi/libc++_shared.so"
-        else
-            LIBCXX_SHARED_FILEPATH="$ANDROID_NDK_SYSROOT/usr/lib/$TARGET_PLATFORM_ARCH-linux-android/libc++_shared.so"
-        fi
+    find .ndk-pkg/dependencies/lib -type f -exec "$PATCHELF" --set-rpath '$ORIGIN' {} \;
 
-        NEEDED_EXTERN_SHARED_LIBS="$LIBCXX_SHARED_FILEPATH$NEEDED_EXTERN_SHARED_LIBS"
-    }
+    if [ "$NEEDED_LIBCXX_SHARED" = 1 ] ; then
+        run cp -L "$ANDROID_NDK_SYSTEM_LIBRARY_DIR/libc++_shared.so" .ndk-pkg/dependencies/lib/
+    fi
 
-    [ -n "$NEEDED_EXTERN_SHARED_LIBS" ] && {
-        step "copy dependent external shared libraries"
-
-        echo "NEEDED_EXTERN_SHARED_LIBS=$NEEDED_EXTERN_SHARED_LIBS"
-
-        install -d -v .ndk-pkg/dependencies/lib
-
-        for f in $NEEDED_EXTERN_SHARED_LIBS
-        do
-            n="${f##*/}"
-            F=".ndk-pkg/dependencies/lib/$n"
-
-            [ -f "$F" ] || {
-                cp -L -v "$f" .ndk-pkg/dependencies/lib/
-                run patchelf --set-rpath "'\$ORIGIN'" "$F"
-            }
-        done
-    }
-
-    [ -n "$FILENAME_RPATH_MAP" ] && {
+    [ -n "$FILES_NEED_TO_BE_SET_RPATH" ] && {
         step "set rpath for ELF files"
 
-        KVs="$(printf '%s\n' "$FILENAME_RPATH_MAP" | sort | uniq)"
+        KVs="$(printf '%s\n' "$FILES_NEED_TO_BE_SET_RPATH" | sort | uniq)"
 
         for KV in $KVs
         do
@@ -7725,6 +7706,8 @@ $PACKAGE_DOTWEAK
     }
 
     #########################################################################################
+
+    run rmdir -p --ignore-fail-on-non-empty .ndk-pkg/dependencies/lib
 
     run cd .ndk-pkg
 
@@ -7947,77 +7930,46 @@ __check_elf_files() {
 
         #####################################################################
 
-        __check_needed_of "$FILEPATH"
+        __check_DT_NEEDED "$FILEPATH"
     done < .ndk-pkg/MANIFEST.txt
 }
 
-# __check_needed_of <ELF-FILE-PATH>
-  __check_needed_of() {
+# __check_DT_NEEDED <ELF-FILE-PATH>
+  __check_DT_NEEDED() {
+    X="$(printf '%s\n' "$1" | tr / _)"
+    Y="$PACKAGE_WORKING_DIR/map/$X"
+
+    if [ -f "$Y" ] ; then
+        return 0
+    else
+        touch "$Y"
+    fi
+
+    #####################################################
+
     NEEDED_SHARED_LIBRARY_FILENAMEs="$(patchelf --print-needed "$1")"
 
     for NEEDED_SHARED_LIBRARY_FILENAME in $NEEDED_SHARED_LIBRARY_FILENAMEs
     do
-        NEEDED_SHARED_LIBRARY_FILEPATH=
-
-        NEEDED_UNKOWN=
-
         case $NEEDED_SHARED_LIBRARY_FILENAME in
-            libc.so)
-                ;;
-            libm.so)
-                ;;
-            libdl.so)
-                ;;
-            libomp.so)
-                ;;
-            liblog.so)
-                ;;
-            libandroid.so)
-                ;;
-            libmediandk.so)
-                ;;
-            libcamera2ndk.so)
-                ;;
-            libjnigraphics.so)
-                ;;
-            libOpenSLES.so)
-                ;;
-            libOpenMAXAL.so)
-                ;;
-            libEGL.so)
-                ;;
-            libGLESv1_CM.so)
-                ;;
-            libGLESv2.so)
-                ;;
-            libGLESv3.so)
-                ;;
-            libstdc++.so)
-                ;;
             libc++_shared.so)
                 NEEDED_LIBCXX_SHARED=1
-                case $1 in
-                    /*) ;;
-                    *)  FILENAME_RPATH_MAP="$FILENAME_RPATH_MAP
-$1|1"
-                esac
+                continue
                 ;;
             libclang_rt.*.so)
-                ;;
-            lib*.so)
-                NEEDED_UNKOWN=1
+                continue
                 ;;
         esac
 
-        #####################################################
-
-        if [ -z "$NEEDED_UNKOWN" ] ; then
-            NEEDED_SYSTEM_SHARED_LIBS="$NEEDED_SYSTEM_SHARED_LIBS
-$NEEDED_SHARED_LIBRARY_FILENAME"
-            continue
+        if [ "$NEEDED_SHARED_LIBRARY_FILENAME" != 'libz.so' ] ; then
+            if [ -f "$ANDROID_NDK_SYSTEM_LIBRARY_DIR/$TARGET_PLATFORM_VERS/$NEEDED_SHARED_LIBRARY_FILENAME" ] ; then
+                continue
+            fi
         fi
 
         #####################################################
+
+        NEEDED_SHARED_LIBRARY_FILEPATH=
 
         case $1 in
             /*) ;;
@@ -8031,7 +7983,7 @@ $NEEDED_SHARED_LIBRARY_FILENAME"
                     }
 
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
-                        FILENAME_RPATH_MAP="$FILENAME_RPATH_MAP
+                        FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                     }
                 fi
@@ -8057,12 +8009,14 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
                         case $1 in
                             /*) ;;
-                            *)  FILENAME_RPATH_MAP="$FILENAME_RPATH_MAP
+                            *)  FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|1"
                         esac
 
-                        NEEDED_EXTERN_SHARED_LIBS="$NEEDED_EXTERN_SHARED_LIBS
-$NEEDED_SHARED_LIBRARY_FILEPATH"
+                        if [ ! -f ".ndk-pkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME" ] ; then
+                            run cp -L "$NEEDED_SHARED_LIBRARY_FILEPATH" .ndk-pkg/dependencies/lib/
+                        fi
+
                         break
                     }
                 done
@@ -8070,10 +8024,7 @@ $NEEDED_SHARED_LIBRARY_FILEPATH"
         fi
 
         if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
-            __check_needed_of "$NEEDED_SHARED_LIBRARY_FILEPATH"
-        else
-            NEEDED_SYSTEM_SHARED_LIBS="$NEEDED_SYSTEM_SHARED_LIBS
-$NEEDED_SHARED_LIBRARY_FILENAME"
+            __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
         fi
     done
 }
