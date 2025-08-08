@@ -7635,6 +7635,17 @@ $PACKAGE_DOBUILD
 
     #########################################################################################
 
+    for item in $PACKAGE_WRAPPER
+    do
+        S="${item%'|'*}"
+        T="${item#*'|'}"
+
+        wfetch "https://raw.githubusercontent.com/leleliu008/ndk-pkg-formula-repository-official-core/refs/heads/master/wrappers/$S" --no-buffer
+        run mv "$S" "$T"
+    done
+
+    #########################################################################################
+
     [ -n "$PACKAGE_DOTWEAK" ] && {
         step "dotweak"
 
