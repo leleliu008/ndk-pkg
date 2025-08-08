@@ -88,9 +88,9 @@ This is the recommended way of using this software if you want to use this softw
 `chroot`, an isolated clean environment, is much like `docker` container, where the running process can not be affected by your host system's environment variables.
 
 ```bash
-curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.2-base-amd64.tar.gz
+curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz
 install -d ubuntu-rootfs
-tar xf ubuntu-base-24.04.2-base-amd64.tar.gz -C ubuntu-rootfs
+tar xf ubuntu-base-24.04.3-base-amd64.tar.gz -C ubuntu-rootfs
 
 cp -p /etc/resolv.conf ubuntu-rootfs/etc/
 
@@ -833,8 +833,8 @@ a ndk-pkg formula's file content only has one level mapping and shall/might have
 |`bscript`|optional|`PATH`|the directory where the build script is located, relative to `$PACKAGE_WORKING_DIR/src`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
 |`binbstd`|optional|`BOOL`|whether to build in the directory where the build script is located, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
 |`ltoable`|optional|`BOOL`|whether support [LTO](https://gcc.gnu.org/wiki/LinkTimeOptimization).<br>value shall be `0` or `1`. default value is `1`.|
-|`movable`|optional|`BOOL`|whether can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
-|`parallel`|optional|`BOOL`|whether to allow build system running jobs in parallel.<br>value shall be `0` or `1`. default value is `1`.|
+|`movable`|optional|`BOOL`|whether the installed files can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
+|`parallel`|optional|`BOOL`|whether to allow build system to run jobs in parallel.<br>value shall be `0` or `1`. default value is `1`.|
 ||||
 |`dofetch`|optional|`CODE`|POSIX shell code to be run to take over the fetching process.<br>It would be run in a separate process.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
 |`do12345`|optional|`CODE`|POSIX shell code to be run for native build.<br>It is running in a separated process.|
