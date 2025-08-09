@@ -7275,7 +7275,8 @@ $PACKAGE_DO12345
         #########################################################################
 
         # https://doc.rust-lang.org/rustc/codegen-options/index.html#link-arg
-        export RUSTFLAGS="-Clinker=$CC"
+        # https://doc.rust-lang.org/rustc/command-line-arguments.html#-l-add-a-directory-to-the-library-search-path
+        export RUSTFLAGS="-Clinker=$CC -L native=$PACKAGE_INSTALLING_LIB_DIR"
 
         for LDFLAG in $LDFLAGS
         do
