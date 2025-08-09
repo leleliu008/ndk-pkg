@@ -784,72 +784,77 @@ a ndk-pkg formula'a filename prefix must match regular expression pattern `^[A-Z
 
 a ndk-pkg formula's file content only has one level mapping and shall/might have the following `KEY`s:
 
-|KEY|required?|TYPE|overview|
-|-|-|-|-|
-|`pkgtype`|optional|`ENUM`|the type of this package.<br>value shall be any one of `exe`, `lib`, `exe+lib`.<br>If this mapping is not present, `ndk-pkg` will determine the package type by package name, if the package name starts/ends with `lib` or ends with `-dev`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
-|`linkage`|optional|`ENUM`|This mapping is only for `exe` type package to specify the executable's link method.<br>value shall be any one of `static`, `static/pie`, `shared`, `shared/most`.<br>`static` indicates this package only support creating fully statically linked executables.<br>`shared` indicates this package only support creating dynamically linked executables and `ndk-pkg` will try to link as many static libraries as possible.<br>`shared/most` indicates this package only support creating dynamically linked executables and `ndk-pkg` will try to link as many shared libraries as possible. <br>`shared` as default if this mapping is not present.|
-|`summary`|required|`TEXT`|one sentence description of this package.|
-|`license`|optional|`LIST`|A space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
-|`version`|optional|`TEXT`|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|
+|KEY|TYPE|overview|
+|-|-|-|
+|`pkgtype`|`ENUM`|the type of this package.<br>value shall be any one of `exe`, `lib`, `exe+lib`.<br>If this mapping is not present, `ndk-pkg` will determine the package type by package name, if the package name starts/ends with `lib` or ends with `-dev`, it would be recognized as type `lib`, otherwise, it would be recognized as type `exe`|
+|`linkage`|`ENUM`|This mapping is only for `exe` type package to specify the executable's link method.<br>value shall be any one of `static`, `static/pie`, `shared`, `shared/most`.<br>`static` indicates this package only support creating fully statically linked executables.<br>`shared` indicates this package only support creating dynamically linked executables and `ndk-pkg` will try to link as many static libraries as possible.<br>`shared/most` indicates this package only support creating dynamically linked executables and `ndk-pkg` will try to link as many shared libraries as possible. <br>`shared` as default if this mapping is not present.|
+|`summary`|`TEXT`|one sentence description of this package.|
+|`license`|`LIST`|A space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
+|`version`|`TEXT`|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|
 ||||
-|`web-url`|optional|`URL`|the home webpage of this package.<br>If this mapping is not present, `git-url` must be present.|
+|`web-url`|`URL`|the home webpage of this package.<br>If this mapping is not present, `git-url` must be present.|
 ||||
-|`git-url`|optional|`URL`|the source code git repository url.<br>If `src-url` is not present, this mapping must be present.|
-|`git-ref`|optional|`TEXT`|reference: <https://git-scm.com/book/en/v2/Git-Internals-Git-References> <br>example values: `HEAD` `refs/heads/master` `refs/heads/main` `refs/tags/v1`, default value is `HEAD`|
-|`git-sha`|optional|`SHA1SUM`|the full git commit id, 40-byte hexadecimal string, if `git-ref` and `git-sha` both are present, `git-sha` takes precedence over `git-ref`|
-|`git-nth`|optional|`INT`|tell `ndk-pkg` that how many depth commits would you like to fetch. default is `1`, this would save your time and storage. If you have to fetch all commits, set this to `0`|
+|`git-url`|`URL`|the source code git repository url.<br>If `src-url` is not present, this mapping must be present.|
+|`git-ref`|`TEXT`|reference: <https://git-scm.com/book/en/v2/Git-Internals-Git-References> <br>example values: `HEAD` `refs/heads/master` `refs/heads/main` `refs/tags/v1`, default value is `HEAD`|
+|`git-sha`|`SHA1SUM`|the full git commit id, 40-byte hexadecimal string, if `git-ref` and `git-sha` both are present, `git-sha` takes precedence over `git-ref`|
+|`git-nth`|`INT`|tell `ndk-pkg` that how many depth commits would you like to fetch. default is `1`, this would save your time and storage. If you have to fetch all commits, set this to `0`|
 ||||
-|`src-url`|optional|`URI`|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` while this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
-|`src-uri`|optional|`URL`|the mirror of `src-url`.|
-|`src-sha`|optional|`SHA256SUM`|the `sha256sum` of source code.<br>`src-sha` and `src-url` must appear together.|
+|`src-url`|`URI`|the source code download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/src` while this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/src`<br>also support format like `dir://DIR`|
+|`src-uri`|`URL`|the mirror of `src-url`.|
+|`src-sha`|`SHA256SUM`|the `sha256sum` of source code.<br>`src-sha` and `src-url` must appear together.|
 ||||
-|`fix-url`|optional|`URL`|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` while this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
-|`fix-uri`|optional|`URL`|the mirror of `fix-url`.|
-|`fix-sha`|optional|`SHA256SUM`|the `sha256sum` of patch file.<br>`fix-sha` and `fix-url` must appear together.|
-|`fix-opt`|optional|`LIST`|A space-separated list of arguments to be passed to `patch` command. default value is `-p1`.|
+|`fix-url`|`URL`|the patch file download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/fix` while this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/fix`.|
+|`fix-uri`|`URL`|the mirror of `fix-url`.|
+|`fix-sha`|`SHA256SUM`|the `sha256sum` of patch file.<br>`fix-sha` and `fix-url` must appear together.|
+|`fix-opt`|`LIST`|A space-separated list of arguments to be passed to `patch` command. default value is `-p1`.|
 ||||
-|`patches`|optional|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<fix-sha>\|<fix-url>[\|fix-uri][\|fix-opt]`|
+|`patches`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<fix-sha>\|<fix-url>[\|fix-uri][\|fix-opt]`|
 ||||
-|`res-url`|optional|`URL`|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` while this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
-|`res-uri`|optional|`URL`|the mirror of `res-url`.|
-|`res-sha`|optional|`SHA256SUM`|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
+|`res-url`|`URL`|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` while this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
+|`res-uri`|`URL`|the mirror of `res-url`.|
+|`res-sha`|`SHA256SUM`|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
 ||||
-|`reslist`|optional|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
+|`reslist`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
 ||||
-|`dep-lib`|optional|`LIST`|A space-separated list of `pkg-config` packages needed by this package when installing.<br>each of them will be calculated via `pkg-config --libs-only-l ` then passed to the linker.|
-|`dep-pkg`|optional|`LIST`|A space-separated list of   `ndk-pkg packages` depended by this package when installing, which will be installed via [ndk-pkg](https://github.com/leleliu008/ndk-pkg).|
-|`dep-upp`|optional|`LIST`|A space-separated list of   `uppm packages` depended by this package when installing, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
-|`dep-plm`|optional|`LIST`|A space-separated list of    `perl modules` depended by this package when installing, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
-|`dep-pip`|optional|`LIST`|A space-separated list of `python packages` depended by this package when installing, which will be installed via [pip](https://github.com/pypa/pip).|
-|`dep-gem`|optional|`LIST`|A space-separated list of    `ruby packages` depended by this package when installing, which will be installed via [gem](https://github.com/rubygems/rubygems).|
-|`dep-npm`|optional|`LIST`|A space-separated list of    `nodejs packages` depended by this package when installing, which will be installed via [npm](https://github.com/npm/cli).|
+|`dep-lib`|`LIST`|A space-separated list of `pkg-config` packages needed by this package when installing.<br>each of them will be calculated via `pkg-config --libs-only-l ` then passed to the linker.|
+|`dep-pkg`|`LIST`|A space-separated list of   `ndk-pkg packages` depended by this package when installing, which will be installed via [ndk-pkg](https://github.com/leleliu008/ndk-pkg).|
+|`dep-upp`|`LIST`|A space-separated list of   `uppm packages` depended by this package when installing, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
+|`dep-plm`|`LIST`|A space-separated list of    `perl modules` depended by this package when installing, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
+|`dep-pip`|`LIST`|A space-separated list of `python packages` depended by this package when installing, which will be installed via [pip](https://github.com/pypa/pip).|
+|`dep-gem`|`LIST`|A space-separated list of    `ruby packages` depended by this package when installing, which will be installed via [gem](https://github.com/rubygems/rubygems).|
+|`dep-npm`|`LIST`|A space-separated list of    `nodejs packages` depended by this package when installing, which will be installed via [npm](https://github.com/npm/cli).|
 ||||
-|`ccflags`|optional|`LIST`|A space-separated list of arguments to be passed to the C compiler.|
-|`xxflags`|optional|`LIST`|A space-separated list of arguments to be passed to the C++ compiler.|
-|`ppflags`|optional|`LIST`|A space-separated list of arguments to be passed to the PreProcessor.|
-|`ldflags`|optional|`LIST`|A space-separated list of arguments to be passed to the linker.<br>`ndk-pkg` supports a custom option `-p<PKG-CONFIG-PACKAGE-NAME>`. It will be substituted by the result of `pkg-config --libs-only-l <PKG-CONFIG-PACKAGE-NAME>`|
+|`ccflags`|`LIST`|A space-separated list of arguments to be passed to the C compiler.|
+|`xxflags`|`LIST`|A space-separated list of arguments to be passed to the C++ compiler.|
+|`ppflags`|`LIST`|A space-separated list of arguments to be passed to the PreProcessor.|
+|`ldflags`|`LIST`|A space-separated list of arguments to be passed to the linker.<br>`ndk-pkg` supports a custom option `-p<PKG-CONFIG-PACKAGE-NAME>`. It will be substituted by the result of `pkg-config --libs-only-l <PKG-CONFIG-PACKAGE-NAME>`|
 ||||
-|`bsystem`|optional|`LIST`|A space-separated list of build system names (e.g. `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `cabal` `go` `rake` `ndk-build`)|
-|`bscript`|optional|`PATH`|the directory where the build script is located, relative to `$PACKAGE_WORKING_DIR/src`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
-|`binbstd`|optional|`BOOL`|whether to build in the directory where the build script is located, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
-|`ltoable`|optional|`BOOL`|whether support [LTO](https://gcc.gnu.org/wiki/LinkTimeOptimization).<br>value shall be `0` or `1`. default value is `1`.|
-|`movable`|optional|`BOOL`|whether the installed files can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
-|`parallel`|optional|`BOOL`|whether to allow build system to run jobs in parallel.<br>value shall be `0` or `1`. default value is `1`.|
+|`bsystem`|`LIST`|A space-separated list of build system names (e.g. `autogen` `autotools` `configure` `cmake` `cmake+gmake` `cmake+ninja` `meson` `xmake` `gmake` `ninja` `cargo` `cabal` `go` `rake` `ndk-build`)|
+|`bscript`|`PATH`|the directory where the build script is located, relative to `$PACKAGE_WORKING_DIR/src`. build script such as `configure`, `Makefile`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc.|
+|`binbstd`|`BOOL`|whether to build in the directory where the build script is located, otherwise build in other directory.<br>value shall be `0` or `1`. default value is `0`.|
+|`ltoable`|`BOOL`|whether support [LTO](https://gcc.gnu.org/wiki/LinkTimeOptimization).<br>value shall be `0` or `1`. default value is `1`.|
+|`movable`|`BOOL`|whether the installed files can be moved/copied to other locations.<br>value shall be `0` or `1`. default value is `1`.|
+|`parallel`|`BOOL`|whether to allow build system to run jobs in parallel.<br>value shall be `0` or `1`. default value is `1`.|
 ||||
-|`dofetch`|optional|`CODE`|POSIX shell code to be run to take over the fetching process.<br>It would be run in a separate process.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
-|`do12345`|optional|`CODE`|POSIX shell code to be run for native build.<br>It is running in a separated process.|
-|`dopatch`|optional|`CODE`|POSIX shell code to be run to apply patches manually.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
-|`prepare`|optional|`CODE`|POSIX shell code to be run to do some additional preparation before installing.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
-|`install`|optional|`CODE`|POSIX shell code to be run when user run `ndk-pkg install <PKG>`.<br>If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
-|`dotweak`|optional|`CODE`|POSIX shell code to be run to do some tweaks immediately after installing.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
+|`dofetch`|`CODE`|POSIX shell code to be run to take over the fetching process.<br>It would be run in a separate process.<br>`PWD` is `$PACKAGE_WORKING_DIR`|
+|`do12345`|`CODE`|POSIX shell code to be run for native build.<br>It is running in a separated process.|
+|`dopatch`|`CODE`|POSIX shell code to be run to apply patches manually.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`prepare`|`CODE`|POSIX shell code to be run to do some additional preparation before installing.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR`|
+|`install`|`CODE`|POSIX shell code to be run when user run `ndk-pkg install <PKG>`.<br>If this mapping is not present, `ndk-pkg` will run default install code according to `bsystem`.<br>`PWD` is `$PACKAGE_BSCRIPT_DIR` if `binbstd` is `0`, otherwise it is `$PACKAGE_BCACHED_DIR`|
+|`dotweak`|`CODE`|POSIX shell code to be run to do some tweaks immediately after installing.<br>`PWD` is `$PACKAGE_INSTALL_DIR`|
 ||||
-|`bindenv`|optional|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<ENV>=<VALUE>`. `%s` in `<VALUE>` represents the install directory.<br>`ndk-pkg` will bind these environment variables to executables while you are running `ndk-pkg bundle`.|
+|`bindenv`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<ENV>=<VALUE>`. `%s` in `<VALUE>` represents the install directory.<br>`ndk-pkg` will bind these environment variables to executables while you are running `ndk-pkg bundle`.|
 ||||
-|`wrapper`|optional|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format:  `<SRC>\|<DST>`. e.g. `bear.c\|bin/` means that `ndk-pkg` will fetch `bear.c` from https://raw.githubusercontent.com/leleliu008/ndk-pkg-formula-repository-official-core/refs/heads/master/wrappers/bear.c then install it to `$PACKAGE_INSTALL_DIR/bin/` directory.<br>`ndk-pkg` will use these C source files to build the corresponding wrappers rather than a generic one while you are running `ndk-pkg bundle`.|
+|`wrapper`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format:  `<SRC>\|<DST>`. e.g. `bear.c\|bin/` means that `ndk-pkg` will fetch `bear.c` from https://raw.githubusercontent.com/leleliu008/ndk-pkg-formula-repository-official-core/refs/heads/master/wrappers/bear.c then install it to `$PACKAGE_INSTALL_DIR/bin/` directory.<br>`ndk-pkg` will use these C source files to build the corresponding wrappers rather than a generic one while you are running `ndk-pkg bundle`.|
 ||||
-|`caveats`|optional|`TEXT`|plain text to be displayed after installing.|
+|`caveats`|`TEXT`|plain text to be displayed after installing.|
 ||||
-|`api-min`|optional|`INT`|indicates which minimum [Android SDK API Level](https://apilevels.com/) is supported for this package.|
+|`api-min`|`INT`|indicates which minimum [Android SDK API Level](https://apilevels.com/) is supported for this package.|
+
+**Note:**
+
+- All mappings except `summary` are optional.
+- Mappings not listed in the table above will be ignored.
 
 **phases of a package's installation:**
 
