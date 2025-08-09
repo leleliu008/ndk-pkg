@@ -774,15 +774,15 @@ a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
 ## ndk-pkg formula scheme
 
-a ndk-pkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file, which is used to config a ndk-pkg package's meta-information such as one sentence description, package version, installation instructions, etc.
+A ndk-pkg formula is a [YAML](https://yaml.org/spec/1.2.2/) format file, which is used to config a ndk-pkg package's meta-information such as one sentence description, package version, installation instructions, etc.
 
-a ndk-pkg formula's filename suffix must be `.yml`
+A ndk-pkg formula's filename suffix must be `.yml`
 
-a ndk-pkg formula'a filename prefix would be treated as the package name.
+A ndk-pkg formula'a filename prefix would be treated as the package name.
 
-a ndk-pkg formula'a filename prefix must match regular expression pattern `^[A-Za-z0-9+-._@]{1,50}$`
+A ndk-pkg formula'a filename prefix must match regular expression pattern `^[A-Za-z0-9+-._@]{1,50}$`
 
-a ndk-pkg formula's file content only has one level mapping and shall/might have the following `KEY`s:
+A ndk-pkg formula's file content only has one level mapping and shall/might have the following `KEY`s:
 
 |KEY|TYPE|overview|
 |-|-|-|
@@ -851,14 +851,35 @@ a ndk-pkg formula's file content only has one level mapping and shall/might have
 ||||
 |`api-min`|`INT`|indicates which minimum [Android SDK API Level](https://apilevels.com/) is supported for this package.|
 
-**Note:**
+**Notes:**
 
 - All mappings except `summary` are optional.
 - Mappings not listed in the table above will be ignored.
 
 **phases of a package's installation:**
 
-![phases](phases.svg)
+```
+ process-0      process-1      process-2      process-3     process-0
+┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
+│ dosetup │ -> │ dofetch │ -> │ do12345 │ -> │ dopatch │
+└─────────┘    └─────────┘    └─────────┘    └─────────┘
+                                                  ⬇
+                                             ┌─────────┐
+                                             │ prepare │
+                                             └─────────┘
+                                                  ⬇
+                                             ┌─────────┐
+                                             │ install │
+                                             └─────────┘
+                                                  ⬇
+                                             ┌─────────┐
+                                             │ dotweak │
+                                             └─────────┘
+                                                  ⬇
+                                             ┌─────────┐    ┌─────────┐
+                                             │ docheck │ -> │ caveats │
+                                             └─────────┘    └─────────┘
+```
 
 |build system name|build script file name|
 |-|-|
