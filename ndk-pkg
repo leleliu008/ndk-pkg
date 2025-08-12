@@ -1210,7 +1210,7 @@ filetype_from_url() {
                 fi
 
                 if [ -z "$PACKAGE_VERSION" ] ; then
-                    PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' | awk -F- '{print $NF}')"
+                    PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' -e 's|\.orig||' | awk -F- '{print $NF}')"
                     case $PACKAGE_VERSION in
                         '') abort 1 "version mapping not found in $PACKAGE_FORMULA_FILEPATH" ;;
                         v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
@@ -10169,7 +10169,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.25.0
+NDKPKG_VERSION=0.25.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
