@@ -320,16 +320,6 @@ wfetch() {
         shift
     done
 
-    if [ -z "$FETCH_URI" ] ; then
-        # remove query params
-        FETCH_URI="${FETCH_URL%%'?'*}"
-        FETCH_URI="https://fossies.org/linux/misc/${FETCH_URI##*/}"
-    else
-        if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
-            FETCH_URI="$("$NDKPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
-        fi
-    fi
-
     case $FETCH_PATH in
         -)
             FETCH_BUFFER_FILEPATH='-'
@@ -372,7 +362,7 @@ wfetch() {
         fi
     fi
 
-    for FETCH_TOOL in curl wget http lynx aria2c axel
+    for FETCH_TOOL in curl wget http aria2c axel
     do
         if command -v "$FETCH_TOOL" > /dev/null ; then
             break
@@ -382,7 +372,7 @@ wfetch() {
     done
 
     if [ -z "$FETCH_TOOL" ] ; then
-        abort 1 "none of curl wget http lynx aria2c axel command was found, please install one of them then try again."
+        abort 1 "none of curl wget http aria2c axel command was found, please install one of them then try again."
     fi
 
     if [                -n "$FETCH_OUTPUT_DIR" ] ; then
@@ -393,46 +383,70 @@ wfetch() {
 
     case $FETCH_TOOL in
         curl)
-            unset CURL_OPTIONS
-
             if [ "$FETCH_SILENT" = 1 ] ; then
-                CURL_OPTIONS='--no-progress-meter'
+                FETCH_ARGS='--no-progress-meter'
             fi
 
             if [ -n "$SSL_CERT_FILE" ] ; then
-                CURL_OPTIONS="$CURL_OPTIONS --cacert $SSL_CERT_FILE"
+                FETCH_ARGS="$FETCH_ARGS --cacert $SSL_CERT_FILE"
             fi
 
             if [ -n "$NDKPKG_DNS_SERVERS" ] ; then
-                CURL_OPTIONS="$CURL_OPTIONS --dns-servers $NDKPKG_DNS_SERVERS"
+                FETCH_ARGS="$FETCH_ARGS --dns-servers $NDKPKG_DNS_SERVERS"
             fi
 
-            run "curl $CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
-            run "curl $CURL_OPTIONS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            FETCH_ARGS="$FETCH_ARGS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_BUFFER_FILEPATH'"
             ;;
         wget)
-            run "wget --timeout=60 -O '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
-            run "wget --timeout=60 -O '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            FETCH_ARGS="--timeout=60 -O '$FETCH_BUFFER_FILEPATH'"
             ;;
         http)
-            run "http --timeout=60 -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
-            run "http --timeout=60 -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
-            ;;
-        lynx)
-            run "lynx -source '$FETCH_URL' > '$FETCH_BUFFER_FILEPATH'" ||
-            run "lynx -source '$FETCH_URI' > '$FETCH_BUFFER_FILEPATH'"
+            FETCH_ARGS="--timeout=60 -o '$FETCH_BUFFER_FILEPATH'"
             ;;
         aria2c)
-            run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URL'" ||
-            run "aria2c -d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME' '$FETCH_URI'"
+            FETCH_ARGS="-d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME'"
             ;;
         axel)
-            run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URL'" ||
-            run "axel -o '$FETCH_BUFFER_FILEPATH' '$FETCH_URI'"
+            FETCH_ARGS="-o '$FETCH_BUFFER_FILEPATH'"
             ;;
         *)  abort 1 "wfetch() unimplementation: $FETCH_TOOL"
             ;;
     esac
+
+    for i in 1 2 3 4
+    do
+        case $i in
+            1)  URL="$FETCH_URL"
+                ;;
+            2)  if [ -z "$FETCH_URI" ] ; then
+                    if [ -z "$PACKAGE_NAME" ] ; then
+                        continue
+                    fi
+
+                    URI="${FETCH_URL%%'?'*}"
+                    URL="https://distfiles.macports.org/$PACKAGE_NAME/${URI##*/}"
+                else
+                    if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
+                        URL="$("$NDKPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
+                    else
+                        URL="$FETCH_URI"
+                    fi
+                fi
+                ;;
+            3)  case $FETCH_URL in
+                    https://ftp.gnu.org/gnu/*)
+                        URL="$(printf '%s\n' "$FETCH_URL" | sed -i 's|ftp\.gnu\.org|ftpmirror.gnu.org|')"
+                        ;;
+                    *)  continue
+                esac
+                ;;
+            4)  URI="${FETCH_URL%%'?'*}"
+                URL="https://fossies.org/linux/misc/${URI##*/}"
+                ;;
+        esac
+
+        run "$FETCH_TOOL $FETCH_ARGS '$URL'" && break
+    done
 
     [ $? -eq 0 ] || return 1
 
