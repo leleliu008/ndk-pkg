@@ -383,19 +383,21 @@ wfetch() {
 
     case $FETCH_TOOL in
         curl)
-            if [ "$FETCH_SILENT" = 1 ] ; then
-                FETCH_ARGS='--no-progress-meter'
-            fi
+            FETCH_ARGS='--fail --retry 20 --retry-delay 30 --location'
 
-            if [ -n "$SSL_CERT_FILE" ] ; then
-                FETCH_ARGS="$FETCH_ARGS --cacert $SSL_CERT_FILE"
+            if [ "$FETCH_SILENT" = 1 ] ; then
+                FETCH_ARGS="$FETCH_ARGS --no-progress-meter"
             fi
 
             if [ -n "$NDKPKG_DNS_SERVERS" ] ; then
                 FETCH_ARGS="$FETCH_ARGS --dns-servers $NDKPKG_DNS_SERVERS"
             fi
 
-            FETCH_ARGS="$FETCH_ARGS --fail --retry 20 --retry-delay 30 --location -o '$FETCH_BUFFER_FILEPATH'"
+            if [ -n "$SSL_CERT_FILE" ] ; then
+                FETCH_ARGS="$FETCH_ARGS --cacert $SSL_CERT_FILE"
+            fi
+
+            FETCH_ARGS="$FETCH_ARGS -o '$FETCH_BUFFER_FILEPATH'"
             ;;
         wget)
             FETCH_ARGS="--timeout=60 -O '$FETCH_BUFFER_FILEPATH'"
