@@ -198,7 +198,7 @@ ndk-pkg/ndk-pkg setup
 
 **Caveats**: Please do NOT place your own files under `~/.ndk-pkg` directory, as `ndk-pkg` will change (remove, modify, override) files under `~/.ndk-pkg` directory without notice.
 
-a typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
+A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
 ```text
 ~/.ndk-pkg
@@ -881,22 +881,6 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
                                              └─────────┘    └─────────┘
 ```
 
-|build system name|build script file name|
-|-|-|
-|`meson`|`meson.build`|
-|`cmake`|`CMakeLists.txt`|
-|`gmake`|`GNUMakefile` or `Makefile`|
-|`ninja`|`build.ninja`|
-|`xmake`|`xmake.lua`|
-|`cargo`|`Cargo.toml`|
-|`go`|`go.mod`|
-|`gn`|`BUILD.gn`|
-|`rake`|`Rakefile`|
-|`autogen`|`autogen.sh`|
-|`autotools`|`configure.ac`|
-|`configure`|`configure`|
-|`ndk-build`|`Android.mk`|
-
 **commands that can be used out of the box:**
 
 |command|usage-example|
@@ -1013,9 +997,27 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
 |`x_INCLUDE_DIR`|`$x_INSTALL_DIR/include`|
 |`x_LIBRARY_DIR`|`$x_INSTALL_DIR/lib`|
 
+## build system name and corresponding build script file name
+
+|build system name|build script file name|
+|-|-|
+|`meson`|`meson.build`|
+|`cmake`|`CMakeLists.txt`|
+|`gmake`|`GNUMakefile` or `Makefile`|
+|`ninja`|`build.ninja`|
+|`xmake`|`xmake.lua`|
+|`cargo`|`Cargo.toml`|
+|`go`|`go.mod`|
+|`gn`|`BUILD.gn`|
+|`rake`|`Rakefile`|
+|`autogen`|`autogen.sh`|
+|`autotools`|`configure.ac`|
+|`configure`|`configure`|
+|`ndk-build`|`Android.mk`|
+
 ## ndk-pkg formula repository
 
-a typical hierarchical structure of a ndk-pkg formula repository looks like below:
+A typical hierarchical structure of a ndk-pkg formula repository looks like below:
 
 ```
 NDKPKGFormulaRepoName
@@ -1032,9 +1034,9 @@ NDKPKGFormulaRepoName
 
 ## ndk-pkg formula repository local config
 
-a ndk-pkg formula repository's config file is located at `${NDKPKG_HOME}/repos.d/${NDKPKGFormulaRepoName}/.ndk-pkg-formula-repo.yml`
+A ndk-pkg formula repository's config file is located at `${NDKPKG_HOME}/repos.d/${NDKPKGFormulaRepoName}/.ndk-pkg-formula-repo.yml`
 
-a typical ndk-pkg formula repository's config file content looks like below:
+A typical ndk-pkg formula repository's config file content looks like below:
 
 ```yaml
 url: https://github.com/leleliu008/ndk-pkg-formula-repository-official-core
