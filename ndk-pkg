@@ -252,7 +252,7 @@ git_submodule_update_recursive() {
 
 # wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <OUTPUT-PATH>] [-q] [--no-buffer]
 #
-# If -o <OUTPUT-PATH> option is unspecified, the result will be written to <OUTPUT-PATH>/$(basename <URL>)
+# If -o <OUTPUT-PATH> option is unspecified, the result will be written to ./$(basename <URL>)
 #
 # If <OUTPUT-PATH> is -, then the result will be written to stdout.
 #
@@ -426,7 +426,7 @@ wfetch() {
                     fi
 
                     URI="${FETCH_URL%%'?'*}"
-                    URL="https://distfiles.macports.org/$PACKAGE_NAME/${URI##*/}"
+                    URL="https://distfiles.macports.org/${PACKAGE_NAME%@*}/${URI##*/}"
                 else
                     if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
                         URL="$("$NDKPKG_URL_TRANSFORM" "$FETCH_URI")" || return 1
@@ -437,7 +437,7 @@ wfetch() {
                 ;;
             3)  case $FETCH_URL in
                     https://ftp.gnu.org/gnu/*)
-                        URL="$(printf '%s\n' "$FETCH_URL" | sed -i 's|ftp\.gnu\.org|ftpmirror.gnu.org|')"
+                        URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|ftpmirror.gnu.org|')"
                         ;;
                     *)  continue
                 esac
