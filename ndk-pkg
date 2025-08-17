@@ -1157,6 +1157,23 @@ filetype_from_url() {
 
     #########################################################################################
 
+    if [ -z "$PACKAGE_SRC_URL" ] && [ -n "$PACKAGE_SRC_URI" ] ; then
+        PACKAGE_SRC_URL="$PACKAGE_SRC_URI"
+        PACKAGE_SRC_URI=
+    fi
+
+    if [ -z "$PACKAGE_FIX_URL" ] && [ -n "$PACKAGE_FIX_URI" ] ; then
+        PACKAGE_FIX_URL="$PACKAGE_FIX_URI"
+        PACKAGE_FIX_URI=
+    fi
+
+    if [ -z "$PACKAGE_RES_URL" ] && [ -n "$PACKAGE_RES_URI" ] ; then
+        PACKAGE_RES_URL="$PACKAGE_RES_URI"
+        PACKAGE_RES_URI=
+    fi
+
+    #########################################################################################
+
     if [ -z "$PACKAGE_SUMMARY" ] ; then
         abort 1 "summary mapping not found in $PACKAGE_FORMULA_FILEPATH"
     fi
@@ -1254,8 +1271,16 @@ filetype_from_url() {
 
     #########################################################################################
 
-    if [ -z "$PACKAGE_WEB_URL" ] && [ -z "$PACKAGE_GIT_URL" ] ; then
-        abort 1 "neither web-url nor git-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
+    if [ -z "$PACKAGE_WEB_URL" ] ; then
+        if [ -z "$PACKAGE_GIT_URL" ] ; then
+            if [ -z "$PACKAGE_SRC_URL" ] ; then
+                abort 1 "none of web-url, git-url, src-url mapping was found in $PACKAGE_FORMULA_FILEPATH"
+            else
+                PACKAGE_WEB_URL="${PACKAGE_SRC_URL%/*}"
+            fi
+        else
+            PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
+        fi
     fi
 
     #########################################################################################
@@ -1908,10 +1933,6 @@ __search_packages() {
   __info_the_given_available_package_as_json() {
     __load_formula_of_the_given_package "$1"
 
-    if [ -z "$PACKAGE_WEB_URL" ] ; then
-        PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
-    fi
-
     jq  --null-input \
         --arg pkgname "$PACKAGE_NAME" \
         --arg pkgtype "$PACKAGE_PKGTYPE" \
@@ -2006,10 +2027,6 @@ __search_packages() {
 # __info_the_given_available_package_as_yaml <PACKAGE-NAME>
   __info_the_given_available_package_as_yaml() {
     __load_formula_of_the_given_package "$1"
-
-    if [ -z "$PACKAGE_WEB_URL" ] ; then
-        PACKAGE_WEB_URL="$PACKAGE_GIT_URL"
-    fi
 
     if is_package_installed "$1" ; then
         PACKAGE_INSTALLED=yes
@@ -10185,7 +10202,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.25.1
+NDKPKG_VERSION=0.25.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"

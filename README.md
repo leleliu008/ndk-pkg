@@ -792,7 +792,7 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
 |`license`|`LIST`|A space-separated list of [SPDX license short identifiers](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-list/#a1-licenses-with-short-identifiers)|
 |`version`|`TEXT`|the version of this package.<br>If this mapping is not present, it will be calculated from `src-url`, if `src-url` is also not present, it will be calculated from running time as format `date +%Y.%m.%d`|
 ||||
-|`web-url`|`URL`|the home webpage of this package.<br>If this mapping is not present, `git-url` must be present.|
+|`web-url`|`URL`|the home webpage of this package.<br>If this mapping is not present, if `git-url` mapping is present, use it as `web-url`, if `git-url` mapping is not present, extract from `src-url`.|
 ||||
 |`git-url`|`URL`|the source code git repository url.<br>If `src-url` is not present, this mapping must be present.|
 |`git-ref`|`TEXT`|reference: <https://git-scm.com/book/en/v2/Git-Internals-Git-References> <br>example values: `HEAD` `refs/heads/master` `refs/heads/main` `refs/tags/v1`, default value is `HEAD`|
@@ -854,6 +854,7 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
 **Notes:**
 
 - All mappings except `summary` are optional.
+- At least one of `web-url` `git-url` `src-url` mappings should be present.
 - Mappings not listed in the table above will be ignored.
 
 **phases of a package's installation:**
