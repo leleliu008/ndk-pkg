@@ -73,6 +73,43 @@ function _ndk_pkg_outdated_package_names() {
     _describe 'outdated-packages' _outdated_packages
 }
 
+function _ndk_pkg_install_target() {
+    if [ -z "$PREFIX" ] ; then
+        compadd -S - -- android
+        return
+    fi
+
+    local -a parts
+    parts=("${(s:-:)PREFIX}")
+
+    case ${#parts} in
+        1)  compadd -S - -- android
+            ;;
+        2)
+            case $PREFIX in
+                android-*)
+                    compadd -S - -P android- -- 36 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
+            esac
+            ;;
+        3)
+            case $PREFIX in
+                android-[2-3][1-9]-*)
+                    compadd -P "${PREFIX%-*}-" -- x86 x86_64 arm64-v8a armeabi-v7a
+            esac
+            ;;
+        4)
+            case $PREFIX in
+                android-[2-3][1-9]-arm64-*)
+                    compadd -P "${PREFIX%-*}-" -- v8a
+                    ;;
+                android-[2-3][1-9]-armeabi-*)
+                    compadd -P "${PREFIX%-*}-" -- v7a
+                    ;;
+            esac
+            ;;
+    esac
+}
+
 function _ndk_pkg() {
     local context state state_descr line
     typeset -A opt_args
@@ -177,7 +214,7 @@ function _ndk_pkg() {
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
                         '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
-                        '--target=-[specify the target to be built for]:target:(android-21-armeabi-v7a android-21-arm64-v8a android-21-x86 android-21-x86_64)' \
+                        '--target=-[specify the target to be built for]:target:_ndk_pkg_install_target' \
                         '--profile=-[specify build profile]:profile:(debug release)' \
                         '--static[create fully statically linked executables]' \
                         '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
@@ -216,7 +253,7 @@ function _ndk_pkg() {
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
                         '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
-                        '--target=-[specify the target to be built for]:target:(android-21-armeabi-v7a android-21-arm64-v8a android-21-x86 android-21-x86_64)' \
+                        '--target=-[specify the target to be built for]:target:_ndk_pkg_install_target' \
                         '--profile=-[specify build profile]:profile:(debug release)' \
                         '--static[create fully statically linked executables]' \
                         '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
@@ -255,7 +292,7 @@ function _ndk_pkg() {
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
                         '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
-                        '--target=-[specify the target to be built for]:target:(android-21-armeabi-v7a android-21-arm64-v8a android-21-x86 android-21-x86_64)' \
+                        '--target=-[specify the target to be built for]:target:_ndk_pkg_install_target' \
                         '--profile=-[specify build profile]:profile:(debug release)' \
                         '--static[create fully statically linked executables]' \
                         '-j[specify the number of jobs you can run in parallel]:jobs:(1 2 3 4 5 6 7 8 9)' \
