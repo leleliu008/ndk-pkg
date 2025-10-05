@@ -5828,10 +5828,10 @@ EOF
                 else
                     uppm about
                     uppm update
-                    uppm install zig@0.14 binutils
+                    uppm install zig@0.15 binutils
 
                     export PATH="$UPPM_HOME/installed/binutils/bin:$PATH"
-                    export  ZIG="$UPPM_HOME/installed/zig@0.14/bin/zig"
+                    export  ZIG="$UPPM_HOME/installed/zig@0.15/bin/zig"
 
                     CXX_FOR_BUILD="$NDKPKG_CORE_DIR/zig-c++"
                      CC_FOR_BUILD="$NDKPKG_CORE_DIR/zig-cc"
@@ -10202,7 +10202,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.25.2
+NDKPKG_VERSION=0.25.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
