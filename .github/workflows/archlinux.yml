@@ -27,6 +27,7 @@ jobs:
 
       - run: ./ndk-pkg sysinfo
 
+
       - run: ./ndk-pkg integrate zsh
 
       - run: ./ndk-pkg update
@@ -49,14 +50,26 @@ jobs:
       - run: ./ndk-pkg info-available libzip src-sha
 
 
+
+
       - run: ./ndk-pkg depends libzip
+      - run: ./ndk-pkg depends libzip -t d2
       - run: ./ndk-pkg depends libzip -t dot
       - run: ./ndk-pkg depends libzip -t box
       - run: ./ndk-pkg depends libzip -t dot -o a/
       - run: ./ndk-pkg depends libzip -o libzip.box
+      - run: ./ndk-pkg depends libzip -t svg -o .
+      - run: ./ndk-pkg depends libzip -t svg -o . --engine=d2
+      - run: ./ndk-pkg depends libzip -t svg -o . --engine=dot
+      - run: ./ndk-pkg depends libzip -t png -o .
+        #- run: ./ndk-pkg depends libzip -t png -o . --engine=d2
+      - run: ./ndk-pkg depends libzip -t png -o . --engine=dot
 
 
+      - run: ./ndk-pkg install bat    --target=android-23-arm64-v8a
+      - run: ./ndk-pkg install uctags --target=android-24-arm64-v8a
       - run: ./ndk-pkg install libzip
+      - run: ./ndk-pkg install yq --ndk-revision=28c
 
 
       - run: ./ndk-pkg info-installed libzip --prefix

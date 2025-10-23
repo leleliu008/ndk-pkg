@@ -32,6 +32,7 @@ jobs:
 
       - run: ./ndk-pkg sysinfo
 
+
       - run: ./ndk-pkg integrate zsh
 
       - run: ./ndk-pkg update
@@ -54,7 +55,10 @@ jobs:
       - run: ./ndk-pkg info-available libzip src-sha
 
 
+
+
       - run: ./ndk-pkg depends libzip
+      - run: ./ndk-pkg depends libzip -t d2
       - run: ./ndk-pkg depends libzip -t dot
       - run: ./ndk-pkg depends libzip -t box
       - run: ./ndk-pkg depends libzip -t dot -o a/
@@ -70,6 +74,7 @@ jobs:
       - run: ./ndk-pkg install bat    --target=android-23-arm64-v8a
       - run: ./ndk-pkg install uctags --target=android-24-arm64-v8a
       - run: ./ndk-pkg install libzip
+      - run: ./ndk-pkg install yq --ndk-revision=28c
 
 
       - run: ./ndk-pkg info-installed libzip --prefix
@@ -92,7 +97,7 @@ jobs:
       - run: ./ndk-pkg export android-21-arm64-v8a/libzip
       - run: ./ndk-pkg export android-21-arm64-v8a/libzip -o .
 
-      - run: ./ndk-pkg deploy android-21-arm64-v8a/libzip
+      - run: ./ndk-pkg deploy android-21-arm64-v8a/libzip -o .
       - run: ./ndk-pkg deploy android-21-arm64-v8a/libzip --local=xxxxx
 
       - run: ./ndk-pkg formula-repo-list
