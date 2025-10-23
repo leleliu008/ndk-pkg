@@ -26,6 +26,20 @@ Please read these caveats carefully before starting to use this software.
 
 - This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to a cmake error: `CMake: Builds hosted on 'CYGWIN' not supported.`, for the reason please refer to [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L278-L300). If you really want to use this software on [Windows](https://www.microsoft.com/en-us/windows/), please use via [Docker](https://www.docker.com/) or [WSL](https://docs.microsoft.com/en-us/windows/wsl/) instead.
 
+## FAQ
+
+1. **Do I need to download the `Android NDK`?**
+
+    No. You don't need to download the `Android NDK`, `ndk-pkg` will automatically download it when needed.
+
+2. **Can I specify my own location of `Android NDK` via environment variable ANDROID_NDK_HOME or ANDROID_NDK_ROOT?**
+
+    No. You can't specify your location of `Android NDK` via environment variable `ANDROID_NDK_HOME` and `ANDROID_NDK_ROOT`, but you can do it via `--ndk-home=<ANDROID-NDK-HOME>` option.
+
+3. **Does this software support building as 16KB page size?**
+
+    Yes, due to Android NDK r28 and higher compile 16 KB-aligned by default, you can run `ndk-pkg install <PKG> --ndk-revision=28c`.
+
 ## Using ndk-pkg via GitHub Actions
 
 This is the recommended way of using this software.

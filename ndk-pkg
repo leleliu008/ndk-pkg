@@ -2672,7 +2672,7 @@ __fetch_resources_of_the_given_package() {
         done < fs.txt
 
         if [ -n "$FILEPATHs" ] ; then
-            setup_android_ndk_env "$ANDROID_NDK_HOME"
+            setup_android_ndk_env '' "$ANDROID_NDK_HOME"
 
             if [ "$RECEIPT_PACKAGE_BUILTFOR_PLATFORM_ARCH" = armv7a ] ; then
                 TARGET_TRIPLE='armv7a-linux-androideabi'
@@ -2966,6 +2966,7 @@ EOF
 #                     └── libz.so
 #
 # __export_google_prefab_aar_for_the_given_installed_packages android-<ANDROID-API>-<ANDROID-ABIs>/<PACKAGE-NAME> [--ndk-home=<ANDROID-NDK-HOME>] [-o <OUTPUT-PATH>] [-K]
+
   __export_google_prefab_aar_for_the_given_installed_packages() {
     unset PACKAGE_NAME
 
@@ -3005,6 +3006,7 @@ EOF
     shift
 
     unset ANDROID_NDK_HOME
+    unset ANDROID_NDK_REVISION
 
     unset OUTPUT_PATH
 
@@ -3033,7 +3035,7 @@ EOF
 
     #########################################################################################
 
-    setup_android_ndk_env "$ANDROID_NDK_HOME"
+    setup_android_ndk_env "$ANDROID_NDK_REVISION" "$ANDROID_NDK_HOME"
 
     #########################################################################################
 
@@ -4685,6 +4687,7 @@ inspect_install_arguments() {
     unset SPECIFIED_TARGET
 
     unset ANDROID_NDK_HOME
+    unset ANDROID_NDK_REVISION
 
     unset DUMP_ENV
     unset DUMP_HTTP
@@ -4848,6 +4851,14 @@ inspect_install_arguments() {
             --ndk-home=*)
                 ANDROID_NDK_HOME="${1#*=}"
                 ;;
+            --ndk-revision=*)
+                ANDROID_NDK_REVISION="${1#*=}"
+                case $ANDROID_NDK_REVISION in
+                    [1-2][0-9][bcd])
+                        ;;
+                    *)  abort 1 "invalid Android NDK revision : $ANDROID_NDK_REVISION, example values are 28c, 27d, 26d, 25c, etc. For more details, please visit https://developer.android.com/ndk/downloads/revision_history"
+                esac
+                ;;
             --static)
                 REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
                 ;;
@@ -4874,6 +4885,12 @@ inspect_install_arguments() {
         esac
         shift
     done
+
+    #########################################################################################
+
+    if [ -n "$ANDROID_NDK_HOME" ] && [ -n "$ANDROID_NDK_REVISION" ] ; then
+        abort 1 "--ndk-home=<ANDROID-NDK-HOME> and -r$ANDROID_NDK_REVISION options are mutually exclusive. You can only specify one of them."
+    fi
 
     #########################################################################################
 
@@ -4970,7 +4987,7 @@ inspect_install_arguments() {
 
     #########################################################################################
 
-    setup_android_ndk_env "$ANDROID_NDK_HOME"
+    setup_android_ndk_env "$ANDROID_NDK_REVISION" "$ANDROID_NDK_HOME"
 }
 
 __install_the_given_packages() {
@@ -9332,6 +9349,7 @@ println_android_ndk_info() {
     cat <<EOF
 ANDROID_NDK_HOME='$ANDROID_NDK_HOME'
 ANDROID_NDK_ROOT='$ANDROID_NDK_ROOT'
+ANDROID_NDK_REVISION='$ANDROID_NDK_REVISION'
 ANDROID_NDK_VERSION='$ANDROID_NDK_VERSION'
 ANDROID_NDK_VERSION_MAJOR='$ANDROID_NDK_VERSION_MAJOR'
 ANDROID_NDK_TOOLCHAIN_ROOT='$ANDROID_NDK_TOOLCHAIN_ROOT'
@@ -9356,40 +9374,47 @@ ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVEL='$ANDROID_NDK_SUPPORTED_MAX_SDK_API_LEVE
 EOF
 }
 
-# setup_android_ndk_env [ANDROID_NDK_HOME]
+# install_android_ndk_if_needed <ANDROID_NDK_REVISION>
+  install_android_ndk_if_needed() {
+    ANDROID_NDK_PKG="android-ndk-r$1"
+
+    "$UPPM" is-installed "$ANDROID_NDK_PKG" || {
+        note "Installing $ANDROID_NDK_PKG via uppm"
+        uppm about
+        uppm update
+        uppm install "$ANDROID_NDK_PKG"
+    }
+
+    ANDROID_NDK_HOME="$UPPM_HOME/installed/$ANDROID_NDK_PKG"
+    ANDROID_NDK_REVISION="$1"
+
+    #if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+    #    ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
+    #else
+    #    ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_PLATFORM_ARCH"
+    #fi
+
+    # https://github.com/termux/termux-packages/issues/21113
+    # https://github.com/termux/termux-packages/blob/master/ndk-patches/27c/time.h.patch
+    # gsed -i -e '41c #if __ANDROID_API__ >= 35' -e '53c #endif' "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/sysroot/usr/include/time.h"
+}
+
+# setup_android_ndk_env [ANDROID_NDK_REVISION] [ANDROID_NDK_HOME]
   setup_android_ndk_env() {
     if [ -z "$1" ] ; then
-        if [ "$NATIVE_PLATFORM_KIND" = android ] ; then
-            # use comunity compiled Android NDK for aarch64-linux right now, I might compile my own at some point.
-            # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
-            ANDROID_NDK_REVISION='r27b'
+        if [ -z "$2" ] ; then
+            if [ "$NATIVE_PLATFORM_KIND" = android ] ; then
+                # use comunity compiled Android NDK for aarch64-linux right now, I might compile my own at some point.
+                # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
+                install_android_ndk_if_needed 27b
+            else
+                install_android_ndk_if_needed 27d
+            fi
         else
-            ANDROID_NDK_REVISION='r27d'
-        fi
-
-        ANDROID_NDK_PKG="android-ndk-$ANDROID_NDK_REVISION"
-
-        ANDROID_NDK_HOME="$UPPM_HOME/installed/$ANDROID_NDK_PKG"
-
-        if ! "$UPPM" is-installed "$ANDROID_NDK_PKG" ; then
-            note "Due to --ndk-home=<ANDROID-NDK-HOME> option is unspecified, Android NDK ($ANDROID_NDK_REVISION) will be installed via uppm."
-
-            uppm about
-            uppm update
-            uppm install "$ANDROID_NDK_PKG"
-
-            #if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
-            #    ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
-            #else
-            #    ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_PLATFORM_ARCH"
-            #fi
-
-            # https://github.com/termux/termux-packages/issues/21113
-            # https://github.com/termux/termux-packages/blob/master/ndk-patches/27c/time.h.patch
-            # gsed -i -e '41c #if __ANDROID_API__ >= 35' -e '53c #endif' "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$ANDROID_NDK_TOOLCHAIN_HOST_TAG/sysroot/usr/include/time.h"
+            install_android_ndk_if_needed '' "$2"
         fi
     else
-        ANDROID_NDK_HOME="$1"
+        install_android_ndk_if_needed "$1"
     fi
 
     inspect_android_ndk_info "$ANDROID_NDK_HOME"
@@ -9847,7 +9872,20 @@ ${COLOR_GREEN}ndk-pkg install [android-<ANDROID-API>-<ANDROID-ABIs>/]<PACKAGE-NA
             If this option is unspecified, the environment variable ${COLOR_RED}NDKPKG_DEFAULT_TARGET${COLOR_OFF} is honored, if the environment variable NDKPKG_DEFAULT_TARGET is not set, then android-21-arm64-v8a will be used as the default.
 
         ${COLOR_BLUE}--ndk-home=<ANDROID-NDK-HOME>${COLOR_OFF}
-            If --ndk-home=<ANDROID-NDK-HOME> is unspecified, a proper version of Android NDK will be automatically installed for you via uppm.
+            use the specified location of Android NDK.
+
+            If you want to use your own installed Android NDK, use this option.
+
+        ${COLOR_BLUE}--ndk-revision=<ANDROID-NDK-REVISION>${COLOR_OFF}
+            use the specified revision of Android NDK.
+
+            <ANDROID-NDK-REVISION> can be 28c, 27d, 26d, 25c, etc. Please visit https://developer.android.com/ndk/downloads/revision_history for more details on Android NDK revsion.
+
+            If the specified revision of Android NDK isn't installed, it will be automatically installed for you via uppm.
+
+            If neither --ndk-home=<ANDROID-NDK-HOME> nor --ndk-revision=<ANDROID-NDK-REVISION> is specified, a proper revision of Android NDK will be automatically installed for you via uppm.
+
+            --ndk-home=<ANDROID-NDK-HOME> and --ndk-revision=<ANDROID-NDK-REVISION> options are mutually exclusive. You can only specify one of them.
 
         ${COLOR_BLUE}--profile=<debug|release>${COLOR_OFF}
             specify the build profile.
@@ -10202,7 +10240,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.25.3
+NDKPKG_VERSION=0.26.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"

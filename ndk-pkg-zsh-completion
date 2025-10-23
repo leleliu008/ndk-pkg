@@ -186,9 +186,11 @@ function _ndk_pkg() {
                 export)
                     _arguments \
                         '1:package-name:_ndk_pkg_installed_package_names' \
-                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
                         '-o[specify output filepath or directory]:output-path:_files' \
-                        '-K[do not delete the session directory even if successfully exported]'
+                        '-K[do not delete the session directory even if successfully exported]' \
+                        + '(ndk)' \
+                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
+                        '--ndk-revision=-[specify Android NDK revision]:ndk-revision:(28c 27d 26d 25c)'
                     ;;
                 deploy)
                     _arguments \
@@ -213,7 +215,6 @@ function _ndk_pkg() {
                 install)
                     _arguments \
                         ':package-name:_ndk_pkg_available_packages' \
-                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
                         '--target=-[specify the target to be built for]:target:_ndk_pkg_install_target' \
                         '--profile=-[specify build profile]:profile:(debug release)' \
                         '--static[create fully statically linked executables]' \
@@ -247,12 +248,14 @@ function _ndk_pkg() {
                         + '(verbose_level)' \
                         '-x[very verbose mode. equivalent to -v-* and -x-* options all are supplied]' \
                         '-v[verbose mode. equivalent to -v-* options all are supplied]' \
-                        '-q[silent mode.]'
+                        '-q[silent mode.]' \
+                        + '(ndk)' \
+                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
+                        '--ndk-revision=-[specify Android NDK revision]:ndk-revision:(28c 27d 26d 25c)'
                     ;;
                 reinstall)
                     _arguments \
                         ':package-name:_ndk_pkg_installed_packages' \
-                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
                         '--target=-[specify the target to be built for]:target:_ndk_pkg_install_target' \
                         '--profile=-[specify build profile]:profile:(debug release)' \
                         '--static[create fully statically linked executables]' \
@@ -286,12 +289,14 @@ function _ndk_pkg() {
                         + '(verbose_level)' \
                         '-x[very verbose mode. equivalent to -v-* and -x-* options all are supplied]' \
                         '-v[verbose mode. equivalent to -v-* options all are supplied]' \
-                        '-q[silent mode.]'
+                        '-q[silent mode.]' \
+                        + '(ndk)' \
+                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
+                        '--ndk-revision=-[specify Android NDK revision]:ndk-revision:(28c 27d 26d 25c)'
                     ;;
                 upgrade)
                     _arguments \
                         ':package-name:_ndk_pkg_outdated_packages' \
-                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
                         '--target=-[specify the target to be built for]:target:_ndk_pkg_install_target' \
                         '--profile=-[specify build profile]:profile:(debug release)' \
                         '--static[create fully statically linked executables]' \
@@ -325,7 +330,10 @@ function _ndk_pkg() {
                         + '(verbose_level)' \
                         '-x[very verbose mode. equivalent to -v-* and -x-* options all are supplied]' \
                         '-v[verbose mode. equivalent to -v-* options all are supplied]' \
-                        '-q[silent mode.]'
+                        '-q[silent mode.]' \
+                        + '(ndk)' \
+                        '--ndk-home=-[specify Android NDK HOME directory]:ndk-home:_path_files -/' \
+                        '--ndk-revision=-[specify Android NDK revision]:ndk-revision:(28c 27d 26d 25c)'
                     ;;
 
                 uninstall)
