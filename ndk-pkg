@@ -437,7 +437,7 @@ wfetch() {
                 ;;
             3)  case $FETCH_URL in
                     https://ftp.gnu.org/gnu/*)
-                        URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|ftpmirror.gnu.org|')"
+                        URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
                         ;;
                     *)  continue
                 esac
@@ -9408,7 +9408,7 @@ EOF
                 # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
                 install_android_ndk_if_needed 27b
             else
-                install_android_ndk_if_needed 27d
+                install_android_ndk_if_needed 28c
             fi
         else
             install_android_ndk_if_needed '' "$2"
