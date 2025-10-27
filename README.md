@@ -34,7 +34,7 @@ Generally, you don't need to download the `Android NDK`, because `ndk-pkg` will 
 
 ## About 16KB page size support
 
-At the moment, `ndk-pkg` use `Android NDK r27d`, it doesn't compile 16 KB-aligned by default. Due to Android NDK r28 and higher compile 16 KB-aligned by default, you can run `ndk-pkg install <PKG> --ndk-revision=28c` if you need 16 KB-aligned ELF files.
+At the moment, `ndk-pkg` use `Android NDK r27d (the latest LTS revision)`, it doesn't compile 16 KB-aligned by default. Due to Android NDK r28 and higher compile 16 KB-aligned by default, you can run `ndk-pkg install <PKG> --ndk-revision=28c` if you need 16 KB-aligned ELF files.
 
 ## Using ndk-pkg via GitHub Actions
 
