@@ -8562,6 +8562,16 @@ configure() {
             export ac_year2038_required=no
         fi
 
+        # sys/stat.h int lchmod(const char* _Nonnull __path, mode_t __mode) __INTRODUCED_IN(36);
+        # stdlib.h void qsort_r(void* _Nullable __array, size_t __n, size_t __size, int (* _Nonnull __comparator)(const void* _Nullable __lhs, const void* _Nullable __rhs, void* _Nullable __context), void* _Nullable __context) __INTRODUCED_IN(36);
+        if [ "$TARGET_PLATFORM_VERS" -ge 36 ] ; then
+            export ac_cv_func_lchmod=yes
+            export ac_cv_func_qsort_r=yes
+        else
+            export ac_cv_func_lchmod=no
+            export ac_cv_func_qsort_r=no
+        fi
+
         # string.h  void* _Nonnull memset_explicit(void* _Nonnull __dst, int __ch, size_t __n) __INTRODUCED_IN(34);
         # stdio_ext.h  size_t __freadahead(FILE* _Nonnull __fp) __INTRODUCED_IN(34);
         if [ "$TARGET_PLATFORM_VERS" -ge 34 ] ; then
@@ -10240,7 +10250,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.26.0
+NDKPKG_VERSION=0.26.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
