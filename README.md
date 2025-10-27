@@ -26,19 +26,15 @@ Please read these caveats carefully before starting to use this software.
 
 - This software can NOT run on [Cygwin](http://cygwin.org/) and [MSYS2](https://www.msys2.org/) due to a cmake error: `CMake: Builds hosted on 'CYGWIN' not supported.`, for the reason please refer to [Android-Determine.cmake](https://github.com/Kitware/CMake/blob/master/Modules/Platform/Android-Determine.cmake#L278-L300). If you really want to use this software on [Windows](https://www.microsoft.com/en-us/windows/), please use via [Docker](https://www.docker.com/) or [WSL](https://docs.microsoft.com/en-us/windows/wsl/) instead.
 
-## FAQ
+## About the Android NDK toolchain
 
-1. **Do I need to download the `Android NDK`?**
+Generally, you don't need to download the `Android NDK`, because `ndk-pkg` will automatically download it when needed, unless you want to use your own `Android NDK`, you can specify your location of `Android NDK` via `--ndk-home=<ANDROID-NDK-HOME>` option. **Please note that you can't specify your location of `Android NDK` via environment variable `ANDROID_NDK_HOME` and `ANDROID_NDK_ROOT`**
 
-    No. You don't need to download the `Android NDK`, `ndk-pkg` will automatically download it when needed.
+`ndk-pkg` also allows you to use a specific revision of `Android NDK` via `--ndk-revision=<ANDROID-NDK-REVISION>` option. For example, if you want to use the `Android NDK r28c`, you can run `ndk-pkg install <PKG> --ndk-revision=28c`
 
-2. **Can I specify my own location of `Android NDK` via environment variable ANDROID_NDK_HOME or ANDROID_NDK_ROOT?**
+## About 16KB page size support
 
-    No. You can't specify your location of `Android NDK` via environment variable `ANDROID_NDK_HOME` and `ANDROID_NDK_ROOT`, but you can do it via `--ndk-home=<ANDROID-NDK-HOME>` option.
-
-3. **Does this software support building as 16KB page size?**
-
-    Yes, due to Android NDK r28 and higher compile 16 KB-aligned by default, you can run `ndk-pkg install <PKG> --ndk-revision=28c`.
+At the moment, `ndk-pkg` use `Android NDK r27d`, it doesn't compile 16 KB-aligned by default. Due to Android NDK r28 and higher compile 16 KB-aligned by default, you can run `ndk-pkg install <PKG> --ndk-revision=28c` if you need 16 KB-aligned ELF files.
 
 ## Using ndk-pkg via GitHub Actions
 
