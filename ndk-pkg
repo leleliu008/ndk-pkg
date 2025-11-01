@@ -9418,7 +9418,7 @@ EOF
                 # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
                 install_android_ndk_if_needed 27b
             else
-                install_android_ndk_if_needed 28c
+                install_android_ndk_if_needed 27d
             fi
         else
             install_android_ndk_if_needed '' "$2"
