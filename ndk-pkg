@@ -5424,8 +5424,8 @@ native_package_info_libz() {
 }
 
 native_package_info_libopenssl() {
-    PACKAGE_SRC_URL='https://www.openssl.org/source/openssl-3.3.1.tar.gz'
-    PACKAGE_SRC_SHA='777cd596284c883375a2a7a11bf5d2786fc5413255efab20c50d6ffe6d020b7e'
+    PACKAGE_SRC_URL='https://github.com/openssl/openssl/releases/download/openssl-3.6.1/openssl-3.6.1.tar.gz'
+    PACKAGE_SRC_SHA='b1bfedcd5b289ff22aee87c9d600f515767ebf45f77168cb6d64f231f518a82e'
     PACKAGE_DEP_AUX='perl gmake'
     PACKAGE_DOPATCH='
     case $NATIVE_PLATFORM_ARCH in
@@ -5455,8 +5455,8 @@ native_package_info_autoconf() {
 }
 
 native_package_info_automake() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.17.tar.xz'
-    PACKAGE_SRC_SHA='8920c1fc411e13b90bf704ef9db6f29d540e76d232cb3b2c9f4dc4cc599bd990'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.18.1.tar.xz'
+    PACKAGE_SRC_SHA='168aa363278351b89af56684448f525a5bce5079d0b6842bd910fdd3f1646887'
     PACKAGE_DEP_AUX='perl gmake'
     PACKAGE_DEP_RUN='perl'
     PACKAGE_DEP_PKG='autoconf'
@@ -5488,8 +5488,8 @@ native_package_info_help2man() {
 }
 
 native_package_info_libexpat() {
-    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.xz'
-    PACKAGE_SRC_SHA='a695629dae047055b37d50a0ff4776d1d45d0a4c842cf4ccee158441f55ff7ee'
+    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_7_4/expat-2.7.4.tar.lz'
+    PACKAGE_SRC_SHA='882bb3c124cdfd6d594818276f3ea851b780473a722385150a5793277635fcae'
     PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
 }
@@ -5519,19 +5519,18 @@ run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
 }
 
 native_package_info_libiconv() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.17.tar.gz'
-    PACKAGE_SRC_SHA='8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz'
+    PACKAGE_SRC_SHA='3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8'
     PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --enable-extra-encodings'
 }
 
 native_package_info_libxml2() {
-    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.5.tar.xz'
-    PACKAGE_SRC_URI='https://distfiles.macports.org/libxml2/libxml2-2.13.5.tar.xz'
-    PACKAGE_SRC_SHA='74fc163217a3964257d3be39af943e08861263c4231f9ef5b496b6f6d4c7b2b6'
+    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.1.tar.xz'
+    PACKAGE_SRC_SHA='c008bac08fd5c7b4a87f7b8a71f283fa581d80d80ff8d2efd3b26224c39bc54c'
     PACKAGE_DEP_PKG='libz libiconv'
     PACKAGE_DEP_AUX='gmake'
-    PACKAGE_INSTALL='configure --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
+    PACKAGE_INSTALL='configure --with-legacy --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
 }
 
 native_package_info_itstool() {
@@ -5556,6 +5555,21 @@ EOF
 run chmod +x bin/itstool
     '
 }
+
+native_package_info_autoconf_archive() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf-archive/autoconf-archive-2024.10.16.tar.xz'
+    PACKAGE_SRC_SHA='7bcd5d001916f3a50ed7436f4f700e3d2b1bade3ed803219c592d62502a57363'
+    PACKAGE_DEP_AUX='gmake'
+    PACKAGE_INSTALL='configure'
+}
+
+native_package_info_netsurf_buildsystem() {
+    PACKAGE_SRC_URL='https://download.netsurf-browser.org/libs/releases/buildsystem-1.10.tar.gz'
+    PACKAGE_SRC_SHA='3d3e39d569e44677c4b179129bde614c65798e2b3e6253160239d1fd6eae4d79'
+    PACKAGE_DEP_AUX='gmake'
+    PACKAGE_INSTALL='gmake install "PREFIX=$PACKAGE_INSTALL_DIR"'
+}
+
 
 # }}}
 ##############################################################################
@@ -10250,7 +10264,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.26.1
+NDKPKG_VERSION=0.26.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
