@@ -291,6 +291,13 @@ wfetch() {
         FETCH_URL="$("$NDKPKG_URL_TRANSFORM" "$1")" || return 1
     fi
 
+    if [ "$GITHUB_ACTIONS" = true ] ; then
+        case $FETCH_URL in
+            https://ftp.gnu.org/gnu/*)
+                FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
+        esac
+    fi
+
     shift
 
     while [ -n "$1" ]
@@ -315,7 +322,7 @@ wfetch() {
             --no-buffer)
                 NOT_BUFFER=1
                 ;;
-            *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unrecognized option: $1"
+            *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unrecognized argument: $1"
         esac
         shift
     done
@@ -2611,7 +2618,7 @@ __fetch_resources_of_the_given_package() {
             --portable)
                 PORTABLE=1
                 ;;
-            *)  abort 1 "$NDKPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>], unrecognized option: $1"
+            *)  abort 1 "$NDKPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>], unrecognized argument: $1"
         esac
         shift
     done
@@ -3898,7 +3905,7 @@ __show_packages_depended_by_the_given_package() {
                     *)  abort 1 "unrecognized diagram engine '$ENGINE', ndk-pkg only support d2 and dot diagram engine."
                 esac
                 ;;
-            *)  abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-K], unrecognized option: $1"
+            *)  abort 1 "$NDKPKG_ARG0 depends <PACKAGE-NAME> [-t <OUTPUT-TYPE>] [-o <OUTPUT-PATH>] [-K], unrecognized argument: $1"
         esac
         shift
     done
@@ -4879,7 +4886,7 @@ inspect_install_arguments() {
 
             -y) ;;
 
-            -*) abort 1 "unrecognized option: $1" ;;
+            -*) abort 1 "unrecognized argument: $1" ;;
 
             *)  SPECIFIED_PACKAGE_LIST="$SPECIFIED_PACKAGE_LIST $1"
         esac
