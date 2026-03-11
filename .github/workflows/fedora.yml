@@ -18,7 +18,7 @@ jobs:
     container: fedora:${{ matrix.tag }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: ./ndk-pkg --help
       - run: ./ndk-pkg -h

@@ -13,7 +13,7 @@ jobs:
     container: manjarolinux/base
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: ./ndk-pkg --help
       - run: ./ndk-pkg -h

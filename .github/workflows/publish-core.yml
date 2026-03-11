@@ -32,7 +32,7 @@ jobs:
         target-arch: [x86_64, arm64]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
       - run: chmod a+x ppkg
@@ -78,7 +78,7 @@ jobs:
     container: alpine
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: apk update
       - run: apk add curl tar xz g++ linux-headers
@@ -122,7 +122,7 @@ jobs:
         target-version: [35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - run: |
           cat > ndk-pkg-core.yml <<EOF

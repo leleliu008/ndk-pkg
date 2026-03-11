@@ -5427,7 +5427,7 @@ native_package_info_libz() {
     PACKAGE_SRC_SHA='bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16'
     PACKAGE_DEP_AUX='gsed cmake ninja'
     PACKAGE_DOPATCH='gsed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
-    PACKAGE_INSTALL='cmake -DZLIB_BUILD_EXAMPLES=OFF -G Ninja'
+    PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -G Ninja'
 }
 
 native_package_info_libopenssl() {
@@ -10271,7 +10271,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.26.2
+NDKPKG_VERSION=0.26.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
