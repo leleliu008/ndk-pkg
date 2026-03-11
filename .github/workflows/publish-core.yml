@@ -23,12 +23,12 @@ jobs:
   macos:
     needs: base
 
-    runs-on: macos-14
+    runs-on: macos-26
 
     strategy:
       fail-fast: false
       matrix:
-        target-version: ['10.15', '11.0', '12.0', '13.0', '14.0', '15.0']
+        target-version: ['10.15', '11.0', '12.0', '13.0', '14.0', '15.0', '26.0']
         target-arch: [x86_64, arm64]
 
     steps:
@@ -182,13 +182,4 @@ jobs:
       - run: git -c init.defaultBranch=master init
       - run: git remote add origin ${{ github.repositoryUrl }}
 
-      - run: |
-          cat > notes.md <<EOF
-          sha256sum:
-
-          \`\`\`
-          $(sha256sum ndk-pkg-core-*.tar.xz)
-          \`\`\`
-          EOF
-
-      - run: gh release create ndk-pkg-core-${{ needs.base.outputs.release-version }} ndk-pkg-core-*.tar.xz --title ndk-pkg-core-${{ needs.base.outputs.release-version }} --notes-file notes.md
+      - run: gh release create ndk-pkg-core-${{ needs.base.outputs.release-version }} ndk-pkg-core-*.tar.xz --title ndk-pkg-core-${{ needs.base.outputs.release-version }} --notes 'core tools for ndk-pkg'

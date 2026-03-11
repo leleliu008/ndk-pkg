@@ -28,18 +28,18 @@ int main(int argc, char * argv[]) {
         }
     }
 
-    char* argv2[argc + 3];
+    char* args[argc + 3];
 
-    argv2[0] = zig;
-    argv2[1] = (char*)"c++";
-    argv2[argc+1] = (char*)"--target=x86_64-linux-gnu";
-    argv2[argc+2] = NULL;
+    args[0] = zig;
+    args[1] = (char*)"c++";
+    args[argc+1] = (char*)"--target=x86_64-linux-gnu";
+    args[argc+2] = NULL;
 
     for (int i = 1; i < argc; i++) {
-        argv2[i+1] = argv[i];
+        args[i+1] = argv[i];
     }
 
-    execv (zig, argv2);
+    execv (zig, args);
     perror(zig);
     return 255;
 }

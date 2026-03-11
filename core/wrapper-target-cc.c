@@ -97,13 +97,13 @@ int main(int argc, char * argv[]) {
 
     /////////////////////////////////////////////////////////////////
 
-    char* argv2[argc + baseArgc + 5];
+    char* args[argc + baseArgc + 5];
 
     char sonameArg[100]; sonameArg[0] = '\0';
 
     if (action == ACTION_PREPROCESS || action == ACTION_COMPILE || action == ACTION_CREATE_OBJECT_FILE) {
         for (int i = 1; i < argc; i++) {
-            argv2[i] = argv[i];
+            args[i] = argv[i];
         }
     } else if (action == ACTION_CREATE_SHARED_LIBRARY) {
         int oIndex = -1;
@@ -111,17 +111,17 @@ int main(int argc, char * argv[]) {
         // remove -static , --static , -pie options if they also are specified
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "-static") == 0) {
-                argv2[i] = (char*)"-fPIC";
+                args[i] = (char*)"-fPIC";
             } else if (strcmp(argv[i], "--static") == 0) {
-                argv2[i] = (char*)"-fPIC";
+                args[i] = (char*)"-fPIC";
             } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i] = (char*)"-fPIC";
+                args[i] = (char*)"-fPIC";
             } else {
                 if (strcmp(argv[i], "-o") == 0) {
                     oIndex = i;
                 }
 
-                argv2[i] = argv[i];
+                args[i] = argv[i];
             }
         }
 
@@ -190,13 +190,13 @@ int main(int argc, char * argv[]) {
         // remove -pie , -Wl,-Bdynamic option if it also is specified
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "-rdynamic") == 0) {
-                argv2[i] = (char*)"-static";
+                args[i] = (char*)"-static";
             } else if (strcmp(argv[i], "-Wl,--export-dynamic") == 0) {
-                argv2[i] = (char*)"-static";
+                args[i] = (char*)"-static";
             } else if (strcmp(argv[i], "-Wl,-Bdynamic") == 0) {
-                argv2[i] = (char*)"-static";
+                args[i] = (char*)"-static";
             } else if (strcmp(argv[i], "-pie") == 0) {
-                argv2[i] = (char*)"-static";
+                args[i] = (char*)"-static";
             } else if (argv[i][0] == '/') {
                 int len = 0;
 
@@ -240,9 +240,9 @@ int main(int argc, char * argv[]) {
                     }
                 }
 
-                argv2[i] = argv[i];
+                args[i] = argv[i];
             } else {
-                argv2[i] = argv[i];
+                args[i] = argv[i];
             }
         }
     } else {
@@ -282,11 +282,11 @@ int main(int argc, char * argv[]) {
                     }
                 }
 
-                argv2[i] = argv[i];
+                args[i] = argv[i];
             }
         } else {
             for (int i = 1; i < argc; i++) {
-                argv2[i] = argv[i];
+                args[i] = argv[i];
             }
         }
     }
@@ -298,7 +298,7 @@ int main(int argc, char * argv[]) {
     for (size_t i = 0U; ; i++) {
         if (baseArgs[i] == '\0') {
             if (p[0] != '\0') {
-                argv2[argc++] = p;
+                args[argc++] = p;
             }
             break;
         }
@@ -307,7 +307,7 @@ int main(int argc, char * argv[]) {
             baseArgs[i] = '\0';
 
             if (p[0] != '\0') {
-                argv2[argc++] = p;
+                args[argc++] = p;
             }
 
             p = &baseArgs[i + 1];
@@ -317,15 +317,15 @@ int main(int argc, char * argv[]) {
     /////////////////////////////////////////////////////////////////
 
     if (action == ACTION_CREATE_OBJECT_FILE || action == ACTION_CREATE_SHARED_LIBRARY) {
-        argv2[argc++] = (char*)"-fPIC";
+        args[argc++] = (char*)"-fPIC";
 
         if (sonameArg[0] != '\0') {
-            argv2[argc++] = sonameArg;
+            args[argc++] = sonameArg;
         }
     }
 
-    argv2[argc++] = NULL;
-    argv2[0] = compiler;
+    args[argc++] = NULL;
+    args[0] = compiler;
 
     /////////////////////////////////////////////////////////////////
 
@@ -335,17 +335,17 @@ int main(int argc, char * argv[]) {
         fprintf(stderr, "action=%d\n", action);
 
         for (int i = 0; ;i++) {
-            if (argv2[i] == NULL) {
+            if (args[i] == NULL) {
                 break;
             } else {
-                fprintf(stderr, "%s\n", argv2[i]);
+                fprintf(stderr, "%s\n", args[i]);
             }
         }
     }
 
     /////////////////////////////////////////////////////////////////
 
-    execv (compiler, argv2);
+    execv (compiler, args);
     perror(compiler);
     return 255;
 }
