@@ -182,4 +182,4 @@ jobs:
       - run: git -c init.defaultBranch=master init
       - run: git remote add origin ${{ github.repositoryUrl }}
 
-      - run: gh release create ndk-pkg-core-${{ needs.base.outputs.release-version }} ndk-pkg-core-*.tar.xz --title ndk-pkg-core-${{ needs.base.outputs.release-version }} --notes 'core tools for ndk-pkg'
+      - run: gh release create ndk-pkg-core-${{ needs.base.outputs.release-version }} ndk-pkg-core-*.tar.xz --title ndk-pkg-core-${{ needs.base.outputs.release-version }} --notes 'core tools for ndk-pkg' --latest=false
