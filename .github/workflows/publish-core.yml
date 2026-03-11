@@ -65,7 +65,7 @@ jobs:
 
       - run: .github/bundle.sh ${{ needs.base.outputs.release-version }} macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
           path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
@@ -103,7 +103,7 @@ jobs:
 
       - run: .github/bundle.sh ${{ needs.base.outputs.release-version }} linux-x86_64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64.tar.xz
           path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64.tar.xz
@@ -154,7 +154,7 @@ jobs:
 
       - run: .github/bundle.sh ${{ needs.base.outputs.release-version }} android-${{ matrix.target-version }}-arm64-v8a
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-android-${{ matrix.target-version }}-arm64-v8a.tar.xz
           path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-android-${{ matrix.target-version }}-arm64-v8a.tar.xz
@@ -170,7 +170,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           pattern: '*'
           path: .
