@@ -9482,7 +9482,6 @@ __setup() {
             NATIVE_PLATFORM_VERS='10.15'
         elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
             NATIVE_PLATFORM_VERS='15.0'
-            export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/leleliu008/uppm-package-repository-macos-15.0-$NATIVE_PLATFORM_ARCH"
         else
             NATIVE_PLATFORM_VERS="$NATIVE_PLATFORM_VERS_MAJOR.0"
         fi
@@ -9498,7 +9497,6 @@ __setup() {
             if command -v termux-info > /dev/null && command -v pkg > /dev/null ; then
                 TERMUX=1
                 export CURLOPT_DNS_SERVERS='8.8.8.8,1.1.1.1'
-                export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/leleliu008/uppm-package-repository-android-$NATIVE_PLATFORM_VERS-aarch64"
             fi
         else
             NATIVE_PLATFORM_ARCH="$(uname -m)"
@@ -9723,7 +9721,6 @@ EOF
         cat >> init.sh <<EOF
 TERMUX=1
 export CURLOPT_DNS_SERVERS='8.8.8.8,1.1.1.1'
-export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE='$UPPM_FORMULA_REPO_URL_OFFICIAL_CORE'
 EOF
     fi
 
@@ -10476,12 +10473,6 @@ unset NATIVE_PLATFORM_EUID
 unset NATIVE_PLATFORM_EGID
 
 eval "$("$UPPM" sysinfo --shell)"
-
-if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
-    case $NATIVE_PLATFORM_VERS in
-        1[5-9].*) export UPPM_FORMULA_REPO_URL_OFFICIAL_CORE="https://github.com/leleliu008/uppm-package-repository-macos-15.0-$NATIVE_PLATFORM_ARCH"
-    esac
-fi
 
 ##################################################################################
 
