@@ -20,7 +20,7 @@ jobs:
           #dnf -y update
           #dnf -y install git
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v5
 
       - run: ./ndk-pkg --help
       - run: ./ndk-pkg -h
