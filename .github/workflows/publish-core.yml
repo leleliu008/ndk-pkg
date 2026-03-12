@@ -32,7 +32,7 @@ jobs:
         target-arch: [x86_64, arm64]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - run: curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
       - run: chmod a+x ppkg
@@ -65,7 +65,7 @@ jobs:
 
       - run: .github/bundle.sh ${{ needs.base.outputs.release-version }} macos-${{ matrix.target-version }}-${{ matrix.target-arch }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
           path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-macos-${{ matrix.target-version }}-${{ matrix.target-arch }}.tar.xz
@@ -78,7 +78,7 @@ jobs:
     container: alpine
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - run: apk update
       - run: apk add curl tar xz g++ linux-headers
@@ -103,7 +103,7 @@ jobs:
 
       - run: .github/bundle.sh ${{ needs.base.outputs.release-version }} linux-x86_64
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64.tar.xz
           path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-linux-x86_64.tar.xz
@@ -122,7 +122,7 @@ jobs:
         target-version: [35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - run: |
           cat > ndk-pkg-core.yml <<EOF
@@ -154,7 +154,7 @@ jobs:
 
       - run: .github/bundle.sh ${{ needs.base.outputs.release-version }} android-${{ matrix.target-version }}-arm64-v8a
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ndk-pkg-core-${{ needs.base.outputs.release-version }}-android-${{ matrix.target-version }}-arm64-v8a.tar.xz
           path: ndk-pkg-core-${{ needs.base.outputs.release-version }}-android-${{ matrix.target-version }}-arm64-v8a.tar.xz
@@ -170,7 +170,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           pattern: '*'
           path: .

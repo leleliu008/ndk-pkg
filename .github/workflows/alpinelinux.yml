@@ -18,7 +18,7 @@ jobs:
     container: alpine:${{ matrix.tag }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - run: ./ndk-pkg --help
       - run: ./ndk-pkg -h
