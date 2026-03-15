@@ -9437,7 +9437,7 @@ EOF
             if [ "$NATIVE_PLATFORM_KIND" = android ] ; then
                 # use comunity compiled Android NDK for aarch64-linux right now, I might compile my own at some point.
                 # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
-                install_android_ndk_if_needed 27b
+                install_android_ndk_if_needed 29
             else
                 install_android_ndk_if_needed 27d
             fi
