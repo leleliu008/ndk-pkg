@@ -183,7 +183,7 @@ chmod a+x ndk-pkg
 
 **Caveats**:
 
-- Running `ndk-pkg` locally directly on your local host is not recommended due to build tools(e.g. autotools, cmake, etc) are easy to be affected by environment variables.
+- Running `ndk-pkg` locally directly on your local host is not recommended due to build tools(autotools, cmake, etc) are easy to be affected by environment variables.
 - Running `ndk-pkg` in an isolated clean environment (`docker`, `chroot`) is highly recommended.
 
 ```bash
@@ -462,7 +462,7 @@ A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
     ```bash
     ndk-pkg search curl
-    ndk-pkg search lib
+    ndk-pkg search ^lib
     ```
 
 - **show information of the given available package**
