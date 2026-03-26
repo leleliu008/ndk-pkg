@@ -119,11 +119,11 @@ int ndkpkg_help() {
         COLOR_OFF
         "    edit the formula of the given package.\n\n\n"
         COLOR_GREEN
-        "ndk-pkg info-available <PACKAGE-NAME> [--json | --yaml | <KEY>]\n"
+        "ndk-pkg info <PACKAGE-NAME> [--json | --yaml | <KEY>]\n"
         COLOR_OFF
         "    show information of the given available package.\n\n"
         COLOR_GREEN
-        "ndk-pkg info-installed <PACKAGE-SPEC> [--json | --yaml | <KEY>]\n"
+        "ndk-pkg show <PACKAGE-SPEC> [--json | --yaml | <KEY>]\n"
         COLOR_OFF
         "    show information of the given installed package.\n\n\n"
         COLOR_GREEN
@@ -417,9 +417,9 @@ int ndkpkg_help() {
         "    update all available formula repositories.\n\n"
         "ndk-pkg search <REGULAR-EXPRESSION> [-v]\n"
         "    search all available packages whose name matches the given regular expression pattern.\n\n"
-        "ndk-pkg info-available <PACKAGE-NAME>\n"
+        "ndk-pkg info <PACKAGE-NAME>\n"
         "    show information of the given available package.\n\n"
-        "ndk-pkg info-installed <PACKAGE-NAME>\n"
+        "ndk-pkg show <PACKAGE-NAME>\n"
         "    show information of the given installed package.\n\n"
         "ndk-pkg tree <PACKAGE-NAME> [--dirsfirst | -a | -L N]\n"
         "    list files of the given installed package in a tree-like format.\n\n"

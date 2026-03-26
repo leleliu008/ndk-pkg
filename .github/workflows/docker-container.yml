@@ -53,18 +53,18 @@ jobs:
       - run: ndk-pkg search libzip
 
 
-      - run: ndk-pkg info-available libzip
-      - run: ndk-pkg info-available libzip --yaml
-      - run: ndk-pkg info-available libzip --json
-      - run: ndk-pkg info-available libzip version
-      - run: ndk-pkg info-available libzip license
-      - run: ndk-pkg info-available libzip summary
-      - run: ndk-pkg info-available libzip web-url
-      - run: ndk-pkg info-available libzip git-url
-      - run: ndk-pkg info-available libzip git-sha
-      - run: ndk-pkg info-available libzip git-ref
-      - run: ndk-pkg info-available libzip src-url
-      - run: ndk-pkg info-available libzip src-sha
+      - run: ndk-pkg info libzip
+      - run: ndk-pkg info libzip --yaml
+      - run: ndk-pkg info libzip --json
+      - run: ndk-pkg info libzip version
+      - run: ndk-pkg info libzip license
+      - run: ndk-pkg info libzip summary
+      - run: ndk-pkg info libzip web-url
+      - run: ndk-pkg info libzip git-url
+      - run: ndk-pkg info libzip git-sha
+      - run: ndk-pkg info libzip git-ref
+      - run: ndk-pkg info libzip src-url
+      - run: ndk-pkg info libzip src-sha
 
 
 
@@ -81,14 +81,14 @@ jobs:
 
 
 
-      - run: ndk-pkg info-installed libzip --prefix
-      - run: ndk-pkg info-installed libzip --files
-      - run: ndk-pkg info-installed libzip version
-      - run: ndk-pkg info-installed libzip builtat
-      - run: ndk-pkg info-installed libzip builtat-iso-8601
-      - run: ndk-pkg info-installed libzip builtat-rfc-3339
-      - run: ndk-pkg info-installed libzip builtat-iso-8601-utc
-      - run: ndk-pkg info-installed libzip builtat-rfc-3339-utc
+      - run: ndk-pkg show libzip --prefix
+      - run: ndk-pkg show libzip --files
+      - run: ndk-pkg show libzip version
+      - run: ndk-pkg show libzip builtat
+      - run: ndk-pkg show libzip builtat-iso-8601
+      - run: ndk-pkg show libzip builtat-rfc-3339
+      - run: ndk-pkg show libzip builtat-iso-8601-utc
+      - run: ndk-pkg show libzip builtat-rfc-3339-utc
 
 
       - run: ndk-pkg tree libzip

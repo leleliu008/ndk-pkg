@@ -9835,10 +9835,10 @@ ${COLOR_GREEN}ndk-pkg formula-repo-list${COLOR_OFF}
     list all available formula repositories.
 
 
-${COLOR_GREEN}ndk-pkg info-available <PACKAGE-NAME> [--json | --yaml | <KEY>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg info <PACKAGE-NAME> [--json | --yaml | <KEY>]${COLOR_OFF}
     show information of the given available package.
 
-${COLOR_GREEN}ndk-pkg info-installed <PACKAGE-SPEC> [--json | --yaml | <KEY>]${COLOR_OFF}
+${COLOR_GREEN}ndk-pkg show <PACKAGE-SPEC> [--json | --yaml | <KEY>]${COLOR_OFF}
     show information of the given installed package.
 
 
@@ -10268,7 +10268,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.26.3
+NDKPKG_VERSION=0.27.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -10513,8 +10513,8 @@ case $1 in
         __delete_a_formula_repository "$@"
         ;;
 
-    info-available) shift; __info_the_given_available_package "$@" ;;
-    info-installed) shift; __info_the_given_installed_package "$@" ;;
+    info) shift; __info_the_given_available_package "$@" ;;
+    show) shift; __info_the_given_installed_package "$@" ;;
 
     ls-available) shift; __list_available_packages "$@" ;;
     ls-installed) shift; __list_installed_packages "$@" ;;

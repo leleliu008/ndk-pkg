@@ -179,7 +179,7 @@ int ndkpkg_main(int argc, char* argv[]) {
         return ret;
     }
 
-    if (strcmp(argv[1], "info-available") == 0) {
+    if (strcmp(argv[1], "info") == 0) {
         int ret = ndkpkg_available_info(argv[2], argv[3]);
 
         if (ret == NDKPKG_ERROR_ARG_IS_NULL) {
@@ -205,7 +205,7 @@ int ndkpkg_main(int argc, char* argv[]) {
         return ret;
     }
 
-    if (strcmp(argv[1], "info-installed") == 0) {
+    if (strcmp(argv[1], "show") == 0) {
         char * targetPlatformSpec = NULL;
 
         for (int i = 4; i < argc; i++) {
@@ -232,13 +232,13 @@ int ndkpkg_main(int argc, char* argv[]) {
         ret = ndkpkg_installed_info(packageName, &targetPlatform, argv[3]);
 
         if (ret == NDKPKG_ERROR_ARG_IS_NULL) {
-            fprintf(stderr, "Usage: %s info-installed <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not given.\n", argv[0]);
+            fprintf(stderr, "Usage: %s show <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not given.\n", argv[0]);
         } else if (ret == NDKPKG_ERROR_ARG_IS_EMPTY) {
-            fprintf(stderr, "Usage: %s info-installed <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is empty string.\n", argv[0]);
+            fprintf(stderr, "Usage: %s show <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is empty string.\n", argv[0]);
         } else if (ret == NDKPKG_ERROR_ARG_IS_INVALID) {
-            fprintf(stderr, "Usage: %s info-installed <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not match pattern %s\n", argv[0], NDKPKG_PACKAGE_NAME_PATTERN);
+            fprintf(stderr, "Usage: %s show <PACKAGE-NAME> [KEY], <PACKAGE-NAME> is not match pattern %s\n", argv[0], NDKPKG_PACKAGE_NAME_PATTERN);
         } else if (ret == NDKPKG_ERROR_ARG_IS_UNKNOWN) {
-            fprintf(stderr, "Usage: %s info-installed <PACKAGE-NAME> [KEY], unrecognized KEY: %s\n", argv[0], argv[3]);
+            fprintf(stderr, "Usage: %s show <PACKAGE-NAME> [KEY], unrecognized KEY: %s\n", argv[0], argv[3]);
         } else if (ret == NDKPKG_ERROR_PACKAGE_NOT_AVAILABLE) {
             fprintf(stderr, "package '%s' is not available.\n", argv[2]);
         } else if (ret == NDKPKG_ERROR_PACKAGE_NOT_INSTALLED) {

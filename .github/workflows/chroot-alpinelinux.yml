@@ -43,18 +43,18 @@ jobs:
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg search libzip
 
 
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip --yaml
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip --json
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip version
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip license
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip summary
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip web-url
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip git-url
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip git-sha
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip git-ref
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip src-url
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-available libzip src-sha
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip --yaml
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip --json
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip version
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip license
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip summary
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip web-url
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip git-url
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip git-sha
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip git-ref
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip src-url
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info libzip src-sha
 
 
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg depends libzip
@@ -67,14 +67,14 @@ jobs:
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg install libzip
 
 
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-installed libzip --prefix
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-installed libzip --files
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-installed libzip version
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-installed libzip builtat
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-installed libzip builtat-iso-8601
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-installed libzip builtat-rfc-3339
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-installed libzip builtat-iso-8601-utc
-      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg info-installed libzip builtat-rfc-3339-utc
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg show libzip --prefix
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg show libzip --files
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg show libzip version
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg show libzip builtat
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg show libzip builtat-iso-8601
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg show libzip builtat-rfc-3339
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg show libzip builtat-iso-8601-utc
+      - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg show libzip builtat-rfc-3339-utc
 
 
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg tree libzip

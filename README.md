@@ -183,7 +183,8 @@ chmod a+x ndk-pkg
 
 **Caveats**:
 
-- Running `ndk-pkg` locally directly on your local host is not recommended due to build tools(e.g. autotools, cmake, etc) are easy to be affected by environment variables. Running `ndk-pkg` in an isolated clean environment (`docker`, `chroot`) is highly recommended.
+- Running `ndk-pkg` locally directly on your local host is not recommended due to build tools(e.g. autotools, cmake, etc) are easy to be affected by environment variables.
+- Running `ndk-pkg` in an isolated clean environment (`docker`, `chroot`) is highly recommended.
 
 ```bash
 curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
@@ -467,32 +468,32 @@ A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 - **show information of the given available package**
 
     ```bash
-    ndk-pkg info-available curl
-    ndk-pkg info-available curl --yaml
-    ndk-pkg info-available curl --json
-    ndk-pkg info-available curl version
-    ndk-pkg info-available curl license
-    ndk-pkg info-available curl summary
-    ndk-pkg info-available curl web-url
-    ndk-pkg info-available curl git-url
-    ndk-pkg info-available curl git-sha
-    ndk-pkg info-available curl git-ref
-    ndk-pkg info-available curl src-url
-    ndk-pkg info-available curl src-sha
-    ndk-pkg info-available curl src-ft
-    ndk-pkg info-available curl src-fp
+    ndk-pkg info curl
+    ndk-pkg info curl --yaml
+    ndk-pkg info curl --json
+    ndk-pkg info curl version
+    ndk-pkg info curl license
+    ndk-pkg info curl summary
+    ndk-pkg info curl web-url
+    ndk-pkg info curl git-url
+    ndk-pkg info curl git-sha
+    ndk-pkg info curl git-ref
+    ndk-pkg info curl src-url
+    ndk-pkg info curl src-sha
+    ndk-pkg info curl src-ft
+    ndk-pkg info curl src-fp
     ```
 
 - **show information of the given installed package**
 
     ```bash
-    ndk-pkg info-installed android-35-arm64-v8a/curl --prefix
-    ndk-pkg info-installed android-35-arm64-v8a/curl --files
-    ndk-pkg info-installed android-35-arm64-v8a/curl builtat
-    ndk-pkg info-installed android-35-arm64-v8a/curl builtat-iso-8601
-    ndk-pkg info-installed android-35-arm64-v8a/curl builtat-rfc-3339
-    ndk-pkg info-installed android-35-arm64-v8a/curl builtat-iso-8601-utc
-    ndk-pkg info-installed android-35-arm64-v8a/curl builtat-rfc-3339-utc
+    ndk-pkg show android-35-arm64-v8a/curl --prefix
+    ndk-pkg show android-35-arm64-v8a/curl --files
+    ndk-pkg show android-35-arm64-v8a/curl builtat
+    ndk-pkg show android-35-arm64-v8a/curl builtat-iso-8601
+    ndk-pkg show android-35-arm64-v8a/curl builtat-rfc-3339
+    ndk-pkg show android-35-arm64-v8a/curl builtat-iso-8601-utc
+    ndk-pkg show android-35-arm64-v8a/curl builtat-rfc-3339-utc
     ```
 
 - **show packages that are depended by the given package**
