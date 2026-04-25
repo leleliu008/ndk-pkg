@@ -10268,7 +10268,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.27.0
+NDKPKG_VERSION=0.27.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -10294,9 +10294,11 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native"
 
 ##################################################################################
 
-UPPM="$NDKPKG_CORE_DIR/uppm"
+if [ -z "$UPPM_HOME" ] ; then
+    export UPPM_HOME="$HOME/.uppm"
+fi
 
-export UPPM_HOME="$NDKPKG_HOME/uppm"
+UPPM="$NDKPKG_CORE_DIR/uppm"
 
 uppm() {
     if [ "$1" = install ] ; then
