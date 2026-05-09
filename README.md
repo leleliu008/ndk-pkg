@@ -1,6 +1,6 @@
 # ndk-pkg
 
-A package builder using [Android NDK](https://developer.android.google.cn/ndk)
+A package builder for [Android](https://www.android.com/) using [NDK](https://developer.android.google.cn/ndk)
 
 ## Caveats
 
@@ -1001,7 +1001,7 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
 |`STRIP`|a command line tool to discard symbols and other data from object files.|
 |||
 |`PACKAGE_WORKING_DIR`|the working directory for installing.|
-|`PACKAGE_BSCRIPT_DIR`|the directory where the build script (e.g. `Makefile`, `configure`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc) is located.|
+|`PACKAGE_BSCRIPT_DIR`|the directory where the build script (`Makefile`, `configure`, `CMakeLists.txt`, `meson.build`, `Cargo.toml`, etc) is located.|
 |`PACKAGE_BCACHED_DIR`|the directory where the temporary files are stored in when building.|
 |`PACKAGE_INSTALL_DIR`|the directory where the final files will be installed to.|
 |||

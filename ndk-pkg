@@ -9774,7 +9774,7 @@ __help() {
 EOF
 
     printf '%b\n' "
-${COLOR_GREEN}A package builder using Android NDK.${COLOR_OFF}
+${COLOR_GREEN}A package builder for Android using NDK.${COLOR_OFF}
 
 ${COLOR_GREEN}ndk-pkg <ACTION> [ARGUMENT...]${COLOR_OFF}
 
