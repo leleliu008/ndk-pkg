@@ -1,5 +1,45 @@
 #compdef ndk-pkg
 
+_ndk_pkg_formula_mapping_keys=(
+    'pkgtype'
+    'summary'
+    'version'
+    'license'
+    'web-url'
+    'git-url'
+    'git-sha'
+    'git-ref'
+    'git-nth'
+    'src-url'
+    'src-sha'
+    'fix-url'
+    'fix-sha'
+    'res-url'
+    'res-sha'
+    'dep-pkg'
+    'dep-upp'
+    'dep-pym'
+    'dep-plm'
+    'ppflags'
+    'ccflags'
+    'xxflags'
+    'ldflags'
+    'bscript'
+    'binbstd'
+    'bsystem'
+    'dofetch'
+    'do12345'
+    'dopatch'
+    'prepare'
+    'install'
+    'dotweak'
+    'caveats'
+    'movable'
+    'disable'
+    'developer'
+    'api-min'
+)
+
 _ndk_pkg_actions=(
     '-h:show help of this command.'
     '--help:show help of this command.'
@@ -25,6 +65,7 @@ _ndk_pkg_actions=(
     'formula-repo-conf:change the config of the given formula repository.'
     'formula-repo-info:show information of the given formula repository.'
     'formula-repo-list:list all available formula repositories.'
+    'formula-set:change the give mapping of the formula of the given package.'
     'install:install packages.'
     'reinstall:reinstall packages.'
     'uninstall:uninstall packages.'
@@ -121,6 +162,12 @@ function _ndk_pkg() {
     case $state in
         option)
             case $words[1] in
+                formula-set)
+                    _arguments \
+                        '1:package-name:_ndk_pkg_available_packages' \
+                        '2:key:{_describe keys _ndk_pkg_formula_mapping_keys}' \
+                        '3:value:()'
+                    ;;
                 formula-repo-add)
                     _arguments \
                         '1:formula-repo-name:(name)' \

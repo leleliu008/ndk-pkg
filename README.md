@@ -590,6 +590,12 @@ A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ndk-pkg formula-repo-del my_repo
     ```
 
+- **change the give mapping of the formula of the given package**
+
+    ```bash
+    ndk-pkg formula-set uctags git-sha 7994b29a004065e98dc114928a93fc11fb104479
+    ```
+
 - **list all available packages**
 
     ```bash

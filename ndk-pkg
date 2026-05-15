@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2021-2025 刘富频
+# Copyright (c) 2021-2026 刘富频
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -524,6 +524,36 @@ version_match() {
             ;;
         *)  abort 1 "version_compare: $2: not supported operator."
     esac
+}
+
+# }}}
+##############################################################################
+# {{{ ndk-pkg formula-set <PACKAGE-NAME> <KEY> <VALUE>
+
+__formula_mapping_set() {
+    [ -z "$1" ] && abort 1 "please specify the package name."
+    [ -z "$2" ] && abort 1 "please specify the key."
+    [ -z "$3" ] && abort 1 "please specify the value."
+
+    FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
+
+    if [ -z "$FORMULA_FILEPATH" ] ; then
+        abort 1 "package '$1' is not available."
+    fi
+
+    if grep -q "^$2: " "$FORMULA_FILEPATH" ; then
+        gsed -i "/^$2: /c $2: $3" "$FORMULA_FILEPATH"
+    else
+        case $2 in
+            git-sha)
+                if grep -q '^git-url: ' "$FORMULA_FILEPATH" ; then
+                    gsed -i "/^git-url: /a $2: $3" "$FORMULA_FILEPATH"
+                    return 0
+                fi
+        esac
+        printf '%s: %s\n' "$2" "$3" >> "$FORMULA_FILEPATH"
+        success "'$2: $3' was added to $FORMULA_FILEPATH"
+    fi
 }
 
 # }}}
@@ -9835,6 +9865,10 @@ ${COLOR_GREEN}ndk-pkg formula-repo-list${COLOR_OFF}
     list all available formula repositories.
 
 
+${COLOR_GREEN}ndk-pkg formula-set <PACKAGE-NAME> <KEY> <VALUE>${COLOR_OFF}
+    change the give mapping of the formula of the given package.
+
+
 ${COLOR_GREEN}ndk-pkg info <PACKAGE-NAME> [--json | --yaml | <KEY>]${COLOR_OFF}
     show information of the given available package.
 
@@ -10268,7 +10302,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.27.1
+NDKPKG_VERSION=0.28.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -10513,6 +10547,11 @@ case $1 in
     formula-repo-del)
         shift
         __delete_a_formula_repository "$@"
+        ;;
+
+    formula-set)
+        shift
+        __formula_mapping_set "$@"
         ;;
 
     info) shift; __info_the_given_available_package "$@" ;;
