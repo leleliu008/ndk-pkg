@@ -98,9 +98,9 @@ This is the recommended way of using this software if you want to use this softw
 `chroot`, an isolated clean environment, is much like `docker` container, where the running process can not be affected by your host system's environment variables.
 
 ```bash
-curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz
+curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.4-base-amd64.tar.gz
 install -d ubuntu-rootfs
-tar xf ubuntu-base-24.04.3-base-amd64.tar.gz -C ubuntu-rootfs
+tar xf ubuntu-base-24.04.4-base-amd64.tar.gz -C ubuntu-rootfs
 
 cp -p /etc/resolv.conf ubuntu-rootfs/etc/
 
@@ -125,9 +125,9 @@ This is the recommended way of using this software if you want to use this softw
 `chroot`, an isolated clean environment, is much like `docker` container, where the running process can not be affected by your host system's environment variables.
 
 ```bash
-curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.0-x86_64.tar.gz
+curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.23/releases/x86_64/alpine-minirootfs-3.23.4-x86_64.tar.gz
 install -d alpine-rootfs
-tar xf alpine-minirootfs-3.22.0-x86_64.tar.gz -C alpine-rootfs
+tar xf alpine-minirootfs-3.23.4-x86_64.tar.gz -C alpine-rootfs
 
 cp -p /etc/resolv.conf alpine-rootfs/etc/
 
