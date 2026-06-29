@@ -7989,7 +7989,7 @@ __check_elf_files() {
 
         #####################################################################
 
-        # On Android, if a shared library is supposed to be linked by other shared libraries, then it must have the SONAME, otherwise, the shared library who link this library will use the full path to gen the DT_NEEDED
+        # On Android, if a shared library is expected to be linked by other shared libraries, then it must have the SONAME, otherwise, the shared library who link this library will use the full path to gen the DT_NEEDED
         # https://github.com/android/ndk/issues/1865
         # https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md
 
@@ -9725,24 +9725,7 @@ EOF
 
     #################################################################################
 
-    success "ndk-pkg-$NDKPKG_VERSION have been successfully setup."
-}
-
-__build_linux_headers() {
-    export PATH="$PWD/bin:$PATH"
-
-    LINUX_KERNAL_VERSION="$(cut -d ' ' -f3 < /proc/version | cut -d- -f1)"
-    LINUX_KERNAL_VERSION="${LINUX_KERNAL_VERSION%.0}"
-    LINUX_KERNAL_VERSION_MAJOR="${LINUX_KERNAL_VERSION%%.*}"
-    LINUX_KERNAL_SRC_FILENAME="linux-$LINUX_KERNAL_VERSION.tar.xz"
-
-    wfetch "https://cdn.kernel.org/pub/linux/kernel/v$LINUX_KERNAL_VERSION_MAJOR.x/$LINUX_KERNAL_SRC_FILENAME" --no-buffer
-
-    run install -d linux-src
-    run $TAR xf "$LINUX_KERNAL_SRC_FILENAME" -C linux-src --strip-components=1
-    run cd linux-src
-    run "$UPPM_HOME/installed/gmake/bin/gmake" headers_install INSTALL_HDR_PATH=../sysroot
-    cd -
+    success "ndk-pkg-$NDKPKG_VERSION have been successfully set up."
 }
 
 # }}}
