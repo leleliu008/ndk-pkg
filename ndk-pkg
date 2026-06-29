@@ -112,6 +112,19 @@ git() {
     fi
 }
 
+# git_clone_depth_1 <URL> [options]
+git_clone_depth_1() {
+    if [ -z "$NDKPKG_URL_TRANSFORM" ] ; then
+        URL="$1"
+    else
+        URL="$("$NDKPKG_URL_TRANSFORM" "$1")"
+    fi
+
+    shift
+
+    run git clone --depth=1 "$URL" "$@"
+}
+
 # git_checkout <URL> --ref-from=<FROM> --ref-to=<TO> --depth=<N> -B <CHECKOUT-BRANCH-NAME> -C <WORKDIR> --recursive
 git_checkout() {
     OLDCWD="$PWD"
@@ -5167,53 +5180,32 @@ __install_the_given_packages() {
     fi
 }
 
-# https://www.gnu.org/software/gettext/manual/html_node/config_002eguess.html
-# https://git.savannah.gnu.org/cgit/config.git/tree/
-  __update_config_sub_guess() {
-    UPDATE_GNU_CONFIG_OLDCWD="$PWD"
-
-    run cd "$SESSION_DIR"
-
-    if [ -f config/config.sub ] && [ -f config/config.guess ] ; then
-        CONFIG_FILE_DIR="$SESSION_DIR/config"
-    else
-        if [    -d config ] ; then
-            rm -rf config
+__fetch_gnu_config() {
+    for URL in 'https://github.com/leleliu008/gnu-config' 'https://git.savannah.gnu.org/git/config.git'
+    do
+        if [ -d    gnu ] ; then
+            rm -rf gnu
         fi
 
-        if run git_checkout https://github.com/leleliu008/gnu-config --depth=1 -C config ; then
-            CONFIG_FILE_DIR="$SESSION_DIR/config"
-        elif run git clone --depth 1 https://git.savannah.gnu.org/git/config.git ; then
-            CONFIG_FILE_DIR="$SESSION_DIR/config"
-        else
-            if  run curl -L -o _config.sub   "'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'" &&
-                sh _config.sub x86_64-pc-linux &&
-                run curl -L -o _config.guess "'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'" &&
-                sh _config.guess > /dev/null ; then
-                run chmod +x _config.guess
-                run chmod +x _config.sub
-                run mv _config.guess config.guess
-                run mv _config.sub   config.sub
-                CONFIG_FILE_DIR="$SESSION_DIR"
-            elif run curl -L -o _config.sub   'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub' &&
-                sh _config.sub x86_64-pc-linux &&
-                run curl -L -o _config.guess 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' &&
-                sh _config.guess > /dev/null ; then
-                run chmod +x _config.guess
-                run chmod +x _config.sub
-                run mv _config.guess config.guess
-                run mv _config.sub   config.sub
-                CONFIG_FILE_DIR="$SESSION_DIR"
-            else
-                CONFIG_FILE_DIR="$NDKPKG_CORE_DIR"
-            fi
-        fi
+        git_clone_depth_1 "$URL" gnu && return 0
+    done
+}
+
+__update_gnu_config() {
+    GNU_CONFIG_DIR="$SESSION_DIR/gnu"
+
+    if [ ! -f "$GNU_CONFIG_DIR/config.sub" ] || [ ! -f "$GNU_CONFIG_DIR/config.guess" ] ; then
+        run cd "$SESSION_DIR"
+
+        __fetch_gnu_config
+
+        run cd -
     fi
 
-    run cd "$UPDATE_GNU_CONFIG_OLDCWD"
-
-    find -type f -name config.sub   -exec cp -vf "$CONFIG_FILE_DIR/config.sub"   {} \;
-    find -type f -name config.guess -exec cp -vf "$CONFIG_FILE_DIR/config.guess" {} \;
+    for item in sub guess
+    do
+        find -type f -name "config.$item" -exec cp -vf "$GNU_CONFIG_DIR/config.$item" {} \;
+    done
 }
 
 # should run in subshell
@@ -5226,7 +5218,6 @@ install_the_given_native_package() {
 
     unset PACKAGE_DEP_PKG
     unset PACKAGE_DEP_AUX
-    unset PACKAGE_DEP_RUN
 
     unset PACKAGE_DOPATCH
     unset PACKAGE_INSTALL
@@ -5238,14 +5229,14 @@ install_the_given_native_package() {
         native_package_info_$1
     fi
 
-    #########################################################################################
+    ###########################################
 
     for PACKAGE_DEPENDENCY in $PACKAGE_DEP_PKG
     do
         (install_the_given_native_package "$PACKAGE_DEPENDENCY")
     done
 
-    #########################################################################################
+    ###########################################
 
     printf '\n%b\n' "${COLOR_PURPLE}=>> install native package : $1${COLOR_OFF}"
 
@@ -5254,7 +5245,15 @@ install_the_given_native_package() {
         return 0
     fi
 
-    #########################################################################################
+    ###########################################
+
+    if [ -z "$PACKAGE_DEP_AUX" ] ; then
+        PACKAGE_DEP_AUX='gmake'
+    else
+        PACKAGE_DEP_AUX="gmake $PACKAGE_DEP_AUX"
+    fi
+
+    ###########################################
 
     for UPPM_PACKAGE_NAME in $PACKAGE_DEP_AUX
     do
@@ -5271,7 +5270,7 @@ install_the_given_native_package() {
         fi
     done
 
-    #########################################################################################
+    ###########################################
 
     PACKAGE_INSTALL_UTS=
     PACKAGE_INSTALL_UTS="$(date +%s)"
@@ -5284,7 +5283,7 @@ $1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS
 EOF
 } | cut -d ' ' -f1)"
 
-    #########################################################################################
+    ###########################################
 
     PACKAGE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
 
@@ -5294,7 +5293,7 @@ EOF
 
     PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
 
-    #########################################################################################
+    ###########################################
 
     # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
     # because we only want to use our own
@@ -5334,37 +5333,27 @@ EOF
 
             if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
                 PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
+                break
             fi
         done
     done
 
-    #########################################################################################
-
-    unset    CFLAGS_FOR_BUILD
-    unset  CXXFLAGS_FOR_BUILD
-    unset  CPPFLAGS_FOR_BUILD
-    unset   LDFLAGS_FOR_BUILD
-
-    #########################################################################################
+    ###########################################
 
     wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
-
-    #########################################################################################
 
     run install -d "$PACKAGE_WORKING_DIR/src"
     run cd         "$PACKAGE_WORKING_DIR/src"
 
-    #########################################################################################
-
     run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner
 
-    #########################################################################################
+    ###########################################
 
     if [ -n  "$PACKAGE_DOPATCH" ] ; then
         eval "$PACKAGE_DOPATCH"
     fi
 
-    #########################################################################################
+    ###########################################
 
     if [ -z "$PACKAGE_INSTALL" ] ; then
         abort 1 "PACKAGE_INSTALL variable is not set for native package '$1'"
@@ -5372,44 +5361,42 @@ EOF
 
     case "${PACKAGE_INSTALL%% *}" in
         configure)
-            __update_config_sub_guess
+            __update_gnu_config
             PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install"
             ;;
         config)
             PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install_sw"
             ;;
         perl)
-            PACKAGE_INSTALL="run $PACKAGE_INSTALL && run gmake --jobs=$BUILD_NJOBS && run gmake install && run install -d $PACKAGE_INSTALL_DIR"
+            PACKAGE_INSTALL="run   $PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install && run install -d $PACKAGE_INSTALL_DIR"
             ;;
         cmake)
-            PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -G Ninja -S . -B build.d && run cmake --build build.d -- -j$BUILD_NJOBS && run cmake --install build.d"
+            export CMAKE_GENERATOR='Unix Makefiles'
+            PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -S . -B build.d && run cmake --build build.d -- -j$BUILD_NJOBS && run cmake --install build.d"
+            ;;
+        gmake)
+            PACKAGE_INSTALL="run $PACKAGE_INSTALL"
             ;;
     esac
 
     eval "$PACKAGE_INSTALL"
 
-    #########################################################################################
+    ###########################################
 
     run cd "$PACKAGE_INSTALL_DIR"
 
-    #########################################################################################
+    ###########################################
 
     if [ -n  "$PACKAGE_DOTWEAK" ] ; then
         eval "$PACKAGE_DOTWEAK"
     fi
 
-    #########################################################################################
-
-    run cd "$PACKAGE_INSTALL_DIR"
-
-    #########################################################################################
+    ###########################################
 
     cat > buildon.yml <<EOF
 os-arch: $NATIVE_PLATFORM_ARCH
-os-kind: $NATIVE_PLATFORM_KIND
 os-type: $NATIVE_PLATFORM_TYPE
 os-libc: $NATIVE_PLATFORM_LIBC
-os-code: $NATIVE_PLATFORM_CODE
 os-name: $NATIVE_PLATFORM_NAME
 os-vers: $NATIVE_PLATFORM_VERS
 os-ncpu: $NATIVE_PLATFORM_NCPU
@@ -5417,7 +5404,7 @@ os-euid: $NATIVE_PLATFORM_EUID
 os-egid: $NATIVE_PLATFORM_EGID
 EOF
 
-    #########################################################################################
+    ###########################################
 
     cat > toolchain.txt <<EOF
      CC='$CC'
@@ -5429,7 +5416,7 @@ EOF
 SYSROOT='$SYSROOT'
 EOF
 
-    #########################################################################################
+    ###########################################
 
     cat > receipt.txt <<EOF
 PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
@@ -5438,7 +5425,6 @@ PACKAGE_SRC_SHA='$PACKAGE_SRC_SHA'
 
 PACKAGE_DEP_PKG='$PACKAGE_DEP_PKG'
 PACKAGE_DEP_AUX='$PACKAGE_DEP_AUX'
-PACKAGE_DEP_RUN='$PACKAGE_DEP_RUN'
 
 PACKAGE_DOPATCH='$PACKAGE_DOPATCH'
 PACKAGE_DOTWEAK='$PACKAGE_DOTWEAK'
@@ -5446,24 +5432,22 @@ PACKAGE_INSTALL='$PACKAGE_INSTALL'
 PACKAGE_INSTALL_UTS='$PACKAGE_INSTALL_UTS'
 EOF
 
-    #########################################################################################
+    ###########################################
 
     run cd "$NATIVE_PACKAGE_INSTALLED_ROOT"
     run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$1"
 }
 
 native_package_info_libz() {
-    PACKAGE_SRC_URL='https://zlib.net/zlib-1.3.2.tar.gz'
-    PACKAGE_SRC_SHA='bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16'
-    PACKAGE_DEP_AUX='gsed cmake ninja'
-    PACKAGE_DOPATCH='gsed -i "s|/share/pkgconfig|/lib/pkgconfig|" CMakeLists.txt'
-    PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -G Ninja'
+    PACKAGE_SRC_URL='https://distfiles.macports.org/zlib/zlib-1.3.2.tar.xz'
+    PACKAGE_SRC_SHA='d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3'
+    PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_SHARED=ON'
 }
 
 native_package_info_libopenssl() {
-    PACKAGE_SRC_URL='https://github.com/openssl/openssl/releases/download/openssl-3.6.1/openssl-3.6.1.tar.gz'
-    PACKAGE_SRC_SHA='b1bfedcd5b289ff22aee87c9d600f515767ebf45f77168cb6d64f231f518a82e'
-    PACKAGE_DEP_AUX='perl gmake'
+    PACKAGE_SRC_URL='https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz'
+    PACKAGE_SRC_SHA='243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_DOPATCH='
     case $NATIVE_PLATFORM_ARCH in
         armv7l) gsed -i "s|armv7-a|armv7-a+fp|g" util/perl/OpenSSL/config.pm
@@ -5475,135 +5459,121 @@ native_package_info_libopenssl() {
 native_package_info_libtool() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.5.4.tar.xz'
     PACKAGE_SRC_SHA='f81f5860666b0bc7d84baddefa60d1cb9fa6fceb2398cc3baca6afaa60266675'
-    PACKAGE_INSTALL='configure --enable-ltdl-install'
-    PACKAGE_DEP_AUX='gm4 gmake'
+    PACKAGE_INSTALL='configure --disable-ltdl-install'
+    PACKAGE_DEP_AUX='gm4'
     PACKAGE_DOTWEAK='
 run ln -s libtool    bin/glibtool
 run ln -s libtoolize bin/glibtoolize
 '
 }
 
+native_package_info_texinfo() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.3.tar.xz'
+    PACKAGE_SRC_SHA='51f74eb0f51cfa9873b85264dfdd5d46e8957ec95b88f0fb762f63d9e164c72e'
+    PACKAGE_DEP_AUX='perl'
+    PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
+}
+
 native_package_info_autoconf() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.gz'
-    PACKAGE_SRC_SHA='afb181a76e1ee72832f6581c0eddf8df032b83e2e0239ef79ebedc4467d92d6e'
-    PACKAGE_DEP_AUX='perl gm4 gmake'
-    PACKAGE_DEP_RUN='perl gm4'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.73.tar.gz'
+    PACKAGE_SRC_SHA='259ddfa3bddc799cfb81489cc0f17dfdf1bd6d1505dda53c0f45ff60d6a4f9a7'
+    PACKAGE_DEP_AUX='perl gm4'
     PACKAGE_INSTALL='configure'
 }
 
 native_package_info_automake() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.18.1.tar.xz'
     PACKAGE_SRC_SHA='168aa363278351b89af56684448f525a5bce5079d0b6842bd910fdd3f1646887'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_DEP_PKG='autoconf'
     PACKAGE_INSTALL='configure'
-}
-
-native_package_info_texinfo() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.2.tar.xz'
-    PACKAGE_SRC_SHA='0329d7788fbef113fa82cb80889ca197a344ce0df7646fe000974c5d714363a6'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
-    PACKAGE_DOPATCH='
-gsed -i "/libintl/d" tp/Texinfo/XS/parsetexi/api.c
-
-export PERL_EXT_CC="$CC"
-export PERL_EXT_CFLAGS="$CFLAGS"
-export PERL_EXT_CPPFLAGS="$CPPFLAGS"
-export PERL_EXT_LDFLAGS="$LDFLAGS"
-'
-    PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
 }
 
 native_package_info_help2man() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
     PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_INSTALL='configure'
+    #PACKAGE_DOTWEAK='gsed -i "1c #!$(command -v perl) -w" bin/help2man'
 }
 
 native_package_info_libexpat() {
     PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_7_4/expat-2.7.4.tar.lz'
     PACKAGE_SRC_SHA='882bb3c124cdfd6d594818276f3ea851b780473a722385150a5793277635fcae'
-    PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
 }
 
 native_package_info_intltool() {
     PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
-    PACKAGE_SRC_URI='https://fossies.org/linux/privat/intltool-0.51.0.tar.gz'
+    PACKAGE_SRC_URI='https://distfiles.macports.org/intltool/intltool-0.51.0.tar.gz'
     PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
-    PACKAGE_DEP_PKG='libexpat perl-XML-Parser'
+    PACKAGE_DEP_PKG='perl-XML-Parser libexpat'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_INSTALL='configure'
 }
 
 native_package_info_perl_XML_Parser() {
     PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
     PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
-    PACKAGE_DEP_AUX='perl gmake'
-    PACKAGE_DEP_RUN='perl'
+    PACKAGE_DEP_AUX='perl'
     PACKAGE_DEP_PKG='libexpat'
     PACKAGE_DOPATCH='
 run export EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib"
 run export EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/include"
 run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
 '
-    PACKAGE_INSTALL='perl Makefile.PL'
+    if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
+        PACKAGE_INSTALL='perl Makefile.PL'
+    else
+        PACKAGE_INSTALL='perl Makefile.PL LDDLFLAGS="\"-shared -L$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib\""'
+    fi
 }
 
 native_package_info_libiconv() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz'
-    PACKAGE_SRC_SHA='3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8'
-    PACKAGE_DEP_AUX='gmake'
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.19.tar.gz'
+    PACKAGE_SRC_SHA='88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6'
     PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --enable-extra-encodings'
 }
 
 native_package_info_libxml2() {
-    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.1.tar.xz'
-    PACKAGE_SRC_SHA='c008bac08fd5c7b4a87f7b8a71f283fa581d80d80ff8d2efd3b26224c39bc54c'
+    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz'
+    PACKAGE_SRC_SHA='78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07'
     PACKAGE_DEP_PKG='libz libiconv'
-    PACKAGE_DEP_AUX='gmake'
+    PACKAGE_DEP_AUX='doxygen'
     PACKAGE_INSTALL='configure --with-legacy --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
 }
 
 native_package_info_itstool() {
-    PACKAGE_SRC_URL='https://github.com/itstool/itstool/archive/2.0.7.tar.gz'
-    PACKAGE_SRC_SHA='fba78a37dc3535e4686c7f57407b97d03c676e3a57beac5fb2315162b0cc3176'
-    PACKAGE_DEP_AUX='perl python3 gmake'
-    PACKAGE_DEP_RUN='perl python3'
-    PACKAGE_DEP_PKG='libxml2 autoconf automake'
+    PACKAGE_SRC_URL='https://distfiles.macports.org/itstool/itstool-2.0.7.tar.bz2'
+    PACKAGE_SRC_SHA='6b9a7cd29a12bb95598f5750e8763cee78836a1a207f85b74d8b3275b27e87ca'
+    PACKAGE_DEP_PKG='libxml2'
+    PACKAGE_DEP_AUX='python3'
     PACKAGE_INSTALL='configure'
     PACKAGE_DOPATCH='
-    run autoreconf -ivf
     export PYTHON="$(command -v python3)"
-    export PYTHONPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libxml2/lib/python3.11/site-packages"
+    PYTHON_VERSION_XY="$("$PYTHON" -c "import sys; print(\"%d.%d\" % sys.version_info[:2])")"
+    export PYTHONPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libxml2/lib/python$PYTHON_VERSION_XY/site-packages"
     '
     PACKAGE_DOTWEAK='
-run mv bin/itstool bin/itstool.py
+mv bin/itstool bin/itstool.py
 cat > bin/itstool <<EOF
 #!/bin/sh
 export PYTHONPATH="$PYTHONPATH"
 exec "$PYTHON" "$PACKAGE_INSTALL_DIR/bin/itstool.py" "\$@"
 EOF
-run chmod +x bin/itstool
+chmod +x bin/itstool
     '
 }
 
 native_package_info_autoconf_archive() {
     PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf-archive/autoconf-archive-2024.10.16.tar.xz'
     PACKAGE_SRC_SHA='7bcd5d001916f3a50ed7436f4f700e3d2b1bade3ed803219c592d62502a57363'
-    PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='configure'
 }
 
 native_package_info_netsurf_buildsystem() {
     PACKAGE_SRC_URL='https://download.netsurf-browser.org/libs/releases/buildsystem-1.10.tar.gz'
     PACKAGE_SRC_SHA='3d3e39d569e44677c4b179129bde614c65798e2b3e6253160239d1fd6eae4d79'
-    PACKAGE_DEP_AUX='gmake'
     PACKAGE_INSTALL='gmake install "PREFIX=$PACKAGE_INSTALL_DIR"'
 }
 
@@ -5669,9 +5639,7 @@ __install_the_given_package() {
         cat <<EOF
       TIMESTAMP_UNIX = $TIMESTAMP_UNIX
 
-NATIVE_PLATFORM_KIND = $NATIVE_PLATFORM_KIND
 NATIVE_PLATFORM_TYPE = $NATIVE_PLATFORM_TYPE
-NATIVE_PLATFORM_CODE = $NATIVE_PLATFORM_CODE
 NATIVE_PLATFORM_NAME = $NATIVE_PLATFORM_NAME
 NATIVE_PLATFORM_VERS = $NATIVE_PLATFORM_VERS
 NATIVE_PLATFORM_ARCH = $NATIVE_PLATFORM_ARCH
@@ -5845,8 +5813,8 @@ EOF
     if [ -f "$TOOLCHAIN_CONFIG_NATIVE" ] ; then
         .   "$TOOLCHAIN_CONFIG_NATIVE"
     else
-        case $NATIVE_PLATFORM_KIND in
-            darwin)
+        case $NATIVE_PLATFORM_TYPE in
+            macos)
                 step "locate C/C++ toolchain for native build"
 
                      CC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
@@ -6791,7 +6759,7 @@ $PACKAGE_DOFETCH
         [ "$PACKAGE_USE_CONFIGURE" = 1 ]
     } && {
         step "update config.{sub,guess}"
-        __update_config_sub_guess
+        __update_gnu_config
     }
 
     #########################################################################################
@@ -7908,10 +7876,8 @@ builtby: ndk-pkg-$NDKPKG_VERSION
 builtat: $TIMESTAMP_UNIX
 builton:
     os-arch: $NATIVE_PLATFORM_ARCH
-    os-kind: $NATIVE_PLATFORM_KIND
     os-type: $NATIVE_PLATFORM_TYPE
     os-libc: $NATIVE_PLATFORM_LIBC
-    os-code: $NATIVE_PLATFORM_CODE
     os-name: $NATIVE_PLATFORM_NAME
     os-vers: $NATIVE_PLATFORM_VERS
     os-ncpu: $NATIVE_PLATFORM_NCPU
@@ -8380,7 +8346,7 @@ gow() {
         GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -s -w"
     fi
 
-    if [ "$NATIVE_PLATFORM_KIND" != darwin ] ; then
+    if [ "$NATIVE_PLATFORM_TYPE" != macos ] ; then
         if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] && [ "$CGO_ENABLED" -eq 1 ] ; then
             GO_BUILD_ARGV_LDFLAGS="$GO_BUILD_ARGV_LDFLAGS -linkmode external \"-extldflags=-static\""
         fi
@@ -9339,7 +9305,7 @@ inspect_android_ndk_info() {
 
     ANDROID_NDK_VERSION_MAJOR="$(printf '%s\n' "$ANDROID_NDK_VERSION" | cut -d. -f1)"
 
-    if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+    if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
         ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
     else
         ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_PLATFORM_ARCH"
@@ -9449,7 +9415,7 @@ EOF
     ANDROID_NDK_HOME="$UPPM_HOME/installed/$ANDROID_NDK_PKG"
     ANDROID_NDK_REVISION="$1"
 
-    #if [ "$NATIVE_PLATFORM_KIND" = darwin ] ; then
+    #if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
     #    ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
     #else
     #    ANDROID_NDK_TOOLCHAIN_HOST_TAG="linux-$NATIVE_PLATFORM_ARCH"
@@ -9464,7 +9430,7 @@ EOF
   setup_android_ndk_env() {
     if [ -z "$1" ] ; then
         if [ -z "$2" ] ; then
-            if [ "$NATIVE_PLATFORM_KIND" = android ] ; then
+            if [ "$NATIVE_PLATFORM_TYPE" = android ] ; then
                 # use comunity compiled Android NDK for aarch64-linux right now, I might compile my own at some point.
                 # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
                 install_android_ndk_if_needed 29
@@ -9499,153 +9465,144 @@ __setup() {
         REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER=1
     fi
 
-    unset NATIVE_PLATFORM_KIND
-    unset NATIVE_PLATFORM_ARCH
-    unset NATIVE_PLATFORM_VERS
+    NATIVE_PLATFORM_TYPE="$(uname -s)"
+    NATIVE_PLATFORM_ARCH="$(uname -m)"
 
-    __setup_Darwin() {
-        NATIVE_PLATFORM_ARCH="$(uname -m)"
+    case $NATIVE_PLATFORM_TYPE in
+        Darwin)
+            NATIVE_PLATFORM_VERS="$(sw_vers -productVersion)"
+            NATIVE_PLATFORM_VERS_MAJOR="${NATIVE_PLATFORM_VERS%%.*}"
 
-        NATIVE_PLATFORM_VERS_MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
-
-        if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
-            NATIVE_PLATFORM_VERS='10.15'
-        elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
-            NATIVE_PLATFORM_VERS='15.0'
-        else
-            NATIVE_PLATFORM_VERS="$NATIVE_PLATFORM_VERS_MAJOR.0"
-        fi
-
-        NATIVE_PLATFORM_TRIPLE="macos-$NATIVE_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
-    }
-
-    __setup_Linux() {
-        if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
-            NATIVE_PLATFORM_VERS="$(getprop ro.build.version.sdk)"
-            NATIVE_PLATFORM_TRIPLE="android-$NATIVE_PLATFORM_VERS-arm64-v8a"
-
-            if command -v termux-info > /dev/null && command -v pkg > /dev/null ; then
-                TERMUX=1
-                export CURLOPT_DNS_SERVERS='8.8.8.8,1.1.1.1'
+            if [ "$NATIVE_PLATFORM_VERS_MAJOR" -le 10 ] ; then
+                REQUEST_PLATFORM_VERS='10.15'
+            elif [ "$NATIVE_PLATFORM_VERS_MAJOR" -ge 15 ] ; then
+                REQUEST_PLATFORM_VERS='15.0'
+            else
+                REQUEST_PLATFORM_VERS="$NATIVE_PLATFORM_VERS_MAJOR.0"
             fi
-        else
-            NATIVE_PLATFORM_ARCH="$(uname -m)"
-            NATIVE_PLATFORM_TRIPLE="linux-$NATIVE_PLATFORM_ARCH"
 
-            for FETCH_TOOL in curl wget http lynx aria2c axel
-            do
-                if command -v "$FETCH_TOOL" > /dev/null ; then
-                    break
-                else
-                    unset FETCH_TOOL
+            REQUEST_PLATFORM_TRIPLE="macos-$REQUEST_PLATFORM_VERS-$NATIVE_PLATFORM_ARCH"
+            ;;
+        Linux)
+            if [ "$(uname -o 2>/dev/null || true)" = Android ] ; then
+                NATIVE_PLATFORM_VERS="$(getprop ro.build.version.sdk)"
+                REQUEST_PLATFORM_TRIPLE="android-$NATIVE_PLATFORM_VERS-arm64-v8a"
+
+                if command -v termux-info > /dev/null && command -v pkg > /dev/null ; then
+                    TERMUX=1
+                    export CURLOPT_DNS_SERVERS='8.8.8.8,1.1.1.1'
                 fi
-            done
+            else
+                REQUEST_PLATFORM_TRIPLE="linux-$NATIVE_PLATFORM_ARCH"
 
-            if [ -z "$FETCH_TOOL" ] ; then
-                if [ "$REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER" = 1 ] ; then
-                    __install_curl_via_syspm_on_debian() {
-                        apt-get -y update
-                        apt-get -y install curl
-                    }
-
-                    __install_curl_via_syspm_on_ubuntu() {
-                        apt-get -y update
-                        apt-get -y install curl
-                    }
-
-                    __install_curl_via_syspm_on_linuxmint() {
-                        apt-get -y update
-                        apt-get -y install curl
-                    }
-
-                    __install_curl_via_syspm_on_rocky() {
-                        dnf -y update
-                        dnf -y install curl
-                    }
-
-                    __install_curl_via_syspm_on_almalinux() {
-                        dnf -y update
-                        dnf -y install curl
-                    }
-
-                    __install_curl_via_syspm_on_centos() {
-                        dnf -y update
-                        dnf -y install curl
-                    }
-
-                    __install_curl_via_syspm_on_fedora() {
-                        dnf -y update
-                        dnf -y install curl
-                    }
-
-                    __install_curl_via_syspm_on_rhel() {
-                        dnf -y update
-                        dnf -y install curl
-                    }
-
-                    __install_curl_via_syspm_on_opensuse_leap() {
-                        zypper update  -y
-                        zypper install -y curl
-                    }
-
-                    __install_curl_via_syspm_on_gentoo() {
-                        emerge net-misc/curl
-                    }
-
-                    __install_curl_via_syspm_on_manjaro() {
-                        pacman -Syyuu --noconfirm
-                        pacman -S     --noconfirm curl
-                    }
-
-                    __install_curl_via_syspm_on_arch() {
-                        pacman -Syyuu --noconfirm
-                        pacman -S     --noconfirm curl
-                    }
-
-                    __install_curl_via_syspm_on_void() {
-                        xbps-install -Syu xbps
-                        xbps-install -S
-                        xbps-install -Syu curl
-                    }
-
-                    __install_curl_via_syspm_on_alpine() {
-                        apk update
-                        apk add curl
-                    }
-
-                    if [ -f /etc/os-release ] ; then
-                        .   /etc/os-release
-
-                        unset sudo
-
-                        if [ "$(id -u)" -ne 0 ] ; then
-                            sudo=sudo
-                        fi
-
-                        if [ "$ID" = 'opensuse-leap' ] ; then
-                            ID='opensuse_leap'
-                        fi
-
-                        $sudo __install_curl_via_syspm_on_$ID
-
-                        FETCH_TOOL=curl
+                for FETCH_TOOL in curl wget http lynx aria2c axel
+                do
+                    if command -v "$FETCH_TOOL" > /dev/null ; then
+                        break
                     else
-                        abort 1 "/etc/os-release file does not exist, ndk-pkg can not determine what is your host system and how to install curl package."
+                        unset FETCH_TOOL
                     fi
+                done
 
-                    if [ -z "$FETCH_TOOL" ] ; then
-                        abort 1 "none of curl wget http lynx aria2c axel command was found, please install one of them then try again."
+                if [ -z "$FETCH_TOOL" ] ; then
+                    if [ "$REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER" = 1 ] ; then
+                        __install_curl_via_syspm_on_debian() {
+                            apt-get -y update
+                            apt-get -y install curl
+                        }
+
+                        __install_curl_via_syspm_on_ubuntu() {
+                            apt-get -y update
+                            apt-get -y install curl
+                        }
+
+                        __install_curl_via_syspm_on_linuxmint() {
+                            apt-get -y update
+                            apt-get -y install curl
+                        }
+
+                        __install_curl_via_syspm_on_rocky() {
+                            dnf -y update
+                            dnf -y install curl
+                        }
+
+                        __install_curl_via_syspm_on_almalinux() {
+                            dnf -y update
+                            dnf -y install curl
+                        }
+
+                        __install_curl_via_syspm_on_centos() {
+                            dnf -y update
+                            dnf -y install curl
+                        }
+
+                        __install_curl_via_syspm_on_fedora() {
+                            dnf -y update
+                            dnf -y install curl
+                        }
+
+                        __install_curl_via_syspm_on_rhel() {
+                            dnf -y update
+                            dnf -y install curl
+                        }
+
+                        __install_curl_via_syspm_on_opensuse_leap() {
+                            zypper update  -y
+                            zypper install -y curl
+                        }
+
+                        __install_curl_via_syspm_on_gentoo() {
+                            emerge net-misc/curl
+                        }
+
+                        __install_curl_via_syspm_on_manjaro() {
+                            pacman -Syyuu --noconfirm
+                            pacman -S     --noconfirm curl
+                        }
+
+                        __install_curl_via_syspm_on_arch() {
+                            pacman -Syyuu --noconfirm
+                            pacman -S     --noconfirm curl
+                        }
+
+                        __install_curl_via_syspm_on_void() {
+                            xbps-install -Syu xbps
+                            xbps-install -S
+                            xbps-install -Syu curl
+                        }
+
+                        __install_curl_via_syspm_on_alpine() {
+                            apk update
+                            apk add curl
+                        }
+
+                        if [ -f /etc/os-release ] ; then
+                            .   /etc/os-release
+
+                            unset sudo
+
+                            if [ "$(id -u)" -ne 0 ] ; then
+                                sudo=sudo
+                            fi
+
+                            if [ "$ID" = 'opensuse-leap' ] ; then
+                                ID='opensuse_leap'
+                            fi
+
+                            $sudo __install_curl_via_syspm_on_$ID
+
+                            FETCH_TOOL=curl
+                        else
+                            abort 1 "/etc/os-release file does not exist, ndk-pkg can not determine what your host system is and do not known how to install curl package."
+                        fi
+
+                        if [ -z "$FETCH_TOOL" ] ; then
+                            abort 1 "none of curl wget http lynx aria2c axel command was found, please install one of them then try again."
+                        fi
                     fi
                 fi
             fi
-        fi
-    }
-
-    unset TERMUX
-
-    NATIVE_PLATFORM_KIND="$(uname -s)"
-
-    __setup_$NATIVE_PLATFORM_KIND
+    esac
 
     ##################################################################################
 
@@ -9685,7 +9642,7 @@ __setup() {
 
     NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
     NDKPKG_CORE_LATEST_RELEASE_TAG="ndk-pkg-core-$NDKPKG_CORE_LATEST_RELEASE_VERSION"
-    NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="$NDKPKG_CORE_LATEST_RELEASE_TAG-$NATIVE_PLATFORM_TRIPLE.tar.xz"
+    NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME="$NDKPKG_CORE_LATEST_RELEASE_TAG-$REQUEST_PLATFORM_TRIPLE.tar.xz"
     NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL="https://github.com/leleliu008/ndk-pkg/releases/download/$NDKPKG_CORE_LATEST_RELEASE_TAG/$NDKPKG_CORE_LATEST_RELEASE_TARBALL_FILENAME"
 
     wfetch "$NDKPKG_CORE_LATEST_RELEASE_TARBALL_URL" --no-buffer
@@ -10288,7 +10245,7 @@ set -e
 # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_05_03
 unset IFS
 
-##################################################################################
+###################################################
 
 if [ -n "$NDKPKG_XTRACE" ] ; then
     set -x
@@ -10302,7 +10259,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.28.1
+NDKPKG_VERSION=0.28.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -10322,14 +10279,16 @@ NDKPKG_FORMULA_REPO_ROOT="$NDKPKG_HOME/repos.d"
 
 NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
 
-##################################################################################
-
 NATIVE_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/native"
 
-##################################################################################
+###################################################
 
 if [ -z "$UPPM_HOME" ] ; then
-    export UPPM_HOME="$HOME/.uppm"
+    if [ -z "$HOME" ] ; then
+        abort 1 "HOME environment variable is not set."
+    else
+        export UPPM_HOME="$HOME/.uppm"
+    fi
 fi
 
 UPPM="$NDKPKG_CORE_DIR/uppm"
@@ -10351,14 +10310,14 @@ if [ -n "$NDKPKG_URL_TRANSFORM" ] ; then
     export       URL_TRANSFORM="$NDKPKG_URL_TRANSFORM"
 fi
 
-##################################################################################
+###################################################
 
 # https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
 if [ -f "$NDKPKG_CORE_DIR/cacert.pem" ] ; then
     export SSL_CERT_FILE="$NDKPKG_CORE_DIR/cacert.pem"
 fi
 
-##################################################################################
+###################################################
 
 # dot_static command use this
 # https://www.freedesktop.org/software/fontconfig/fontconfig-user.html
@@ -10366,17 +10325,30 @@ if [ -z  "$FONTCONFIG_FILE" ] ; then
     export FONTCONFIG_FILE="$NDKPKG_CORE_DIR/fonts.conf"
 fi
 
-##################################################################################
+###################################################
 
 TIMESTAMP_UNIX="$(date +%s)"
 
-##################################################################################
+###################################################
 
 export BAT_THEME=Dracula
 
+unset STEP_NUM
+
 unset TERMUX
 
-##################################################################################
+###################################################
+
+unset NATIVE_PLATFORM_TYPE
+unset NATIVE_PLATFORM_ARCH
+unset NATIVE_PLATFORM_NAME
+unset NATIVE_PLATFORM_VERS
+unset NATIVE_PLATFORM_NCPU
+unset NATIVE_PLATFORM_LIBC
+unset NATIVE_PLATFORM_EUID
+unset NATIVE_PLATFORM_EGID
+
+###################################################
 
 case $1 in
     ''|--help|-h)
@@ -10460,7 +10432,7 @@ EOF
         ;;
 esac
 
-##################################################################################
+###################################################
 
 [ -z  "$CARGO_HOME" ] && {
     if [ -z "$HOME" ] ; then
@@ -10472,13 +10444,13 @@ esac
 
 bppend_to_PATH "$CARGO_HOME/bin"
 
-##################################################################################
+###################################################
 
 if [ -d         "$NDKPKG_CORE_DIR/bin" ] ; then
     export PATH="$NDKPKG_CORE_DIR/bin:$PATH"
 fi
 
-##################################################################################
+###################################################
 
 if [ -f "$NDKPKG_CORE_DIR/init.sh" ] ; then
     .   "$NDKPKG_CORE_DIR/init.sh"
@@ -10486,7 +10458,7 @@ else
     abort 1 "please run ${COLOR_GREEN}$NDKPKG_ARG0 setup${COLOR_OFF} command first, then try again."
 fi
 
-##################################################################################
+###################################################
 
 # https://www.gnu.org/software/automake/manual/html_node/Macro-Search-Path.html
 if [ -z  "$ACLOCAL_PATH" ] ; then
@@ -10495,28 +10467,15 @@ else
     export ACLOCAL_PATH="$NDKPKG_CORE_DIR/share/aclocal:$ACLOCAL_PATH"
 fi
 
-##################################################################################
-
-unset NATIVE_PLATFORM_KIND
-unset NATIVE_PLATFORM_TYPE
-unset NATIVE_PLATFORM_CODE
-unset NATIVE_PLATFORM_NAME
-unset NATIVE_PLATFORM_VERS
-unset NATIVE_PLATFORM_ARCH
-unset NATIVE_PLATFORM_NCPU
-unset NATIVE_PLATFORM_LIBC
-unset NATIVE_PLATFORM_EUID
-unset NATIVE_PLATFORM_EGID
+###################################################
 
 eval "$("$UPPM" sysinfo --shell)"
-
-##################################################################################
 
 if [ "$NATIVE_PLATFORM_EUID" -ne 0 ] ; then
     sudo=sudo
 fi
 
-##################################################################################
+###################################################
 
 case $1 in
     ndkinfo)
