@@ -1303,7 +1303,7 @@ filetype_from_url() {
                 PACKAGE_NEED_CURL=1
 
                 case $PACKAGE_SRC_FILETYPE in
-                    .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                    .zip|.txz|.tgz|.tlz|.tbz2|.7z|.crate)
                         PACKAGE_NEED_BTAR=1
                 esac
         esac
@@ -1345,7 +1345,7 @@ filetype_from_url() {
         PACKAGE_NEED_CURL=1
 
         case $PACKAGE_SRC_FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+            .zip|.txz|.tgz|.tlz|.tbz2|.7z|.crate)
                 PACKAGE_NEED_BTAR=1
         esac
     }
@@ -1362,7 +1362,7 @@ filetype_from_url() {
         PACKAGE_NEED_CURL=1
 
         case $PACKAGE_SRC_FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+            .zip|.txz|.tgz|.tlz|.tbz2|.7z|.crate)
                 PACKAGE_NEED_BTAR=1
         esac
     }
@@ -1386,7 +1386,7 @@ filetype_from_url() {
         PACKAGE_NEED_CURL=1
 
         case $FILETYPE in
-            .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+            .zip|.txz|.tgz|.tlz|.tbz2|.7z|.crate)
                 PACKAGE_NEED_BTAR=1
         esac
     done
@@ -2621,6 +2621,9 @@ __fetch_resources_of_the_given_package() {
             ;;
         *.zip)
             OUTPUT_TYPE=.zip
+            ;;
+        *.7z)
+            OUTPUT_TYPE=.7z
             ;;
         *)  abort 1 "$NDKPKG_ARG0 bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREFIX>]<BUNDLE-TYPE>, invalid forth argument: $2"
     esac
@@ -6648,7 +6651,7 @@ $PACKAGE_DOFETCH
                         PACKAGE_GIT_SHA="$(git rev-parse HEAD)"
                     fi
                     ;;
-                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                .zip|.txz|.tgz|.tlz|.tbz2|.7z|.crate)
                     run bsdtar xf "$PACKAGE_SRC_FILEPATH" -C "$PACKAGE_INSTALLING_SRC_DIR" --strip-components 1 --no-same-owner
                     ;;
                 *)  run cp "$PACKAGE_SRC_FILEPATH" "$PACKAGE_INSTALLING_SRC_DIR/"
@@ -6657,7 +6660,7 @@ $PACKAGE_DOFETCH
 
         if [ -n "$PACKAGE_FIX_FILEPATH" ] ; then
             case $PACKAGE_FIX_FILETYPE in
-                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                .zip|.txz|.tgz|.tlz|.tbz2|.7z|.crate)
                     run bsdtar xf "$PACKAGE_FIX_FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                     ;;
                 *)  run cp "$PACKAGE_FIX_FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
@@ -6667,7 +6670,7 @@ $PACKAGE_DOFETCH
 
         if [ -n "$PACKAGE_RES_FILEPATH" ] ; then
             case $PACKAGE_RES_FILETYPE in
-                .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                .zip|.txz|.tgz|.tlz|.tbz2|.7z|.crate)
                     run bsdtar xf "$PACKAGE_RES_FILEPATH" -C "$PACKAGE_INSTALLING_RES_DIR" --strip-components 1 --no-same-owner
                     ;;
                 *)  run cp "$PACKAGE_RES_FILEPATH" "$PACKAGE_INSTALLING_RES_DIR/"
@@ -6689,7 +6692,7 @@ $PACKAGE_DOFETCH
                 wfetch "$URL" --uri="$URI" --sha256="$SHA" -o "$FILEPATH"
 
                 case $FILETYPE in
-                    .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                    .zip|.txz|.tgz|.tlz|.tbz2|.7z|.crate)
                         run bsdtar xf "$FILEPATH" -C "$PACKAGE_INSTALLING_FIX_DIR" --strip-components 1 --no-same-owner
                         ;;
                     *)  run cp "$FILEPATH" "$PACKAGE_INSTALLING_FIX_DIR/"
@@ -6723,7 +6726,7 @@ $PACKAGE_DOFETCH
                 fi
 
                 case $FILETYPE in
-                    .zip|.txz|.tgz|.tlz|.tbz2|.crate)
+                    .zip|.txz|.tgz|.tlz|.tbz2|.7z|.crate)
                         run bsdtar xf "$FILEPATH" -C "$DEST" --strip-components "$LEV" --no-same-owner
                         ;;
                     *)  run cp "$FILEPATH" "$DEST/"
@@ -10043,7 +10046,7 @@ ${COLOR_GREEN}ndk-pkg bundle <PACKAGE-SPEC> [<OUTPUT-DIR>][<OUTPUT-FILENAME-PREF
         If unspecified, use <PACKAGE-NAME>-<PACKAGE-VERSION>-<TARGET-PLATFORM-NAME>-<TARGET-PLATFORM-VERSION>-<TARGET-PLATFORM-ARCH> as default.
 
     ${COLOR_BLUE}<BUNDLE-TYPE>${COLOR_OFF}
-        should be any one of .tar.gz .tar.xz .tar.lz .tar.bz2 .zip
+        should be any one of .tar.gz .tar.xz .tar.lz .tar.bz2 .zip .7z
 
     ${COLOR_BLUE}--exclude <PATH>${COLOR_OFF}
         exclude file that is not mean to be bundled into the final file.
