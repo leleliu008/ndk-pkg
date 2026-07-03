@@ -6886,7 +6886,7 @@ $PACKAGE_DO12345
     CCFLAGS='-fPIC -Wall'
     XXFLAGS='-fPIC -Wall'
     PPFLAGS="-include $NDKPKG_COMMON_H_FILEPATH"
-    LDFLAGS='-Wl,--as-needed -Wl,-z,muldefs -Wl,--allow-multiple-definition'
+    LDFLAGS='-Wl,--as-needed'
 
     CCFLAGS="$CCFLAGS $PACKAGE_CCFLAGS"
     XXFLAGS="$XXFLAGS $PACKAGE_XXFLAGS"
@@ -10236,7 +10236,7 @@ fi
     fi
 }
 
-NDKPKG_VERSION=0.28.3
+NDKPKG_VERSION=0.28.4
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
