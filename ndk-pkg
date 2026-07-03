@@ -7366,19 +7366,9 @@ $PACKAGE_DO12345
         for DEPENDENT_PACKAGE_NAME in $RECURSIVE_DEPENDENT_PACKAGE_NAMES
         do
             case $DEPENDENT_PACKAGE_NAME in
-                openssl@1.1)
+                libopenssl)
                     # https://docs.rs/openssl/latest/openssl/
-                    export OPENSSL_DIR="$openssl_1_1_INSTALL_DIR"
-
-                    if [ "$PACKAGE_PKGTYPE" = exe ] ; then
-                        # https://github.com/sfackler/rust-openssl/blob/master/openssl-sys/build/main.rs
-                        export OPENSSL_STATIC=1
-                        export OPENSSL_NO_VENDOR=1
-                    fi
-                    ;;
-                openssl-dev)
-                    # https://docs.rs/openssl/latest/openssl/
-                    export OPENSSL_DIR="$openssl_dev_INSTALL_DIR"
+                    export OPENSSL_DIR="$libopenssl_INSTALL_DIR"
 
                     if [ "$PACKAGE_PKGTYPE" = exe ] ; then
                         # https://github.com/sfackler/rust-openssl/blob/master/openssl-sys/build/main.rs
