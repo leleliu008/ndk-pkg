@@ -80,7 +80,7 @@ _ndk_pkg_actions=(
     'bundle:bundle the given installed package into a single archive file.'
     'export:export the given installed package as the google prefab aar.'
     'deploy:export the given installed package as the google prefab aar then deploy it to Maven Local Repository or Sonatype OSSRH.'
-    'gen-url-transform-sample:generate url-transform sample.'
+    'genmap:generate urlmap.'
     'android-versions:show android platform version, android API level, android version code map.'
 )
 

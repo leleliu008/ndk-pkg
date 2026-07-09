@@ -889,9 +889,9 @@ static int ndkpkg_formula_check(NDKPKGFormula * formula, const char * formulaFil
         return NDKPKG_OK;
     }
 
-    size_t  bsystemBufCapcity = strlen(formula->bsystem) + 1U;
-    char    bsystemBuf[bsystemBufCapcity];
-    strncpy(bsystemBuf, formula->bsystem, bsystemBufCapcity);
+    size_t  bsystemBufCapacity = strlen(formula->bsystem) + 1U;
+    char    bsystemBuf[bsystemBufCapacity];
+    strncpy(bsystemBuf, formula->bsystem, bsystemBufCapacity);
 
     char * bsystem = strtok(bsystemBuf, " ");
 

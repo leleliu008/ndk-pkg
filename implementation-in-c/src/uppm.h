@@ -59,7 +59,7 @@
 #define UPPM_ERROR_NETWORK_BASE    150
 
 /*
- * This macro should be employed only if there is no memory should be freed before returing.
+ * This macro should be employed only if there is no memory should be freed before returning.
  */
 #define UPPM_RETURN_IF_MEMORY_ALLOCATION_FAILED(ptr) if ((ptr) == NULL) { return UPPM_ERROR_MEMORY_ALLOCATE; }
 
@@ -241,7 +241,7 @@ int uppm_check_if_the_given_package_is_outdated (const char * packageName);
 typedef int (*UPPMPackageNameFilter)(const char * packageName, const size_t index, const bool verbose, const void * payload);
 
 int uppm_show_the_available_packages(const bool verbose);
-int uppm_list_the_available_packages(const bool verbose, UPPMPackageNameFilter packageNameCallbak, const void * payload);
+int uppm_list_the_available_packages(const bool verbose, UPPMPackageNameFilter packageNameCallback, const void * payload);
 int uppm_list_the_installed_packages(const bool verbose);
 int uppm_list_the__outdated_packages(const bool verbose);
 

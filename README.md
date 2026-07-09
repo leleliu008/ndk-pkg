@@ -54,7 +54,7 @@ For more details please refer to <https://github.com/leleliu008/ndk-pkg-package-
 
 This is the recommended way of using this software if you want to use this software locally.
 
-`docker` container is an isolated clean environment where the running process can not be affected by your host system's environemt variables.
+`docker` container is an isolated clean environment where the running process can not be affected by your host system's environment variables.
 
 **step1. create the ndk-pkg docker container**
 
@@ -148,7 +148,7 @@ sudo chroot alpine-rootfs ndk-pkg install curl --target=android-35-arm64-v8a --s
 
 **Note** :
 
-- As of Android NDK r25, Android NDK for Linux is incompatible with WSL1 due to the use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt). For more details please refer to https://github.com/android/ndk/issues/1755
+- As of Android NDK r25, Android NDK for Linux is incompatible with WSL1 due to the use of [BOLT](https://github.com/llvm/llvm-project/tree/main/bolt). For more details please refer to <https://github.com/android/ndk/issues/1755>
 
 **/etc/wsl.conf** :
 
@@ -194,9 +194,9 @@ chmod a+x ndk-pkg
 
 中国大陆的用户亦可将上面的地址替换为下面的地址:
 
-- https://ghfast.top/https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
-- https://cdn.jsdelivr.net/gh/leleliu008/ndk-pkg/ndk-pkg
-- https://gitee.com/fpliu/ndk-pkg/raw/master/ndk-pkg
+- <https://ghfast.top/https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg>
+- <https://cdn.jsdelivr.net/gh/leleliu008/ndk-pkg/ndk-pkg>
+- <https://gitee.com/fpliu/ndk-pkg/raw/master/ndk-pkg>
 
 ## Install ndk-pkg via git
 
@@ -401,10 +401,10 @@ A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ndk-pkg ndkinfo /usr/local/share/android-ndk
     ```
 
-- **generate url-transform sample**
+- **generate urlmap**
 
     ```bash
-    ndk-pkg gen-url-transform-sample
+    ndk-pkg urlmap
     ```
 
 - **install essential tools used by this shell script**
@@ -413,6 +413,7 @@ A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     ndk-pkg setup
     ndk-pkg setup -y
     ```
+
     This command is mainly doing the following things:
 
   - install `curl` via your system's package manager if none of `curl` `wget` `http` `lynx` `aria2c` `axel` command is found when `-y` option is given.
@@ -671,16 +672,16 @@ A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 - **export the given installed package as the google prefab aar then deploy it to Maven Local Repository**
 
     ```bash
-    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl
-    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl --debug
-    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl --local=/somewhere
+    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl
+    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl --debug
+    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl --local=/somewhere
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Sonatype OSSRH**
 
     ```bash
-    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl --remote < ~/OSSRH-config
-    ndk-pkg depoly android-35-arm64-v8a,x86_64/curl --remote <<EOF
+    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl --remote < ~/OSSRH-config
+    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl --remote <<EOF
     SERVER_ID=OSSRH
     SERVER_URL=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
     SERVER_USERNAME=your-sonatype-account-username
@@ -720,17 +721,15 @@ A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     export GOPROXY='https://goproxy.cn'
     ```
 
-- **NDKPKG_URL_TRANSFORM**
+- **NDKPKG_URLMAP**
 
     ```bash
-    export NDKPKG_URL_TRANSFORM=/path/of/url-transform
+    export NDKPKG_URLMAP=/path/of/urlmap
     ```
 
-    `/path/of/url-transform` command would be invoked as `/path/of/url-transform <URL>`
+    `/path/of/urlmap` transforms a URL to new one.
 
-    `/path/of/url-transform` command must output a `<URL>`
-
-    you can generate a url-transform sample via `ndk-pkg gen-url-transform-sample`
+    you can generate a urlmap via `ndk-pkg urlmap`
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 
@@ -760,7 +759,7 @@ A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
     export NDKPKG_HOME=/path/of/ndk-pkg-home
     ```
 
-- **NDKPKG_DEFAULT_TARGET**
+- **NDKPKG_TARGET**
 
     Some ACTIONs of ndk-pkg are associated with an installed package which need `PACKAGE-SPEC` to be specified.
 
@@ -774,18 +773,17 @@ A typical hierarchical structure under `~/.ndk-pkg` directory looks like below:
 
     **ANDROID-ABI**  : indicates which [Android ABI](https://developer.android.com/ndk/guides/abis) was built for.
 
-    To simplify the usage, you are allowed to omit `<TARGET>/`. If `<TARGET>/` is omitted, environment variable `NDKPKG_DEFAULT_TARGET` would be checked, if this environment variable is not set, then `android-21-arm64-v8a` will be used as the default.
+    To simplify the usage, you are allowed to omit `<TARGET>/`. If `<TARGET>/` is omitted, environment variable `NDKPKG_TARGET` would be checked, if this environment variable is not set, then `android-21-arm64-v8a` will be used as the default.
 
     **Example**:
 
     ```bash
-    export NDKPKG_DEFAULT_TARGET='android-35-arm64-v8a'
+    export NDKPKG_TARGET='android-35-arm64-v8a'
     ```
 
-- **NDKPKG_FORMULA_SEARCH_DIRS**
+- **NDKPKG_FORMULA_DIRS**
 
-    colon-seperated list of directories to search formulas.
-
+    colon-separated list of directories to search formulas.
 
 **Note:** some commonly used environment variables are overridden by this software, these are `CC`, `CXX`, `CPP`, `AS`, `AR`, `LD`, `CFLAGS`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_LIBDIR`, `PKG_CONFIG_PATH`, `ACLOCAL_PATH`
 
@@ -833,7 +831,7 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
 ||||
 |`reslist`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
 ||||
-|`dep-lib`|`LIST`|A space-separated list of `pkg-config` packages needed by this package when installing.<br>each of them will be calculated via `pkg-config --libs-only-l ` then passed to the linker.|
+|`dep-lib`|`LIST`|A space-separated list of `pkg-config` packages needed by this package when installing.<br>each of them will be calculated via `pkg-config --libs-only-l` then passed to the linker.|
 |`dep-pkg`|`LIST`|A space-separated list of   `ndk-pkg packages` depended by this package when installing, which will be installed via [ndk-pkg](https://github.com/leleliu008/ndk-pkg).|
 |`dep-upp`|`LIST`|A space-separated list of   `uppm packages` depended by this package when installing, which will be installed via [uppm](https://github.com/leleliu008/uppm).|
 |`dep-plm`|`LIST`|A space-separated list of    `perl modules` depended by this package when installing, which will be installed via [cpan](https://metacpan.org/dist/CPAN/view/scripts/cpan).|
@@ -862,7 +860,7 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
 ||||
 |`bindenv`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<ENV>=<VALUE>`. `%s` in `<VALUE>` represents the install directory.<br>`ndk-pkg` will bind these environment variables to executables while you are running `ndk-pkg bundle`.|
 ||||
-|`wrapper`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format:  `<SRC>\|<DST>`. e.g. `bear.c\|bin/` means that `ndk-pkg` will fetch `bear.c` from https://raw.githubusercontent.com/leleliu008/ndk-pkg-formula-repository-official-core/refs/heads/master/wrappers/bear.c then install it to `$PACKAGE_INSTALL_DIR/bin/` directory.<br>`ndk-pkg` will use these C source files to build the corresponding wrappers rather than a generic one while you are running `ndk-pkg bundle`.|
+|`wrapper`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format:  `<SRC>\|<DST>`. e.g. `bear.c\|bin/` means that `ndk-pkg` will fetch `bear.c` from <https://raw.githubusercontent.com/leleliu008/ndk-pkg-formula-repository-official-core/refs/heads/master/wrappers/bear.c> then install it to `$PACKAGE_INSTALL_DIR/bin/` directory.<br>`ndk-pkg` will use these C source files to build the corresponding wrappers rather than a generic one while you are running `ndk-pkg bundle`.|
 ||||
 |`caveats`|`TEXT`|plain text to be displayed after installing.|
 ||||
@@ -876,7 +874,7 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
 
 **phases of a package's installation:**
 
-```
+```text
  process-0      process-1      process-2      process-3     process-0
 ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
 │ dosetup │ -> │ dofetch │ -> │ do12345 │ -> │ dopatch │
@@ -1037,7 +1035,7 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
 
 A typical hierarchical structure of a ndk-pkg formula repository looks like below:
 
-```
+```tree
 NDKPKGFormulaRepoName
 ├── formula
 │   ├── packageA.yml
@@ -1071,7 +1069,7 @@ If a ndk-pkg formula repository is `disabled`, it would not be searched.
 
 ## ndk-pkg formula repository management
 
-run `ndk-pkg formula-repo-add ` command to create a new formula repository locally.
+run `ndk-pkg formula-repo-add` command to create a new formula repository locally.
 
 ## ndk-pkg official formula repository
 

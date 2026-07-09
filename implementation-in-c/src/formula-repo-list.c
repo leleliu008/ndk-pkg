@@ -48,7 +48,7 @@ int ndkpkg_formula_repo_list(NDKPKGFormulaRepoList * * out) {
         return NDKPKG_ERROR;
     }
 
-    size_t capcity = 5;
+    size_t capacity = 5;
 
     NDKPKGFormulaRepoList * formulaRepoList = NULL;
 
@@ -126,7 +126,7 @@ int ndkpkg_formula_repo_list(NDKPKGFormulaRepoList * * out) {
                 goto finalize;
             }
 
-            formulaRepoList->repos = (NDKPKGFormulaRepo**)calloc(capcity, sizeof(NDKPKGFormulaRepo*));
+            formulaRepoList->repos = (NDKPKGFormulaRepo**)calloc(capacity, sizeof(NDKPKGFormulaRepo*));
 
             if (formulaRepoList->repos == NULL) {
                 ndkpkg_formula_repo_free(formulaRepo);
@@ -136,9 +136,9 @@ int ndkpkg_formula_repo_list(NDKPKGFormulaRepoList * * out) {
             }
         }
 
-        if (capcity == formulaRepoList->size) {
-            capcity += 5;
-            NDKPKGFormulaRepo ** formulaRepoArray = (NDKPKGFormulaRepo**)realloc(formulaRepoList->repos, capcity * sizeof(NDKPKGFormulaRepo*));
+        if (capacity == formulaRepoList->size) {
+            capacity += 5;
+            NDKPKGFormulaRepo ** formulaRepoArray = (NDKPKGFormulaRepo**)realloc(formulaRepoList->repos, capacity * sizeof(NDKPKGFormulaRepo*));
 
             if (formulaRepoArray == NULL) {
                 ndkpkg_formula_repo_free(formulaRepo);

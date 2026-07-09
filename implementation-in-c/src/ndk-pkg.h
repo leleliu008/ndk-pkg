@@ -364,7 +364,7 @@ int ndkpkg_pack(const char * packageName, const NDKPKGTargetPlatform * targetPla
 
 int ndkpkg_export_as_google_prefab_aar(const char * packageName, const NDKPKGTargetPlatform * targetPlatform, const char * outputPath, const bool verbose);
 
-int ndkpkg_depoly_to_maven_repository(const char * packageName, const NDKPKGTargetPlatform * targetPlatform, const char * outputPath, const bool verbose);
+int ndkpkg_deploy_to_maven_repository(const char * packageName, const NDKPKGTargetPlatform * targetPlatform, const char * outputPath, const bool verbose);
 
 typedef enum {
     NDKPKGDependsOutputType_DOT,

@@ -135,7 +135,7 @@ int ndkpkg_help() {
         "   <OUTPUT-PATH> can be either the filepath or directory. If it is an existing directory or ends with slash, then it will be treated as a directory, otherwise, it will be treated as a filepath.\n\n"
         "    If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>\n\n"
         "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.\n\n"
-        "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.\n\n\n"
+        "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPUT-TYPE> will be box and output to stdout.\n\n\n"
         COLOR_GREEN
         "ndk-pkg fetch <PACKAGE-NAME> [-v]\n"
         COLOR_OFF
@@ -434,7 +434,7 @@ int ndkpkg_help() {
         "   <OUTPUT-PATH> can be either the filepath or directory. If it is an existing directory or ends with slash, then it will be treated as a directory, otherwise, it will be treated as a filepath.\n\n"
         "    If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/<PACKAGE-NAME>-dependencies.<OUTPUT-TYPE>\n\n"
         "    If <OUTPUT-PATH> is treated as a filepath, and if -t <OUTPUT-TYPE> option is not given, if <OUTPUT-PATH> ends with one of .dot|.box|.svg|.png, <OUTPUT-TYPE> will be the <OUTPUT-PATH> suffix, otherwise, <OUTPUT-TYPE> will be box.\n\n"
-        "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPU-TYPE> will be box and output to stdout.\n\n"
+        "    If -t <OUTPUT-TYPE> and -o <OUTPUT-PATH> options both are not given, <OUTPUT-TYPE> will be box and output to stdout.\n\n"
         "ndk-pkg fetch   <PACKAGE-NAME> [-v]\n"
         "    download resources of the given package to the local cache.\n\n"
         "ndk-pkg   install <PACKAGE-NAME>... [--jobs=N -q -v --dry-run --keep-session-dir]\n"

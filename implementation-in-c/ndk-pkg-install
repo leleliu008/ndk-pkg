@@ -1266,17 +1266,17 @@ $DOT_CONTENT
                     T="linux-$NATIVE_PLATFORM_LIBC-$NATIVE_PLATFORM_ARCH"
             esac
 
-            NON_RELOCATEABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
-            NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
+            NON_RELOCATABLE_BINARY_PACKAGE_NAME="non-relocatable-binary-packages-2024.10.27-$T"
+            NON_RELOCATABLE_BINARY_PACKAGE_INSTALL_DIR="/opt/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME"
 
-            if [ ! -f "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
+            if [ ! -f "$NON_RELOCATABLE_BINARY_PACKAGE_INSTALL_DIR/ok" ] ; then
                 wfetch "https://github.com/leleliu008/non-relocatable-binary-packages/releases/download/2024.10.27/$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
-                run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR"
-                run bsdtar xPf "$NON_RELOCATEABLE_BINARY_PACKAGE_NAME.tar.xz"
-                run touch "$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
+                run $sudo install -d -g `id -g` -o `id -u` "$NON_RELOCATABLE_BINARY_PACKAGE_INSTALL_DIR"
+                run bsdtar xPf "$NON_RELOCATABLE_BINARY_PACKAGE_NAME.tar.xz"
+                run touch "$NON_RELOCATABLE_BINARY_PACKAGE_INSTALL_DIR/ok"
             fi
 
-            export PATH="$NON_RELOCATEABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
+            export PATH="$NON_RELOCATABLE_BINARY_PACKAGE_INSTALL_DIR/bin:$PATH"
         else
             PACKAGE_DEP_XBUILDER="$PACKAGE_DEP_XBUILDER $PACKAGE_DEP_UPP_T2"
         fi
@@ -2841,18 +2841,18 @@ __check_elf_files() {
                         # In general, a shared library would not have the .interp section, but that is not always the case, for example, libcap/lib/libpsx.so is not only a library but also a executable.
                         case "${FILEPATH##*/}" in
                             *.so)
-                                IS_SHARED_LIBRAY=1 ;;
+                                IS_SHARED_LIBRARY=1 ;;
                             *.so.*)
-                                IS_SHARED_LIBRAY=1 ;;
-                            *)  IS_SHARED_LIBRAY=0 ;;
+                                IS_SHARED_LIBRARY=1 ;;
+                            *)  IS_SHARED_LIBRARY=0 ;;
                         esac
                     else
-                        IS_SHARED_LIBRAY=1
+                        IS_SHARED_LIBRARY=1
                     fi
 
                     #####################################################################
 
-                    if [ "$IS_SHARED_LIBRAY" = 1 ] ; then
+                    if [ "$IS_SHARED_LIBRARY" = 1 ] ; then
                         # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
                         DT_SONAME="$(patchelf --print-soname "$FILEPATH")"
 
@@ -3737,10 +3737,10 @@ cmakew() {
     unset CMAKE_EXTRA_ARGS
     unset CMAKE_BUILD_TARGETS
     unset CMAKE_INSTALL_COMPONENTS
-    unset CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY
+    unset CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATELY
 
     if [ "$1" = 2 ] ; then
-        CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY=1
+        CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATELY=1
         shift
     fi
 
@@ -3778,7 +3778,7 @@ cmakew() {
         shift
     done
 
-    if [ "$CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATEDLY" = 1 ] ; then
+    if [ "$CMAKE_BUILD_STATIC_SHARED_LIBRARY_SEPARATELY" = 1 ] ; then
         cmakew_internal $CMAKE_EXTRA_ARGS -DBUILD_SHARED_LIBS=OFF
         cmakew_internal $CMAKE_EXTRA_ARGS -DBUILD_SHARED_LIBS=ON
     else
@@ -4248,7 +4248,7 @@ EOF
   setup_android_ndk_env() {
     if [ -z "$1" ] ; then
         if [ "$NATIVE_PLATFORM_KIND" = android ] ; then
-            # use comunity compiled Android NDK for aarch64-linux right now, I might compile my own at some point.
+            # use community compiled Android NDK for aarch64-linux right now, I might compile my own at some point.
             # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
             ANDROID_NDK_REVISION='r26b'
         else

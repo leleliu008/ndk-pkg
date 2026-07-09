@@ -206,7 +206,7 @@ EOF
             PACKAGE_NAME="${1#*/}"
 
             if [ -z "$PACKAGE_NAME" ] ; then
-                abort 1 "invalid package spec: $1\n    package name is unspecifed."
+                abort 1 "invalid package spec: $1\n    package name is unspecified."
             elif printf '%s\n' "$PACKAGE_NAME" | grep -q -E '^[A-Za-z0-9+-_.@]{1,50}$' ; then
                 :
             else
