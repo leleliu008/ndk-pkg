@@ -210,7 +210,7 @@ ndk-pkg/ndk-pkg setup
 ||default|environment variable|
 |-|-|-|
 |`uppm` home directory|`~/.uppm`|`UPPM_HOME`|
-|`ndk-pkg` home directory|`~/.ppkg`|`NDKPKG_HOME`|
+|`ndk-pkg` home directory|`~/.ndk-pkg`|`NDKPKG_HOME`|
 |`ndk-pkg` downloads directory|`$NDKPKG_HOME/downloads`|`NDKPKG_DOWNLOADS_DIR`|
 |`ndk-pkg` natives directory|`$NDKPKG_HOME/native`||
 |`ndk-pkg` urlmap file|`$NDKPKG_HOME/urlmap`|`NDKPKG_URLMAP`|
