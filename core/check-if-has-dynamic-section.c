@@ -11,7 +11,7 @@
 int handle_elf32(const int fd, const char * const fp) {
     Elf32_Ehdr ehdr;
 
-    int ret = read(fd, &ehdr, sizeof(Elf32_Ehdr));
+    ssize_t ret = read(fd, &ehdr, sizeof(Elf32_Ehdr));
 
     if (ret == -1) {
         perror(fp);
@@ -27,7 +27,7 @@ int handle_elf32(const int fd, const char * const fp) {
 
     Elf32_Phdr phdr;
 
-    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
+    for (unsigned int i = 1U; i < ehdr.e_phnum; i++) {
         ret = pread(fd, &phdr, sizeof(Elf32_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
 
         if (ret == -1) {
@@ -53,7 +53,7 @@ int handle_elf32(const int fd, const char * const fp) {
 int handle_elf64(const int fd, const char * const fp) {
     Elf64_Ehdr ehdr;
 
-    int ret = read(fd, &ehdr, sizeof(Elf64_Ehdr));
+    ssize_t ret = read(fd, &ehdr, sizeof(Elf64_Ehdr));
 
     if (ret == -1) {
         perror(fp);
@@ -69,7 +69,7 @@ int handle_elf64(const int fd, const char * const fp) {
 
     Elf64_Phdr phdr;
 
-    for (unsigned int i = 1; i < ehdr.e_phnum; i++) {
+    for (unsigned int i = 1U; i < ehdr.e_phnum; i++) {
         ret = pread(fd, &phdr, sizeof(Elf64_Phdr), ehdr.e_phoff + i * ehdr.e_phentsize);
 
         if (ret == -1) {
