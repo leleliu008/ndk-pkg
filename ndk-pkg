@@ -9546,73 +9546,78 @@ __setup() {
                 if [ -z "$FETCH_TOOL" ] ; then
                     if [ "$REQUEST_TO_INSTALL_CURL_VIA_SYSTEM_PACKAGE_MANAGER" = 1 ] ; then
                         __install_curl_via_syspm_on_debian() {
-                            apt-get -y update
-                            apt-get -y install curl
+                            run $sudo apt-get -y update
+                            run $sudo apt-get -y install curl
                         }
 
                         __install_curl_via_syspm_on_ubuntu() {
-                            apt-get -y update
-                            apt-get -y install curl
+                            run $sudo apt-get -y update
+                            run $sudo apt-get -y install curl
                         }
 
                         __install_curl_via_syspm_on_linuxmint() {
-                            apt-get -y update
-                            apt-get -y install curl
+                            run $sudo apt-get -y update
+                            run $sudo apt-get -y install curl
                         }
 
                         __install_curl_via_syspm_on_rocky() {
-                            dnf -y update
-                            dnf -y install curl
+                            run $sudo dnf -y update
+                            run $sudo dnf -y install curl
                         }
 
                         __install_curl_via_syspm_on_almalinux() {
-                            dnf -y update
-                            dnf -y install curl
+                            run $sudo dnf -y update
+                            run $sudo dnf -y install curl
                         }
 
                         __install_curl_via_syspm_on_centos() {
-                            dnf -y update
-                            dnf -y install curl
+                            run $sudo dnf -y update
+                            run $sudo dnf -y install curl
                         }
 
                         __install_curl_via_syspm_on_fedora() {
-                            dnf -y update
-                            dnf -y install curl
+                            run $sudo dnf -y update
+                            run $sudo dnf -y install curl
                         }
 
                         __install_curl_via_syspm_on_rhel() {
-                            dnf -y update
-                            dnf -y install curl
+                            run $sudo dnf -y update
+                            run $sudo dnf -y install curl
                         }
 
-                        __install_curl_via_syspm_on_opensuse_leap() {
-                            zypper update  -y
-                            zypper install -y curl
+                        __install_curl_via_syspm_on_openEuler() {
+                            run $sudo dnf -y update
+                            run $sudo dnf -y install curl
+                        }
+
+                        __install_curl_via_syspm_on_opensuse() {
+                            run $sudo zypper update  -y
+                            run $sudo zypper install -y curl
                         }
 
                         __install_curl_via_syspm_on_gentoo() {
-                            emerge net-misc/curl
+                            run $sudo emerge net-misc/curl
                         }
 
                         __install_curl_via_syspm_on_manjaro() {
-                            pacman -Syyuu --noconfirm
-                            pacman -S     --noconfirm curl
+                            run $sudo pacman -Syyuu --noconfirm
+                            run $sudo pacman -S     --noconfirm curl
                         }
 
                         __install_curl_via_syspm_on_arch() {
-                            pacman -Syyuu --noconfirm
-                            pacman -S     --noconfirm curl
+                            run $sudo pacman -Syyuu --noconfirm
+                            run $sudo pacman -S     --noconfirm curl
                         }
 
                         __install_curl_via_syspm_on_void() {
-                            xbps-install -Syu xbps
-                            xbps-install -S
-                            xbps-install -Syu curl
+                            run $sudo xbps-install -Syu xbps
+                            run $sudo xbps-install -S
+                            run $sudo xbps-install -Syu curl
                         }
 
                         __install_curl_via_syspm_on_alpine() {
-                            apk update
-                            apk add curl
+                            run $sudo apk update
+                            run $sudo apk add curl
                         }
 
                         if [ -f /etc/os-release ] ; then
@@ -9624,11 +9629,11 @@ __setup() {
                                 sudo=sudo
                             fi
 
-                            if [ "$ID" = 'opensuse-leap' ] ; then
-                                ID='opensuse_leap'
-                            fi
+                            case "$ID" in
+                                opensuse-*) ID=opensuse
+                            esac
 
-                            $sudo __install_curl_via_syspm_on_$ID
+                            __install_curl_via_syspm_on_$ID
 
                             FETCH_TOOL=curl
                         else
@@ -10295,7 +10300,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.29.0
+NDKPKG_VERSION=0.29.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
