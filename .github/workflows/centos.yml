@@ -12,6 +12,9 @@ jobs:
 
     container: centos:8.4.2105
 
+    env:
+      SSL_CERT_FILE: /etc/pki/tls/certs/ca-bundle.crt
+
     steps:
         # https://stackoverflow.com/questions/70926799/centos-through-vm-no-urls-in-mirrorlist
       - run: |
