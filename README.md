@@ -561,11 +561,19 @@ ndk-pkg/ndk-pkg setup
 
     If you encounter the reporting `Problem with the SSL CA cert (path? access rights?)` or `the SSL certificate is invalid`, trying to set this envronment variable will do the trick.
 
+    [openSUSE](https://www.opensuse.org/)
+
+    ```bash
+    export SSL_CERT_FILE=/etc/ssl/ca-bundle.pem
+    ```
+
+    [CentOS](https://www.centos.org/) | [Rocky Linux](https://rockylinux.org/)
+
     ```bash
     export SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt
     ```
 
-    You can use a custom CA file:
+    Alternatively, you can use a custom CA certificate file instead of the system's:
 
     ```bash
     curl -LO https://curl.se/ca/cacert.pem
