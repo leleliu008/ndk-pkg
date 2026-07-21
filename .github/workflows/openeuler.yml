@@ -17,6 +17,9 @@ jobs:
 
     container: openeuler/openeuler:${{ matrix.tag }}
 
+    env:
+      SSL_CERT_FILE: /etc/pki/tls/certs/ca-bundle.crt
+
     steps:
       - uses: actions/checkout@v5
 

@@ -567,7 +567,7 @@ ndk-pkg/ndk-pkg setup
     export SSL_CERT_FILE=/etc/ssl/ca-bundle.pem
     ```
 
-    [CentOS](https://www.centos.org/) | [Rocky Linux](https://rockylinux.org/)
+    [openEuler](https://www.openeuler.org/) | [Rocky Linux](https://rockylinux.org/) | [CentOS](https://www.centos.org/)
 
     ```bash
     export SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt
