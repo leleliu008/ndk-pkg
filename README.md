@@ -205,16 +205,13 @@ git clone --depth 1 https://github.com/leleliu008/ndk-pkg
 ndk-pkg/ndk-pkg setup
 ```
 
-## Directories and Files
+## Directories
 
-||default|environment variable|
+||default location|environment variable|
 |-|-|-|
 |`uppm` home directory|`~/.uppm`|`UPPM_HOME`|
 |`ndk-pkg` home directory|`~/.ndk-pkg`|`NDKPKG_HOME`|
 |`ndk-pkg` downloads directory|`$NDKPKG_HOME/downloads`|`NDKPKG_DOWNLOADS_DIR`|
-|`ndk-pkg` natives directory|`$NDKPKG_HOME/native`||
-|`ndk-pkg` urlmap file|`$NDKPKG_HOME/urlmap`|`NDKPKG_URLMAP`|
-|`cacert` file path|`$NDKPKG_HOME/cacert.pem`|`SSL_CERT_FILE`|
 
 **Notes:**
 
@@ -258,7 +255,7 @@ ndk-pkg/ndk-pkg setup
 - **generate urlmap**
 
     ```bash
-    ndk-pkg urlmap
+    ndk-pkg urlmap > urlmap
     ```
 
 - **install essential tools used by this shell script**
@@ -564,6 +561,7 @@ ndk-pkg/ndk-pkg setup
 
     ```bash
     curl -LO https://curl.se/ca/cacert.pem
+    chmod -w cacert.pem
     export SSL_CERT_FILE="$PWD/cacert.pem"
     ```
 
@@ -583,7 +581,12 @@ ndk-pkg/ndk-pkg setup
 
     `/path/of/urlmap` transforms a URL to new one.
 
-    you can generate a urlmap via `ndk-pkg urlmap`
+    you can generate a urlmap via:
+
+    ```bash
+    ndk-pkg urlmap > urlmap
+    chmod +x urlmap
+    ```
 
     If you want to change the request url, you can set this environment variable. It is very useful for chinese users.
 

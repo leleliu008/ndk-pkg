@@ -3995,13 +3995,7 @@ __cleanup() {
 # {{{ ndk-pkg urlmap
 
 __gen_urlmap() {
-    SESSION_DIR="$NDKPKG_HOME/run/$$"
-
-    rm -rf     "$SESSION_DIR"
-    install -d "$SESSION_DIR"
-    cd         "$SESSION_DIR"
-
-    cat > urlmap <<EOF
+    cat <<EOF
 #!/bin/sh
 
 case \$1 in
@@ -4015,16 +4009,6 @@ case \$1 in
     *)  printf '%s\n' "\$1"
 esac
 EOF
-
-    chmod +x urlmap
-
-    install -d "$NDKPKG_HOME"
-
-    mv urlmap "$NDKPKG_HOME/"
-
-    rm -rf "$SESSION_DIR"
-
-    success "urlmap has been written into $NDKPKG_HOME/urlmap. You can edit it to meet your needs. To apply this, you should run 'export NDKPKG_URLMAP=$NDKPKG_HOME/urlmap' in your terminal."
 }
 
 # }}}
@@ -9770,13 +9754,6 @@ __setup() {
 
     ##################################################################################
 
-    # https://curl.se/docs/caextract.html
-    wfetch 'https://curl.se/ca/cacert.pem' --no-buffer
-
-    export SSL_CERT_FILE="$PWD/cacert.pem"
-
-    ##################################################################################
-
     wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg-core-latest-release-version' --no-buffer
 
     NDKPKG_CORE_LATEST_RELEASE_VERSION="$(cat ndk-pkg-core-latest-release-version)"
@@ -10301,6 +10278,7 @@ ${COLOR_GREEN}SSL_CERT_FILE${COLOR_OFF}
     In general, you don't need to set this environment variable, but, if you encounter the reporting ${COLOR_RED}the SSL certificate is invalid${COLOR_OFF}, trying to run below commands in your terminal will do the trick.
 
     ${COLOR_RED}curl -LO https://curl.se/ca/cacert.pem
+    chmod -w cacert.pem
     export SSL_CERT_FILE="\$PWD/cacert.pem"${COLOR_OFF}
 
 ${COLOR_GREEN}GOPROXY${COLOR_OFF}
@@ -10442,13 +10420,6 @@ uppm() {
 if [ -n "$NDKPKG_URLMAP" ] ; then
     export  UPPM_URL_TRANSFORM="$NDKPKG_URLMAP"
     export       URL_TRANSFORM="$NDKPKG_URLMAP"
-fi
-
-###################################################
-
-# https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_default_verify_paths.html
-if [ -f "$NDKPKG_CORE_DIR/cacert.pem" ] ; then
-    export SSL_CERT_FILE="$NDKPKG_CORE_DIR/cacert.pem"
 fi
 
 ###################################################
