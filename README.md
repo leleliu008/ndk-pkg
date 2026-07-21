@@ -559,13 +559,19 @@ ndk-pkg/ndk-pkg setup
 
 - **SSL_CERT_FILE**
 
+    If you encounter the reporting `Problem with the SSL CA cert (path? access rights?)` or `the SSL certificate is invalid`, trying to set this envronment variable will do the trick.
+
+    ```bash
+    export SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt
+    ```
+
+    You can use a custom CA file:
+
     ```bash
     curl -LO https://curl.se/ca/cacert.pem
     chmod -w cacert.pem
     export SSL_CERT_FILE="$PWD/cacert.pem"
     ```
-
-    In general, you don't need to set this environment variable, but, if you encounter the reporting `the SSL certificate is invalid`, trying to run above commands in your terminal will do the trick.
 
 - **GOPROXY**
 

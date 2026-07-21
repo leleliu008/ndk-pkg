@@ -18,7 +18,7 @@ jobs:
     container: opensuse/leap:${{ matrix.tag }}
 
     env:
-      SSL_CERT_FILE: /etc/pki/tls/certs/ca-bundle.crt
+      SSL_CERT_FILE: /etc/ssl/ca-bundle.pem
 
     steps:
       # To create a local Git repository instead, add Git 2.18 or higher to the PATH
