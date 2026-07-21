@@ -9762,7 +9762,7 @@ __setup() {
         XZ="$(command -v xz || true)"
 
         if [ -z "$TAR" ] || [ -z "$XZ" ] ; then
-            wfetch 'https://github.com/leleliu008/bsdtar.exe/releases/download/2024.10.03/bsdtar-3.7.4-linux-x86_64.exe' -o bsdtar --no-buffer
+            wfetch 'https://github.com/leleliu008/bsdtar.exe/releases/download/2026.07.17/bsdtar-3.8.7-linux-x86_64.release' --sha256=0391a23ead064a825a5124ca22ea110386bf037810e4f500ffeb5242607a1abe -o bsdtar --no-buffer
             chmod +x bsdtar
             TAR=./bsdtar
         fi
