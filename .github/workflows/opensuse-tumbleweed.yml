@@ -10,12 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    strategy:
-      fail-fast: false
-      matrix:
-        tag: [15.3, 15.4, '15.5', '15.6']
-
-    container: opensuse/leap:${{ matrix.tag }}
+    container: opensuse/tumbleweed
 
     env:
       SSL_CERT_FILE: /etc/ssl/ca-bundle.pem

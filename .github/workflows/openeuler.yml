@@ -1,30 +1,23 @@
-name: openSUSE Leap
+name: openeuler
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
   pull_request:
-    branches: [ master, dev ]
+    branches: [ master, dev, tmp ]
 
 jobs:
-  test:
+  openeuler:
     runs-on: ubuntu-latest
-    
+
     strategy:
       fail-fast: false
       matrix:
-        tag: [15.3, 15.4, '15.5', '15.6']
+        tag: ['24.03']
 
-    container: opensuse/leap:${{ matrix.tag }}
-
-    env:
-      SSL_CERT_FILE: /etc/ssl/ca-bundle.pem
+    container: openeuler/openeuler:${{ matrix.tag }}
 
     steps:
-      # To create a local Git repository instead, add Git 2.18 or higher to the PATH
-      - run: zypper update  -y
-      - run: zypper install -y git
-
       - uses: actions/checkout@v5
 
       - run: ./ndk-pkg --help
@@ -65,15 +58,23 @@ jobs:
 
 
       - run: ./ndk-pkg depends libzip
+      - run: ./ndk-pkg depends libzip -t d2
       - run: ./ndk-pkg depends libzip -t dot
       - run: ./ndk-pkg depends libzip -t box
       - run: ./ndk-pkg depends libzip -t dot -o a/
       - run: ./ndk-pkg depends libzip -o libzip.box
+      - run: ./ndk-pkg depends libzip -t svg -o .
+      - run: ./ndk-pkg depends libzip -t svg -o . --engine=d2
+      - run: ./ndk-pkg depends libzip -t svg -o . --engine=dot
+      - run: ./ndk-pkg depends libzip -t png -o .
+        #- run: ./ndk-pkg depends libzip -t png -o . --engine=d2
+      - run: ./ndk-pkg depends libzip -t png -o . --engine=dot
 
 
+      - run: ./ndk-pkg install bat    --target=android-23-arm64-v8a
+      - run: ./ndk-pkg install uctags --target=android-24-arm64-v8a
       - run: ./ndk-pkg install libzip
-
-
+      - run: ./ndk-pkg install yq --ndk-revision=28c
 
 
       - run: ./ndk-pkg show libzip --prefix
@@ -93,6 +94,11 @@ jobs:
       - run: ./ndk-pkg bundle libzip .tar.xz
       - run: ./ndk-pkg bundle libzip xx.tar.xz
 
+      - run: ./ndk-pkg export android-21-arm64-v8a/libzip
+      - run: ./ndk-pkg export android-21-arm64-v8a/libzip -o .
+
+      - run: ./ndk-pkg deploy android-21-arm64-v8a/libzip -o .
+      - run: ./ndk-pkg deploy android-21-arm64-v8a/libzip --local=xxxxx
 
       - run: ./ndk-pkg formula-repo-list
 
