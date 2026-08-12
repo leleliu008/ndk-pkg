@@ -108,10 +108,12 @@ curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 chmod a+x ndk-pkg
 mv ndk-pkg ubuntu-rootfs/bin/
 
-sudo mount -o bind  /dev ubuntu-rootfs/dev
 sudo mount -t proc  none ubuntu-rootfs/proc
 sudo mount -t sysfs none ubuntu-rootfs/sys
 sudo mount -t tmpfs none ubuntu-rootfs/tmp
+
+sudo mount --rbind    /dev ubuntu-rootfs/dev
+sudo mount --make-rprivate ubuntu-rootfs/dev
 
 sudo chroot ubuntu-rootfs ndk-pkg setup -y
 sudo chroot ubuntu-rootfs ndk-pkg update
@@ -135,9 +137,12 @@ curl -LO https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/ndk-pkg
 chmod a+x ndk-pkg
 mv ndk-pkg alpine-rootfs/bin/
 
-sudo mount -o bind  /dev alpine-rootfs/dev
 sudo mount -t proc  none alpine-rootfs/proc
 sudo mount -t sysfs none alpine-rootfs/sys
+sudo mount -t tmpfs none alpine-rootfs/tmp
+
+sudo mount --rbind    /dev alpine-rootfs/dev
+sudo mount --make-rprivate alpine-rootfs/dev
 
 sudo chroot alpine-rootfs ndk-pkg setup
 sudo chroot alpine-rootfs ndk-pkg update
