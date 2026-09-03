@@ -40,12 +40,10 @@ jobs:
       - run: ./ppkg setup
       - run: ./ppkg update
       - run: ./ppkg install macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/elftool
+      - run: ./ppkg bundle  macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/elftool .tar.xz
+
       - run: ./ppkg install macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4
       - run: ./ppkg bundle  macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/uppm@0.15.4 .tar.xz
-
-      - run: cp ~/.ppkg/installed/macos-${{ matrix.target-version }}-${{ matrix.target-arch }}/elftool/bin/check-if-has-dynamic-section check-if-has-dynamic-section.exe
-
-      - run: rm core/check-if-has-dynamic-section.c
 
       - run: |
           set -ex
@@ -88,6 +86,10 @@ jobs:
 
       - run: ./ppkg setup
       - run: ./ppkg update
+
+      - run: ./ppkg install elftool --static
+      - run: ./ppkg bundle  elftool .tar.xz
+
       - run: ./ppkg install uppm@0.15.4 --static
       - run: ./ppkg bundle  uppm@0.15.4 .tar.xz
 
@@ -145,9 +147,12 @@ jobs:
       - run: ./ndk-pkg setup
       - run: ./ndk-pkg update
 
-      - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4
       - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/ndk-pkg-core -I .
 
+      - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/elftool
+      - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/elftool .tar.xz
+
+      - run: ./ndk-pkg install android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4
       - run: ./ndk-pkg bundle  android-${{ matrix.target-version }}-arm64-v8a/uppm@0.15.4 .tar.xz
 
       - run: ls

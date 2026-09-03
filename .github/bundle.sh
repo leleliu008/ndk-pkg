@@ -8,10 +8,6 @@ if [ "$GITHUB_ACTIONS" != true ] ; then
 fi
 
 curl -LO https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Light.otf
-curl -LO https://git.savannah.gnu.org/cgit/config.git/plain/config.sub
-curl -LO https://git.savannah.gnu.org/cgit/config.git/plain/config.guess
-
-chmod +x config.sub config.guess
 
 install -d out/
 
@@ -20,9 +16,10 @@ do
     mv "$item" "out/${item%.exe}"
 done
 
-tar vxf uppm*.tar.xz -C out --strip-components=1
+tar vxf uppm-*.tar.xz -C out --strip-components=1
+tar vxf elftool-*.tar.xz -C out --strip-components=1
 
-mv out/bin/uppm *.otf core/fonts.conf config.sub config.guess out/
+mv out/bin/uppm out/bin/elftool *.otf core/fonts.conf out/
 
 rm -rf out/share/ out/.ppkg/
 
