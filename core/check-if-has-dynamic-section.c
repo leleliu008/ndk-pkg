@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include <elf.h>
+#include "elf.h"
 
 
 int handle_elf32(const int fd, const char * const fp) {

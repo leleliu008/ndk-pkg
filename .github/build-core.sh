@@ -33,6 +33,8 @@ EOF
 
 case $2 in
     macos-*)
+        curl -L -o core/elf.h https://raw.githubusercontent.com/leleliu008/patches/refs/heads/master/elf.h
+
         curl -LO https://raw.githubusercontent.com/leleliu008/ppkg/master/ppkg
         chmod a+x ppkg
 

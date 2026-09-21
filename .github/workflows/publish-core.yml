@@ -78,6 +78,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - run: apt -y update
+      - run: apt -y install curl tar gzip xz-utils
+
       - run: .github/build-core.sh ${{ needs.base.outputs.release-version }} android-${{ matrix.target-version }}-arm64-v8a
 
       - uses: actions/upload-artifact@v6
