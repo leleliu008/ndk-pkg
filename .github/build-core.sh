@@ -76,7 +76,7 @@ case $2 in
         ./ndk-pkg install $2/elftool --static
         ./ndk-pkg bundle  $2/elftool .tar.xz
 
-        /ndk-pkg install  $2/uppm@0.15.4 --static
+        ./ndk-pkg install $2/uppm@0.15.4 --static
         ./ndk-pkg bundle  $2/uppm@0.15.4 .tar.xz
 
         ./ndk-pkg install $2/ndk-pkg-core --static -I .
