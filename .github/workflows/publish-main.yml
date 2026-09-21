@@ -27,13 +27,4 @@ jobs:
 
           tar zvcf "$RELEASE_FILE_NAME" "ndk-pkg-$RELEASE_VERSION"
 
-          SHA256SUM="$(sha256sum "$RELEASE_FILE_NAME")"
-
-          cat > notes.md <<EOF
-          sha256sum:
-          \`\`\`
-          $SHA256SUM
-          \`\`\`
-          EOF
-
-          gh release create "$RELEASE_VERSION" "$RELEASE_FILE_NAME" --title "$RELEASE_VERSION" --notes-file notes.md
+          gh release create "$RELEASE_VERSION" "$RELEASE_FILE_NAME" --title "$RELEASE_VERSION" --notes 'cli for ndk-pkg'

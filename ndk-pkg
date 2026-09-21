@@ -8123,7 +8123,7 @@ __check_elf_files() {
 
         #####################################################################
 
-        "$PATCHELF" --remove-rpath "$FILEPATH"
+        run "$PATCHELF" --remove-rpath "$FILEPATH"
 
         #####################################################################
 
@@ -8133,14 +8133,19 @@ __check_elf_files() {
 
 # __check_DT_NEEDED <ELF-FILE-PATH>
   __check_DT_NEEDED() {
-    X="$(printf '%s\n' "$1" | tr / _)"
-    Y="$PACKAGE_WORKING_DIR/map/$X"
+    case $1 in
+        /*) ;;
+        *)
+            X="$(printf '%s\n' "$1" | tr / _)"
+            Y="$PACKAGE_WORKING_DIR/map/$X"
 
-    if [ -f "$Y" ] ; then
-        return 0
-    else
-        touch "$Y"
-    fi
+            if [ -f "$Y" ] ; then
+                echo "__check_DT_NEEDED $1 has handled, skipped."
+                return 0
+            else
+                touch "$Y"
+            fi
+    esac
 
     #####################################################
 
@@ -8151,15 +8156,22 @@ __check_elf_files() {
         case $NEEDED_SHARED_LIBRARY_FILENAME in
             libc++_shared.so)
                 NEEDED_LIBCXX_SHARED=1
+
+                echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
+
                 continue
                 ;;
             libclang_rt.*.so)
+                echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
+
                 continue
                 ;;
         esac
 
         if [ "$NEEDED_SHARED_LIBRARY_FILENAME" != 'libz.so' ] ; then
             if [ -f "$ANDROID_NDK_SYSTEM_LIBRARY_DIR/$TARGET_PLATFORM_VERS/$NEEDED_SHARED_LIBRARY_FILENAME" ] ; then
+                echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
+
                 continue
             fi
         fi
@@ -8182,9 +8194,29 @@ __check_elf_files() {
                     [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] && {
                         FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
+
+                        echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
+
+                        __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
+
+                        continue
                     }
                 fi
         esac
+
+        #####################################################
+
+        if [ -f ".ndk-pkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME" ] ; then
+            case $1 in
+                /*) ;;
+                *)  FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
+$1|1"
+            esac
+
+            echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which has already there."
+
+            continue
+        fi
 
         #####################################################
 
@@ -8210,6 +8242,8 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
 $1|1"
                         esac
 
+                        echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
+
                         if [ ! -f ".ndk-pkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME" ] ; then
                             run cp -L "$NEEDED_SHARED_LIBRARY_FILEPATH" .ndk-pkg/dependencies/lib/
                         fi
@@ -8222,6 +8256,8 @@ $1|1"
 
         if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
             __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
+        else
+            echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
         fi
     done
 }
@@ -10374,7 +10410,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.30.0
+NDKPKG_VERSION=0.30.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
