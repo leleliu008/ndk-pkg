@@ -2837,7 +2837,7 @@ __fetch_resources_of_the_given_package() {
                     fi
                     ;;
                 0300)
-                    DYNAMIC_LOADER_FILEPATH="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+                    DYNAMIC_LOADER_FILEPATH="$("$ELFTOOL" print-interp "$FILEPATH")"
 
                     if [ -n "$DYNAMIC_LOADER_FILEPATH" ] ; then
                         FILEPATHs="$FILEPATHs $FILEPATH"
@@ -2903,7 +2903,7 @@ __fetch_resources_of_the_given_package() {
 
                     if [ "$FILEMAGIC" = '7F454C46' ] ; then
                         # http://www.sco.com/developers/gabi/latest/ch4.eheader.html
-                        DYNAMIC_LINKER_PATH="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+                        DYNAMIC_LINKER_PATH="$("$ELFTOOL" print-interp "$FILEPATH")"
 
                         if [ -n "$DYNAMIC_LINKER_PATH" ] ; then
                             OUTPUT_FILENAME_NEED_ANDROID_API_LEVEL=1
@@ -3394,7 +3394,7 @@ EOF
                 fi
             else
                 # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
-                SONAME="$(patchelf --print-soname "$LIBRARY_FILEPATH")"
+                SONAME="$("$ELFTOOL" print-soname "$LIBRARY_FILEPATH")"
 
                 # On Android, a so file must have the SONAME
                 # https://github.com/android/ndk/issues/1865
@@ -3407,7 +3407,7 @@ EOF
                     abort 1 "unexpected so file: $LIBRARY_FILEPATH\n    SONAME: $SONAME"
                 fi
 
-                DT_NEEDED_LIST="$(patchelf --print-needed "$LIBRARY_FILEPATH")"
+                DT_NEEDED_LIST="$("$ELFTOOL" print-needed "$LIBRARY_FILEPATH")"
 
                 for DT_NEEDED in $DT_NEEDED_LIST
                 do
@@ -7883,7 +7883,7 @@ $PACKAGE_DOTWEAK
 
             RELATIVE_PATH="$(realpath -m --relative-to="${K%/*}" "$V")"
 
-            run patchelf --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
+            run "$PATCHELF" --add-rpath "'\$ORIGIN/$RELATIVE_PATH'" "$K"
         done
     }
 
@@ -8086,8 +8086,7 @@ __check_elf_files() {
 
         "$CHECKER" "$FILEPATH" || continue
 
-        # patchelf would report a error if there is no '.interp' section in a ELF file
-        DYNAMIC_LINKER_PATH="$(patchelf --print-interpreter "$FILEPATH" 2>/dev/null || true)"
+        DYNAMIC_LINKER_PATH="$("$ELFTOOL" print-interp "$FILEPATH")"
 
         if [ -n  "$DYNAMIC_LINKER_PATH" ] ; then
             if [ "$DYNAMIC_LINKER_PATH" != "$ANDROID_DYNAMIC_LINKER_PATH" ] ; then
@@ -8115,16 +8114,16 @@ __check_elf_files() {
         case "${FILEPATH##*/}" in
             lib*.so|lib*.so.*)
                 # http://www.sco.com/developers/gabi/latest/ch5.dynamic.html#dynamic_section
-                SONAME="$(patchelf --print-soname "$FILEPATH")"
+                SONAME="$("$ELFTOOL" print-soname "$FILEPATH")"
 
                 if [ -z "$SONAME" ] ; then
-                    abort 1 "invalid ELF file: $FILEPATH\n    SONAME was not set in .dynamic section"
+                    abort 1 "invalid ELF file: $FILEPATH\n    no DT_SONAME was found in .dynamic section"
                 fi
         esac
 
         #####################################################################
 
-        patchelf --remove-rpath "$FILEPATH"
+        "$PATCHELF" --remove-rpath "$FILEPATH"
 
         #####################################################################
 
@@ -8145,7 +8144,7 @@ __check_elf_files() {
 
     #####################################################
 
-    NEEDED_SHARED_LIBRARY_FILENAMEs="$(patchelf --print-needed "$1")"
+    NEEDED_SHARED_LIBRARY_FILENAMEs="$("$ELFTOOL" print-needed "$1")"
 
     for NEEDED_SHARED_LIBRARY_FILENAME in $NEEDED_SHARED_LIBRARY_FILENAMEs
     do
@@ -9768,6 +9767,7 @@ __setup() {
 
     ##################################################################################
 
+    run install -d bin/
     run ln -s ../wrapper-native-cc  bin/cc
     run ln -s ../wrapper-native-c++ bin/c++
 
@@ -10374,7 +10374,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.29.2
+NDKPKG_VERSION=0.30.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -10422,6 +10422,10 @@ if [ -n "$NDKPKG_URLMAP" ] ; then
     export  UPPM_URL_TRANSFORM="$NDKPKG_URLMAP"
     export       URL_TRANSFORM="$NDKPKG_URLMAP"
 fi
+
+###################################################
+
+ELFTOOL="$NDKPKG_CORE_DIR/elftool"
 
 ###################################################
 
