@@ -2858,7 +2858,9 @@ __fetch_resources_of_the_given_package() {
 
             for FILEPATH in $FILEPATHs
             do
-                [ -f "$FILEPATH.c" ] || __generate_wrapper_c_source_file
+                if [ ! -f "$FILEPATH.c" ] ; then
+                    __generate_wrapper_c_source_file "$FILEPATH.c" > "$FILEPATH.c"
+                fi
 
                 run mv "$FILEPATH" "$FILEPATH.exe"
                 run "$ANDROID_NDK_CC" -static -Os -s -flto -o "$FILEPATH" "$FILEPATH.c"
@@ -2958,10 +2960,68 @@ __fetch_resources_of_the_given_package() {
     fi
 }
 
+__generate_wrapper_c_source_file_body() {
+    cat <<EOF
+
+    ////////////////////////////////////////////////////
+
+    char * s = strrchr(selfExePath, '/');
+
+    if (s == NULL) {
+        fprintf(stderr, "no / char in %s\n", selfExePath);
+        return 3;
+    }
+
+    s[0] = '\\0';
+
+    ////////////////////////////////////////////////////
+
+    const char * p;
+EOF
+}
+
+__generate_wrapper_c_source_file_setenv() {
+    cat <<EOF
+
+    ////////////////////////////////////////////////////
+
+    p = getenv("$1");
+
+    if (p == NULL || p[0] == '\0') {
+        char pathBuf[PATH_MAX];
+
+        ret = snprintf(pathBuf, PATH_MAX, "%s/$2", selfExePath);
+
+        if (ret < 0) {
+            perror(NULL);
+            return 4;
+        }
+
+        if (setenv("$1", pathBuf, 1) != 0) {
+            perror("$1");
+            return 5;
+        }
+    }
+EOF
+}
+
+__generate_wrapper_c_source_file_putenv() {
+    cat <<EOF
+
+    ////////////////////////////////////////////////////
+
+    if (putenv("$1") != 0) {
+        perror(NULL);
+        return 6;
+    }
+EOF
+}
+
 __generate_wrapper_c_source_file() {
-    cat > "$FILEPATH.c" <<EOF
+    cat <<EOF
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <unistd.h>
 #include <limits.h>
@@ -2969,47 +3029,30 @@ __generate_wrapper_c_source_file() {
 int main(int argc, char* argv[]) {
     char selfExePath[PATH_MAX];
 
-    int n = readlink("/proc/self/exe", selfExePath, PATH_MAX);
+    int ret = readlink("/proc/self/exe", selfExePath, PATH_MAX);
 
-    if (n == -1) {
+    if (ret == -1) {
         perror("/proc/self/exe");
         return 1;
     }
 
-    selfExePath[n] = '\\0';
+    selfExePath[ret] = '\0';
 
     ////////////////////////////////////////////////////
 
-    const char * s = ".exe";
+    char realExePath[PATH_MAX];
 
-    int j;
+    ret = snprintf(realExePath, PATH_MAX, "%s.exe", selfExePath);
 
-    for (j = 0; s[j] != '\0'; j++);
-
-    char realExePath[n + j + 1];
-
-    int slashIndex = -1;
-
-    int i;
-
-    for (i = 0; i < n; i++) {
-        realExePath[i] = selfExePath[i];
-
-        if (selfExePath[i] == '/') {
-            slashIndex = i;
-        }
-    }
-
-    char * p = realExePath + n;
-
-    for (i = 0; i <= j; i++) {
-        p[i] = s[i];
+    if (ret < 0) {
+        perror(NULL);
+        return 2;
     }
 EOF
 
-    ####################################
+    ####################################################
 
-    I=0
+    unset FLAG
 
     for LINE in $RECEIPT_PACKAGE_BINDENV
     do
@@ -3017,56 +3060,25 @@ EOF
 
         case $VALUE in
             %s/*)
-                I="$(($I + 1))"
+                if [ -z "$FLAG" ] ; then
+                    __generate_wrapper_c_source_file_body
+                fi
+
+                FLAG=1
+
                 KEY="${LINE%%=*}"
                 VALUE="$(printf "$VALUE\n" 'bundle.d')"
                 VALUE_RELATIVE_TO_SELF_EXE_PATH="$(realpath -m --relative-to="${FILEPATH%/*}" "$VALUE")"
 
-                cat >> "$FILEPATH.c" <<EOF
-
-    ////////////////////////////////////////////////////
-
-    p = getenv("$KEY");
-
-    if (p == NULL || p[0] == '\0') {
-        s = "$VALUE_RELATIVE_TO_SELF_EXE_PATH";
-
-        for (j = 0; s[j] != '\0'; j++);
-
-        char pathBuf[slashIndex + j + 1];
-
-        for (i = 0; i <= slashIndex; i++) {
-            pathBuf[i] = selfExePath[i];
-        }
-
-        p = pathBuf + slashIndex + 1;
-
-        for (i = 0U; i <= j; i++) {
-            p[i] = s[i];
-        }
-
-        if (setenv("$KEY", pathBuf, 1) != 0) {
-            perror("$KEY");
-            return 10;
-        }
-    }
-EOF
+                __generate_wrapper_c_source_file_setenv "$KEY" "$VALUE_RELATIVE_TO_SELF_EXE_PATH"
                 ;;
-            *)  cat >> "$FILEPATH.c" <<EOF
-
-    ////////////////////////////////////////////////////
-
-    if (putenv("$LINE") != 0) {
-        perror(NULL);
-        return 10;
-    }
-EOF
+            *)  __generate_wrapper_c_source_file_putenv "$LINE"
         esac
     done
 
-    ####################################
+    ####################################################
 
-    cat >> "$FILEPATH.c" <<EOF
+    cat <<EOF
 
     ////////////////////////////////////////////////////
 
@@ -10410,7 +10422,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.30.1
+NDKPKG_VERSION=0.30.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
