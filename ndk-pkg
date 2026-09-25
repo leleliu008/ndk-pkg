@@ -6875,6 +6875,16 @@ $PACKAGE_DOFETCH
 
     #########################################################################################
 
+    if [ "$PACKAGE_USE_CARGO" = 1 ] ; then
+        rm -vf rust-toolchain.toml
+
+        if [ -n "$PACKAGE_BSCRIPT" ] ; then
+            rm -vf "$PACKAGE_INSTALLING_SRC_DIR/rust-toolchain.toml"
+        fi
+    fi
+
+    #########################################################################################
+
     {
         [ "$PACKAGE_USE_AUTOGENSH" = 1 ] ||
         [ "$PACKAGE_USE_AUTOTOOLS" = 1 ] ||
@@ -10422,7 +10432,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.30.2
+NDKPKG_VERSION=0.40.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
