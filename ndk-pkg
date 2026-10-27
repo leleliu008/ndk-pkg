@@ -1350,6 +1350,10 @@ filetype_from_url() {
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/archive/*}"
                             PACKAGE_SRC_URL_STARTS_WITH_GIT_URL=1
                             ;;
+                        https://codeberg.org/*/*/releases/*)
+                            PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/releases/*}"
+                            PACKAGE_SRC_URL_STARTS_WITH_GIT_URL=1
+                            ;;
                     esac
                 fi
 
@@ -1402,6 +1406,35 @@ filetype_from_url() {
 
                 if [ -z "$PACKAGE_WEB_URL" ] && [ "$PACKAGE_SRC_URL_STARTS_WITH_GIT_URL" != 1 ] ; then
                     PACKAGE_WEB_URL="$(printf '%s\n' "$PACKAGE_SRC_URL" | sed -E 's|(^https?://[^/]+/).*|\1|')"
+
+                    if [ -n "$PACKAGE_WEB_URL" ] ; then
+                        XXXX="${PACKAGE_SRC_URL#"$PACKAGE_WEB_URL"}"
+
+                        case $XXXX in
+                            "$PACKAGE_NAME"/*)
+                                PACKAGE_WEB_URL="$PACKAGE_WEB_URL$PACKAGE_NAME/"
+                                ;;
+                            *)
+                                case $PACKAGE_NAME in
+                                    lib*)
+                                        PACKAGE_NAME2="${PACKAGE_NAME#lib}"
+
+                                        case $XXXX in
+                                            "$PACKAGE_NAME2"/*)
+                                                PACKAGE_WEB_URL="$PACKAGE_WEB_URL$PACKAGE_NAME2/"
+                                        esac
+                                        ;;
+                                    *)
+                                        PACKAGE_NAME2="lib$PACKAGE_NAME"
+
+                                        case $XXXX in
+                                            "$PACKAGE_NAME2"/*)
+                                                PACKAGE_WEB_URL="$PACKAGE_WEB_URL$PACKAGE_NAME2/"
+                                        esac
+                                        ;;
+                                esac
+                        esac
+                    fi
                 fi
 
                 if [ -z "$PACKAGE_VERSION" ] ; then
