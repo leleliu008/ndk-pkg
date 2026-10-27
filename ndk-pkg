@@ -604,7 +604,7 @@ __formula_mapping_set() {
         gsed -i "/^$2: /c $2: $3" "$FORMULA_FILEPATH"
     else
         case $2 in
-            git-sha)
+            git-sha|git-tag|git-ref)
                 if grep -q '^git-url: ' "$FORMULA_FILEPATH" ; then
                     gsed -i "/^git-url: /a $2: $3" "$FORMULA_FILEPATH"
                     return 0
@@ -1070,6 +1070,7 @@ filetype_from_url() {
     unset PACKAGE_GIT_URL
     unset PACKAGE_GIT_URI
     unset PACKAGE_GIT_SHA
+    unset PACKAGE_GIT_TAG
     unset PACKAGE_GIT_REF
     unset PACKAGE_GIT_NTH
 
@@ -1190,6 +1191,7 @@ filetype_from_url() {
     PACKAGE_GIT_URL="$(yq '.git-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_GIT_URI="$(yq '.git-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_GIT_SHA="$(yq '.git-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_GIT_TAG="$(yq '.git-tag | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_GIT_REF="$(yq '.git-ref | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_GIT_NTH="$(yq '.git-nth | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
@@ -1328,31 +1330,31 @@ filetype_from_url() {
                     abort 1 "src-sha mapping not found in $PACKAGE_FORMULA_FILEPATH"
                 fi
 
-                unset PACKAGE_SRC_URL_CHECKED
+                unset PACKAGE_SRC_URL_STARTS_WITH_GIT_URL
 
                 if [ -z "$PACKAGE_GIT_URL" ] ; then
                     case $PACKAGE_SRC_URL in
                         https://github.com/*/*/releases/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/releases/*}"
-                            PACKAGE_SRC_URL_CHECKED=1
+                            PACKAGE_SRC_URL_STARTS_WITH_GIT_URL=1
                             ;;
                         https://github.com/*/*/archive/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/archive/*}"
-                            PACKAGE_SRC_URL_CHECKED=1
+                            PACKAGE_SRC_URL_STARTS_WITH_GIT_URL=1
                             ;;
                         https://gitlab.com/*/*/-/archive/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/-/archive/*}"
-                            PACKAGE_SRC_URL_CHECKED=1
+                            PACKAGE_SRC_URL_STARTS_WITH_GIT_URL=1
                             ;;
                         https://codeberg.org/*/*/archive/*)
                             PACKAGE_GIT_URL="${PACKAGE_SRC_URL%%/archive/*}"
-                            PACKAGE_SRC_URL_CHECKED=1
+                            PACKAGE_SRC_URL_STARTS_WITH_GIT_URL=1
                             ;;
                     esac
                 fi
 
-                if [ -z "$PACKAGE_WEB_URL" ] || [ -z "$PACKAGE_GIT_URL" ]; then
-                    if [ "$PACKAGE_SRC_URL_CHECKED" != 1 ] ; then
+                if [ -z "$PACKAGE_WEB_URL" ] || [ -z "$PACKAGE_GIT_URL" ] ; then
+                    if [ "$PACKAGE_SRC_URL_STARTS_WITH_GIT_URL" != 1 ] ; then
                         case $PACKAGE_SRC_URL in
                             https://ftp.gnu.org/gnu/*)
                                 XX="${PACKAGE_SRC_URL#'https://ftp.gnu.org/gnu/'}"
@@ -1398,13 +1400,20 @@ filetype_from_url() {
                     fi
                 fi
 
+                if [ -z "$PACKAGE_WEB_URL" ] && [ "$PACKAGE_SRC_URL_STARTS_WITH_GIT_URL" != 1 ] ; then
+                    PACKAGE_WEB_URL="$(printf '%s\n' "$PACKAGE_SRC_URL" | sed -E 's|(^https?://[^/]+/).*|\1|')"
+                fi
 
                 if [ -z "$PACKAGE_VERSION" ] ; then
-                    PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' -e 's|\.orig||' | awk -F- '{print $NF}')"
-                    case $PACKAGE_VERSION in
-                        '') abort 1 "version mapping not found in $PACKAGE_FORMULA_FILEPATH" ;;
-                        v*) PACKAGE_VERSION=$(printf '%s\n' "$PACKAGE_VERSION" | cut -c2-)
-                    esac
+                    if [ -n "$PACKAGE_SRC_URL" ] ; then
+                        PACKAGE_VERSION="$(basename "$PACKAGE_SRC_URL" | tr '_@' - | sed -e 's|\.tar\.[glx]z$||' -e 's|\.tar\.bz2$||' -e 's|\.t[glx]z$||' -e 's|\.zip$||' -e 's|-stable||' -e 's|-source||' -e 's|[-.]src$||' -e 's|\.orig||' -e 's|\.orig||' | awk -F- '{print $NF}')"
+                    fi
+
+                    if [ -z "$PACKAGE_VERSION" ] ; then
+                        abort 1 "version mapping not found in $PACKAGE_FORMULA_FILEPATH"
+                    else
+                        PACKAGE_VERSION="${PACKAGE_VERSION#v}"
+                    fi
                 fi
 
                 PACKAGE_NEED_CURL=1
@@ -1417,6 +1426,16 @@ filetype_from_url() {
     else
         if [ -n "$PACKAGE_GIT_URL" ] ; then
             PACKAGE_SRC_FILETYPE=.git
+
+            if [ -z "$PACKAGE_VERSION" ] ; then
+                if [ -n "$PACKAGE_GIT_TAG" ] ; then
+                    PACKAGE_VERSION="$PACKAGE_GIT_TAG"
+                elif [ -n "$PACKAGE_GIT_REF" ] ; then
+                    PACKAGE_VERSION="${PACKAGE_GIT_REF##*/}"
+                fi
+
+                PACKAGE_VERSION="${PACKAGE_VERSION#v}"
+            fi
 
             if [ -z "$PACKAGE_VERSION" ] ; then
                 PACKAGE_VERSION="$(date -u -d "@$TIMESTAMP_UNIX" '+%Y.%m.%d')"
@@ -1708,6 +1727,7 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_GIT_URL
     unset RECEIPT_PACKAGE_GIT_URI
     unset RECEIPT_PACKAGE_GIT_SHA
+    unset RECEIPT_PACKAGE_GIT_TAG
     unset RECEIPT_PACKAGE_GIT_REF
     unset RECEIPT_PACKAGE_GIT_NTH
 
@@ -1780,6 +1800,7 @@ filetype_from_url() {
     RECEIPT_PACKAGE_GIT_URL="$(yq '.git-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_GIT_URI="$(yq '.git-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_GIT_SHA="$(yq '.git-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_GIT_TAG="$(yq '.git-tag | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_GIT_REF="$(yq '.git-ref | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_GIT_NTH="$(yq '.git-nth | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
@@ -2105,6 +2126,7 @@ __search_packages() {
         --arg git_url "$PACKAGE_GIT_URL" \
         --arg git_uri "$PACKAGE_GIT_URI" \
         --arg git_sha "$PACKAGE_GIT_SHA" \
+        --arg git_tag "$PACKAGE_GIT_TAG" \
         --arg git_ref "$PACKAGE_GIT_REF" \
         --arg git_nth "$PACKAGE_GIT_NTH" \
         --arg src_url "$PACKAGE_SRC_URL" \
@@ -2151,6 +2173,7 @@ __search_packages() {
     "git-url":$git_url,
     "git-uri":$git_uri,
     "git-sha":$git_sha,
+    "git-tag":$git_tag,
     "git-ref":$git_ref,
     "git-nth":$git_nth,
     "src-url":$src_url,
@@ -2211,6 +2234,7 @@ web-uri: $PACKAGE_WEB_URI
 git-url: $PACKAGE_GIT_URL
 git-uri: $PACKAGE_GIT_URI
 git-sha: $PACKAGE_GIT_SHA
+git-tag: $PACKAGE_GIT_TAG
 git-ref: $PACKAGE_GIT_REF
 git-nth: $PACKAGE_GIT_NTH
 src-url: $PACKAGE_SRC_URL
@@ -2261,6 +2285,7 @@ PACKAGE_VERSION_TWEAK
 PACKAGE_WEB_URL
 PACKAGE_GIT_URL
 PACKAGE_GIT_SHA
+PACKAGE_GIT_TAG
 PACKAGE_GIT_REF
 PACKAGE_GIT_NTH
 PACKAGE_SRC_URL
@@ -2488,6 +2513,7 @@ EOF
         --arg git_url "$RECEIPT_PACKAGE_GIT_URL" \
         --arg git_uri "$RECEIPT_PACKAGE_GIT_URI" \
         --arg git_sha "$RECEIPT_PACKAGE_GIT_SHA" \
+        --arg git_tag "$RECEIPT_PACKAGE_GIT_TAG" \
         --arg git_ref "$RECEIPT_PACKAGE_GIT_REF" \
         --arg git_nth "$RECEIPT_PACKAGE_GIT_NTH" \
         --arg src_url "$RECEIPT_PACKAGE_SRC_URL" \
@@ -2536,6 +2562,7 @@ EOF
     "git-url":$git_url,
     "git-uri":$git_uri,
     "git-sha":$git_sha,
+    "git-tag":$git_tag,
     "git-ref":$git_ref,
     "git-nth":$git_nth,
     "src-url":$src_url,
@@ -2587,43 +2614,62 @@ __fetch_resources_of_the_given_package() {
 
     __load_formula_of_the_given_package "$1"
 
+    if [ -n    "$PACKAGE_FIX_URL" ] ; then
+        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
+    fi
+
+    if [ -n    "$PACKAGE_RES_URL" ] ; then
+        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+    fi
+
     if [ -n "$PACKAGE_SRC_URL" ] ; then
         case $PACKAGE_SRC_URL in
             dir://*)
                 note "$PACKAGE_SRC_URL is local path, no need to fetch."
-                return 0
                 ;;
             file://*)
                 note "$PACKAGE_SRC_URL is local path, no need to fetch."
-                return 0
                 ;;
             *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
         esac
-    elif [ -n "$PACKAGE_GIT_URL" ] ; then
+
+        return 0
+    fi
+
+    if [ -n "$PACKAGE_GIT_URL" ] ; then
         unset GIT_FETCH_URL
 
         if [ -z "$NDKPKG_URLMAP" ] ; then
             GIT_FETCH_URL="$PACKAGE_GIT_URL"
         else
-            GIT_FETCH_URL="$("$NDKPKG_URLMAP" "$PACKAGE_GIT_URL")" || return 1
+            GIT_FETCH_URL="$("$NDKPKG_URLMAP" "$PACKAGE_GIT_URL")"
         fi
 
-        if [ -z "$PACKAGE_GIT_SHA" ] ; then
-            if [ -z "$PACKAGE_GIT_REF" ] ; then
-                GIT_BRANCH_NAME=master
-                GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
-            else
-                GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
-                GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
-            fi
+        ###################################
+
+        if [ -n "$PACKAGE_GIT_SHA" ] ; then
+            GIT_FETCH_FROM_REF="$PACKAGE_GIT_SHA"
+            GIT_CHECKOUT_BRANCH_NAME=master
+        elif [ -n "$PACKAGE_GIT_TAG" ] ; then
+            GIT_FETCH_FROM_REF="refs/tags/$PACKAGE_GIT_TAG"
+            GIT_CHECKOUT_BRANCH_NAME="$PACKAGE_GIT_TAG"
+        elif [ -n "$PACKAGE_GIT_REF" ] ; then
+            GIT_FETCH_FROM_REF="$PACKAGE_GIT_REF"
+            GIT_CHECKOUT_BRANCH_NAME="${$PACKAGE_GIT_REF##*/}"
         else
-            GIT_BRANCH_NAME=master
-            GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
+            GIT_FETCH_FROM_REF='HEAD'
+            GIT_CHECKOUT_BRANCH_NAME=master
         fi
+
+        GIT_FETCH_TO_REF="refs/remotes/origin/$GIT_CHECKOUT_BRANCH_NAME"
+
+        ###################################
 
         if [ -z "$PACKAGE_GIT_NTH" ] ; then
             PACKAGE_GIT_NTH=1
         fi
+
+        ###################################
 
         if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
             if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
@@ -2635,6 +2681,8 @@ __fetch_resources_of_the_given_package() {
             GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
         fi
 
+        ###################################
+
         SESSION_DIR="$NDKPKG_HOME/run/$$"
 
         run rm -rf     "$SESSION_DIR"
@@ -2643,20 +2691,12 @@ __fetch_resources_of_the_given_package() {
 
         run git -c init.defaultBranch=master init
         run git remote add origin "$GIT_FETCH_URL"
-        run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
-        run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
+        run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "+$GIT_FETCH_FROM_REF:$GIT_FETCH_TO_REF"
+        run git checkout --progress --force -B "$GIT_CHECKOUT_BRANCH_NAME" "$GIT_FETCH_TO_REF"
 
         git_submodule_update_recursive
 
         rm -rf "$SESSION_DIR"
-    fi
-
-    if [ -n    "$PACKAGE_FIX_URL" ] ; then
-        wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
-    fi
-
-    if [ -n    "$PACKAGE_RES_URL" ] ; then
-        wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
     fi
 }
 
@@ -6683,69 +6723,79 @@ $PACKAGE_DOFETCH
 }"
         dofetch
     else
-        case $PACKAGE_SRC_URL in
-            '')
-                if [ -n "$PACKAGE_GIT_URL" ] ; then
-                    unset GIT_FETCH_URL
-
-                    if [ -z "$NDKPKG_URLMAP" ] ; then
-                        GIT_FETCH_URL="$PACKAGE_GIT_URL"
-                    else
-                        GIT_FETCH_URL="$("$NDKPKG_URLMAP" "$PACKAGE_GIT_URL")" || return 1
-                    fi
-
-                    if [ -z "$PACKAGE_GIT_SHA" ] ; then
-                        if [ -z "$PACKAGE_GIT_REF" ] ; then
-                            GIT_BRANCH_NAME=master
-                            GIT_REF_SPEC="+HEAD:refs/remotes/origin/master"
-                        else
-                            GIT_BRANCH_NAME="$(basename "$PACKAGE_GIT_REF")"
-                            GIT_REF_SPEC="+$PACKAGE_GIT_REF:refs/remotes/origin/$GIT_BRANCH_NAME"
-                        fi
-                    else
-                        GIT_BRANCH_NAME=master
-                        GIT_REF_SPEC="+$PACKAGE_GIT_SHA:refs/remotes/origin/master"
-                    fi
-
-                    if [ -z "$PACKAGE_GIT_NTH" ] ; then
-                        PACKAGE_GIT_NTH=1
-                    fi
-
-                    if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
-                        if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
-                            GIT_FETCH_EXTRA_OPTIONS='--unshallow'
-                        else
-                            GIT_FETCH_EXTRA_OPTIONS=
-                        fi
-                    else
-                        GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
-                    fi
-
-                    run cd "$PACKAGE_INSTALLING_SRC_DIR"
-
-                    run git -c init.defaultBranch=master init
-                    run git remote add origin "$GIT_FETCH_URL"
-                    run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "$GIT_REF_SPEC"
-                    run git checkout --progress --force -B "$GIT_BRANCH_NAME" "refs/remotes/origin/$GIT_BRANCH_NAME"
-
-                    git_submodule_update_recursive
-                fi
-                ;;
-            dir://*)
-                note "$PACKAGE_SRC_URL is local path, no need to fetch."
-                ;;
-            file://*)
-                note "$PACKAGE_SRC_URL is local path, no need to fetch."
-                ;;
-            *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
-        esac
-
         if [ -n    "$PACKAGE_FIX_URL" ] ; then
             wfetch "$PACKAGE_FIX_URL" --uri="$PACKAGE_FIX_URI" --sha256="$PACKAGE_FIX_SHA" -o "$PACKAGE_FIX_FILEPATH"
         fi
 
         if [ -n    "$PACKAGE_RES_URL" ] ; then
             wfetch "$PACKAGE_RES_URL" --uri="$PACKAGE_RES_URI" --sha256="$PACKAGE_RES_SHA" -o "$PACKAGE_RES_FILEPATH"
+        fi
+
+        if [ -n "$PACKAGE_SRC_URL" ] ; then
+            case $PACKAGE_SRC_URL in
+                dir://*)
+                    note "$PACKAGE_SRC_URL is local path, no need to fetch."
+                    ;;
+                file://*)
+                    note "$PACKAGE_SRC_URL is local path, no need to fetch."
+                    ;;
+                *)  wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+            esac
+        elif [ -n "$PACKAGE_GIT_URL" ] ; then
+            unset GIT_FETCH_URL
+
+            if [ -z "$NDKPKG_URLMAP" ] ; then
+                GIT_FETCH_URL="$PACKAGE_GIT_URL"
+            else
+                GIT_FETCH_URL="$("$NDKPKG_URLMAP" "$PACKAGE_GIT_URL")"
+            fi
+
+            ###################################
+
+            if [ -n "$PACKAGE_GIT_SHA" ] ; then
+                GIT_FETCH_FROM_REF="$PACKAGE_GIT_SHA"
+                GIT_CHECKOUT_BRANCH_NAME=master
+            elif [ -n "$PACKAGE_GIT_TAG" ] ; then
+                GIT_FETCH_FROM_REF="refs/tags/$PACKAGE_GIT_TAG"
+                GIT_CHECKOUT_BRANCH_NAME="$PACKAGE_GIT_TAG"
+            elif [ -n "$PACKAGE_GIT_REF" ] ; then
+                GIT_FETCH_FROM_REF="$PACKAGE_GIT_REF"
+                GIT_CHECKOUT_BRANCH_NAME="${$PACKAGE_GIT_REF##*/}"
+            else
+                GIT_FETCH_FROM_REF='HEAD'
+                GIT_CHECKOUT_BRANCH_NAME=master
+            fi
+
+            GIT_FETCH_TO_REF="refs/remotes/origin/$GIT_CHECKOUT_BRANCH_NAME"
+
+            ###################################
+
+            if [ -z "$PACKAGE_GIT_NTH" ] ; then
+                PACKAGE_GIT_NTH=1
+            fi
+
+            ###################################
+
+            if [ "$PACKAGE_GIT_NTH" -eq 0 ] ; then
+                if [ -f "$PACKAGE_SRC_FILEPATH/.git/shallow" ] ; then
+                    GIT_FETCH_EXTRA_OPTIONS='--unshallow'
+                else
+                    GIT_FETCH_EXTRA_OPTIONS=
+                fi
+            else
+                GIT_FETCH_EXTRA_OPTIONS="--depth=$PACKAGE_GIT_NTH"
+            fi
+
+            ###################################
+
+            run cd "$PACKAGE_INSTALLING_SRC_DIR"
+
+            run git -c init.defaultBranch=master init
+            run git remote add origin "$GIT_FETCH_URL"
+            run git -c protocol.version=2 fetch --progress $GIT_FETCH_EXTRA_OPTIONS origin "+$GIT_FETCH_FROM_REF:$GIT_FETCH_TO_REF"
+            run git checkout --progress --force -B "$GIT_CHECKOUT_BRANCH_NAME" "$GIT_FETCH_TO_REF"
+
+            git_submodule_update_recursive
         fi
 
         #########################################################################################
@@ -7968,20 +8018,29 @@ $PACKAGE_DOTWEAK
 
     grep -q '^pkgtype: ' RECEIPT.yml || gsed -i "/^pkgname:/a pkgtype: $PACKAGE_PKGTYPE" RECEIPT.yml
     grep -q '^version: ' RECEIPT.yml || gsed -i "/^pkgtype:/a version: $PACKAGE_VERSION" RECEIPT.yml
-    grep -q '^web-url: ' RECEIPT.yml || gsed -i "/^summary:/a web-url: $PACKAGE_WEB_URL" RECEIPT.yml
     grep -q '^bsystem: ' RECEIPT.yml || gsed -i "/^install:/i bsystem: $PACKAGE_BSYSTEM" RECEIPT.yml
     grep -q '^binbstd: ' RECEIPT.yml || gsed -i "/^bsystem:/a binbstd: $PACKAGE_BINBSTD" RECEIPT.yml
     grep -q '^parallel: ' RECEIPT.yml || printf "parallel: %s\n" "$PACKAGE_SUPPORT_BUILD_IN_PARALLEL" >> RECEIPT.yml
 
-    [ -n "$PACKAGE_GIT_URI" ] && {
-        grep -q '^git-uri: ' RECEIPT.yml || {
-            gsed -i "/^web-url:/a git-uri: $PACKAGE_GIT_URI" RECEIPT.yml
+    [ -n "$PACKAGE_GIT_URL" ] && {
+        grep -q '^git-url: ' RECEIPT.yml || {
+            gsed -i "/^summary:/a git-url: $PACKAGE_GIT_URL" RECEIPT.yml
         }
     }
 
-    [ -n "$PACKAGE_GIT_URL" ] && {
-        grep -q '^git-url: ' RECEIPT.yml || {
-            gsed -i "/^web-url:/a git-url: $PACKAGE_GIT_URL" RECEIPT.yml
+    [ -n "$PACKAGE_GIT_URI" ] && {
+        grep -q '^git-uri: ' RECEIPT.yml || {
+            gsed -i "/^git-url:/a git-uri: $PACKAGE_GIT_URI" RECEIPT.yml
+        }
+    }
+
+    [ -n "$PACKAGE_WEB_URL" ] && {
+        grep -q '^web-url: ' RECEIPT.yml || {
+            if [ "$PACKAGE_SRC_URL_STARTS_WITH_GIT_URL" = 1 ] ; then
+                gsed -i "/^git-url:/a web-url: $PACKAGE_WEB_URL" RECEIPT.yml
+            else
+                gsed -i "/^summary:/a web-url: $PACKAGE_WEB_URL" RECEIPT.yml
+            fi
         }
     }
 
@@ -7994,10 +8053,6 @@ $PACKAGE_DOTWEAK
     [ -n "$PACKAGE_GIT_SHA" ] && {
         grep -q '^git-sha: ' RECEIPT.yml || {
             gsed -i "/^git-url:/a git-sha: $PACKAGE_GIT_SHA" RECEIPT.yml
-        }
-
-        grep -q '^git-sha: ' RECEIPT.yml || {
-            gsed -i "3i git-sha: $PACKAGE_GIT_SHA" RECEIPT.yml
         }
     }
 
