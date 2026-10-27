@@ -10487,7 +10487,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.40.0
+NDKPKG_VERSION=0.50.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
