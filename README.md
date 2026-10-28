@@ -715,6 +715,7 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
 |`res-url`|`URL`|other resource download url of this package.<br>If value of this mapping ends with one of `.zip` `.tar.xz` `.tar.gz` `.tar.lz` `.tar.bz2` `.tgz` `.txz` `.tlz` `.tbz2` `.crate`, it will be uncompressed to `$PACKAGE_WORKING_DIR/res` while this package is installing, otherwise, it will be copied to `$PACKAGE_WORKING_DIR/res`.|
 |`res-uri`|`URL`|the mirror of `res-url`.|
 |`res-sha`|`SHA256SUM`|the `sha256sum` of resource file.<br>`res-sha` and `res-url` must appear together.|
+|`res-dir`|`PATH`|the directory where `res-url` would be uncompressed/copied. relative to `$PACKAGE_WORKING_DIR`|
 ||||
 |`reslist`|`LIST`|A LF-delimited list of formatted TEXTs. each TEXT has format: `<res-sha>\|<res-url>[\|res-uri][\|unpack-dir][\|N]`. `unpack-dir` is relative to `$PACKAGE_WORKING_DIR/res`, default value is empty. `N` is `--strip-components=N`|
 ||||

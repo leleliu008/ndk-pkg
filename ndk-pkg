@@ -1092,6 +1092,7 @@ filetype_from_url() {
     unset PACKAGE_RES_URL
     unset PACKAGE_RES_URI
     unset PACKAGE_RES_SHA
+    unset PACKAGE_RES_DIR
     unset PACKAGE_RES_FILENAME
     unset PACKAGE_RES_FILETYPE
     unset PACKAGE_RES_FILEPATH
@@ -1207,6 +1208,7 @@ filetype_from_url() {
     PACKAGE_RES_URL="$(yq '.res-url | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RES_URI="$(yq '.res-uri | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RES_SHA="$(yq '.res-sha | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
+    PACKAGE_RES_DIR="$(yq '.res-dir | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
     PACKAGE_DEP_PKG="$(yq '.dep-pkg | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_DEP_LIB="$(yq '.dep-lib | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1776,6 +1778,7 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_RES_URL
     unset RECEIPT_PACKAGE_RES_URI
     unset RECEIPT_PACKAGE_RES_SHA
+    unset RECEIPT_PACKAGE_RES_DIR
 
     unset RECEIPT_PACKAGE_PATCHES
     unset RECEIPT_PACKAGE_RESLIST
@@ -1849,6 +1852,7 @@ filetype_from_url() {
     RECEIPT_PACKAGE_RES_URL="$(yq '.res-url | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_RES_URI="$(yq '.res-uri | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_RES_SHA="$(yq '.res-sha | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+    RECEIPT_PACKAGE_RES_DIR="$(yq '.res-dir | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_RESLIST="$(yq '.reslist | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
@@ -2171,6 +2175,7 @@ __search_packages() {
         --arg res_url "$PACKAGE_RES_URL" \
         --arg res_uri "$PACKAGE_RES_URI" \
         --arg res_sha "$PACKAGE_RES_SHA" \
+        --arg res_dir "$PACKAGE_RES_DIR" \
         --arg patches "$PACKAGE_PATCHES" \
         --arg reslist "$PACKAGE_RESLIST" \
         --arg dep_pkg "$PACKAGE_DEP_PKG" \
@@ -2218,6 +2223,7 @@ __search_packages() {
     "res-url":$res_url,
     "res-uri":$res_uri,
     "res-sha":$res_sha,
+    "res-dir":$res_dir,
     "patches":$patches,
     "reslist":$reslist,
     "dep-pkg":$dep_pkg,
@@ -2279,6 +2285,7 @@ fix-sha: $PACKAGE_FIX_SHA
 res-url: $PACKAGE_RES_URL
 res-uri: $PACKAGE_RES_URI
 res-sha: $PACKAGE_RES_SHA
+res-dir: $PACKAGE_RES_DIR
 dep-pkg: $PACKAGE_DEP_PKG
 dep-lib: $PACKAGE_DEP_LIB
 dep-upp: $PACKAGE_DEP_UPP
@@ -2558,6 +2565,7 @@ EOF
         --arg res_url "$RECEIPT_PACKAGE_RES_URL" \
         --arg res_uri "$RECEIPT_PACKAGE_RES_URI" \
         --arg res_sha "$RECEIPT_PACKAGE_RES_SHA" \
+        --arg res_dir "$RECEIPT_PACKAGE_RES_DIR" \
         --arg patches "$RECEIPT_PACKAGE_PATCHES" \
         --arg reslist "$RECEIPT_PACKAGE_RESLIST" \
         --arg dep_pkg "$RECEIPT_PACKAGE_DEP_PKG" \
@@ -2607,6 +2615,7 @@ EOF
     "res-url":$res_url,
     "res-uri":$res_uri,
     "res-sha":$res_sha,
+    "res-dir":$res_dir,
     "patches":$patches,
     "reslist":$reslist,
     "dep-pkg":$dep_pkg,
@@ -5980,16 +5989,18 @@ EOF
 
     run cd "$PACKAGE_WORKING_DIR"
 
-    run install -d src/_ fix res bin lib include map
+    : "${PACKAGE_RES_DIR:=res}"
+
+    run install -d src/_ fix bin lib include map "$PACKAGE_RES_DIR"
 
     #########################################################################################
 
     PACKAGE_INSTALLING_SRC_DIR="$PACKAGE_WORKING_DIR/src"
     PACKAGE_INSTALLING_FIX_DIR="$PACKAGE_WORKING_DIR/fix"
-    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/res"
     PACKAGE_INSTALLING_BIN_DIR="$PACKAGE_WORKING_DIR/bin"
     PACKAGE_INSTALLING_LIB_DIR="$PACKAGE_WORKING_DIR/lib"
     PACKAGE_INSTALLING_INC_DIR="$PACKAGE_WORKING_DIR/include"
+    PACKAGE_INSTALLING_RES_DIR="$PACKAGE_WORKING_DIR/$PACKAGE_RES_DIR"
 
     #########################################################################################
 
@@ -10520,7 +10531,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.50.0
+NDKPKG_VERSION=0.50.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
