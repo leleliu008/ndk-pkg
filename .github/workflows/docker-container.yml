@@ -11,12 +11,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        container: ['ghcr.io/leleliu008/ndk-pkg', 'fpliu/ndk-pkg']
-
-    container: ${{ matrix.container }}
+    container: ghcr.io/leleliu008/ndk-pkg
 
     steps:
       - run: ndk-pkg --help
