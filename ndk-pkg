@@ -2697,7 +2697,7 @@ __fetch_resources_of_the_given_package() {
             GIT_CHECKOUT_BRANCH_NAME="$PACKAGE_GIT_TAG"
         elif [ -n "$PACKAGE_GIT_REF" ] ; then
             GIT_FETCH_FROM_REF="$PACKAGE_GIT_REF"
-            GIT_CHECKOUT_BRANCH_NAME="${$PACKAGE_GIT_REF##*/}"
+            GIT_CHECKOUT_BRANCH_NAME="${PACKAGE_GIT_REF##*/}"
         else
             GIT_FETCH_FROM_REF='HEAD'
             GIT_CHECKOUT_BRANCH_NAME=master
@@ -8875,10 +8875,13 @@ configure() {
         fi
 
         # sys/stat.h int statx(int __dir_fd, const char* _Nonnull __path, int __flags, unsigned __mask, struct statx* _Nonnull __buf) __INTRODUCED_IN(30);
+        # sys/mman.h int memfd_create(const char* _Nonnull __name, unsigned __flags) __INTRODUCED_IN(30);
         if [ "$TARGET_PLATFORM_VERS" -ge 30 ] ; then
             export ac_cv_func_statx=yes
+            export ac_cv_func_memfd_create=yes
         else
             export ac_cv_func_statx=no
+            export ac_cv_func_memfd_create=no
         fi
 
         # malloc.h  void* _Nullable reallocarray(void* _Nullable __ptr, size_t __item_count, size_t __item_size) __BIONIC_ALLOC_SIZE(2, 3) __wur __INTRODUCED_IN(29);
@@ -10531,7 +10534,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.50.1
+NDKPKG_VERSION=0.50.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
