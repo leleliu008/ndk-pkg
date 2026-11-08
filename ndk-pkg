@@ -9713,7 +9713,7 @@ EOF
                 # https://github.com/lzhiyong/termux-ndk/releases/tag/android-ndk
                 install_android_ndk_if_needed 29
             else
-                install_android_ndk_if_needed 27d
+                install_android_ndk_if_needed 28c
             fi
         else
             install_android_ndk_if_needed '' "$2"
@@ -10534,7 +10534,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.50.2
+NDKPKG_VERSION=0.60.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
