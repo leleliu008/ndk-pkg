@@ -28,9 +28,13 @@ Please read these caveats carefully before starting to use this software.
 
 ## About the Android NDK toolchain
 
-Generally, you don't need to download the `Android NDK`, because `ndk-pkg` will automatically download it when needed, unless you want to use your own `Android NDK`, you can specify your location of `Android NDK` via `--ndk-home=<ANDROID-NDK-HOME>` option. **Please note that you can't specify your location of `Android NDK` via environment variable `ANDROID_NDK_HOME` and `ANDROID_NDK_ROOT`**
+`ndk-pkg` will automatically download an appropriate version of the `Android NDK` when needed.
 
-`ndk-pkg` also allows you to use a specific revision of `Android NDK` via `--ndk-revision=<ANDROID-NDK-REVISION>` option. For example, if you want to use the `Android NDK r28c`, you can run `ndk-pkg install <PKG> --ndk-revision=28c`
+`ndk-pkg` also allows you to specify a specific revision of the `Android NDK` via the `--ndk-revision=` option.
+
+`ndk-pkg` also allows you to specify the local location of the `Android NDK` via the `--ndk-home=` option.
+
+**Note: You can NOT specify the location of the `Android NDK` via `ANDROID_NDK_HOME` and `ANDROID_NDK_ROOT` environment variables.**
 
 ## About 16KB page size support
 
