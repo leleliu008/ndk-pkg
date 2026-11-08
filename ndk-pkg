@@ -6804,7 +6804,7 @@ $PACKAGE_DOFETCH
                 GIT_CHECKOUT_BRANCH_NAME="$PACKAGE_GIT_TAG"
             elif [ -n "$PACKAGE_GIT_REF" ] ; then
                 GIT_FETCH_FROM_REF="$PACKAGE_GIT_REF"
-                GIT_CHECKOUT_BRANCH_NAME="${$PACKAGE_GIT_REF##*/}"
+                GIT_CHECKOUT_BRANCH_NAME="${PACKAGE_GIT_REF##*/}"
             else
                 GIT_FETCH_FROM_REF='HEAD'
                 GIT_CHECKOUT_BRANCH_NAME=master
@@ -10534,7 +10534,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.60.0
+NDKPKG_VERSION=0.60.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
