@@ -9715,8 +9715,6 @@ EOF
             else
                 install_android_ndk_if_needed 28c
             fi
-        else
-            install_android_ndk_if_needed '' "$2"
         fi
     else
         install_android_ndk_if_needed "$1"
@@ -10534,7 +10532,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.60.1
+NDKPKG_VERSION=0.60.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
