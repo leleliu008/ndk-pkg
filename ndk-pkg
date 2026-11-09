@@ -5105,9 +5105,11 @@ inspect_install_arguments() {
             --ndk-revision=*)
                 ANDROID_NDK_REVISION="${1#*=}"
                 case $ANDROID_NDK_REVISION in
-                    [1-2][0-9][bcd])
+                    30|29)
                         ;;
-                    *)  abort 1 "invalid Android NDK revision : $ANDROID_NDK_REVISION, example values are 28c, 27d, 26d, 25c, etc. For more details, please visit https://developer.android.com/ndk/downloads/revision_history"
+                    [1-2][0-8][bcd])
+                        ;;
+                    *)  abort 1 "invalid Android NDK revision : $ANDROID_NDK_REVISION, example values are 30, 29, 28c, 27d, 26d, 25c, etc. For more details, please visit https://developer.android.com/ndk/downloads/revision_history"
                 esac
                 ;;
             --static)
@@ -10532,7 +10534,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.60.2
+NDKPKG_VERSION=0.60.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"

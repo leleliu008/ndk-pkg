@@ -14,16 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - run: curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.4-base-amd64.tar.gz
+      - run: curl -LO https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release/ubuntu-base-26.04.1-base-amd64.tar.gz
       - run: install -d ubuntu-rootfs
-      - run: tar xf ubuntu-base-24.04.4-base-amd64.tar.gz -C ubuntu-rootfs
+      - run: tar xf ubuntu-base-26.04.1-base-amd64.tar.gz -C ubuntu-rootfs
       - run: cp -p /etc/resolv.conf ubuntu-rootfs/etc/
       - run: mv ndk-pkg ubuntu-rootfs/bin/
 
-      - run: sudo mount -o bind  /dev ubuntu-rootfs/dev
-      - run: sudo mount -t proc  none ubuntu-rootfs/proc
-      - run: sudo mount -t sysfs none ubuntu-rootfs/sys
-      - run: sudo mount -t tmpfs none ubuntu-rootfs/tmp
+      - run: sudo mount -t proc  none   ubuntu-rootfs/proc
+      - run: sudo mount -t sysfs none   ubuntu-rootfs/sys
+      - run: sudo mount -t tmpfs none   ubuntu-rootfs/tmp
+      - run: sudo mount --rbind    /dev ubuntu-rootfs/dev
+      - run: sudo mount --make-rprivate ubuntu-rootfs/dev
 
       - run: sudo chroot ubuntu-rootfs env GITHUB_ACTIONS=true ndk-pkg --help
       - run: sudo chroot ubuntu-rootfs env GITHUB_ACTIONS=true ndk-pkg -h

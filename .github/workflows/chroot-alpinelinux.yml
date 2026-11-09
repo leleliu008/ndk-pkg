@@ -13,15 +13,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - run: curl -LO http://dl-cdn.alpinelinux.org/alpine/v3.23/releases/x86_64/alpine-minirootfs-3.23.4-x86_64.tar.gz
+      - run: curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/alpine-minirootfs-3.24.4-x86_64.tar.gz
       - run: install -d alpine-rootfs
-      - run: tar xf alpine-minirootfs-3.23.4-x86_64.tar.gz -C alpine-rootfs
+      - run: tar xf alpine-minirootfs-3.24.4-x86_64.tar.gz -C alpine-rootfs
       - run: cp -p /etc/resolv.conf alpine-rootfs/etc/
       - run: mv ndk-pkg alpine-rootfs/bin/
 
-      - run: sudo mount -o bind  /dev alpine-rootfs/dev
-      - run: sudo mount -t proc  none alpine-rootfs/proc
-      - run: sudo mount -t sysfs none alpine-rootfs/sys
+      - run: sudo mount -t proc  none   alpine-rootfs/proc
+      - run: sudo mount -t sysfs none   alpine-rootfs/sys
+      - run: sudo mount -t tmpfs none   alpine-rootfs/tmp
+      - run: sudo mount --rbind    /dev alpine-rootfs/dev
+      - run: sudo mount --make-rprivate alpine-rootfs/dev
 
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg --help
       - run: sudo chroot alpine-rootfs env GITHUB_ACTIONS=true ndk-pkg -h
