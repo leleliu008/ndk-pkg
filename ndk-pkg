@@ -8868,12 +8868,25 @@ configure() {
 
         # string.h  void* _Nonnull memset_explicit(void* _Nonnull __dst, int __ch, size_t __n) __INTRODUCED_IN(34);
         # stdio_ext.h  size_t __freadahead(FILE* _Nonnull __fp) __INTRODUCED_IN(34);
+        # spawn.h int posix_spawn_file_actions_addchdir_np(posix_spawn_file_actions_t _Nonnull * _Nonnull __actions, const char* _Nonnull __path) __INTRODUCED_IN(34);
         if [ "$TARGET_PLATFORM_VERS" -ge 34 ] ; then
             export ac_cv_func_memset_explicit=yes
             export ac_cv_func___freadahead=yes
+
+            export ac_cv_func_posix_spawn_file_actions_addchdir_np=yes
+
+            # Android NDK r30
+            # spawn.h int posix_spawn_file_actions_addchdir(posix_spawn_file_actions_t _Nonnull * _Nonnull __actions, const char* _Nonnull __path) __INTRODUCED_IN(34) __RENAME(posix_spawn_file_actions_addchdir_np);
+            if [ "$ANDROID_NDK_VERSION_MAJOR" -ge 30 ] ; then
+                export ac_cv_func_posix_spawn_file_actions_addchdir=yes
+            else
+                export ac_cv_func_posix_spawn_file_actions_addchdir=no
+            fi
         else
             export ac_cv_func_memset_explicit=no
             export ac_cv_func___freadahead=no
+            export ac_cv_func_posix_spawn_file_actions_addchdir=no
+            export ac_cv_func_posix_spawn_file_actions_addchdir_np=no
         fi
 
         # sys/stat.h int statx(int __dir_fd, const char* _Nonnull __path, int __flags, unsigned __mask, struct statx* _Nonnull __buf) __INTRODUCED_IN(30);
@@ -9577,13 +9590,13 @@ inspect_android_ndk_info() {
     ANDROID_NDK_VERSION=
     ANDROID_NDK_VERSION_MAJOR=
 
-    ANDROID_NDK_VERSION="$(sed -n '/Pkg.Revision/p' "$NDK_SOURCE_PROPERTIES_FILEPATH" | sed  's/Pkg\.Revision = \(.*\).*/\1/')"
+    ANDROID_NDK_VERSION="$(sed -n '/Pkg\.Revision/p' "$NDK_SOURCE_PROPERTIES_FILEPATH" | sed  's/Pkg\.Revision = \(.*\).*/\1/')"
 
     if [ -z "$ANDROID_NDK_VERSION" ] ; then
         abort 1 "no Pkg.Revision property in $NDK_SOURCE_PROPERTIES_FILEPATH"
     fi
 
-    ANDROID_NDK_VERSION_MAJOR="$(printf '%s\n' "$ANDROID_NDK_VERSION" | cut -d. -f1)"
+    ANDROID_NDK_VERSION_MAJOR="${ANDROID_NDK_VERSION%%.*}"
 
     if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
         ANDROID_NDK_TOOLCHAIN_HOST_TAG='darwin-x86_64'
