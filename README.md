@@ -40,7 +40,7 @@ Please read these caveats carefully before starting to use this software.
 
 `Android NDK r28` and higher compile 16 KB-aligned ELF files by default.
 
-`ndk-pkg` uses `Android NDK r28c` by default.
+`ndk-pkg` uses `Android NDK r30` by default.
 
 ## Using ndk-pkg via GitHub Actions
 
