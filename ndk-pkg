@@ -7648,6 +7648,25 @@ $PACKAGE_DO12345
 
         #########################################################################
 
+        # https://github.com/rust-lang/rust-bindgen
+        # https://github.com/KyleMayes/clang-sys
+        # https://rust-lang.github.io/rust-bindgen/requirements.html
+
+        export BINDGEN_EXTRA_CLANG_ARGS="$ANDROID_NDK_COMPILER_ARGS"
+
+        if [ "$NATIVE_PLATFORM_TYPE" = linux ] && [ "$NATIVE_PLATFORM_LIBC" = glibc ] ; then
+            export    CLANG_PATH="$ANDROID_NDK_CC"
+            export LIBCLANG_PATH="$ANDROID_NDK_TOOLCHAIN_ROOT/lib/libclang.so"
+        fi
+
+        cat <<EOF
+BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_EXTRA_CLANG_ARGS
+LIBCLANG_PATH=$LIBCLANG_PATH
+CLANG_PATH=$CLANG_PATH
+EOF
+
+        #########################################################################
+
         # https://libraries.io/cargo/cmake
         # https://crates.io/crates/cmake
         # https://docs.rs/cmake/latest/cmake/
@@ -10547,7 +10566,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.70.0
+NDKPKG_VERSION=0.70.1
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
