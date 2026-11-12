@@ -7580,6 +7580,15 @@ $PACKAGE_DO12345
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LDFLAG"
         done
 
+        #########################################################################
+
+        # ld.lld: error: duplicate symbol: rust_eh_personality
+        if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] && [ "$TARGET_PLATFORM_VERS" = 37 ] ; then
+            RUSTFLAGS="$RUSTFLAGS -Clink-arg=-Wl,--allow-multiple-definition"
+        fi
+
+        #########################################################################
+
         #if [ "$TARGET_PLATFORM_ARCH" = x86_64 ] || [ "$TARGET_PLATFORM_ARCH" = i686 ] ; then
             LIBCLANG_RT_BUILTINS_FILEPATH="$("$CC" -print-libgcc-file-name)"
             RUSTFLAGS="$RUSTFLAGS -Clink-arg=$LIBCLANG_RT_BUILTINS_FILEPATH"
@@ -10566,7 +10575,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.70.1
+NDKPKG_VERSION=0.70.2
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
