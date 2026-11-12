@@ -89,10 +89,10 @@ docker exec -it ndk-pkg ndk-pkg setup
 docker exec -it ndk-pkg ndk-pkg update
 ```
 
-If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package for target `android-35-arm64-v8a`:
+If all goes well, then next you can start to install packages whatever you want, for example, let's install `curl` package for target `android-37-arm64-v8a`:
 
 ```bash
-docker exec -it ndk-pkg ndk-pkg install curl --target=android-35-arm64-v8a --static
+docker exec -it ndk-pkg ndk-pkg install curl --target=android-37-arm64-v8a --static
 ```
 
 **Note:** you can use `podman` instead of `docker`
@@ -123,7 +123,7 @@ sudo mount --make-rprivate ubuntu-rootfs/dev
 
 sudo chroot ubuntu-rootfs ndk-pkg setup -y
 sudo chroot ubuntu-rootfs ndk-pkg update
-sudo chroot ubuntu-rootfs ndk-pkg install curl --target=android-35-arm64-v8a --static
+sudo chroot ubuntu-rootfs ndk-pkg install curl --target=android-37-arm64-v8a --static
 ```
 
 ## Using ndk-pkg via chroot+alpine
@@ -152,7 +152,7 @@ sudo mount --make-rprivate alpine-rootfs/dev
 
 sudo chroot alpine-rootfs ndk-pkg setup
 sudo chroot alpine-rootfs ndk-pkg update
-sudo chroot alpine-rootfs ndk-pkg install curl --target=android-35-arm64-v8a --static
+sudo chroot alpine-rootfs ndk-pkg install curl --target=android-37-arm64-v8a --static
 ```
 
 ## Using ndk-pkg via [WSL](https://docs.microsoft.com/en-us/windows/wsl)
@@ -350,13 +350,13 @@ ndk-pkg/ndk-pkg setup
 - **show information of the given installed package**
 
     ```bash
-    ndk-pkg show android-35-arm64-v8a/curl --prefix
-    ndk-pkg show android-35-arm64-v8a/curl --files
-    ndk-pkg show android-35-arm64-v8a/curl builtat
-    ndk-pkg show android-35-arm64-v8a/curl builtat-iso-8601
-    ndk-pkg show android-35-arm64-v8a/curl builtat-rfc-3339
-    ndk-pkg show android-35-arm64-v8a/curl builtat-iso-8601-utc
-    ndk-pkg show android-35-arm64-v8a/curl builtat-rfc-3339-utc
+    ndk-pkg show android-37-arm64-v8a/curl --prefix
+    ndk-pkg show android-37-arm64-v8a/curl --files
+    ndk-pkg show android-37-arm64-v8a/curl builtat
+    ndk-pkg show android-37-arm64-v8a/curl builtat-iso-8601
+    ndk-pkg show android-37-arm64-v8a/curl builtat-rfc-3339
+    ndk-pkg show android-37-arm64-v8a/curl builtat-iso-8601-utc
+    ndk-pkg show android-37-arm64-v8a/curl builtat-rfc-3339-utc
     ```
 
 - **show packages that are depended by the given package**
@@ -397,29 +397,29 @@ ndk-pkg/ndk-pkg setup
 
     ```bash
     ndk-pkg install curl
-    ndk-pkg install android-35-arm64-v8a/curl
-    ndk-pkg install android-35-arm64-v8a/curl --static
+    ndk-pkg install android-37-arm64-v8a/curl
+    ndk-pkg install android-37-arm64-v8a/curl --static
     ```
 
 - **reinstall packages**
 
     ```bash
     ndk-pkg reinstall curl
-    ndk-pkg reinstall android-35-arm64-v8a/curl --static
+    ndk-pkg reinstall android-37-arm64-v8a/curl --static
     ```
 
 - **uninstall packages**
 
     ```bash
     ndk-pkg uninstall curl
-    ndk-pkg uninstall android-35-arm64-v8a/curl
+    ndk-pkg uninstall android-37-arm64-v8a/curl
     ```
 
 - **upgrade the outdated packages**
 
     ```bash
     ndk-pkg upgrade curl
-    ndk-pkg upgrade android-35-arm64-v8a/curl --static
+    ndk-pkg upgrade android-37-arm64-v8a/curl --static
     ```
 
 - **upgrade this software**
@@ -487,63 +487,63 @@ ndk-pkg/ndk-pkg setup
 
     ```bash
     ndk-pkg is-installed curl
-    ndk-pkg is-installed android-35-arm64-v8a/curl
+    ndk-pkg is-installed android-37-arm64-v8a/curl
     ```
 
 - **check if the given package is outdated**
 
     ```bash
     ndk-pkg is-outdated  curl
-    ndk-pkg is-outdated  android-35-arm64-v8a/curl
+    ndk-pkg is-outdated  android-37-arm64-v8a/curl
     ```
 
 - **list installed files of the given installed package in a tree-like format**
 
     ```bash
     ndk-pkg tree curl
-    ndk-pkg tree android-35-arm64-v8a/curl -L 3
+    ndk-pkg tree android-37-arm64-v8a/curl -L 3
     ```
 
 - **show logs of the given installed package**
 
     ```bash
     ndk-pkg logs curl
-    ndk-pkg logs android-35-arm64-v8a/curl
+    ndk-pkg logs android-37-arm64-v8a/curl
     ```
 
 - **bundle the given installed package into a single archive file**
 
     ```bash
-    ndk-pkg bundle android-35-arm64-v8a/curl .tar.gz
-    ndk-pkg bundle android-35-arm64-v8a/curl .tar.xz
-    ndk-pkg bundle android-35-arm64-v8a/curl .tar.lz
-    ndk-pkg bundle android-35-arm64-v8a/curl .tar.bz2
-    ndk-pkg bundle android-35-arm64-v8a/curl .zip
-    ndk-pkg bundle android-35-arm64-v8a/curl xx.zip
-    ndk-pkg bundle android-35-arm64-v8a/curl a/.zip
-    ndk-pkg bundle android-35-arm64-v8a/curl a/xx.zip
+    ndk-pkg bundle android-37-arm64-v8a/curl .tar.gz
+    ndk-pkg bundle android-37-arm64-v8a/curl .tar.xz
+    ndk-pkg bundle android-37-arm64-v8a/curl .tar.lz
+    ndk-pkg bundle android-37-arm64-v8a/curl .tar.bz2
+    ndk-pkg bundle android-37-arm64-v8a/curl .zip
+    ndk-pkg bundle android-37-arm64-v8a/curl xx.zip
+    ndk-pkg bundle android-37-arm64-v8a/curl a/.zip
+    ndk-pkg bundle android-37-arm64-v8a/curl a/xx.zip
     ```
 
 - **export the given installed package as the google prefab aar**
 
     ```bash
-    ndk-pkg export android-35-arm64-v8a,x86_64/curl -o .
-    ndk-pkg export android-35-arm64-v8a,x86_64/curl -o curl-8.1.2.aar
+    ndk-pkg export android-37-arm64-v8a,x86_64/curl -o .
+    ndk-pkg export android-37-arm64-v8a,x86_64/curl -o curl-8.1.2.aar
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Maven Local Repository**
 
     ```bash
-    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl
-    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl --debug
-    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl --local=/somewhere
+    ndk-pkg deploy android-37-arm64-v8a,x86_64/curl
+    ndk-pkg deploy android-37-arm64-v8a,x86_64/curl --debug
+    ndk-pkg deploy android-37-arm64-v8a,x86_64/curl --local=/somewhere
     ```
 
 - **export the given installed package as the google prefab aar then deploy it to Sonatype OSSRH**
 
     ```bash
-    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl --remote < ~/OSSRH-config
-    ndk-pkg deploy android-35-arm64-v8a,x86_64/curl --remote <<EOF
+    ndk-pkg deploy android-37-arm64-v8a,x86_64/curl --remote < ~/OSSRH-config
+    ndk-pkg deploy android-37-arm64-v8a,x86_64/curl --remote <<EOF
     SERVER_ID=OSSRH
     SERVER_URL=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
     SERVER_USERNAME=your-sonatype-account-username
@@ -670,7 +670,7 @@ ndk-pkg/ndk-pkg setup
     **Example**:
 
     ```bash
-    export NDKPKG_TARGET='android-35-arm64-v8a'
+    export NDKPKG_TARGET='android-37-arm64-v8a'
     ```
 
 - **NDKPKG_FORMULA_DIRS**
@@ -1194,16 +1194,16 @@ In the next two sections, I will show you how to configure with `Android Gradle 
 
 **step1. build and install libpng**
 
-Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-35` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
+Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-37` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
 
 ```bash
-ndk-pkg install android-35-arm64-v8a,armeabi-v7a/libpng
+ndk-pkg install android-37-arm64-v8a,armeabi-v7a/libpng
 ```
 
 **step2. export the installed libpng package as the google prefab aar and deploy it to your Maven Local Repository**
 
 ```bash
-ndk-pkg deploy  android-35-arm64-v8a,armeabi-v7a/libpng
+ndk-pkg deploy  android-37-arm64-v8a,armeabi-v7a/libpng
 ```
 
 **step3. enable prefab feature for Android Gradle Plugin**
@@ -1289,16 +1289,16 @@ android {
 
 **step1. build and install libpng**
 
-Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-35` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
+Suppose you want to build and install `libpng`, the following command will build `libpng` with `android-37` API and build for `arm64-v8a` and `armeabi-v7a` ABI respectively.
 
 ```bash
-ndk-pkg install android-35-arm64-v8a,armeabi-v7a/libpng
+ndk-pkg install android-37-arm64-v8a,armeabi-v7a/libpng
 ```
 
 **step2. export the installed libpng package as the google prefab aar and deploy it to your Maven Local Repository**
 
 ```bash
-ndk-pkg deploy  android-35-arm64-v8a,armeabi-v7a/libpng
+ndk-pkg deploy  android-37-arm64-v8a,armeabi-v7a/libpng
 ```
 
 **step3. enable prefab feature for Android Gradle Plugin**
