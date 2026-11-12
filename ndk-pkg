@@ -7485,8 +7485,6 @@ $PACKAGE_DO12345
         # https://docs.rs/backtrace/latest/backtrace/
         export RUST_BACKTRACE=1
 
-        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
-
         #########################################################################
 
         RUST_TARGET_FOR_BUILD="$(rustc -vV | sed -n '/host: /p' | cut -c7- | tr 'a-z-' 'A-Z_')"
@@ -7561,6 +7559,14 @@ $PACKAGE_DO12345
             i686)    export RUST_TARGET='i686-linux-android'      ;;
             x86_64)  export RUST_TARGET='x86_64-linux-android'    ;;
         esac
+
+        #########################################################################
+
+        # https://doc.rust-lang.org/cargo/reference/environment-variables.html#configuration-environment-variables
+        export CARGO_BUILD_TARGET="$RUST_TARGET"
+        export CARGO_BUILD_JOBS="$BUILD_NJOBS"
+
+        #########################################################################
 
         RUST_TARGET_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$RUST_TARGET" | tr a-z A-Z | tr - _)
 
@@ -7858,6 +7864,8 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
+    step "prepare for target"
+
     cd "$PACKAGE_BSCRIPT_DIR"
 
     #########################################################################################
@@ -7898,9 +7906,11 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    [ -n "$PACKAGE_PREPARE" ] && {
-        step "prepare for target"
+    [ "$PACKAGE_USE_CARGO" = 1 ] && [ "$TERMUX" != 1 ] && run rustup target add "$RUST_TARGET"
 
+    #########################################################################################
+
+    [ -n "$PACKAGE_PREPARE" ] && {
         eval "
 prepare() {
 $PACKAGE_PREPARE
@@ -8681,8 +8691,6 @@ gow() {
 }
 
 cargow() {
-    [ "$TERMUX" = 1 ] || run rustup target add "$RUST_TARGET"
-
     case $1 in
         build)
             # https://doc.rust-lang.org/cargo/commands/cargo-clean.html
@@ -10575,7 +10583,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.70.2
+NDKPKG_VERSION=0.70.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
