@@ -7563,8 +7563,9 @@ $PACKAGE_DO12345
         #########################################################################
 
         # https://doc.rust-lang.org/cargo/reference/environment-variables.html#configuration-environment-variables
-        export CARGO_BUILD_TARGET="$RUST_TARGET"
         export CARGO_BUILD_JOBS="$BUILD_NJOBS"
+        export CARGO_BUILD_TARGET="$RUST_TARGET"
+        export CARGO_BUILD_TARGET_DIR=target
 
         #########################################################################
 
