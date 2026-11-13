@@ -8720,7 +8720,7 @@ cargow() {
                 fi
             fi
 
-            if [ -z "$CARGO_BUILD_ARG_RELEASE" ] ; then
+            if [ -z "$CARGO_BUILD_ARG_RELEASE" ] && [ "$PROFILE" = release ] ; then
                 CARGO_BUILD_ARGS="$CARGO_BUILD_ARGS --release"
             fi
 
@@ -8736,6 +8736,7 @@ cargow() {
 
             unset CARGO_INSTALL_ARGS
             unset CARGO_INSTALL_ARG_TARGET
+            unset CARGO_INSTALL_ARG_DEBUG
             unset CARGO_INSTALL_ARG_PATH
             unset CARGO_INSTALL_ARG_ROOT
             unset CARGO_INSTALL_ARG_VV
@@ -8744,6 +8745,7 @@ cargow() {
             do
                 case $arg in
                     --target) CARGO_INSTALL_ARG_TARGET=set ;;
+                    --debug)  CARGO_INSTALL_ARG_DEBUG=set  ;;
                     --path)   CARGO_INSTALL_ARG_PATH=set   ;;
                     --root)   CARGO_INSTALL_ARG_ROOT=set   ;;
                     --vv)     CARGO_INSTALL_ARG_VV=set     ;;
@@ -8756,6 +8758,10 @@ cargow() {
                 if [ "$DEBUG_CARGO" = 1 ] ; then
                     CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS -vv"
                 fi
+            fi
+
+            if [ -z "$CARGO_INSTALL_ARG_DEBUG" ] && [ "$PROFILE" = debug ] ; then
+                CARGO_INSTALL_ARGS="$CARGO_INSTALL_ARGS --debug"
             fi
 
             if [ -z "$CARGO_INSTALL_ARG_TARGET" ] ; then
@@ -8803,7 +8809,7 @@ cargow() {
                 fi
             fi
 
-            if [ -z "$CARGO_CINSTALL_ARG_DEBUG" ] && [ -z "$CARGO_CINSTALL_ARG_RELEASE" ] ; then
+            if [ -z "$CARGO_CINSTALL_ARG_DEBUG" ] && [ -z "$CARGO_CINSTALL_ARG_RELEASE" ] && [ "$PROFILE" = release ] ; then
                 CARGO_CINSTALL_ARGS="$CARGO_CINSTALL_ARGS --release"
             fi
 
@@ -10585,7 +10591,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.70.3
+NDKPKG_VERSION=0.70.4
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
