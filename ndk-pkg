@@ -1614,6 +1614,7 @@ filetype_from_url() {
             go)          PACKAGE_USE_GO=1        ;;
             gn)          PACKAGE_USE_GN=1        ;;
             waf)         PACKAGE_USE_WAF=1       ;;
+            *)  abort 1 "install mapping was not found in $PACKAGE_FORMULA_FILEPATH"
         esac
     done
 
