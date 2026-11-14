@@ -8507,6 +8507,9 @@ install_pcfile() {
             *.h)
                 install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/include/" "${__INSTALL_FILE_SRCDIR}$f"
                 ;;
+            *.hpp)
+                install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/include/" "${__INSTALL_FILE_SRCDIR}$f"
+                ;;
             *.a)
                 install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/lib/" "${__INSTALL_FILE_SRCDIR}$f"
                 ;;
