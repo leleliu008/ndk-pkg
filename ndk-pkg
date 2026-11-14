@@ -1586,6 +1586,7 @@ filetype_from_url() {
                     go|gow)       PACKAGE_BSYSTEM=go    ; break ;;
                     gn|gnw)       PACKAGE_BSYSTEM=gn    ; break ;;
                     waf)          PACKAGE_BSYSTEM=waf   ; break ;;
+                    compile)      PACKAGE_BSYSTEM=compile ; break ;;
                 esac
             done
         fi
@@ -1614,6 +1615,7 @@ filetype_from_url() {
             go)          PACKAGE_USE_GO=1        ;;
             gn)          PACKAGE_USE_GN=1        ;;
             waf)         PACKAGE_USE_WAF=1       ;;
+            compile)     PACKAGE_BINBSTD=1       ;;
             *)  abort 1 "install mapping was not found in $PACKAGE_FORMULA_FILEPATH"
         esac
     done
@@ -1634,6 +1636,7 @@ filetype_from_url() {
             go)        PACKAGE_DOBUILD='gow' ;;
             gn)        PACKAGE_DOBUILD='gnw' ;;
             waf)       PACKAGE_DOBUILD='waf' ;;
+            compile)   PACKAGE_DOBUILD='compile --install *' ;;
         esac
     }
 
@@ -1671,10 +1674,14 @@ filetype_from_url() {
     [ "$PACKAGE_USE_XMAKE" = 1 ] && PACKAGE_BINBSTD=1
 
     if [ -z  "$PACKAGE_BINBSTD" ] ; then
-        if [ "$PACKAGE_BSYSTEM_MASTER" = gmake ] ; then
+        if [ -z "$PACKAGE_BSYSTEM" ] ; then
             PACKAGE_BINBSTD=1
         else
-            PACKAGE_BINBSTD=0
+            if [ "$PACKAGE_BSYSTEM_MASTER" = gmake ] ; then
+                PACKAGE_BINBSTD=1
+            else
+                PACKAGE_BINBSTD=0
+            fi
         fi
     fi
 
@@ -8478,87 +8485,136 @@ __tweak_pc_files() {
     done
 }
 
-install_incs() {
-    while [ -n "$1" ]
-    do
-        unset X1
-        unset X2
-        X1=$(printf '%s\n' "$1" | cut -d: -f1)
-        X2=$(printf '%s\n' "$1" | cut -d: -f2)
-
-        if [ "$X1" = "$X2" ] ; then
-            unset X2
-        fi
-
-        install -v -d         "$PACKAGE_INSTALL_DIR/include/$X2"
-        install -v -m 644 $X1 "$PACKAGE_INSTALL_DIR/include/$X2"
-
-        shift
-    done
-}
-
-install_libs() {
-    install -v -d "$PACKAGE_INSTALL_DIR/lib"
-    for item in "$@"
-    do
-        case $item in
-            *.a) install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/lib" ;;
-            *)   install -v -m 755 "$item" "$PACKAGE_INSTALL_DIR/lib" ;;
-        esac
-    done
-}
-
-writepc() {
-    install -v -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
+install_pcfile() {
+    install -v -d "$PACKAGE_INSTALL_DIR/lib/pkgconfig"
     cat >         "$PACKAGE_INSTALL_DIR/lib/pkgconfig/$1.pc"
 }
 
-install_pcfs() {
-    install -v -d          "$PACKAGE_INSTALL_DIR/lib/pkgconfig" &&
-    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/lib/pkgconfig"
-}
+# install_files <FILE>...
+  install_files() {
+    unset __INSTALL_FILE_SRCDIR
 
-install_bins() {
-    install -v -d          "$PACKAGE_INSTALL_DIR/bin" &&
-    install -v -m 755 "$@" "$PACKAGE_INSTALL_DIR/bin"
-}
-
-install_etcs() {
-    install -v -d          "$PACKAGE_INSTALL_DIR/etc" &&
-    install -v -m 644 "$@" "$PACKAGE_INSTALL_DIR/etc"
-}
-
-install_mans() {
-    for item in "$@"
+    for f in "$@"
     do
-        unset NUMBER
-        NUMBER=$(printf '%s\n' "$item" | cut -c ${#item}-${#item})
-        case $NUMBER in
-            [1-8]);;
-            *)    abort 1 "$item: not a manpage."
+        case $f in
+            --cargo)
+                __INSTALL_FILE_SRCDIR="$CARGO_BUILD_TARGET_DIR/$CARGO_BUILD_TARGET/$PROFILE/"
+                ;;
+            *.h)
+                install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/include/" "${__INSTALL_FILE_SRCDIR}$f"
+                ;;
+            *.a)
+                install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/lib/" "${__INSTALL_FILE_SRCDIR}$f"
+                ;;
+            *.so)
+                install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/lib/" "${__INSTALL_FILE_SRCDIR}$f"
+                ;;
+            *.pc)
+                install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/lib/pkgconfig/" "${__INSTALL_FILE_SRCDIR}$f"
+                ;;
+            *.[1-8])
+                install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/share/man/man${f##*.}/" "${__INSTALL_FILE_SRCDIR}$f"
+                ;;
+            *.fish)
+                install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/share/fish/vendor_completions.d/" "${__INSTALL_FILE_SRCDIR}$f"
+                ;;
+            *.zsh)
+                install -v -D -m 644 "${__INSTALL_FILE_SRCDIR}$f" "$PACKAGE_INSTALL_DIR/share/zsh/site-functions/_${f%.zsh}"
+                ;;
+            *.bash)
+                install -v -D -m 644 "${__INSTALL_FILE_SRCDIR}$f" "$PACKAGE_INSTALL_DIR/share/bash/completions/${f%.bash}"
+                ;;
+            *.conf)
+                install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/etc/" "${__INSTALL_FILE_SRCDIR}$f"
+                ;;
+            --etc=*)
+                install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/etc/" "${__INSTALL_FILE_SRCDIR}${f#'--etc='}"
+                ;;
+            --dir=*)
+                mv -v "${f#'--dir='}" "$PACKAGE_INSTALL_DIR/"
+                ;;
+            *)  install -v -D -m 755  -t  "$PACKAGE_INSTALL_DIR/bin/" "${__INSTALL_FILE_SRCDIR}$f"
         esac
-        install -v -d             "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER" &&
-        install -v -m 644 "$item" "$PACKAGE_INSTALL_DIR/share/man/man$NUMBER"
     done
 }
 
-# install_completion <fish|bash|zsh> <COMMAND> <FILE-PATH>
-  install_completion() {
-    case $1 in
-        bash)
-            install -v -d          "$PACKAGE_INSTALL_DIR/share/bash/completions" &&
-            install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/bash/completions/$2"
-            ;;
-        fish)
-            install -v -d          "$PACKAGE_INSTALL_DIR/share/fish/vendor_completions.d" &&
-            install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/fish/vendor_completions.d/$2.fish"
-            ;;
-        zsh)
-            install -v -d          "$PACKAGE_INSTALL_DIR/share/zsh/site-functions" &&
-            install -v -m 644 "$3" "$PACKAGE_INSTALL_DIR/share/zsh/site-functions/_$2"
-            ;;
-        *)  abort 1 "install_completion unsupported shell: $1"
+# compile [options] <FILE>...
+  compile() {
+    unset COMPILE_TYPE
+    unset COMPILE_NAME
+    unset COMPILE_LANG
+    unset COMPILE_SRCS
+    unset COMPILE_INSTALL_EXTRA_FILES
+    unset COMPILE_INSTALL
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            *.c)
+                COMPILE_SRCS="$COMPILE_SRCS $1"
+                COMPILE_LANG=c
+                ;;
+            *.cc|*.cpp)
+                COMPILE_SRCS="$COMPILE_SRCS $1"
+                COMPILE_LANG=cxx
+                ;;
+            --exe)
+                COMPILE_TYPE=exe
+                ;;
+            --lib)
+                COMPILE_TYPE=lib
+                ;;
+            --install)
+                COMPILE_INSTALL=1
+                ;;
+            -o) shift
+                COMPILE_NAME="$1"
+                ;;
+            -*) abort 1 "compile() unsupported argument: $1"
+                ;;
+            *)  COMPILE_INSTALL_EXTRA_FILES="$COMPILE_INSTALL_EXTRA_FILES $1"
+        esac
+
+        shift
+    done
+
+    ####################################
+
+    [ -z "$COMPILE_TYPE" ] && COMPILE_TYPE="$PACKAGE_PKGTYPE"
+    [ -z "$COMPILE_NAME" ] && COMPILE_NAME="$PACKAGE_NAME"
+
+    ####################################
+
+    case $COMPILE_LANG in
+        c)   COMPILER="$CC"  ; COMPILE_FLAGS="$CFLAGS"   ;;
+        cxx) COMPILER="$CXX" ; COMPILE_FLAGS="$CXXFLAGS" ;;
     esac
+
+    ####################################
+
+    case $COMPILE_TYPE in
+        exe)
+            run "$COMPILER" "$COMPILE_FLAGS" "$CPPFLAGS" "$LDFLAGS" -o "$COMPILE_NAME" "$COMPILE_SRCS"
+            ;;
+        lib)
+            run "$COMPILER" -c "$COMPILE_FLAGS" "$CPPFLAGS" "$COMPILE_SRCS"
+            run "$COMPILER" -shared "$LDFLAGS" -o "$COMPILE_NAME.so" *.o
+            run "$AR" crs "$COMPILE_NAME.a" *.o
+            ;;
+    esac
+
+    ####################################
+
+    if [ "$COMPILE_INSTALL" = 1 ] ; then
+        case $COMPILE_TYPE in
+            exe)
+                install_files "$COMPILE_NAME" $COMPILE_INSTALL_EXTRA_FILES
+                ;;
+            lib)
+                install_files "$COMPILE_NAME.a" "$COMPILE_NAME.so" $COMPILE_INSTALL_EXTRA_FILES
+                ;;
+        esac
+    fi
 }
 
 __record_installed_files_of_the_given_package() {
@@ -8685,9 +8741,9 @@ gow() {
     for item in $(ls "$PACKAGE_BCACHED_DIR")
     do
         case $item in
-            *.a)  run install_libs "$PACKAGE_BCACHED_DIR/$item" ;;
-            *.so) run install_libs "$PACKAGE_BCACHED_DIR/$item" ;;
-            *)    run install_bins "$PACKAGE_BCACHED_DIR/$item" ;;
+            *.a)  run install_files "$PACKAGE_BCACHED_DIR/$item" ;;
+            *.so) run install_files "$PACKAGE_BCACHED_DIR/$item" ;;
+            *)    run install_files "$PACKAGE_BCACHED_DIR/$item" ;;
         esac
     done
 }
@@ -10591,7 +10647,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.70.4
+NDKPKG_VERSION=0.80.0
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
