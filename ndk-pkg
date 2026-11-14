@@ -7933,6 +7933,10 @@ $PACKAGE_PREPARE
 
     if [ "$PACKAGE_BINBSTD" = 1 ] ; then
         run cd "$PACKAGE_BSCRIPT_DIR"
+
+        if [ "$PACKAGE_BSYSTEM" = compile ] ; then
+            rm -rf "$PACKAGE_BCACHED_DIR"
+        fi
     else
         run cd "$PACKAGE_BCACHED_DIR"
     fi
