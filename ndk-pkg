@@ -8562,10 +8562,12 @@ install_pcfile() {
             --etc=*)
                 install -v -D -m 644  -t  "$PACKAGE_INSTALL_DIR/etc/" "${__INSTALL_FILE_SRCDIR}${f#'--etc='}"
                 ;;
-            --dir=*)
-                mv -v "${f#'--dir='}" "$PACKAGE_INSTALL_DIR/"
-                ;;
-            *)  install -v -D -m 755  -t  "$PACKAGE_INSTALL_DIR/bin/" "${__INSTALL_FILE_SRCDIR}$f"
+            *)
+                if [ -d "${__INSTALL_FILE_SRCDIR}$f" ] ; then
+                    mv  "${__INSTALL_FILE_SRCDIR}$f" "$PACKAGE_INSTALL_DIR/"
+                else
+                    install -v -D -m 755 -t "$PACKAGE_INSTALL_DIR/bin/" "${__INSTALL_FILE_SRCDIR}$f"
+                fi
         esac
     done
 }

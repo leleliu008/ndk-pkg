@@ -785,6 +785,10 @@ A ndk-pkg formula's file content only has one level mapping and shall/might have
                                              └─────────┘
                                                   ⬇
                                              ┌─────────┐
+                                             │ cpfiles │
+                                             └─────────┘
+                                                  ⬇
+                                             ┌─────────┐
                                              │ dotweak │
                                              └─────────┘
                                                   ⬇
