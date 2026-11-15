@@ -1132,6 +1132,7 @@ filetype_from_url() {
     unset PACKAGE_PATCHES
     unset PACKAGE_RESLIST
 
+    unset PACKAGE_CPFILES
     unset PACKAGE_CAVEATS
 
     unset PACKAGE_LINKAGE
@@ -1239,6 +1240,7 @@ filetype_from_url() {
     PACKAGE_PATCHES="$(yq '.patches | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_RESLIST="$(yq '.reslist | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
 
+    PACKAGE_CPFILES="$(yq '.cpfiles | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_BINDENV="$(yq '.bindenv | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_WRAPPER="$(yq '.wrapper | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
     PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_FORMULA_FILEPATH")"
@@ -1572,7 +1574,9 @@ filetype_from_url() {
 
     if [     -z "$PACKAGE_BSYSTEM" ] ; then
         if [ -z "$PACKAGE_DOBUILD" ] ; then
-            abort 1 "neither bsystem nor install mapping was found in $PACKAGE_FORMULA_FILEPATH"
+            if [ -z "$PACKAGE_CPFILES" ] ; then
+                abort 1 "none of bsystem, install, cpfiles mapping was found in $PACKAGE_FORMULA_FILEPATH"
+            fi
         else
             for FirstWordOfLineInInstallActions in $(printf '%s\n' "$PACKAGE_DOBUILD" | sed 's|^[[:space:]]*||' | cut -d ' ' -f1)
             do
@@ -1807,6 +1811,8 @@ filetype_from_url() {
     unset RECEIPT_PACKAGE_DOBUILD
     unset RECEIPT_PACKAGE_DOTWEAK
 
+    unset RECEIPT_PACKAGE_CPFILES
+
     unset RECEIPT_PACKAGE_BINDENV
     unset RECEIPT_PACKAGE_CAVEATS
 
@@ -1885,6 +1891,8 @@ filetype_from_url() {
     RECEIPT_PACKAGE_PREPARE="$(yq '.prepare | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOBUILD="$(yq '.install | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_DOTWEAK="$(yq '.dotweak | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
+
+    RECEIPT_PACKAGE_CPFILES="$(yq '.cpfiles | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
 
     RECEIPT_PACKAGE_BINDENV="$(yq '.bindenv | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
     RECEIPT_PACKAGE_CAVEATS="$(yq '.caveats | select(. != null)' "$PACKAGE_RECEIPT_FILEPATH")"
@@ -2196,6 +2204,7 @@ __search_packages() {
         --arg dopatch "$PACKAGE_DOPATCH" \
         --arg prepare "$PACKAGE_PREPARE" \
         --arg install "$PACKAGE_DOBUILD" \
+        --arg cpfiles "$PACKAGE_CPFILES" \
         --arg dotweak "$PACKAGE_DOTWEAK" \
         --arg movable "$PACKAGE_MOVABLE" \
         --arg ltoable "$PACKAGE_LTOABLE" \
@@ -2252,6 +2261,7 @@ __search_packages() {
     "dopatch":$dopatch,
     "prepare":$prepare,
     "install":$install,
+    "cpfiles":$cpfiles,
     "dotweak":$dotweak,
     "ltoable":$ltoable,
     "movable":$movable,
@@ -2299,6 +2309,7 @@ dep-lib: $PACKAGE_DEP_LIB
 dep-upp: $PACKAGE_DEP_UPP
 dep-pip: $PACKAGE_DEP_PIP
 dep-plm: $PACKAGE_DEP_PLM
+cpfiles: $PACKAGE_CPFILES
 bsystem: $PACKAGE_BSYSTEM
 binbstd: $PACKAGE_BINBSTD
 ppflags: $PACKAGE_PPFLAGS
@@ -2417,6 +2428,10 @@ EOF
         install)
             __load_formula_of_the_given_package "$1"
             printf '%s\n' "$PACKAGE_DOBUILD"
+            ;;
+        cpfiles)
+            __load_formula_of_the_given_package "$1"
+            printf '%s\n' "$PACKAGE_CPFILES"
             ;;
         dotweak)
             __load_formula_of_the_given_package "$1"
@@ -2586,6 +2601,7 @@ EOF
         --arg dopatch "$RECEIPT_PACKAGE_DOPATCH" \
         --arg prepare "$RECEIPT_PACKAGE_PREPARE" \
         --arg install "$RECEIPT_PACKAGE_DOBUILD" \
+        --arg cpfiles "$RECEIPT_PACKAGE_CPFILES" \
         --arg dotweak "$RECEIPT_PACKAGE_DOTWEAK" \
         --arg movable "$RECEIPT_PACKAGE_MOVABLE" \
         --arg ltoable "$RECEIPT_PACKAGE_LTOABLE" \
@@ -2643,6 +2659,7 @@ EOF
     "dopatch":$dopatch,
     "prepare":$prepare,
     "install":$install,
+    "cpfiles":$cpfiles,
     "dotweak":$dotweak,
     "movable":$movable,
     "ltoable":$ltoable,
@@ -7950,21 +7967,29 @@ $PACKAGE_PREPARE
         echo
     }
 
-    eval "
+    ###############################################################
+
+    [ -n "$PACKAGE_DOBUILD" ] && {
+        eval "
 dobuild() {
 $PACKAGE_DOBUILD
 }"
 
-    dobuild
+        dobuild
+    }
 
-    #########################################################################################
+    ###############################################################
 
-    [   -d "$PACKAGE_INSTALL_DIR" ] || abort 1 "nothing was installed."
+    [ -n "$PACKAGE_CPFILES" ] && run install_files $PACKAGE_CPFILES
+
+    ###############################################################
+
+    [ -d "$PACKAGE_INSTALL_DIR" ] || abort 1 "nothing was installed."
 
     step "change to the installed directory"
     run cd "$PACKAGE_INSTALL_DIR"
 
-    [ -z "$(ls)" ]                  && abort 1 "nothing was installed."
+    [ -z "$(ls)" ]                && abort 1 "nothing was installed."
 
     #########################################################################################
 
