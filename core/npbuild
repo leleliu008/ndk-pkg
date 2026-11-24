@@ -1,0 +1,864 @@
+#!/bin/sh
+
+# A shell script for building library packages and non-locatable packages for host, which is used by ndk-pkg.
+#
+# Influential environment variables: CC, AR, RANLIB, CFLAGS, CPPFLAGS, LDFLAGS
+#
+# Usage: ./npbuild [options] <PACKAGE-NAME>...
+#
+#    <PACKAGE-NAME> can be any one of libz, libiconv, libxml2, libexpat, libtool, itstool, intltool, texinfo, help2man, automake, autoconf, autoconf_archive, netsurf_buildsystem, perl_XML_Parser
+#
+#    options:
+#
+#       -j <N>
+#            specify the number of jobs you can run in parallel.
+#
+#       --uppm <FILEPATH>
+#            specify the path of uppm executable.
+#
+#       --urlmap <FILEPATH>
+#            specify the path of urlmap executable.
+#
+#       --prefix <DIR>
+#            specify the directory where files should be installed. default to ~/.fpliu/native/
+#
+#       --download-dir <DIR>
+#            specify the directory where source files should be downloaded. default to ~/.fpliu/downloads/
+#
+#       --session-dir <DIR>
+#            specify the directory where source files should be uncompressed. default to ~/.fpliu/run/$$
+#
+############################################################################
+
+set -e
+
+COLOR_RED='\033[0;31m'
+COLOR_GREEN='\033[0;32m'
+COLOR_YELLOW='\033[0;33m'
+COLOR_BLUE='\033[0;94m'
+COLOR_PURPLE='\033[0;35m'
+COLOR_OFF='\033[0m'
+
+echo() {
+    printf '%b\n' "$*"
+}
+
+note() {
+    printf '%b\n' "🔔  ${COLOR_YELLOW}npbuild : $*${COLOR_OFF}" >&2
+}
+
+warn() {
+    printf '%b\n' "🔥  ${COLOR_YELLOW}npbuild : $*${COLOR_OFF}" >&2
+}
+
+success() {
+    printf '%b\n' "✅  ${COLOR_GREEN}npbuild : $*${COLOR_OFF}" >&2
+}
+
+error() {
+    printf '%b\n' "💔  ${COLOR_RED}npbuild : $*${COLOR_OFF}" >&2
+}
+
+abort() {
+    EXIT_STATUS_CODE="$1"
+    shift
+    printf '%b\n' "💔  ${COLOR_RED}npbuild : $*${COLOR_OFF}" >&2
+    exit "$EXIT_STATUS_CODE"
+}
+
+run() {
+    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$*${COLOR_OFF}" >&2
+    eval "$@"
+}
+
+isInteger() {
+    case "${1#[+-]}" in
+        (*[!0123456789]*) return 1 ;;
+        ('')              return 1 ;;
+        (*)               return 0 ;;
+    esac
+}
+
+sha256sum_of_file() {
+    sha256sum "$1" | cut -d ' ' -f1
+}
+
+sha256sum_of_str() {
+    printf '%s\n' "$1" | sha256sum | cut -d ' ' -f1
+}
+
+filetype_from_url() {
+    # remove query params
+    URL="${1%%'?'*}"
+
+    FNAME="${URL##*/}"
+
+    case $FNAME in
+        *.tar.gz|*.tgz)
+            printf '%s\n' '.tgz'
+            ;;
+        *.tar.lz|*.tlz)
+            printf '%s\n' '.tlz'
+            ;;
+        *.tar.xz|*.txz)
+            printf '%s\n' '.txz'
+            ;;
+        *.tar.bz2|*.tbz2)
+            printf '%s\n' '.tbz2'
+            ;;
+        *.*)printf '%s\n' ".${FNAME##*.}"
+    esac
+}
+
+git_clone_depth_1() {
+    if [ -z "$URLMAP" ] ; then
+        URL="$1"
+    else
+        URL="$("$URLMAP" "$1")"
+    fi
+
+    shift
+
+    run git clone --depth=1 "$URL" "$@"
+}
+
+__fetch_gnu_config() {
+    for URL in 'https://github.com/leleliu008/gnu-config' 'https://git.savannah.gnu.org/git/config.git'
+    do
+        if [ -d    gnu ] ; then
+            rm -rf gnu
+        fi
+
+        git_clone_depth_1 "$URL" gnu && return 0
+    done
+}
+
+__update_gnu_config() {
+    GNU_CONFIG_DIR="$SESSION_DIR/gnu"
+
+    if [ ! -f "$GNU_CONFIG_DIR/config.sub" ] || [ ! -f "$GNU_CONFIG_DIR/config.guess" ] ; then
+        run cd "$SESSION_DIR"
+
+        __fetch_gnu_config
+
+        run cd -
+    fi
+
+    for item in sub guess
+    do
+        find -type f -name "config.$item" -exec cp -vf "$GNU_CONFIG_DIR/config.$item" {} \;
+    done
+}
+
+# wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-p <PACKAGE-NAME>] [-o <OUTPUT-PATH>] [-q] [--no-buffer]
+#
+# If -o <OUTPUT-PATH> option is unspecified, the result will be written to ./$(basename <URL>)
+#
+# If <OUTPUT-PATH> is -, then the result will be written to stdout.
+#
+# If <OUTPUT-PATH> is . .. or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
+#
+# If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/$(basename <URL>)
+#
+# influential environment variable:
+# URLMAP
+wfetch() {
+    unset FETCH_UTS
+    unset FETCH_SHA
+
+    unset FETCH_URL
+    unset FETCH_URI
+
+    unset FETCH_PATH
+
+    unset FETCH_OUTPUT_DIR
+    unset FETCH_OUTPUT_FILEPATH
+    unset FETCH_OUTPUT_FILENAME
+
+    unset FETCH_BUFFER_FILEPATH
+
+    unset FETCH_SHA256_EXPECTED
+
+    unset FETCH_SILENT
+
+    unset NOT_BUFFER
+
+    unset PKGNAME
+
+    [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
+
+    FETCH_URL="$1"
+
+    shift
+
+    while [ -n "$1" ]
+    do
+        case $1 in
+            --uri=*)
+                FETCH_URI="${1#*=}"
+                ;;
+            --sha256=*)
+                FETCH_SHA256_EXPECTED="${1#*=}"
+                ;;
+            -o) shift
+                if [ -z "$1" ] ; then
+                    abort 1 "wfetch <URL> -o <PATH> , <PATH> must be non-empty."
+                else
+                    FETCH_PATH="$1"
+                fi
+                ;;
+            -p) shift
+                if [ -z "$1" ] ; then
+                    abort 1 "wfetch <URL> -p <PKGNAME> , <PKGNAME> must be non-empty."
+                else
+                    PKGNAME="$1"
+                fi
+                ;;
+            -q) FETCH_SILENT=1
+                ;;
+            --no-buffer)
+                NOT_BUFFER=1
+                ;;
+            *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unknown argument: $1"
+        esac
+        shift
+    done
+
+    case $FETCH_PATH in
+        -)
+            FETCH_BUFFER_FILEPATH='-'
+            ;;
+        .|'')
+            FETCH_OUTPUT_DIR='.'
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        ..)
+            FETCH_OUTPUT_DIR='..'
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        */)
+            FETCH_OUTPUT_DIR="${FETCH_PATH%/}"
+            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+            ;;
+        *)
+            FETCH_OUTPUT_DIR="$(dirname "$FETCH_PATH")"
+            FETCH_OUTPUT_FILEPATH="$FETCH_PATH"
+    esac
+
+    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
+        if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
+            if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
+                if [ "$(sha256sum_of_file "$FETCH_OUTPUT_FILEPATH")" = "$FETCH_SHA256_EXPECTED" ] ; then
+                    success "$FETCH_OUTPUT_FILEPATH already have been fetched."
+                    return 0
+                fi
+            fi
+        fi
+
+        if [ "$NOT_BUFFER" = 1 ] ; then
+            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_FILEPATH"
+        else
+            FETCH_UTS="$(date +%s)"
+
+            FETCH_SHA="$(sha256sum_of_str "$FETCH_URL:$$:$FETCH_UTS")"
+
+            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_SHA.tmp"
+        fi
+    fi
+
+    if [                -n "$FETCH_OUTPUT_DIR" ] ; then
+        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
+            run install -d "$FETCH_OUTPUT_DIR" || return 1
+        fi
+    fi
+
+    case $FETCH_TOOL in
+        curl)
+            FETCH_ARGS='--fail --retry 20 --retry-delay 30 --location'
+
+            if [ "$FETCH_SILENT" = 1 ] ; then
+                FETCH_ARGS="$FETCH_ARGS --no-progress-meter"
+            fi
+
+            if [ -n "$PPKG_DNS_SERVERS" ] ; then
+                FETCH_ARGS="$FETCH_ARGS --dns-servers $PPKG_DNS_SERVERS"
+            fi
+
+            if [ -n "$SSL_CERT_FILE" ] ; then
+                FETCH_ARGS="$FETCH_ARGS --cacert $SSL_CERT_FILE"
+            fi
+
+            FETCH_ARGS="$FETCH_ARGS -o '$FETCH_BUFFER_FILEPATH'"
+            ;;
+        wget)
+            FETCH_ARGS="--timeout=60 -O '$FETCH_BUFFER_FILEPATH'"
+            ;;
+        http)
+            FETCH_ARGS="--timeout=60 -o '$FETCH_BUFFER_FILEPATH'"
+            ;;
+        aria2c)
+            FETCH_ARGS="-d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME'"
+            ;;
+        axel)
+            FETCH_ARGS="-o '$FETCH_BUFFER_FILEPATH'"
+            ;;
+        *)  abort 1 "wfetch() unimplementation: $FETCH_TOOL"
+            ;;
+    esac
+
+    ORIGIN_FETCH_URL="$FETCH_URL"
+
+    for i in 1 2 3 4 5 6 7 8
+    do
+        case $i in
+            1)
+                if [ -n "$URLMAP" ] ; then
+                    FETCH_URL="$("$URLMAP" "$FETCH_URL")" || return 1
+                fi
+
+                if [ "$GITHUB_ACTIONS" = true ] ; then
+                    case $FETCH_URL in
+                        https://ftp.gnu.org/gnu/*)
+                            FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
+                    esac
+                fi
+                ;;
+            2)  if [ -z "$FETCH_URI" ] ; then
+                     continue
+                fi
+
+                if [ -n "$URLMAP" ] ; then
+                    FETCH_URL="$("$URLMAP" "$FETCH_URI")" || return 1
+                else
+                    FETCH_URL="$FETCH_URI"
+                fi
+                ;;
+            3)  case $ORIGIN_FETCH_URL in
+                    https://ftp.gnu.org/gnu/*)
+                        FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
+                        ;;
+                    *)  continue
+                esac
+                ;;
+            4)
+                FETCH_URX="${ORIGIN_FETCH_URL%%'?'*}"
+                FILENAME="${FETCH_URX##*/}"
+                FETCH_URL="https://fossies.org/linux/misc/$FILENAME"
+                ;;
+            5)  MACPORTS_PKGNAME=
+
+                if [ -z "$PKGNAME" ] ; then
+                    continue
+                fi
+
+                MACPORTS_PKGNAME="${PKGNAME%@*}"
+
+                FETCH_URL="https://distfiles.macports.org/$MACPORTS_PKGNAME/$FILENAME"
+                ;;
+            6)  case $MACPORTS_PKGNAME in
+                    '') continue ;;
+                    lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PKGNAME#lib}/$FILENAME" ;;
+                    *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PKGNAME/$FILENAME"
+                esac
+                ;;
+            7)  case $FILENAME in
+                    *-*)
+                        MACPORTS_PKGNAME="${FILENAME%%-*}"
+                        FETCH_URL="https://distfiles.macports.org/$MACPORTS_PKGNAME/$FILENAME"
+                        ;;
+                    *)  MACPORTS_PKGNAME=
+                        continue
+                esac
+                ;;
+            8)  case $MACPORTS_PKGNAME in
+                    '') FETCH_URL= ; continue ;;
+                    lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PKGNAME#lib}/$FILENAME" ;;
+                    *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PKGNAME/$FILENAME"
+                esac
+                ;;
+        esac
+
+        run "$FETCH_TOOL $FETCH_ARGS '$FETCH_URL'" && break
+    done
+
+    [ $? -eq 0 ] || return 1
+
+    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
+        if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
+            FETCH_SHA256_ACTUAL="$(sha256sum_of_file "$FETCH_BUFFER_FILEPATH")"
+
+            if [ "$FETCH_SHA256_ACTUAL" != "$FETCH_SHA256_EXPECTED" ] ; then
+                abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256_EXPECTED\n    actual : $FETCH_SHA256_ACTUAL\n"
+            fi
+        fi
+
+        if [ "$NOT_BUFFER" != 1 ] ; then
+            run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_FILEPATH"
+        fi
+    fi
+}
+
+############################################################################
+
+package_info_libz() {
+    PACKAGE_SRC_URL='https://distfiles.macports.org/zlib/zlib-1.3.2.tar.xz'
+    PACKAGE_SRC_SHA='d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3'
+    PACKAGE_DEP_AUX='cmake'
+    PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_SHARED=ON'
+}
+
+package_info_libopenssl() {
+    PACKAGE_SRC_URL='https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz'
+    PACKAGE_SRC_SHA='243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1'
+    PACKAGE_DEP_AUX='perl'
+    PACKAGE_DOPATCH='
+    case $NATIVE_PLATFORM_ARCH in
+        armv7l) gsed -i "s|armv7-a|armv7-a+fp|g" util/perl/OpenSSL/config.pm
+    esac'
+    PACKAGE_INSTALL='config no-tests no-ssl3 no-ssl3-method no-zlib --libdir=lib --openssldir=etc/ssl'
+    # https://github.com/openssl/openssl/blob/master/INSTALL.md
+}
+
+package_info_libtool() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.5.4.tar.xz'
+    PACKAGE_SRC_SHA='f81f5860666b0bc7d84baddefa60d1cb9fa6fceb2398cc3baca6afaa60266675'
+    PACKAGE_INSTALL='configure --disable-ltdl-install'
+    PACKAGE_DEP_AUX='gm4'
+    PACKAGE_DOTWEAK='
+run ln -s libtool    bin/glibtool
+run ln -s libtoolize bin/glibtoolize
+'
+}
+
+package_info_texinfo() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.3.tar.xz'
+    PACKAGE_SRC_SHA='51f74eb0f51cfa9873b85264dfdd5d46e8957ec95b88f0fb762f63d9e164c72e'
+    PACKAGE_DEP_AUX='perl'
+    PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
+}
+
+package_info_autoconf() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.73.tar.gz'
+    PACKAGE_SRC_SHA='259ddfa3bddc799cfb81489cc0f17dfdf1bd6d1505dda53c0f45ff60d6a4f9a7'
+    PACKAGE_DEP_AUX='perl gm4'
+    PACKAGE_INSTALL='configure'
+}
+
+package_info_automake() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.18.1.tar.xz'
+    PACKAGE_SRC_SHA='168aa363278351b89af56684448f525a5bce5079d0b6842bd910fdd3f1646887'
+    PACKAGE_DEP_AUX='perl'
+    PACKAGE_DEP_PKG='autoconf'
+    PACKAGE_INSTALL='configure'
+}
+
+package_info_help2man() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
+    PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
+    PACKAGE_DEP_AUX='perl'
+    PACKAGE_INSTALL='configure'
+}
+
+package_info_libexpat() {
+    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_7_4/expat-2.7.4.tar.lz'
+    PACKAGE_SRC_SHA='882bb3c124cdfd6d594818276f3ea851b780473a722385150a5793277635fcae'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
+}
+
+package_info_intltool() {
+    PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
+    PACKAGE_SRC_URI='https://distfiles.macports.org/intltool/intltool-0.51.0.tar.gz'
+    PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
+    PACKAGE_DEP_PKG='perl-XML-Parser libexpat'
+    PACKAGE_DEP_AUX='perl'
+    PACKAGE_INSTALL='configure'
+}
+
+package_info_perl_XML_Parser() {
+    PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
+    PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
+    PACKAGE_DEP_AUX='perl'
+    PACKAGE_DEP_PKG='libexpat'
+    PACKAGE_DOPATCH='
+run export EXPATLIBPATH="$PACKAGE_INSTALL_ROOT/libexpat/lib"
+run export EXPATINCPATH="$PACKAGE_INSTALL_ROOT/libexpat/include"
+run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
+'
+    if [ "$NATIVE_PLATFORM_TYPE" = Darwin ] ; then
+        PACKAGE_INSTALL='perl Makefile.PL'
+    else
+        PACKAGE_INSTALL='perl Makefile.PL LDDLFLAGS="\"-shared -L$PACKAGE_INSTALL_ROOT/libexpat/lib -Wl,-rpath,$PACKAGE_INSTALL_ROOT/libexpat/lib\""'
+    fi
+}
+
+package_info_libiconv() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.19.tar.gz'
+    PACKAGE_SRC_SHA='88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6'
+    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --enable-extra-encodings'
+}
+
+package_info_libxml2() {
+    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz'
+    PACKAGE_SRC_SHA='78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07'
+    PACKAGE_DEP_PKG='libz libiconv'
+    PACKAGE_DEP_AUX='doxygen'
+    PACKAGE_INSTALL='configure --with-legacy --with-zlib --with-python --with-iconv="$PACKAGE_INSTALL_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
+}
+
+package_info_itstool() {
+    PACKAGE_SRC_URL='https://distfiles.macports.org/itstool/itstool-2.0.7.tar.bz2'
+    PACKAGE_SRC_SHA='6b9a7cd29a12bb95598f5750e8763cee78836a1a207f85b74d8b3275b27e87ca'
+    PACKAGE_DEP_PKG='libxml2'
+    PACKAGE_DEP_AUX='python3'
+    PACKAGE_INSTALL='configure'
+    PACKAGE_DOPATCH='
+    export PYTHON="$(command -v python3)"
+    PYTHON_VERSION_XY="$("$PYTHON" -c "import sys; print(\"%d.%d\" % sys.version_info[:2])")"
+    export PYTHONPATH="$PACKAGE_INSTALL_ROOT/libxml2/lib/python$PYTHON_VERSION_XY/site-packages"
+    '
+    PACKAGE_DOTWEAK='
+mv bin/itstool bin/itstool.py
+cat > bin/itstool <<EOF
+#!/bin/sh
+export PYTHONPATH="$PYTHONPATH"
+exec "$PYTHON" "$PACKAGE_INSTALL_DIR/bin/itstool.py" "\$@"
+EOF
+chmod +x bin/itstool
+    '
+}
+
+package_info_autoconf_archive() {
+    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf-archive/autoconf-archive-2024.10.16.tar.xz'
+    PACKAGE_SRC_SHA='7bcd5d001916f3a50ed7436f4f700e3d2b1bade3ed803219c592d62502a57363'
+    PACKAGE_INSTALL='configure'
+}
+
+package_info_netsurf_buildsystem() {
+    PACKAGE_SRC_URL='https://download.netsurf-browser.org/libs/releases/buildsystem-1.10.tar.gz'
+    PACKAGE_SRC_SHA='3d3e39d569e44677c4b179129bde614c65798e2b3e6253160239d1fd6eae4d79'
+    PACKAGE_INSTALL='gmake install "PREFIX=$PACKAGE_INSTALL_DIR"'
+}
+
+install_the_given_package() {
+    unset PACKAGE_SRC_URL
+    unset PACKAGE_SRC_URI
+    unset PACKAGE_SRC_SHA
+
+    unset PACKAGE_DEP_PKG
+    unset PACKAGE_DEP_AUX
+
+    unset PACKAGE_DOPATCH
+    unset PACKAGE_INSTALL
+    unset PACKAGE_DOTWEAK
+
+    package_info_$1
+
+    ###########################################
+
+    for PACKAGE_DEPENDENCY in $PACKAGE_DEP_PKG
+    do
+        (install_the_given_package "$PACKAGE_DEPENDENCY")
+    done
+
+    ###########################################
+
+    if [ -f "$PACKAGE_INSTALL_ROOT/$1/receipt.txt" ] ; then
+        note "package '$1' already has been installed, skipped."
+        return 0
+    else
+        note "package '$1' is being installed."
+    fi
+
+    ###########################################
+
+    if [ -z "$PACKAGE_DEP_AUX" ] ; then
+        PACKAGE_DEP_AUX='gmake'
+    else
+        PACKAGE_DEP_AUX="gmake $PACKAGE_DEP_AUX"
+    fi
+
+    ###########################################
+
+    for UPPM_PACKAGE_NAME in $PACKAGE_DEP_AUX
+    do
+        run "$UPPM" install "$UPPM_PACKAGE_NAME" "$UPPM_INSTALL_ARGS"
+
+        UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
+
+        for i in bin sbin shared/aclocal
+        do
+            d="$UPPM_PACKAGE_INSTALLED_DIR/$i"
+
+            [ -d "$d" ] || continue
+
+            case $i in
+                bin|sbin)
+                    PATH="$d:$PATH"
+                    ;;
+                shared/aclocal)
+                    ACLOCAL_PATH="$d:$ACLOCAL_PATH"
+                    ;;
+            esac
+        done
+    done
+
+    ###########################################
+
+    PACKAGE_INSTALL_UTS="$(date +%s)"
+
+    PACKAGE_INSTALL_SHA="$(
+{
+    sha256sum <<EOF
+$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS
+EOF
+} | cut -d ' ' -f1)"
+
+    PACKAGE_INSTALL_DIR="$PACKAGE_INSTALL_ROOT/$PACKAGE_INSTALL_SHA"
+
+    ###########################################
+
+    for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
+    do
+        DEPENDENT_PACKAGE_INSTALLED_DIR="$PACKAGE_INSTALL_ROOT/$DEPENDENT_PACKAGE_NAME"
+
+        for i in bin sbin include lib lib/pkgconfig share/pkgconfig shared/aclocal
+        do
+            d="$DEPENDENT_PACKAGE_INSTALLED_DIR/$i"
+
+            [ -d "$d" ] || continue
+
+            case $i in
+                bin|sbin)
+                    PATH="$d:$PATH"
+                    ;;
+                include)
+                    CPPFLAGS="-I$d $CPPFLAGS"
+                    ;;
+                lib)
+                    LDFLAGS="-L$d -Wl,-rpath,$d $LDFLAGS"
+                    ;;
+                lib/pkgconfig)
+                    PKG_CONFIG_PATH="$d:$PKG_CONFIG_PATH"
+                    ;;
+                share/pkgconfig)
+                    PKG_CONFIG_PATH="$d:$PKG_CONFIG_PATH"
+                    ;;
+                shared/aclocal)
+                    ACLOCAL_PATH="$d:$ACLOCAL_PATH"
+                    ;;
+            esac
+        done
+    done
+
+    ###########################################
+
+    export ACLOCAL_PATH
+    export CPPFLAGS
+    export LDFLAGS="-Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
+
+    ###########################################
+
+    PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
+    PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
+    PACKAGE_SRC_FILEPATH="$DOWNLOAD_DIR/$PACKAGE_SRC_FILENAME"
+
+    ###########################################
+
+    wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+
+    PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
+
+    run install -d "$PACKAGE_WORKING_DIR"
+    run cd         "$PACKAGE_WORKING_DIR"
+
+    run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner
+
+    ###########################################
+
+    if [ -n  "$PACKAGE_DOPATCH" ] ; then
+        eval "$PACKAGE_DOPATCH"
+    fi
+
+    ###########################################
+
+    case "${PACKAGE_INSTALL%% *}" in
+        configure)
+            __update_gnu_config
+            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$NJOBS && run gmake install"
+            ;;
+        config)
+            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$NJOBS && run gmake install_sw"
+            ;;
+        perl)
+            PACKAGE_INSTALL="run   $PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$NJOBS && run gmake install && run install -d $PACKAGE_INSTALL_DIR"
+            ;;
+        cmake)
+            export CMAKE_GENERATOR='Unix Makefiles'
+            PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -S . -B build.d && run cmake --build build.d -- -j$NJOBS && run cmake --install build.d"
+            ;;
+        gmake)
+            PACKAGE_INSTALL="run $PACKAGE_INSTALL"
+            ;;
+    esac
+
+    export -p
+    eval "$PACKAGE_INSTALL"
+
+    ###########################################
+
+    run cd "$PACKAGE_INSTALL_DIR"
+
+    ###########################################
+
+    if [ -n  "$PACKAGE_DOTWEAK" ] ; then
+        eval "$PACKAGE_DOTWEAK"
+    fi
+
+    ###########################################
+
+    cat > toolchain.txt <<EOF
+     CC='$CC'
+    CXX='$CXX'
+     AS='$AS'
+     LD='$LD'
+     AR='$AR'
+ RANLIB='$RANLIB'
+SYSROOT='$SYSROOT'
+EOF
+
+    ###########################################
+
+    cat > receipt.txt <<EOF
+PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
+PACKAGE_SRC_URI='$PACKAGE_SRC_URI'
+PACKAGE_SRC_SHA='$PACKAGE_SRC_SHA'
+
+PACKAGE_DEP_PKG='$PACKAGE_DEP_PKG'
+PACKAGE_DEP_AUX='$PACKAGE_DEP_AUX'
+
+PACKAGE_DOPATCH='$PACKAGE_DOPATCH'
+PACKAGE_DOTWEAK='$PACKAGE_DOTWEAK'
+PACKAGE_INSTALL='$PACKAGE_INSTALL'
+PACKAGE_INSTALL_UTS='$PACKAGE_INSTALL_UTS'
+EOF
+
+    ###########################################
+
+    run cd "$PACKAGE_INSTALL_ROOT"
+    run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$1"
+}
+
+##################################################
+
+for FETCH_TOOL in curl wget
+do
+    if command -v "$FETCH_TOOL" > /dev/null ; then
+        break
+    else
+        unset FETCH_TOOL
+    fi
+done
+
+if [ -z "$FETCH_TOOL" ] ; then
+    abort 1 "neither curl nor wget was found, please install one of them then try again."
+fi
+
+##################################################
+
+unset NJOBS
+
+unset URLMAP
+
+unset SYSPM
+unset UPPM
+
+unset SESSION_DIR
+unset DOWNLOAD_DIR
+unset PACKAGE_INSTALL_ROOT
+
+while [ -n "$1" ]
+do
+    case $1 in
+        -j) shift
+            isInteger "$1" || abort 1 "-j <N>, <N> should be an integer."
+            NJOBS="$1"
+            ;;
+        --syspm)
+            shift
+            SYSPM="$1"
+            ;;
+        --uppm)
+            shift
+            UPPM="$1"
+            ;;
+        --urlmap)
+            shift
+            URLMAP="$1"
+            ;;
+        --prefix)
+            shift
+            PACKAGE_INSTALL_ROOT="$1"
+            ;;
+        --session-dir)
+            shift
+            SESSION_DIR="$1"
+            ;;
+        --download-dir)
+            shift
+            DOWNLOAD_DIR="$1"
+            ;;
+        --) shift
+            break
+            ;;
+        -)  abort 1 "unrecognized argument: $1"
+            ;;
+        *)  break
+    esac
+
+    shift
+done
+
+: "${PACKAGE_INSTALL_ROOT:="$HOME/.fpliu/native"}"
+: "${DOWNLOAD_DIR:="$HOME/.fpliu/downloads"}"
+: "${SESSION_DIR:="$HOME/.fpliu/run/$$"}"
+: "${UPPM:=uppm}"
+
+##################################################
+
+NATIVE_PLATFORM_TYPE="$(uname -s)"
+NATIVE_PLATFORM_ARCH="$(uname -m)"
+
+##################################################
+
+if [ -z "$NJOBS" ] ; then
+    if [ "$NATIVE_PLATFORM_TYPE" = Darwin ] ; then
+        NJOBS="$(sysctl -n machdep.cpu.thread_count)"
+    else
+        if command -v nproc > /dev/null ; then
+            NJOBS="$(nproc)"
+        else
+            NJOBS=1
+        fi
+    fi
+fi
+
+##################################################
+
+if [ -z "$UPPM_HOME" ] ; then
+    if [ -z "$HOME" ] ; then
+        abort 1 "HOME environment variable is not set."
+    else
+        export UPPM_HOME="$HOME/.uppm"
+    fi
+fi
+
+##################################################
+
+unset PKG_CONFIG_LIBDIR
+
+##################################################
+
+for PKGNAME in "$@"
+do
+    install_the_given_package "$PKGNAME"
+done
