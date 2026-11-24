@@ -249,7 +249,6 @@ wfetch() {
         if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
             if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
                 if [ "$(sha256sum_of_file "$FETCH_OUTPUT_FILEPATH")" = "$FETCH_SHA256_EXPECTED" ] ; then
-                    success "$FETCH_OUTPUT_FILEPATH already have been fetched."
                     return 0
                 fi
             fi
@@ -404,7 +403,7 @@ package_info_libz() {
     PACKAGE_SRC_URL='https://distfiles.macports.org/zlib/zlib-1.3.2.tar.xz'
     PACKAGE_SRC_SHA='d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3'
     PACKAGE_DEP_AUX='cmake'
-    PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_SHARED=ON'
+    PACKAGE_INSTALL='cmakew -DZLIB_BUILD_TESTING=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_SHARED=ON'
 }
 
 package_info_libopenssl() {
@@ -469,7 +468,7 @@ package_info_intltool() {
     PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
     PACKAGE_SRC_URI='https://distfiles.macports.org/intltool/intltool-0.51.0.tar.gz'
     PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
-    PACKAGE_DEP_PKG='perl-XML-Parser libexpat'
+    PACKAGE_DEP_PKG='perl_XML_Parser libexpat'
     PACKAGE_DEP_AUX='perl'
     PACKAGE_INSTALL='configure'
 }
@@ -485,9 +484,9 @@ run export EXPATINCPATH="$PACKAGE_INSTALL_ROOT/libexpat/include"
 run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
 '
     if [ "$NATIVE_PLATFORM_TYPE" = Darwin ] ; then
-        PACKAGE_INSTALL='perl Makefile.PL'
+        PACKAGE_INSTALL='perlmk'
     else
-        PACKAGE_INSTALL='perl Makefile.PL LDDLFLAGS="\"-shared -L$PACKAGE_INSTALL_ROOT/libexpat/lib -Wl,-rpath,$PACKAGE_INSTALL_ROOT/libexpat/lib\""'
+        PACKAGE_INSTALL='perlmk LDDLFLAGS="\"-shared -L$PACKAGE_INSTALL_ROOT/libexpat/lib -Wl,-rpath,$PACKAGE_INSTALL_ROOT/libexpat/lib\""'
     fi
 }
 
@@ -501,7 +500,7 @@ package_info_libxml2() {
     PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz'
     PACKAGE_SRC_SHA='78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07'
     PACKAGE_DEP_PKG='libz libiconv'
-    PACKAGE_DEP_AUX='doxygen'
+    PACKAGE_DEP_AUX='doxygen python3 pkg-config'
     PACKAGE_INSTALL='configure --with-legacy --with-zlib --with-python --with-iconv="$PACKAGE_INSTALL_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
 }
 
@@ -536,8 +535,49 @@ package_info_autoconf_archive() {
 package_info_netsurf_buildsystem() {
     PACKAGE_SRC_URL='https://download.netsurf-browser.org/libs/releases/buildsystem-1.10.tar.gz'
     PACKAGE_SRC_SHA='3d3e39d569e44677c4b179129bde614c65798e2b3e6253160239d1fd6eae4d79'
-    PACKAGE_INSTALL='gmake install "PREFIX=$PACKAGE_INSTALL_DIR"'
+    PACKAGE_INSTALL='gmakew install "PREFIX=$PACKAGE_INSTALL_DIR"'
 }
+
+############################################################################
+
+configure() {
+    __update_gnu_config
+
+    run ./configure "--prefix=$PACKAGE_INSTALL_DIR" "$@"
+    run "$GMAKE" "--jobs=$NJOBS"
+    run "$GMAKE" install
+}
+
+config() {
+    run ./config "--prefix=$PACKAGE_INSTALL_DIR" "$@"
+    run "$GMAKE" "--jobs=$NJOBS"
+    run "$GMAKE" install_sw
+}
+
+perlmk() {
+    run perl Makefile.PL "--prefix=$PACKAGE_INSTALL_DIR" "$@"
+    run "$GMAKE" "--jobs=$NJOBS"
+    run "$GMAKE" install
+    run install -d "$PACKAGE_INSTALL_DIR"
+}
+
+cmakew() {
+    export CMAKE_GENERATOR='Unix Makefiles'
+
+    if [ -z "$CMAKE" ] ; then
+        CMAKE="$(command -v cmake)" || abort 1 'command not found: cmake'
+    fi
+
+    run "$CMAKE" -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release "$@" -S . -B build.d
+    run "$CMAKE" --build   build.d -- -j$NJOBS
+    run "$CMAKE" --install build.d
+}
+
+gmakew() {
+    run "$GMAKE" "$@"
+}
+
+############################################################################
 
 install_the_given_package() {
     unset PACKAGE_SRC_URL
@@ -673,48 +713,31 @@ EOF
 
     run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner
 
-    ###########################################
+    ##############################
 
     if [ -n  "$PACKAGE_DOPATCH" ] ; then
         eval "$PACKAGE_DOPATCH"
     fi
 
-    ###########################################
+    ##############################
 
-    case "${PACKAGE_INSTALL%% *}" in
-        configure)
-            __update_gnu_config
-            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$NJOBS && run gmake install"
-            ;;
-        config)
-            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$NJOBS && run gmake install_sw"
-            ;;
-        perl)
-            PACKAGE_INSTALL="run   $PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$NJOBS && run gmake install && run install -d $PACKAGE_INSTALL_DIR"
-            ;;
-        cmake)
-            export CMAKE_GENERATOR='Unix Makefiles'
-            PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -S . -B build.d && run cmake --build build.d -- -j$NJOBS && run cmake --install build.d"
-            ;;
-        gmake)
-            PACKAGE_INSTALL="run $PACKAGE_INSTALL"
-            ;;
-    esac
+    if [ -z "$GMAKE" ] ; then
+        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
+    fi
 
-    export -p
+    ##############################
+
     eval "$PACKAGE_INSTALL"
-
-    ###########################################
 
     run cd "$PACKAGE_INSTALL_DIR"
 
-    ###########################################
+    ##############################
 
     if [ -n  "$PACKAGE_DOTWEAK" ] ; then
         eval "$PACKAGE_DOTWEAK"
     fi
 
-    ###########################################
+    ##############################
 
     cat > toolchain.txt <<EOF
      CC='$CC'
@@ -726,7 +749,7 @@ EOF
 SYSROOT='$SYSROOT'
 EOF
 
-    ###########################################
+    ##############################
 
     cat > receipt.txt <<EOF
 PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
@@ -742,10 +765,12 @@ PACKAGE_INSTALL='$PACKAGE_INSTALL'
 PACKAGE_INSTALL_UTS='$PACKAGE_INSTALL_UTS'
 EOF
 
-    ###########################################
+    ##############################
 
     run cd "$PACKAGE_INSTALL_ROOT"
     run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$1"
+
+    success "package '$1' has been successfully installed."
 }
 
 ##################################################
