@@ -29,52 +29,57 @@
 ##############################################################################
 # {{{ utils
 
-COLOR_RED='\033[0;31m'          # Red
-COLOR_GREEN='\033[0;32m'        # Green
-COLOR_YELLOW='\033[0;33m'       # Yellow
-COLOR_BLUE='\033[0;94m'         # Blue
-COLOR_PURPLE='\033[0;35m'       # Purple
-COLOR_OFF='\033[0m'             # Reset
-
-print() {
-    printf '%b' "$*"
-}
+COLOR_RED='\033[0;31m'
+COLOR_GREEN='\033[0;32m'
+COLOR_YELLOW='\033[0;33m'
+COLOR_BLUE='\033[0;94m'
+COLOR_PURPLE='\033[0;35m'
+COLOR_OFF='\033[0m'
 
 echo() {
     printf '%b\n' "$*"
 }
 
 note() {
-    printf '%b\n' "${COLOR_YELLOW}🔔  $*${COLOR_OFF}" >&2
+    printf '%b\n' "🔔  ${COLOR_YELLOW}$*${COLOR_OFF}" >&2
 }
 
 warn() {
-    printf '%b\n' "${COLOR_YELLOW}⚠️  $*${COLOR_OFF}" >&2
+    printf '%b\n' "⚠️   ${COLOR_YELLOW}$*${COLOR_OFF}" >&2
 }
 
 success() {
-    printf '%b\n' "${COLOR_GREEN}✅️  $*${COLOR_OFF}" >&2
+    printf '%b\n' "✅  ${COLOR_GREEN}$*${COLOR_OFF}" >&2
 }
 
 error() {
-    printf '%b\n' "${COLOR_RED}💔  ndk-pkg: $*${COLOR_OFF}" >&2
+    printf '%b\n' "💔  ${COLOR_RED}$*${COLOR_OFF}" >&2
 }
 
 abort() {
     EXIT_STATUS_CODE="$1"
     shift
-    printf '%b\n' "${COLOR_RED}💔  ndk-pkg: $*${COLOR_OFF}" >&2
+    printf '%b\n' "💔  ${COLOR_RED}$*${COLOR_OFF}" >&2
     exit "$EXIT_STATUS_CODE"
+}
+
+turn() {
+    if [ "$1" = on ] ; then
+        shift
+        printf '%b\n' "✅  ${COLOR_GREEN}$*${COLOR_OFF}" >&2
+    else
+        shift
+        printf '%b\n' "❌️  ${COLOR_RED}$*${COLOR_OFF}" >&2
+    fi
 }
 
 step() {
     STEP_NUM=$((${STEP_NUM:-0} + 1))
-    STEP_MESSAGE="$*"
-    printf '\n%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : ${STEP_MESSAGE} ${COLOR_OFF}"
+    printf '\n%b\n' "${COLOR_PURPLE}=>> STEP ${STEP_NUM} : $*${COLOR_OFF}" >&2
 }
 
 run() {
-    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}"
+    echo "${COLOR_PURPLE}==>${COLOR_OFF} ${COLOR_GREEN}$@${COLOR_OFF}" >&2
     eval "$@"
 }
 
@@ -306,7 +311,7 @@ wfetch() {
 
     unset PKGNAME
 
-    [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
+    [ -z "$1" ] && abort 1 'wfetch <URL> [OPTION]... , <URL> must be non-empty.'
 
     FETCH_URL="$1"
 
@@ -323,14 +328,14 @@ wfetch() {
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "wfetch <URL> -o <PATH> , <PATH> must be non-empty."
+                    abort 1 'wfetch <URL> -o <PATH> , <PATH> must be non-empty.'
                 else
                     FETCH_PATH="$1"
                 fi
                 ;;
             -p) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "wfetch <URL> -p <PKGNAME> , <PKGNAME> must be non-empty."
+                    abort 1 'wfetch <URL> -p <PKGNAME> , <PKGNAME> must be non-empty.'
                 else
                     PKGNAME="$1"
                 fi
@@ -397,7 +402,7 @@ wfetch() {
     done
 
     if [ -z "$FETCH_TOOL" ] ; then
-        abort 1 "none of curl wget http aria2c axel command was found, please install one of them then try again."
+        abort 1 'none of curl wget http aria2c axel command was found, please install one of them then try again.'
     fi
 
     if [                -n "$FETCH_OUTPUT_DIR" ] ; then
@@ -590,9 +595,9 @@ version_match() {
 # {{{ ndk-pkg formula-set <PACKAGE-NAME> <KEY> <VALUE>
 
 __formula_mapping_set() {
-    [ -z "$1" ] && abort 1 "please specify the package name."
-    [ -z "$2" ] && abort 1 "please specify the key."
-    [ -z "$3" ] && abort 1 "please specify the value."
+    [ -z "$1" ] && abort 1 'please specify the package name.'
+    [ -z "$2" ] && abort 1 'please specify the key.'
+    [ -z "$3" ] && abort 1 'please specify the value.'
 
     FORMULA_FILEPATH="$(__path_of_formula_of_the_given_package "$1")"
 
@@ -676,8 +681,8 @@ __formula_mapping_set() {
 
 # __create_a_formula_repository <REPO-NAME> <REPO-URL> [--branch=VALUE --pin/--unpin --enable/--disable --sync]
   __create_a_formula_repository() {
-    [ -z "$1" ] && abort 1 "please specify a repository name."
-    [ -z "$2" ] && abort 1 "please specify a repository url."
+    [ -z "$1" ] && abort 1 'please specify a repository name.'
+    [ -z "$2" ] && abort 1 'please specify a repository url.'
 
     FORMULA_REPO_NAME="$1"
     FORMULA_REPO_URL="$2"
@@ -767,7 +772,7 @@ EOF
 
 # __delete_a_formula_repository <REPO-NAME>
   __delete_a_formula_repository() {
-    [ -z "$1" ] && abort 1 "please specify a repository name."
+    [ -z "$1" ] && abort 1 'please specify a repository name.'
 
     [ "$1" = 'official-core' ] && abort 1 "formula repository 'official-core' is not allowed to delete."
 
@@ -784,7 +789,7 @@ EOF
 
 # __sync_the_given_formula_repository <REPO-NAME>
   __sync_the_given_formula_repository() {
-    [ -z "$1" ] && abort 1 "please specify a repository name."
+    [ -z "$1" ] && abort 1 'please specify a repository name.'
 
     __load_formula_repository_config "$1"
 
@@ -819,8 +824,8 @@ EOF
 
 # __conf_the_given_formula_repository <REPO-NAME> [--url=VALUE --branch=VALUE --pin/--unpin --enable/--disable]
   __conf_the_given_formula_repository() {
-    [ -z "$1" ] && abort 1 "please specify a repository name."
-    [ -z "$2" ] && abort 1 "at least one option should be given. supported options are: --url=VALUE --branch=VALUE --pin/--unpin --enable/--disable"
+    [ -z "$1" ] && abort 1 'please specify a repository name.'
+    [ -z "$2" ] && abort 1 'at least one option should be given. supported options are: --url=VALUE --branch=VALUE --pin/--unpin --enable/--disable'
 
     __load_formula_repository_config "$1"
 
@@ -833,7 +838,7 @@ EOF
                 FORMULA_REPO_URL="${1#*=}"
 
                 if [ -z "$FORMULA_REPO_URL" ] ; then
-                    abort 1 "--url=<VALUE> , <VALUE> should be non-empty."
+                    abort 1 '--url=<VALUE> , <VALUE> should be non-empty.'
                 else
                     FORMULA_REPO_URL="$FORMULA_REPO_URL"
                 fi
@@ -842,7 +847,7 @@ EOF
                 FORMULA_REPO_BRANCH="${1#*=}"
 
                 if [ -z "$FORMULA_REPO_BRANCH" ] ; then
-                    abort 1 "--branch=<VALUE> , <VALUE> should be non-empty."
+                    abort 1 '--branch=<VALUE> , <VALUE> should be non-empty.'
                 else
                     FORMULA_REPO_BRANCH="$FORMULA_REPO_BRANCH"
                 fi
@@ -890,7 +895,7 @@ fi
 
 # __info_the_given_formula_repository <REPO-NAME>
   __info_the_given_formula_repository() {
-    [ -z "$1" ] && abort 1 "please specify a repository name."
+    [ -z "$1" ] && abort 1 'please specify a repository name.'
 
     __load_formula_repository_config "$1"
 
@@ -961,7 +966,7 @@ __list_available_formula_repositories() {
 
 # __path_of_formula_of_the_given_package <PACKAGE-NAME>
   __path_of_formula_of_the_given_package() {
-    [ -z "$1" ] && abort 1 "__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
+    [ -z "$1" ] && abort 1 '__path_of_formula_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified.'
 
     if [ -n "$NDKPKG_FORMULA_DIRS" ] ; then
         export IFS=':'
@@ -1032,7 +1037,7 @@ filetype_from_url() {
 # __load_formula_of_the_given_package <PACKAGE-NAME> [FORMULA-FILEPATH]
   __load_formula_of_the_given_package() {
     if [ -z "$1" ] ; then
-        abort 1 "__load_formula_of_the_given_package <PACKAGE-NAME> [FORMULA-FILEPATH], <PACKAGE-NAME> is unspecified."
+        abort 1 '__load_formula_of_the_given_package <PACKAGE-NAME> [FORMULA-FILEPATH], <PACKAGE-NAME> is unspecified.'
     else
         PACKAGE_NAME="$1"
         PACKAGE_NAME_UPPERCASE_UNDERSCORE=$(printf '%s\n' "$PACKAGE_NAME" | tr a-z A-Z | tr '@+-.' '_')
@@ -1293,11 +1298,11 @@ filetype_from_url() {
     fi
 
     if [ -n "$PACKAGE_GIT_NTH" ] ; then
-        isInteger "$PACKAGE_GIT_NTH" || abort "the value of git-nth mapping should be an integer."
+        isInteger "$PACKAGE_GIT_NTH" || abort 'the value of git-nth mapping should be an integer.'
     fi
 
     if [ -n "$PACKAGE_API_MIN" ] ; then
-        isInteger "$PACKAGE_API_MIN" || abort "the value of api-min mapping should be an integer."
+        isInteger "$PACKAGE_API_MIN" || abort 'the value of api-min mapping should be an integer.'
     fi
 
     #########################################################################################
@@ -1920,7 +1925,7 @@ filetype_from_url() {
     [ -z "$RECEIPT_PACKAGE_BUILTBY" ] && abort 1 "receipt scheme error. builtby mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
     [ -z "$RECEIPT_PACKAGE_BUILTAT" ] && abort 1 "receipt scheme error. builtat mapping was not found in $PACKAGE_RECEIPT_FILEPATH."
 
-    [ "${#RECEIPT_PACKAGE_BUILTAT}" -eq 10 ] || abort 1 "receipt scheme error. builtat mapping's value length must be 10."
+    [ "${#RECEIPT_PACKAGE_BUILTAT}" -eq 10 ] || abort 1 'receipt scheme error. builtat mapping value length must be 10.'
 
     if [ "${PACKAGE_SPEC#*/}" != "$RECEIPT_PACKAGE_PKGNAME" ] ; then
         error "$PACKAGE_RECEIPT_FILEPATH is broken. value of RECEIPT_PACKAGE_PKGNAME does not identical with your request: ${PACKAGE_SPEC#*/}"
@@ -1981,13 +1986,13 @@ filetype_from_url() {
 # is_package_available automake
 is_package_available() {
     case $# in
-        0)  abort 1 "package name is unspecified." ;;
+        0)  abort 1 'package name is unspecified.' ;;
         1)  [ -n "$(__path_of_formula_of_the_given_package "$1")" ] ;;
         3)  __load_formula_of_the_given_package "$1"
             shift
             version_match "$PACKAGE_VERSION" "$@"
             ;;
-        *)  abort 1 "is available command only accept 1 or 3 argument."
+        *)  abort 1 'is available command only accept 1 or 3 argument.'
     esac
 }
 
@@ -2131,7 +2136,7 @@ __list__outdated_packages() {
 # {{{ ndk-pkg search <REGULAR-EXPRESSION-PATTERN> [-v]
 
 __search_packages() {
-    [ -z "$1" ] && abort 1 "please specify a regular express partten."
+    [ -z "$1" ] && abort 1 'please specify a regular expression pattern.'
 
     AVAILABLE_PACKAGE_NAMES_ALL="$(__list_available_package_names)"
 
@@ -2676,7 +2681,7 @@ EOF
 
 __fetch_resources_of_the_given_package() {
     if [ -z "$1" ] ; then
-        abort 1 "__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified."
+        abort 1 '__fetch_resources_of_the_given_package <PACKAGE-NAME>, <PACKAGE-NAME> is unspecified.'
     fi
 
     __load_formula_of_the_given_package "$1"
@@ -3334,7 +3339,7 @@ EOF
 
     SESSION_DIR="$NDKPKG_HOME/run/$$"
 
-    step "create the session directory and change to it"
+    step 'create the session directory and change to it'
     run rm -rf     "$SESSION_DIR"
     run install -d "$SESSION_DIR"
     run cd         "$SESSION_DIR"
@@ -3405,7 +3410,7 @@ EOF
 
     #########################################################################################
 
-    step "create META-INF"
+    step 'create META-INF'
     run cp -r "$PACKAGE_INSTALLED_DIR/.ndk-pkg" META-INF
     cat > META-INF/README.ndk-pkg <<EOF
 packed by ndk-pkg-$NDKPKG_VERSION in $(date -u -d "@$TIMESTAMP_UNIX" '+%Y-%m-%d %H:%M:%SZ')
@@ -3420,7 +3425,7 @@ EOF
     # java package name characters [a-z0-9_.]
     JAVA_PACKAGE_NAME="$(printf '%s\n' "$PREFAB_PACKAGE_NAME" | tr '+-.' '_' | tr A-Z a-z)"
 
-    step "create AndroidManifest.xml"
+    step 'create AndroidManifest.xml'
     tee AndroidManifest.xml <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
@@ -3434,7 +3439,7 @@ EOF
 
     #########################################################################################
 
-    step "create the header-only module"
+    step 'create the header-only module'
     run install -d prefab/modules/headers
     run cp -r "$PACKAGE_INCLUDE_DIR" prefab/modules/headers/
 
@@ -3554,10 +3559,10 @@ EOF
 
     #########################################################################################
 
-    step "packing the prefab aar file"
+    step 'packing the prefab aar file'
     run zip -9 -r prefab.aar .
 
-    step "show size of the prefab aar file"
+    step 'show size of the prefab aar file'
     run du -sh prefab.aar
 
     ###########################################################################################
@@ -3584,31 +3589,31 @@ rm -rf $SESSION_DIR\n"
     OUTPUT_DIR="$(dirname "$OUTPUT_PATH")"
 
     if [ ! -d "$OUTPUT_DIR" ] ; then
-        step "create the output directory"
+        step 'create the output directory'
         run install -d "$OUTPUT_DIR"
     fi
 
     ###########################################################################################
 
-    step "rename prefab aar"
+    step 'rename prefab aar'
     DEFAULT_OUTPUT_FILENAME="$PREFAB_PACKAGE_NAME-$RECEIPT_PACKAGE_VERSION-android-$TARGET_PLATFORM_VERS-$(printf '%s\n' "$TARGET_PLATFORM_ABIS" | tr ' ' '+').aar"
     run mv prefab.aar "$DEFAULT_OUTPUT_FILENAME"
 
     ###########################################################################################
 
-    step "back to origin directory"
+    step 'go back to the origin directory'
     run cd -
 
     ###########################################################################################
 
-    step "move prefab aar file to destination"
+    step 'move prefab aar file to destination'
     run mv "$SESSION_DIR/$DEFAULT_OUTPUT_FILENAME" "$OUTPUT_PATH"
 
     if [ "$REQUEST_TO_KEEP_SESSION_DIR" = 1 ] ; then
         echo
         note "the session directory '$SESSION_DIR' is not deleted as -K option is specified."
     else
-        step "delete the session directory"
+        step 'delete the session directory'
         run rm -rf "$SESSION_DIR"
     fi
 }
@@ -3671,11 +3676,11 @@ rm -rf $SESSION_DIR\n"
 
     if [ "$DEPLOYED_TO_SONATYPE_OSSRH" = 1 ] ; then
         if [ -z "$RECEIPT_PACKAGE_LICENSE" ] ; then
-            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_LICENSE is empty."
+            abort 1 'can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_LICENSE is empty.'
         fi
 
         if [ -z "$RECEIPT_PACKAGE_GIT_URL" ] ; then
-            abort 1 "can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_GIT_URL is empty."
+            abort 1 'can not be deployed to Sonatype OSSRH due to RECEIPT_PACKAGE_GIT_URL is empty.'
         fi
 
         if [ -n "$DEPLOYED_TO_LOCAL_PATH" ] ; then
@@ -3689,7 +3694,7 @@ rm -rf $SESSION_DIR\n"
 
     #########################################################################################
 
-    step "generating POM file"
+    step 'generating POM file'
 
     cat > pom.xml <<EOF
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -3791,7 +3796,7 @@ EOF
         unset SERVER_PASSWORD
         unset GPG_PASSPHRASE
 
-        step "read config from stdin"
+        step 'read config from stdin'
         while read -r LINE
         do
             case $LINE in
@@ -3803,11 +3808,11 @@ EOF
             esac
         done
 
-        [ -z "$SERVER_ID" ]       && abort 1 "SERVER_ID must not be enpty."
-        [ -z "$SERVER_URL" ]      && abort 1 "SERVER_URL must not be enpty."
-        [ -z "$SERVER_USERNAME" ] && abort 1 "SERVER_USERNAME must not be enpty."
-        [ -z "$SERVER_PASSWORD" ] && abort 1 "SERVER_PASSWORD must not be enpty."
-        [ -z "$GPG_PASSPHRASE"  ] && abort 1 "GPG_PASSPHRASE must not be enpty."
+        [ -z "$SERVER_ID" ]       && abort 1 'SERVER_ID must not be enpty.'
+        [ -z "$SERVER_URL" ]      && abort 1 'SERVER_URL must not be enpty.'
+        [ -z "$SERVER_USERNAME" ] && abort 1 'SERVER_USERNAME must not be enpty.'
+        [ -z "$SERVER_PASSWORD" ] && abort 1 'SERVER_PASSWORD must not be enpty.'
+        [ -z "$GPG_PASSPHRASE"  ] && abort 1 'GPG_PASSPHRASE must not be enpty.'
 
         #########################################################################################
 
@@ -3818,7 +3823,7 @@ EOF
         trap on_exit_deploy EXIT
 
         # https://maven.apache.org/plugins/maven-gpg-plugin/usage.html
-        step "generating settings.xml"
+        step 'generating settings.xml'
         cat > settings.xml <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -3883,7 +3888,7 @@ rm -rf $SESSION_DIR\n"
 
     #########################################################################################
 
-    step "deploying"
+    step 'deploying'
     run "$MVN $MVN_ARGS"
 
     #########################################################################################
@@ -3896,7 +3901,7 @@ rm -rf $SESSION_DIR\n"
         printf '\n'
         note "the session directory '$SESSION_DIR' is not deleted as -K option is given."
     else
-        step "delete the session directory"
+        step 'delete the session directory'
         run rm -rf "$SESSION_DIR"
     fi
 
@@ -3972,7 +3977,7 @@ ${COLOR_RED}Caveat: If you link a shared library that depends on libc++_shared.s
 # {{{ ndk-pkg cleanup
 
 __cleanup() {
-    success "Done."
+    success 'Done.'
 }
 
 # }}}
@@ -3981,7 +3986,7 @@ __cleanup() {
 
 # __upgrade_self <URL>
   __upgrade_self() {
-    [ -z "$1" ] && abort 1 "__upgrade_self <URL> , <URL> must be non-empty."
+    [ -z "$1" ] && abort 1 '__upgrade_self <URL> , <URL> must be non-empty.'
 
     unset CURRENT_SCRIPT_REALPATH
 
@@ -4024,7 +4029,7 @@ __cleanup() {
 
 # __integrate_zsh_completions <URL> [--output-dir=<DIR>]
   __integrate_zsh_completions() {
-    [ -z "$1" ] && abort 1 "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <URL> must be non-empty."
+    [ -z "$1" ] && abort 1 '__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <URL> must be non-empty.'
 
     ZSH_COMPLETIONS_SCRIPT_URL="$1"
 
@@ -4039,7 +4044,7 @@ __cleanup() {
                 OUTPUT_DIR="${1#*=}"
 
                 case $OUTPUT_DIR in
-                    '')   abort 1 "__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <DIR> must be a non-empty string." ;;
+                    '')   abort 1 '__integrate_zsh_completions <URL> [--output-dir=<DIR>] , <DIR> must be a non-empty string.' ;;
                     \~)   OUTPUT_DIR="$HOME" ;;
                     \~/)  OUTPUT_DIR="$HOME" ;;
                     \~/.) OUTPUT_DIR="$HOME" ;;
@@ -4476,7 +4481,7 @@ $LINES
 # {{{ ndk-pkg uninstall
 
 __uninstall_the_given_packages() {
-    [ -z "$1" ] && abort 1 "neither package-name nor package-spec is specified."
+    [ -z "$1" ] && abort 1 'neither package-name nor package-spec is specified.'
 
     unset PACKAGE_SPECS
 
@@ -4517,7 +4522,7 @@ __uninstall_the_given_packages() {
 __reinstall_the_given_packages() {
     inspect_install_arguments "$@"
 
-    [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 "neither package-name nor package-spec is specified."
+    [ -z "$SPECIFIED_PACKAGE_SPEC_LIST" ] && abort 1 'neither package-name nor package-spec is specified.'
 
     #########################################################################################
 
@@ -4794,7 +4799,7 @@ __upgrade_packages() {
 # inspect_package_spec <PACKAGE-NAME|PACKAGE-SPEC>
   inspect_package_spec() {
     case $1 in
-        '') abort 1 "neither package-name nor package-spec is specified."
+        '') abort 1 'neither package-name nor package-spec is specified.'
             ;;
         */*)
             case $1 in
@@ -4855,7 +4860,7 @@ __upgrade_packages() {
 # inspect_package_spec_list <PACKAGE-NAME | PACKAGE-SPECS> [USER-SPECIFIED-TARGET]
   inspect_package_spec_list() {
     case $1 in
-        '') abort 1 "neither package-name nor package-specs is specified."
+        '') abort 1 'neither package-name nor package-specs is specified.'
             ;;
         */*)
             PACKAGE_NAME="${1##*/}"
@@ -5110,7 +5115,7 @@ inspect_install_arguments() {
                 ENABLE_STRIP="${1#*=}"
                 case $ENABLE_STRIP in
                     no|all|debug|unneeded) ;;
-                    *)  abort 1 "--strip=<VALUE>, VALUE must be one of no, all, debug, unneeded"
+                    *)  abort 1 '--strip=<VALUE>, VALUE must be one of no, all, debug, unneeded'
                 esac
                 ;;
             --target=*)
@@ -5119,9 +5124,9 @@ inspect_install_arguments() {
             --profile=*)
                 PROFILE="${1#*=}"
                 case $PROFILE in
-                    '') abort 1 "--profile=<VALUE>, VALUE should not be empty." ;;
+                    '') abort 1 '--profile=<VALUE>, VALUE should not be empty.' ;;
                     debug|release) ;;
-                    *)  abort 1 "--profile=<VALUE>, VALUE must be either debug or release" ;;
+                    *)  abort 1 '--profile=<VALUE>, VALUE must be either debug or release' ;;
                 esac
                 ;;
             --ndk-home=*)
@@ -5141,11 +5146,11 @@ inspect_install_arguments() {
                 REQUEST_TO_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE=1
                 ;;
             -j) shift
-                isInteger "$1" || abort 1 "-j <N>, <N> must be an integer."
+                isInteger "$1" || abort 1 '-j <N>, <N> must be an integer.'
                 BUILD_NJOBS="$1"
                 ;;
             -I) shift
-                [ -z "$1" ] && abort 1 "-I <FORMULA-SEARCH-DIR> , <FORMULA-SEARCH-DIR> is unspecified."
+                [ -z "$1" ] && abort 1 '-I <FORMULA-SEARCH-DIR> , <FORMULA-SEARCH-DIR> is unspecified.'
                 [ -e "$1" ] || abort 1 "'$1' was expected to be exist, but it was not."
                 [ -d "$1" ] || abort 1 "'$1' was expected to be a directory, but it was not."
                 FORMULA_SEARCH_DIR="$(realpath "$1")"
@@ -5436,377 +5441,6 @@ __update_gnu_config() {
     done
 }
 
-# should run in subshell
-install_the_given_native_package() {
-    [ -z "$1" ] && abort 1 "install_the_given_native_package <PACKAGE-NAME> , <PACKAGE-NAME> is unspecified."
-
-    unset PACKAGE_SRC_URL
-    unset PACKAGE_SRC_URI
-    unset PACKAGE_SRC_SHA
-
-    unset PACKAGE_DEP_PKG
-    unset PACKAGE_DEP_AUX
-
-    unset PACKAGE_DOPATCH
-    unset PACKAGE_INSTALL
-    unset PACKAGE_DOTWEAK
-
-    if [ "$1" = 'perl-XML-Parser' ] ; then
-        native_package_info_perl_XML_Parser
-    else
-        native_package_info_$1
-    fi
-
-    ###########################################
-
-    for PACKAGE_DEPENDENCY in $PACKAGE_DEP_PKG
-    do
-        (install_the_given_native_package "$PACKAGE_DEPENDENCY")
-    done
-
-    ###########################################
-
-    printf '\n%b\n' "${COLOR_PURPLE}=>> install native package : $1${COLOR_OFF}"
-
-    if [ -f "$NATIVE_PACKAGE_INSTALLED_ROOT/$1/receipt.txt" ] ; then
-        note "native package '$1' already has been installed, skipped."
-        return 0
-    fi
-
-    ###########################################
-
-    if [ -z "$PACKAGE_DEP_AUX" ] ; then
-        PACKAGE_DEP_AUX='gmake'
-    else
-        PACKAGE_DEP_AUX="gmake $PACKAGE_DEP_AUX"
-    fi
-
-    ###########################################
-
-    for UPPM_PACKAGE_NAME in $PACKAGE_DEP_AUX
-    do
-        run "$UPPM" install "$UPPM_PACKAGE_NAME" "$UPPM_INSTALL_ARGS"
-
-        UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
-
-        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-            PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
-        fi
-
-        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-            PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-        fi
-    done
-
-    ###########################################
-
-    PACKAGE_INSTALL_UTS=
-    PACKAGE_INSTALL_UTS="$(date +%s)"
-
-    PACKAGE_INSTALL_SHA=
-    PACKAGE_INSTALL_SHA="$(
-{
-    sha256sum <<EOF
-$1:$PACKAGE_SRC_URL:$$:$PACKAGE_INSTALL_UTS
-EOF
-} | cut -d ' ' -f1)"
-
-    ###########################################
-
-    PACKAGE_INSTALL_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$PACKAGE_INSTALL_SHA"
-
-    PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
-    PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
-    PACKAGE_SRC_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$PACKAGE_SRC_FILENAME"
-
-    PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
-
-    ###########################################
-
-    # override the default search directory (usually /usr/lib/pkgconfig:/usr/share/pkgconfig)
-    # because we only want to use our own
-    export PKG_CONFIG_LIBDIR="$PACKAGE_WORKING_DIR/lib/pkgconfig"
-    export PKG_CONFIG_PATH="$PACKAGE_WORKING_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
-    export ACLOCAL_PATH="$PACKAGE_WORKING_DIR/share/aclocal"
-    export CPPFLAGS="-I$PACKAGE_WORKING_DIR/include $CPPFLAGS"
-    export LDFLAGS="-L$PACKAGE_WORKING_DIR/lib -Wl,-rpath,$PACKAGE_INSTALL_DIR/lib $LDFLAGS"
-
-    for DEPENDENT_PACKAGE_NAME in $PACKAGE_DEP_PKG
-    do
-        DEPENDENT_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME"
-
-        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/include" ] ; then
-            CPPFLAGS="-I$DEPENDENT_PACKAGE_INSTALLED_DIR/include $CPPFLAGS"
-        fi
-
-        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/lib" ] ; then
-            LDFLAGS="-L$DEPENDENT_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$DEPENDENT_PACKAGE_INSTALLED_DIR/lib $LDFLAGS"
-        fi
-
-        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/bin" ] ; then
-            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/bin:$PATH"
-        fi
-
-        if [ -d  "$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-            PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-        fi
-
-        if [ -d          "$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-            ACLOCAL_PATH="$DEPENDENT_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-        fi
-
-        for d in lib share
-        do
-            DEPENDENT_PACKAGE_PKGCONF_DIR="$DEPENDENT_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
-
-            if [ -d "$DEPENDENT_PACKAGE_PKGCONF_DIR" ] ; then
-                PKG_CONFIG_PATH="$DEPENDENT_PACKAGE_PKGCONF_DIR:$PKG_CONFIG_PATH"
-                break
-            fi
-        done
-    done
-
-    ###########################################
-
-    wfetch "$PACKAGE_SRC_URL" --uri="$PACKAGE_SRC_URI" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
-
-    run install -d "$PACKAGE_WORKING_DIR/src"
-    run cd         "$PACKAGE_WORKING_DIR/src"
-
-    run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner
-
-    ###########################################
-
-    if [ -n  "$PACKAGE_DOPATCH" ] ; then
-        eval "$PACKAGE_DOPATCH"
-    fi
-
-    ###########################################
-
-    if [ -z "$PACKAGE_INSTALL" ] ; then
-        abort 1 "PACKAGE_INSTALL variable is not set for native package '$1'"
-    fi
-
-    case "${PACKAGE_INSTALL%% *}" in
-        configure)
-            __update_gnu_config
-            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install"
-            ;;
-        config)
-            PACKAGE_INSTALL="run ./$PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install_sw"
-            ;;
-        perl)
-            PACKAGE_INSTALL="run   $PACKAGE_INSTALL --prefix=$PACKAGE_INSTALL_DIR && run gmake --jobs=$BUILD_NJOBS && run gmake install && run install -d $PACKAGE_INSTALL_DIR"
-            ;;
-        cmake)
-            export CMAKE_GENERATOR='Unix Makefiles'
-            PACKAGE_INSTALL="run $PACKAGE_INSTALL -DCMAKE_INSTALL_PREFIX=$PACKAGE_INSTALL_DIR -DENABLE_TESTING=OFF -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -S . -B build.d && run cmake --build build.d -- -j$BUILD_NJOBS && run cmake --install build.d"
-            ;;
-        gmake)
-            PACKAGE_INSTALL="run $PACKAGE_INSTALL"
-            ;;
-    esac
-
-    eval "$PACKAGE_INSTALL"
-
-    ###########################################
-
-    run cd "$PACKAGE_INSTALL_DIR"
-
-    ###########################################
-
-    if [ -n  "$PACKAGE_DOTWEAK" ] ; then
-        eval "$PACKAGE_DOTWEAK"
-    fi
-
-    ###########################################
-
-    cat > buildon.yml <<EOF
-os-arch: $NATIVE_PLATFORM_ARCH
-os-type: $NATIVE_PLATFORM_TYPE
-os-libc: $NATIVE_PLATFORM_LIBC
-os-name: $NATIVE_PLATFORM_NAME
-os-vers: $NATIVE_PLATFORM_VERS
-os-ncpu: $NATIVE_PLATFORM_NCPU
-os-euid: $NATIVE_PLATFORM_EUID
-os-egid: $NATIVE_PLATFORM_EGID
-EOF
-
-    ###########################################
-
-    cat > toolchain.txt <<EOF
-     CC='$CC'
-    CXX='$CXX'
-     AS='$AS'
-     LD='$LD'
-     AR='$AR'
- RANLIB='$RANLIB'
-SYSROOT='$SYSROOT'
-EOF
-
-    ###########################################
-
-    cat > receipt.txt <<EOF
-PACKAGE_SRC_URL='$PACKAGE_SRC_URL'
-PACKAGE_SRC_URI='$PACKAGE_SRC_URI'
-PACKAGE_SRC_SHA='$PACKAGE_SRC_SHA'
-
-PACKAGE_DEP_PKG='$PACKAGE_DEP_PKG'
-PACKAGE_DEP_AUX='$PACKAGE_DEP_AUX'
-
-PACKAGE_DOPATCH='$PACKAGE_DOPATCH'
-PACKAGE_DOTWEAK='$PACKAGE_DOTWEAK'
-PACKAGE_INSTALL='$PACKAGE_INSTALL'
-PACKAGE_INSTALL_UTS='$PACKAGE_INSTALL_UTS'
-EOF
-
-    ###########################################
-
-    run cd "$NATIVE_PACKAGE_INSTALLED_ROOT"
-    run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$1"
-}
-
-native_package_info_libz() {
-    PACKAGE_SRC_URL='https://distfiles.macports.org/zlib/zlib-1.3.2.tar.xz'
-    PACKAGE_SRC_SHA='d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3'
-    PACKAGE_DEP_AUX='cmake'
-    PACKAGE_INSTALL='cmake -DZLIB_BUILD_TESTING=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUILD_SHARED=ON'
-}
-
-native_package_info_libopenssl() {
-    PACKAGE_SRC_URL='https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz'
-    PACKAGE_SRC_SHA='243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1'
-    PACKAGE_DEP_AUX='perl'
-    PACKAGE_DOPATCH='
-    case $NATIVE_PLATFORM_ARCH in
-        armv7l) gsed -i "s|armv7-a|armv7-a+fp|g" util/perl/OpenSSL/config.pm
-    esac'
-    PACKAGE_INSTALL='config no-tests no-ssl3 no-ssl3-method no-zlib --libdir=lib --openssldir=etc/ssl'
-    # https://github.com/openssl/openssl/blob/master/INSTALL.md
-}
-
-native_package_info_libtool() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libtool/libtool-2.5.4.tar.xz'
-    PACKAGE_SRC_SHA='f81f5860666b0bc7d84baddefa60d1cb9fa6fceb2398cc3baca6afaa60266675'
-    PACKAGE_INSTALL='configure --disable-ltdl-install'
-    PACKAGE_DEP_AUX='gm4'
-    PACKAGE_DOTWEAK='
-run ln -s libtool    bin/glibtool
-run ln -s libtoolize bin/glibtoolize
-'
-}
-
-native_package_info_texinfo() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/texinfo/texinfo-7.3.tar.xz'
-    PACKAGE_SRC_SHA='51f74eb0f51cfa9873b85264dfdd5d46e8957ec95b88f0fb762f63d9e164c72e'
-    PACKAGE_DEP_AUX='perl'
-    PACKAGE_INSTALL='configure --with-included-regex --enable-threads=posix --disable-nls'
-}
-
-native_package_info_autoconf() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf/autoconf-2.73.tar.gz'
-    PACKAGE_SRC_SHA='259ddfa3bddc799cfb81489cc0f17dfdf1bd6d1505dda53c0f45ff60d6a4f9a7'
-    PACKAGE_DEP_AUX='perl gm4'
-    PACKAGE_INSTALL='configure'
-}
-
-native_package_info_automake() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/automake/automake-1.18.1.tar.xz'
-    PACKAGE_SRC_SHA='168aa363278351b89af56684448f525a5bce5079d0b6842bd910fdd3f1646887'
-    PACKAGE_DEP_AUX='perl'
-    PACKAGE_DEP_PKG='autoconf'
-    PACKAGE_INSTALL='configure'
-}
-
-native_package_info_help2man() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/help2man/help2man-1.49.3.tar.xz'
-    PACKAGE_SRC_SHA='4d7e4fdef2eca6afe07a2682151cea78781e0a4e8f9622142d9f70c083a2fd4f'
-    PACKAGE_DEP_AUX='perl'
-    PACKAGE_INSTALL='configure'
-    #PACKAGE_DOTWEAK='gsed -i "1c #!$(command -v perl) -w" bin/help2man'
-}
-
-native_package_info_libexpat() {
-    PACKAGE_SRC_URL='https://github.com/libexpat/libexpat/releases/download/R_2_7_4/expat-2.7.4.tar.lz'
-    PACKAGE_SRC_SHA='882bb3c124cdfd6d594818276f3ea851b780473a722385150a5793277635fcae'
-    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --without-xmlwf --without-tests --without-examples --without-docbook'
-}
-
-native_package_info_intltool() {
-    PACKAGE_SRC_URL='https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz'
-    PACKAGE_SRC_URI='https://distfiles.macports.org/intltool/intltool-0.51.0.tar.gz'
-    PACKAGE_SRC_SHA='67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd'
-    PACKAGE_DEP_PKG='perl-XML-Parser libexpat'
-    PACKAGE_DEP_AUX='perl'
-    PACKAGE_INSTALL='configure'
-}
-
-native_package_info_perl_XML_Parser() {
-    PACKAGE_SRC_URL='https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz'
-    PACKAGE_SRC_SHA='ad4aae643ec784f489b956abe952432871a622d4e2b5c619e8855accbfc4d1d8'
-    PACKAGE_DEP_AUX='perl'
-    PACKAGE_DEP_PKG='libexpat'
-    PACKAGE_DOPATCH='
-run export EXPATLIBPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib"
-run export EXPATINCPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/include"
-run gsed -i "\"/check_lib/a not_execute,\"" Makefile.PL
-'
-    if [ "$NATIVE_PLATFORM_TYPE" = macos ] ; then
-        PACKAGE_INSTALL='perl Makefile.PL'
-    else
-        PACKAGE_INSTALL='perl Makefile.PL LDDLFLAGS="\"-shared -L$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_ROOT/libexpat/lib\""'
-    fi
-}
-
-native_package_info_libiconv() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/libiconv/libiconv-1.19.tar.gz'
-    PACKAGE_SRC_SHA='88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6'
-    PACKAGE_INSTALL='configure --disable-dependency-tracking --enable-static --enable-shared --enable-extra-encodings'
-}
-
-native_package_info_libxml2() {
-    PACKAGE_SRC_URL='https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz'
-    PACKAGE_SRC_SHA='78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07'
-    PACKAGE_DEP_PKG='libz libiconv'
-    PACKAGE_DEP_AUX='doxygen'
-    PACKAGE_INSTALL='configure --with-legacy --with-zlib --with-python --with-iconv="$NATIVE_PACKAGE_INSTALLED_ROOT/libiconv" --without-lzma --without-readline --without-coverage --without-debug --enable-ipv6 --enable-static --enable-shared LIBS=-liconv'
-}
-
-native_package_info_itstool() {
-    PACKAGE_SRC_URL='https://distfiles.macports.org/itstool/itstool-2.0.7.tar.bz2'
-    PACKAGE_SRC_SHA='6b9a7cd29a12bb95598f5750e8763cee78836a1a207f85b74d8b3275b27e87ca'
-    PACKAGE_DEP_PKG='libxml2'
-    PACKAGE_DEP_AUX='python3'
-    PACKAGE_INSTALL='configure'
-    PACKAGE_DOPATCH='
-    export PYTHON="$(command -v python3)"
-    PYTHON_VERSION_XY="$("$PYTHON" -c "import sys; print(\"%d.%d\" % sys.version_info[:2])")"
-    export PYTHONPATH="$NATIVE_PACKAGE_INSTALLED_ROOT/libxml2/lib/python$PYTHON_VERSION_XY/site-packages"
-    '
-    PACKAGE_DOTWEAK='
-mv bin/itstool bin/itstool.py
-cat > bin/itstool <<EOF
-#!/bin/sh
-export PYTHONPATH="$PYTHONPATH"
-exec "$PYTHON" "$PACKAGE_INSTALL_DIR/bin/itstool.py" "\$@"
-EOF
-chmod +x bin/itstool
-    '
-}
-
-native_package_info_autoconf_archive() {
-    PACKAGE_SRC_URL='https://ftp.gnu.org/gnu/autoconf-archive/autoconf-archive-2024.10.16.tar.xz'
-    PACKAGE_SRC_SHA='7bcd5d001916f3a50ed7436f4f700e3d2b1bade3ed803219c592d62502a57363'
-    PACKAGE_INSTALL='configure'
-}
-
-native_package_info_netsurf_buildsystem() {
-    PACKAGE_SRC_URL='https://download.netsurf-browser.org/libs/releases/buildsystem-1.10.tar.gz'
-    PACKAGE_SRC_SHA='3d3e39d569e44677c4b179129bde614c65798e2b3e6253160239d1fd6eae4d79'
-    PACKAGE_INSTALL='gmake install "PREFIX=$PACKAGE_INSTALL_DIR"'
-}
-
-
 # }}}
 ##############################################################################
 # {{{ __install_the_given_package
@@ -5901,7 +5535,7 @@ EOF
 
     #########################################################################################
 
-    step "load formula"
+    step 'load formula'
 
     PACKAGE_FORMULA_FILEPATH="$SESSION_DIR/$PACKAGE_NAME.yml"
 
@@ -6010,7 +5644,7 @@ EOF
 
     #########################################################################################
 
-    step "create and change to the working directory"
+    step 'create and change to the working directory'
 
     run install -d "$PACKAGE_WORKING_DIR"
 
@@ -6046,7 +5680,7 @@ EOF
     else
         case $NATIVE_PLATFORM_TYPE in
             macos)
-                step "locate C/C++ toolchain for native build"
+                step 'locate C/C++ toolchain for native build'
 
                      CC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
                    OBJC_FOR_BUILD="$(xcrun --sdk macosx --find clang)"
@@ -6066,7 +5700,7 @@ EOF
                 LDFLAGS_FOR_BUILD='-Wl,-search_paths_first'
                 ;;
             linux)
-                step "install C/C++ toolchain for native build"
+                step 'install C/C++ toolchain for native build'
 
                 if [ -f '/lib/ld-musl-x86_64.so.1' ] && ldd --version 2>&1 | grep -q musl ; then
                     if [ ! -f '/lib64/ld-linux-x86-64.so.2' ] || ! command -v g++ > /dev/null ; then
@@ -6078,20 +5712,20 @@ EOF
                         fi
                     fi
 
-                    CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
-                     CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
-                   OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
-                     AS_FOR_BUILD="$(command -v as)"      || abort 1 "command not found: as"
-                     AR_FOR_BUILD="$(command -v ar)"      || abort 1 "command not found: ar"
-                 RANLIB_FOR_BUILD="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
-                     LD_FOR_BUILD="$(command -v ld)"      || abort 1 "command not found: ld"
-                     NM_FOR_BUILD="$(command -v nm)"      || abort 1 "command not found: nm"
-                   SIZE_FOR_BUILD="$(command -v size)"    || abort 1 "command not found: size"
-                  STRIP_FOR_BUILD="$(command -v strip)"   || abort 1 "command not found: strip"
-                STRINGS_FOR_BUILD="$(command -v strings)" || abort 1 "command not found: strings"
-                OBJDUMP_FOR_BUILD="$(command -v objdump)" || abort 1 "command not found: objdump"
-                OBJCOPY_FOR_BUILD="$(command -v objcopy)" || abort 1 "command not found: objcopy"
-                READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
+                    CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 'C++ Compiler for native not found.'
+                     CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 'C Compiler for native not found.'
+                   OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 'C Compiler for native not found.'
+                     AS_FOR_BUILD="$(command -v as)"      || abort 1 'command not found: as'
+                     AR_FOR_BUILD="$(command -v ar)"      || abort 1 'command not found: ar'
+                 RANLIB_FOR_BUILD="$(command -v ranlib)"  || abort 1 'command not found: ranlib'
+                     LD_FOR_BUILD="$(command -v ld)"      || abort 1 'command not found: ld'
+                     NM_FOR_BUILD="$(command -v nm)"      || abort 1 'command not found: nm'
+                   SIZE_FOR_BUILD="$(command -v size)"    || abort 1 'command not found: size'
+                  STRIP_FOR_BUILD="$(command -v strip)"   || abort 1 'command not found: strip'
+                STRINGS_FOR_BUILD="$(command -v strings)" || abort 1 'command not found: strings'
+                OBJDUMP_FOR_BUILD="$(command -v objdump)" || abort 1 'command not found: objdump'
+                OBJCOPY_FOR_BUILD="$(command -v objcopy)" || abort 1 'command not found: objcopy'
+                READELF_FOR_BUILD="$(command -v readelf)" || abort 1 'command not found: readelf'
                 else
                     uppm about
                     uppm update
@@ -6117,28 +5751,28 @@ EOF
                 fi
 
                 # https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-                CCFLAGS_FOR_BUILD="-fPIC -fno-common -Doff64_t=off_t"
-                LDFLAGS_FOR_BUILD="-Wl,--as-needed"
+                CCFLAGS_FOR_BUILD='-fPIC -fno-common -Doff64_t=off_t'
+                LDFLAGS_FOR_BUILD='-Wl,--as-needed'
                 ;;
             android)
-                step "install C/C++ toolchain for native build"
+                step 'install C/C++ toolchain for native build'
 
                 run pkg install -y clang binutils
 
-                    CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 "C++ Compiler for native not found."
-                     CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
-                   OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 "C Compiler for native not found."
-                     AS_FOR_BUILD="$(command -v as)"      || abort 1 "command not found: as"
-                     AR_FOR_BUILD="$(command -v ar)"      || abort 1 "command not found: ar"
-                 RANLIB_FOR_BUILD="$(command -v ranlib)"  || abort 1 "command not found: ranlib"
-                     LD_FOR_BUILD="$(command -v ld)"      || abort 1 "command not found: ld"
-                     NM_FOR_BUILD="$(command -v nm)"      || abort 1 "command not found: nm"
-                   SIZE_FOR_BUILD="$(command -v size)"    || abort 1 "command not found: size"
-                  STRIP_FOR_BUILD="$(command -v strip)"   || abort 1 "command not found: strip"
-                STRINGS_FOR_BUILD="$(command -v strings)" || abort 1 "command not found: strings"
-                OBJDUMP_FOR_BUILD="$(command -v objdump)" || abort 1 "command not found: objdump"
-                OBJCOPY_FOR_BUILD="$(command -v objcopy)" || abort 1 "command not found: objcopy"
-                READELF_FOR_BUILD="$(command -v readelf)" || abort 1 "command not found: readelf"
+                    CXX_FOR_BUILD="$(command -v g++ || command -v clang++ || command -v c++)" || abort 1 'C++ Compiler for native not found.'
+                     CC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 'C Compiler for native not found.'
+                   OBJC_FOR_BUILD="$(command -v gcc || command -v clang   || command -v cc)"  || abort 1 'C Compiler for native not found.'
+                     AS_FOR_BUILD="$(command -v as)"      || abort 1 'command not found: as'
+                     AR_FOR_BUILD="$(command -v ar)"      || abort 1 'command not found: ar'
+                 RANLIB_FOR_BUILD="$(command -v ranlib)"  || abort 1 'command not found: ranlib'
+                     LD_FOR_BUILD="$(command -v ld)"      || abort 1 'command not found: ld'
+                     NM_FOR_BUILD="$(command -v nm)"      || abort 1 'command not found: nm'
+                   SIZE_FOR_BUILD="$(command -v size)"    || abort 1 'command not found: size'
+                  STRIP_FOR_BUILD="$(command -v strip)"   || abort 1 'command not found: strip'
+                STRINGS_FOR_BUILD="$(command -v strings)" || abort 1 'command not found: strings'
+                OBJDUMP_FOR_BUILD="$(command -v objdump)" || abort 1 'command not found: objdump'
+                OBJCOPY_FOR_BUILD="$(command -v objcopy)" || abort 1 'command not found: objcopy'
+                READELF_FOR_BUILD="$(command -v readelf)" || abort 1 'command not found: readelf'
         esac
 
         if [ "$DEBUG_CC" = 1 ] ; then
@@ -6348,22 +5982,22 @@ EOF
                 RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS="$RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS $DEPENDENT_PACKAGE_INSTALL_DIR"
             fi
 
-            #########################################################################################
+            d="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/bin"
 
-            DEPENDENT_PACKAGE_BINARY__DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/bin"
-
-            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
-                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            if [ -d  "$d" ] ; then
+                PATH="$d:$PATH"
             fi
 
-            DEPENDENT_PACKAGE_BINARY__DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/sbin"
+            d="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/sbin"
 
-            if [ -d  "$DEPENDENT_PACKAGE_BINARY__DIR" ] ; then
-                PATH="$DEPENDENT_PACKAGE_BINARY__DIR:$PATH"
+            if [ -d  "$d" ] ; then
+                PATH="$d:$PATH"
             fi
 
-            if [ -d          "$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/share/aclocal" ] ; then
-                ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/share/aclocal:$ACLOCAL_PATH"
+            d="$NATIVE_PACKAGE_INSTALLED_ROOT/$DEPENDENT_PACKAGE_NAME/share/aclocal"
+
+            if [ -d          "$d" ] ; then
+                ACLOCAL_PATH="$d:$ACLOCAL_PATH"
             fi
         done
     }
@@ -6438,9 +6072,9 @@ $DOT_CONTENT
             -o "$PACKAGE_DEPENDENCY_GRAPH_FILEPATH_BOX" \
             -s \
             -G \
-            --data-urlencode "boxart=1" \
+            --data-urlencode 'boxart=1' \
             --data-urlencode "src=$DOT_CONTENT" \
-            "https://dot-to-ascii.ggerganov.com/dot-to-ascii.php" || true
+            'https://dot-to-ascii.ggerganov.com/dot-to-ascii.php' || true
 
         ##################################################
 
@@ -6484,7 +6118,7 @@ $DOT_CONTENT
     unset PACKAGE_AUX_LIBZ
     unset PACKAGE_AUX_LIBOPENSSL
 
-    # these native packages would be built from source locally due to they are not relocatable or libraries
+    # these native packages would be built from source locally using npbuild due to they are not relocatable or libraries
     unset PACKAGE_AUX_NEED_TO_BUILD_LOCALLY
 
     PACKAGE_DEP_AUX="$PACKAGE_DEP_UPP"
@@ -6549,7 +6183,7 @@ $DOT_CONTENT
         [ "$PACKAGE_USE_CARGO"   = 1 ] && TERMUX_PKGS="$TERMUX_PKGS rust"
 
         if [ -n "$TERMUX_PKGS" ] ; then
-            step "install needed packages via pkg"
+            step 'install needed packages via pkg'
             run pkg install -y $TERMUX_PKGS
         fi
     else
@@ -6562,7 +6196,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "install needed packages via uppm"
+    step 'install needed packages via uppm'
 
     uppm about
     uppm update
@@ -6573,16 +6207,22 @@ $DOT_CONTENT
 
         UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
-        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-            PATH="$UPPM_PACKAGE_INSTALLED_DIR/bin:$PATH"
+        d="$UPPM_PACKAGE_INSTALLED_DIR/bin"
+
+        if [ -d  "$d" ] ; then
+            PATH="$d:$PATH"
         fi
 
-        if [ -d  "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-            PATH="$UPPM_PACKAGE_INSTALLED_DIR/sbin:$PATH"
+        d="$UPPM_PACKAGE_INSTALLED_DIR/sbin"
+
+        if [ -d  "$d" ] ; then
+            PATH="$d:$PATH"
         fi
 
-        if [ -d          "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-            ACLOCAL_PATH="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
+        d="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal"
+
+        if [ -d          "$d" ] ; then
+            ACLOCAL_PATH="$d:$ACLOCAL_PATH"
         fi
 
         case $UPPM_PACKAGE_NAME in
@@ -6603,49 +6243,71 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    for NATIVE_PACKAGE_NAME in $PACKAGE_AUX_NEED_TO_BUILD_LOCALLY
-    do
-        (install_the_given_native_package "$NATIVE_PACKAGE_NAME")
+    NPBUILD_ARGS="-j $BUILD_NJOBS --uppm $UPPM --prefix $NATIVE_PACKAGE_INSTALLED_ROOT --download-dir $NDKPKG_DOWNLOADS_DIR --session-dir $SESSION_DIR"
 
-        NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
+    if [ -n "$NDKPKG_URLMAP" ] ; then
+        NPBUILD_ARGS="$NPBUILD_ARGS --urlmap $NDKPKG_URLMAP"
+    fi
 
-        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/include" ] ; then
-            CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$NATIVE_PACKAGE_INSTALLED_DIR/include"
-        fi
+    #########################################################################################
 
-        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/lib" ] ; then
-            LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_PACKAGE_INSTALLED_DIR/lib -Wl,-rpath,$NATIVE_PACKAGE_INSTALLED_DIR/lib"
-        fi
+    [ -n "$PACKAGE_AUX_NEED_TO_BUILD_LOCALLY" ] && {
+        step 'build needed packages locally'
 
-        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/bin" ] ; then
-            PATH="$NATIVE_PACKAGE_INSTALLED_DIR/bin:$PATH"
-        fi
+        run "$NPBUILD" $NPBUILD_ARGS $PACKAGE_AUX_NEED_TO_BUILD_LOCALLY
 
-        if [ -d  "$NATIVE_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-            PATH="$NATIVE_PACKAGE_INSTALLED_DIR/sbin:$PATH"
-        fi
-
-        if [ -d          "$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-            ACLOCAL_PATH="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal:$ACLOCAL_PATH"
-        fi
-
-        for d in lib share
+        for NATIVE_PACKAGE_NAME in $PACKAGE_AUX_NEED_TO_BUILD_LOCALLY
         do
-            NATIVE_PACKAGE_PKGCONF_DIR="$NATIVE_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
+            NATIVE_PACKAGE_INSTALLED_DIR="$NATIVE_PACKAGE_INSTALLED_ROOT/$NATIVE_PACKAGE_NAME"
 
-            if [ -d "$NATIVE_PACKAGE_PKGCONF_DIR" ] ; then
-                PKG_CONFIG_PATH_FOR_BUILD="$PKG_CONFIG_PATH_FOR_BUILD:$NATIVE_PACKAGE_PKGCONF_DIR"
-                break
+            d="$NATIVE_PACKAGE_INSTALLED_DIR/include"
+
+            if [ -d  "$d" ] ; then
+                CPPFLAGS_FOR_BUILD="$CPPFLAGS_FOR_BUILD -I$d"
             fi
+
+            d="$NATIVE_PACKAGE_INSTALLED_DIR/lib"
+
+            if [ -d  "$d" ] ; then
+                LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$d -Wl,-rpath,$d"
+            fi
+
+            d="$NATIVE_PACKAGE_INSTALLED_DIR/bin"
+
+            if [ -d  "$d" ] ; then
+                PATH="$d:$PATH"
+            fi
+
+            d="$NATIVE_PACKAGE_INSTALLED_DIR/sbin"
+
+            if [ -d  "$d" ] ; then
+                PATH="$d:$PATH"
+            fi
+
+            d="$NATIVE_PACKAGE_INSTALLED_DIR/share/aclocal"
+
+            if [ -d          "$d" ] ; then
+                ACLOCAL_PATH="$d:$ACLOCAL_PATH"
+            fi
+
+            for d in lib share
+            do
+                d="$NATIVE_PACKAGE_INSTALLED_DIR/$d/pkgconfig"
+
+                if [ -d "$d" ] ; then
+                    PKG_CONFIG_PATH_FOR_BUILD="$PKG_CONFIG_PATH_FOR_BUILD:$d"
+                    break
+                fi
+            done
         done
-    done
+    }
 
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PIP" ] && {
-        step "install needed python packages via pip"
+        step 'install needed python packages via pip'
 
-        PYTHON3="$(command -v python3)" || abort 1 "command not found: python3"
+        PYTHON3="$(command -v python3)" || abort 1 'command not found: python3'
 
         run "$PYTHON3" --version
         run "$PYTHON3" -m pip install --upgrade pip
@@ -6655,7 +6317,7 @@ $DOT_CONTENT
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PLM" ] && {
-        step "install needed perl modules via cpan"
+        step 'install needed perl modules via cpan'
 
         unset PACKAGE_DEP_PLM_T1
         unset PACKAGE_DEP_PLM_T2
@@ -6670,7 +6332,7 @@ $DOT_CONTENT
         done
 
         if [ -n "$PACKAGE_DEP_PLM_T1" ] ; then
-            (install_the_given_native_package perl_XML_Parser)
+            run "$NPBUILD" $NPBUILD_ARGS perl_XML_Parser
         fi
 
         if [ -n "$PACKAGE_DEP_PLM_T2" ] ; then
@@ -6705,7 +6367,7 @@ $DOT_CONTENT
 
     #########################################################################################
 
-    step "locate needed tools"
+    step 'locate needed tools'
 
     unset AUTORECONF
     unset AUTOCONF
@@ -6725,24 +6387,24 @@ $DOT_CONTENT
     unset PKG_CONFIG
 
     if [ "$PACKAGE_USE_AUTOGENSH" = 1 ] || [ "$PACKAGE_USE_AUTOTOOLS" = 1 ] ; then
-        AUTORECONF=$(command -v autoreconf) || abort 1 "command not found: autoreconf"
-        AUTOCONF=$(command -v autoconf)     || abort 1 "command not found: autoconf"
-        AUTOMAKE=$(command -v automake)     || abort 1 "command not found: automake"
-        ACLOCAL=$(command -v aclocal)       || abort 1 "command not found: aclocal"
-        PERL=$(command -v perl)             || abort 1 "command not found: perl"
-        M4=$(command -v m4)                 || abort 1 "command not found: m4"
+        AUTORECONF=$(command -v autoreconf) || abort 1 'command not found: autoreconf'
+        AUTOCONF=$(command -v autoconf)     || abort 1 'command not found: autoconf'
+        AUTOMAKE=$(command -v automake)     || abort 1 'command not found: automake'
+        ACLOCAL=$(command -v aclocal)       || abort 1 'command not found: aclocal'
+        PERL=$(command -v perl)             || abort 1 'command not found: perl'
+        M4=$(command -v m4)                 || abort 1 'command not found: m4'
     fi
 
     [ "$PACKAGE_USE_MESON" = 1 ] && {
-        MESON=$(command -v meson) || abort 1 "command not found: meson"
+        MESON=$(command -v meson) || abort 1 'command not found: meson'
     }
 
     [ "$PACKAGE_USE_CMAKE" = 1 ] && {
-        CMAKE=$(command -v cmake) || abort 1 "command not found: cmake"
+        CMAKE=$(command -v cmake) || abort 1 'command not found: cmake'
     }
 
     [ "$PACKAGE_USE_XMAKE" = 1 ] && {
-        XMAKE=$(command -v xmake) || abort 1 "command not found: xmake"
+        XMAKE=$(command -v xmake) || abort 1 'command not found: xmake'
 
         # error: Running xmake as root is extremely dangerous and no longer supported.
         # As xmake does not drop privileges on installation you would be giving all
@@ -6752,40 +6414,40 @@ $DOT_CONTENT
     }
 
     [ "$PACKAGE_USE_GMAKE" = 1 ] && {
-        GMAKE=$(command -v gmake || command -v make) || abort 1 "command not found: gmake and make"
+        GMAKE=$(command -v gmake || command -v make) || abort 1 'command not found: gmake and make'
     }
 
     [ "$PACKAGE_USE_NINJA" = 1 ] && {
-        NINJA=$(command -v ninja) || abort 1 "command not found: ninja"
+        NINJA=$(command -v ninja) || abort 1 'command not found: ninja'
     }
 
     [ "$PACKAGE_USE_CARGO" = 1 ] && {
         [ "$TERMUX" = 1 ] ||
-        RUSTUP=$(command -v rustup) || abort 1 "command not found: rustup"
+        RUSTUP=$(command -v rustup) || abort 1 'command not found: rustup'
 
-        CARGO=$(command -v cargo)   || abort 1 "command not found: cargo"
+        CARGO=$(command -v cargo)   || abort 1 'command not found: cargo'
     }
 
     [ "$PACKAGE_USE_GO" = 1 ] && {
-        GO=$(command -v go) || abort 1 "command not found: go"
+        GO=$(command -v go) || abort 1 'command not found: go'
     }
 
     [ "$ENABLE_CCACHE" = 1 ] && {
-        CCACHE=$(command -v ccache) || abort 1 "command not found: ccache"
+        CCACHE=$(command -v ccache) || abort 1 'command not found: ccache'
     }
 
-    PKG_CONFIG=$(command -v pkg-config || command -v pkgconf) || abort 1 "command not found: pkg-config"
+    PKG_CONFIG=$(command -v pkg-config || command -v pkgconf) || abort 1 'command not found: pkg-config'
 
     unset  M4
     export M4="$(command -v m4 || true)"
 
-    PATCHELF=$(command -v patchelf) || abort 1 "command not found: patchelf"
+    PATCHELF=$(command -v patchelf) || abort 1 'command not found: patchelf'
 
-    TREE=$(command -v tree) || abort 1 "command not found: tree"
+    TREE=$(command -v tree) || abort 1 'command not found: tree'
 
     #########################################################################################
 
-    step "dofetch"
+    step 'dofetch'
 
     if [ -n "$PACKAGE_DOFETCH" ] ; then
         eval "
@@ -6871,7 +6533,7 @@ $PACKAGE_DOFETCH
 
         #########################################################################################
 
-        step "unpack/copy resources to proper location"
+        step 'unpack/copy resources to proper location'
 
         if [ -n "$PACKAGE_SRC_FILEPATH" ] ; then
             case $PACKAGE_SRC_FILETYPE in
@@ -6977,21 +6639,21 @@ $PACKAGE_DOFETCH
     #########################################################################################
 
     [ "$LOG_LEVEL" -ge "$LOG_LEVEL_VERBOSE" ] && {
-        step "tree files of the installing top directory"
+        step 'tree files of the installing top directory'
         run tree --dirsfirst -L 2 "$PACKAGE_WORKING_DIR"
 
-        step "list files of the installing src directory"
+        step 'list files of the installing src directory'
         run ls -l "$PACKAGE_INSTALLING_SRC_DIR"
 
         if [ -n "$PACKAGE_BSCRIPT" ] ; then
-            step "list files of the installing build script directory"
+            step 'list files of the installing build script directory'
             run ls -l "$PACKAGE_BSCRIPT_DIR"
         fi
     }
 
     #########################################################################################
 
-    step "change to the build script directory"
+    step 'change to the build script directory'
     run cd "$PACKAGE_BSCRIPT_DIR"
 
     #########################################################################################
@@ -7011,14 +6673,14 @@ $PACKAGE_DOFETCH
         [ "$PACKAGE_USE_AUTOTOOLS" = 1 ] ||
         [ "$PACKAGE_USE_CONFIGURE" = 1 ]
     } && {
-        step "update config.{sub,guess}"
+        step 'update config.{sub,guess}'
         __update_gnu_config
     }
 
     #########################################################################################
 
     if [ -n "$PACKAGE_DO12345" ] ; then
-        step "install for native"
+        step 'install for native'
 
         NATIVE_BUILD_NEEDED=1
 
@@ -7027,9 +6689,9 @@ $PACKAGE_DOFETCH
         [ -f "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH" ] && {
             if [ "$(cat "$NATIVE_INSTALLED_VERSION_TXT_FILEPATH")" = "$PACKAGE_VERSION" ] ; then
                 NATIVE_BUILD_NEEDED=0
-                note "install for native already have been done, skipped."
+                note 'install for native already have been done, skipped.'
             else
-                note "install for native already have been done, but not the same version, rebuild it."
+                note 'install for native already have been done, but not the same version, rebuild it.'
             fi
         }
 
@@ -7078,16 +6740,22 @@ $PACKAGE_DO12345
         fi
 
         [ -d "$NATIVE_INSTALL_DIR" ] && {
-            if [ -d  "$NATIVE_INSTALL_DIR/bin" ] ; then
-                PATH="$NATIVE_INSTALL_DIR/bin:$PATH"
+            d="$NATIVE_INSTALL_DIR/bin"
+
+            if [ -d  "$d" ] ; then
+                PATH="$d:$PATH"
             fi
 
-            if [ -d  "$NATIVE_INSTALL_DIR/sbin" ] ; then
-                PATH="$NATIVE_INSTALL_DIR/sbin:$PATH"
+            d="$NATIVE_INSTALL_DIR/sbin"
+
+            if [ -d  "$d" ] ; then
+                PATH="$d:$PATH"
             fi
 
-            if [ -d          "$NATIVE_INSTALL_DIR/share/aclocal" ] ; then
-                ACLOCAL_PATH="$NATIVE_INSTALL_DIR/share/aclocal:$ACLOCAL_PATH"
+            d="$NATIVE_INSTALL_DIR/share/aclocal"
+
+            if [ -d          "$d" ] ; then
+                ACLOCAL_PATH="$d:$ACLOCAL_PATH"
             fi
         }
     fi
@@ -7840,7 +7508,7 @@ EOF
 
     [ -n "$RECURSIVE_DEPENDENT_PACKAGE_NAMES" ] && {
         if [ "$PACKAGE_CREATE_FULLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] || [ "$PACKAGE_CREATE_MOSTLY_STATICALLY_LINKED_EXECUTABLE" = 1 ] ; then
-            step "copy dependent libraries to linker first search dir"
+            step 'copy dependent libraries to linker first search dir'
 
             for DEPENDENT_PACKAGE_INSTALL_DIR in $RECURSIVE_DEPENDENT_PACKAGE_INSTALL_DIRS
             do
@@ -7856,7 +7524,7 @@ EOF
     #########################################################################################
 
     [ "$ENABLE_CCACHE" = 1 ] && {
-        step "setup ccache"
+        step 'setup ccache'
 
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-cc"
         run ln -sf "$CCACHE" "$PACKAGE_WORKING_DIR/bin/wrapper-target-c++"
@@ -7866,7 +7534,7 @@ EOF
 
     #########################################################################################
 
-    step "dopatch for target"
+    step 'dopatch for target'
 
     [ -f "$PACKAGE_INSTALLING_FIX_DIR/index" ] && {
         cd "$PACKAGE_BSCRIPT_DIR"
@@ -7892,7 +7560,7 @@ $PACKAGE_DOPATCH
 
     #########################################################################################
 
-    step "prepare for target"
+    step 'prepare for target'
 
     cd "$PACKAGE_BSCRIPT_DIR"
 
@@ -7948,7 +7616,7 @@ $PACKAGE_PREPARE
 
     #########################################################################################
 
-    step "install for target"
+    step 'install for target'
 
     if [ "$PACKAGE_BINBSTD" = 1 ] ; then
         run cd "$PACKAGE_BSCRIPT_DIR"
@@ -7986,12 +7654,12 @@ $PACKAGE_DOBUILD
 
     ###############################################################
 
-    [ -d "$PACKAGE_INSTALL_DIR" ] || abort 1 "nothing was installed."
+    [ -d "$PACKAGE_INSTALL_DIR" ] || abort 1 'nothing was installed.'
 
-    step "change to the installed directory"
+    step 'change to the installed directory'
     run cd "$PACKAGE_INSTALL_DIR"
 
-    [ -z "$(ls)" ]                && abort 1 "nothing was installed."
+    [ -z "$(ls)" ]                && abort 1 'nothing was installed.'
 
     #########################################################################################
 
@@ -8014,7 +7682,7 @@ $PACKAGE_DOBUILD
     #########################################################################################
 
     [ -n "$PACKAGE_DOTWEAK" ] && {
-        step "dotweak"
+        step 'dotweak'
 
         cd "$PACKAGE_INSTALL_DIR"
 
@@ -8039,7 +7707,7 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    step "generate MANIFEST.txt"
+    step 'generate MANIFEST.txt'
     run install -d .ndk-pkg/dependencies/lib/
     find -not -path . -a -not -path ./.ndk-pkg -a -not -path './.ndk-pkg/*' -printf '%y|%P\n' > .ndk-pkg/MANIFEST.txt
 
@@ -8051,7 +7719,7 @@ $PACKAGE_DOTWEAK
         ANDROID_NDK_SYSTEM_LIBRARY_DIR="$ANDROID_NDK_SYSROOT/usr/lib/$TARGET_PLATFORM_ARCH-linux-android"
     fi
 
-    step "docheck"
+    step 'docheck'
 
     unset FILES_NEED_TO_BE_SET_RPATH
 
@@ -8066,7 +7734,7 @@ $PACKAGE_DOTWEAK
     fi
 
     [ -n "$FILES_NEED_TO_BE_SET_RPATH" ] && {
-        step "set rpath for ELF files"
+        step 'set rpath for ELF files'
 
         KVs="$(printf '%s\n' "$FILES_NEED_TO_BE_SET_RPATH" | sort | uniq)"
 
@@ -8104,11 +7772,11 @@ $PACKAGE_DOTWEAK
     #########################################################################################
 
     [ -n "$PACKAGE_DEP_PKG" ] && {
-        step "install dependency graph files"
+        step 'install dependency graph files'
 
         run mv "$PACKAGE_WORKING_DIR/dependencies.*" .
 
-        step "install dependency formulas"
+        step 'install dependency formulas'
 
         install -d dependencies/
 
@@ -8132,7 +7800,7 @@ $PACKAGE_DOTWEAK
 
     #########################################################################################
 
-    step "generate RECEIPT.yml"
+    step 'generate RECEIPT.yml'
 
     cp "$PACKAGE_FORMULA_FILEPATH" RECEIPT.yml
 
@@ -8216,27 +7884,27 @@ EOF
 
     #########################################################################################
 
-    step "generate index"
+    step 'generate index'
     run cd "$NDKPKG_PACKAGE_INSTALLED_ROOT/$TARGET_PLATFORM_SPEC"
     run ln -s -f -T "$PACKAGE_INSTALL_SHA" "$PACKAGE_NAME"
 
     #########################################################################################
 
-    step "show installed files in tree-like format"
+    step 'show installed files in tree-like format'
     run tree --dirsfirst -a "$PACKAGE_INSTALL_DIR"
 
     #########################################################################################
 
     [ "$ENABLE_CCACHE" = 1 ] && {
-        step "show ccache statistics summary"
-        note "Before Build:"
+        step 'show ccache statistics summary'
+        note 'Before Build:'
         run  cat "$PACKAGE_WORKING_DIR/ccache-s.txt"
-        note "After  Build:"
+        note 'After  Build:'
         run  ccache -s
     }
 
     [ "$REQUEST_TO_KEEP_SESSION_DIR" != 1 ] && {
-        step "delete the working directory"
+        step 'delete the working directory'
         run rm -rf "$PACKAGE_WORKING_DIR"
     }
 
@@ -8341,7 +8009,7 @@ __check_elf_files() {
             Y="$PACKAGE_WORKING_DIR/map/$X"
 
             if [ -f "$Y" ] ; then
-                echo "__check_DT_NEEDED $1 has handled, skipped."
+                note "__check_DT_NEEDED $1 has handled, skipped."
                 return 0
             else
                 touch "$Y"
@@ -8358,12 +8026,12 @@ __check_elf_files() {
             libc++_shared.so)
                 NEEDED_LIBCXX_SHARED=1
 
-                echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
+                note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
 
                 continue
                 ;;
             libclang_rt.*.so)
-                echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
+                note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
 
                 continue
                 ;;
@@ -8371,7 +8039,7 @@ __check_elf_files() {
 
         if [ "$NEEDED_SHARED_LIBRARY_FILENAME" != 'libz.so' ] ; then
             if [ -f "$ANDROID_NDK_SYSTEM_LIBRARY_DIR/$TARGET_PLATFORM_VERS/$NEEDED_SHARED_LIBRARY_FILENAME" ] ; then
-                echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
+                note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
 
                 continue
             fi
@@ -8396,7 +8064,7 @@ __check_elf_files() {
                         FILES_NEED_TO_BE_SET_RPATH="$FILES_NEED_TO_BE_SET_RPATH
 $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
 
-                        echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
+                        note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
 
                         __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
 
@@ -8414,7 +8082,7 @@ $1|${NEEDED_SHARED_LIBRARY_FILEPATH%/*}"
 $1|1"
             esac
 
-            echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which has already there."
+            note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which has already there."
 
             continue
         fi
@@ -8443,7 +8111,7 @@ $1|1"
 $1|1"
                         esac
 
-                        echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
+                        note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME => $NEEDED_SHARED_LIBRARY_FILEPATH"
 
                         if [ ! -f ".ndk-pkg/dependencies/lib/$NEEDED_SHARED_LIBRARY_FILENAME" ] ; then
                             run cp -L "$NEEDED_SHARED_LIBRARY_FILEPATH" .ndk-pkg/dependencies/lib/
@@ -8458,7 +8126,7 @@ $1|1"
         if [ -n "$NEEDED_SHARED_LIBRARY_FILEPATH" ] ; then
             __check_DT_NEEDED "$NEEDED_SHARED_LIBRARY_FILEPATH"
         else
-            echo "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
+            note "__check_DT_NEEDED $1 NEEDED $NEEDED_SHARED_LIBRARY_FILENAME, which is a system library."
         fi
     done
 }
@@ -8691,7 +8359,7 @@ gnw() {
 
 gow() {
     if [ "$VERBOSE_GO" = 1 ] ; then
-        run "go env | bat --language=bash --paging=never --style=plain"
+        run 'go env | bat --language=bash --paging=never --style=plain'
     fi
 
     # https://pkg.go.dev/cmd/go
@@ -10026,11 +9694,11 @@ __setup() {
 
                             FETCH_TOOL=curl
                         else
-                            abort 1 "/etc/os-release file does not exist, ndk-pkg can not determine what your host system is and do not known how to install curl package."
+                            abort 1 '/etc/os-release file does not exist, ndk-pkg can not determine what your host system is and do not known how to install curl package.'
                         fi
 
                         if [ -z "$FETCH_TOOL" ] ; then
-                            abort 1 "none of curl wget http lynx aria2c axel command was found, please install one of them then try again."
+                            abort 1 'none of curl wget http lynx aria2c axel command was found, please install one of them then try again.'
                         fi
                     fi
                 fi
@@ -10061,6 +9729,12 @@ __setup() {
             TAR=./bsdtar
         fi
     fi
+
+    ##################################################################################
+
+    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/core/npbuild' --no-buffer
+
+    chmod +x npbuild
 
     ##################################################################################
 
@@ -10101,16 +9775,22 @@ __setup() {
 
         UPPM_PACKAGE_INSTALLED_DIR="$UPPM_HOME/installed/$UPPM_PACKAGE_NAME"
 
-        if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/bin" ] ; then
-            UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$UPPM_PACKAGE_INSTALLED_DIR/bin"
+        d="$UPPM_PACKAGE_INSTALLED_DIR/bin"
+
+        if [ -d "$d" ] ; then
+            UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$d"
         fi
 
-        if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/sbin" ] ; then
-            UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$UPPM_PACKAGE_INSTALLED_DIR/sbin"
+        d="$UPPM_PACKAGE_INSTALLED_DIR/sbin"
+
+        if [ -d "$d" ] ; then
+            UPPM_PACKAGE_EXEFIND_PATH="$UPPM_PACKAGE_EXEFIND_PATH:$d"
         fi
 
-        if [ -d "$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal" ] ; then
-            UPPM_PACKAGE_ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal"
+        d="$UPPM_PACKAGE_INSTALLED_DIR/share/aclocal"
+
+        if [ -d "$d" ] ; then
+            UPPM_PACKAGE_ACLOCAL_PATH="$UPPM_PACKAGE_ACLOCAL_PATH:$d"
         fi
     done
 
@@ -10666,7 +10346,7 @@ fi
 
 [ -z "$NDKPKG_HOME" ] && {
     if [ -z "$HOME" ] ; then
-        abort 1 "HOME environment variable is not set."
+        abort 1 'HOME environment variable is not set.'
     else
         export NDKPKG_HOME="$HOME/.ndk-pkg"
     fi
@@ -10674,7 +10354,7 @@ fi
 
 [ -z "$NDKPKG_DOWNLOADS_DIR" ] && {
     if [ -z "$HOME" ] ; then
-        abort 1 "HOME environment variable is not set."
+        abort 1 'HOME environment variable is not set.'
     else
         export NDKPKG_DOWNLOADS_DIR="$NDKPKG_HOME/downloads"
     fi
@@ -10684,7 +10364,7 @@ NATIVE_PACKAGE_INSTALLED_ROOT="$HOME/.fpliu/native"
 
 ###################################################
 
-NDKPKG_VERSION=0.80.2
+NDKPKG_VERSION=0.80.3
 
 NDKPKG_ARG0="$0"
 NDKPKG_ARG1="$1"
@@ -10706,7 +10386,7 @@ NDKPKG_PACKAGE_INSTALLED_ROOT="$NDKPKG_HOME/installed"
 
 if [ -z "$UPPM_HOME" ] ; then
     if [ -z "$HOME" ] ; then
-        abort 1 "HOME environment variable is not set."
+        abort 1 'HOME environment variable is not set.'
     else
         export UPPM_HOME="$HOME/.uppm"
     fi
@@ -10736,6 +10416,8 @@ fi
 ###################################################
 
 ELFTOOL="$NDKPKG_CORE_DIR/elftool"
+
+NPBUILD="$NDKPKG_CORE_DIR/npbuild"
 
 ###################################################
 
@@ -10856,7 +10538,7 @@ esac
 
 [ -z  "$CARGO_HOME" ] && {
     if [ -z "$HOME" ] ; then
-        abort 1 "HOME environment variable is not set."
+        abort 1 'HOME environment variable is not set.'
     else
         CARGO_HOME="$HOME/.cargo"
     fi
