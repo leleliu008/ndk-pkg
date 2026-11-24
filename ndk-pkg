@@ -3881,9 +3881,52 @@ rm -rf $SESSION_DIR\n"
     #########################################################################################
 
     MVN="$(command -v mvn)" || {
-        step install maven
-        uppm install maven
-        MVN="$UPPM_HOME/installed/maven/bin/mvn"
+        step install jdk21
+        uppm install jdk21
+
+        export JAVA_HOME="$UPPM_HOME/installed/jdk21"
+
+        [ -f "$NATIVE_PACKAGE_INSTALLED_ROOT/maven/version.txt" ] || {
+            step install maven
+
+            wfetch 'https://formulae.brew.sh/api/formula/maven.json' --no-buffer
+
+            MAVEN_TARBALL_SHA256SUM="$(jq -r '.urls.stable.checksum' maven.json)"
+
+            MAVEN_VERSION="$(jq -r '.versions.stable' maven.json)"
+
+            MAVEN_VERSION_MAJOR="${MAVEN_VERSION%%.*}"
+
+            MAVEN_TARBALL_FILENAME="apache-maven-$MAVEN_VERSION-bin.tar.gz"
+            MAVEN_TARBALL_FILEPATH="$NDKPKG_DOWNLOADS_DIR/$MAVEN_TARBALL_SHA256SUM.tgz"
+
+            MAVEN_TARBALL_FETCHURL="https://dlcdn.apache.org/maven/maven-$MAVEN_VERSION_MAJOR/$MAVEN_VERSION/binaries/$MAVEN_TARBALL_FILENAME"
+
+            wfetch "$MAVEN_TARBALL_FETCHURL" --sha256="$MAVEN_TARBALL_SHA256SUM" -o "$MAVEN_TARBALL_FILEPATH"
+
+            MAVEN_INSTALL_UTS="$(date +%s)"
+
+            MAVEN_INSTALL_SHA="$(
+{
+    sha256sum <<EOF
+$$:$MAVEN_INSTALL_UTS
+EOF
+} | cut -d ' ' -f1)"
+
+            run cd "$NATIVE_PACKAGE_INSTALLED_ROOT"
+
+            run install -d "$MAVEN_INSTALL_SHA"
+
+            run bsdtar xf "$MAVEN_TARBALL_FILEPATH" -C "$MAVEN_INSTALL_SHA" --strip-components 1 --no-same-owner
+
+            printf '%s\n' "$MAVEN_VERSION" > "$MAVEN_INSTALL_SHA/version.txt"
+
+            run ln -s -r -f -T "$MAVEN_INSTALL_SHA" maven
+
+            run cd -
+        }
+
+        MVN="$NATIVE_PACKAGE_INSTALLED_ROOT/maven/bin/mvn"
     }
 
     #########################################################################################
