@@ -68,7 +68,7 @@ jobs:
 
       - run: ./ndk-pkg install bat    --target=android-23-arm64-v8a
       - run: ./ndk-pkg install uctags --target=android-24-arm64-v8a
-      - run: ./ndk-pkg install libzip
+      - run: ./ndk-pkg install libzip libsass
       - run: ./ndk-pkg install yq --ndk-revision=28c
 
 

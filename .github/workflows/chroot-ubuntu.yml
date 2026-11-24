@@ -70,7 +70,7 @@ jobs:
       - run: sudo chroot ubuntu-rootfs env GITHUB_ACTIONS=true ndk-pkg depends libzip -o libzip.box
 
 
-      - run: sudo chroot ubuntu-rootfs env GITHUB_ACTIONS=true ndk-pkg install libzip
+      - run: sudo chroot ubuntu-rootfs env GITHUB_ACTIONS=true ndk-pkg install libzip libsass
 
 
       - run: sudo chroot ubuntu-rootfs env GITHUB_ACTIONS=true ndk-pkg show libzip --prefix
