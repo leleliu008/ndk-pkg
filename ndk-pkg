@@ -9775,7 +9775,7 @@ __setup() {
 
     ##################################################################################
 
-    wfetch 'https://raw.githubusercontent.com/leleliu008/ndk-pkg/master/core/npbuild' --no-buffer
+    wfetch 'https://raw.githubusercontent.com/leleliu008/npbuild/master/npbuild' --no-buffer
 
     chmod +x npbuild
 
