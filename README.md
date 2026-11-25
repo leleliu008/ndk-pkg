@@ -194,7 +194,7 @@ chmod a+x ndk-pkg
 
 **Caveats**:
 
-- Running `ndk-pkg` locally directly on your local host is not recommended due to build tools(autotools, cmake, etc) are easy to be affected by environment variables.
+- Running `ndk-pkg` locally directly on your local host is not recommended due to build tools(autotools, cmake, etc) are easily affected by environment variables that are originally intended for the host.
 - Running `ndk-pkg` in an isolated clean environment (`docker`, `chroot`) is highly recommended.
 
 ```bash

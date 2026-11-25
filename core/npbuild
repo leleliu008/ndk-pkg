@@ -185,7 +185,7 @@ wfetch() {
 
     unset PKGNAME
 
-    [ -z "$1" ] && abort 1 "wfetch <URL> [OPTION]... , <URL> must be non-empty."
+    [ -z "$1" ] && abort 1 'wfetch <URL> [OPTION]... , <URL> must be non-empty.'
 
     FETCH_URL="$1"
 
@@ -202,14 +202,14 @@ wfetch() {
                 ;;
             -o) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "wfetch <URL> -o <PATH> , <PATH> must be non-empty."
+                    abort 1 'wfetch <URL> -o <PATH> , <PATH> must be non-empty.'
                 else
                     FETCH_PATH="$1"
                 fi
                 ;;
             -p) shift
                 if [ -z "$1" ] ; then
-                    abort 1 "wfetch <URL> -p <PKGNAME> , <PKGNAME> must be non-empty."
+                    abort 1 'wfetch <URL> -p <PKGNAME> , <PKGNAME> must be non-empty.'
                 else
                     PKGNAME="$1"
                 fi
@@ -720,7 +720,7 @@ EOF
     ##############################
 
     if [ -z "$GMAKE" ] ; then
-        GMAKE="$(command -v gmake)" || abort 1 "command not found: gmake"
+        GMAKE="$(command -v gmake)" || abort 1 'command not found: gmake'
     fi
 
     ##############################
@@ -782,7 +782,7 @@ do
 done
 
 if [ -z "$FETCH_TOOL" ] ; then
-    abort 1 "neither curl nor wget was found, please install one of them then try again."
+    abort 1 'neither curl nor wget was found, please install one of them then try again.'
 fi
 
 ##################################################
@@ -802,7 +802,7 @@ while [ -n "$1" ]
 do
     case $1 in
         -j) shift
-            isInteger "$1" || abort 1 "-j <N>, <N> should be an integer."
+            isInteger "$1" || abort 1 '-j <N>, <N> should be an integer.'
             NJOBS="$1"
             ;;
         --syspm)
@@ -868,7 +868,7 @@ fi
 
 if [ -z "$UPPM_HOME" ] ; then
     if [ -z "$HOME" ] ; then
-        abort 1 "HOME environment variable is not set."
+        abort 1 'HOME environment variable is not set.'
     else
         export UPPM_HOME="$HOME/.uppm"
     fi
