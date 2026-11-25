@@ -87,29 +87,6 @@ sha256sum_of_str() {
     printf '%s\n' "$1" | sha256sum | cut -d ' ' -f1
 }
 
-filetype_from_url() {
-    # remove query params
-    URL="${1%%'?'*}"
-
-    FNAME="${URL##*/}"
-
-    case $FNAME in
-        *.tar.gz|*.tgz)
-            printf '%s\n' '.tgz'
-            ;;
-        *.tar.lz|*.tlz)
-            printf '%s\n' '.tlz'
-            ;;
-        *.tar.xz|*.txz)
-            printf '%s\n' '.txz'
-            ;;
-        *.tar.bz2|*.tbz2)
-            printf '%s\n' '.tbz2'
-            ;;
-        *.*)printf '%s\n' ".${FNAME##*.}"
-    esac
-}
-
 git_clone_depth_1() {
     if [ -z "$URLMAP" ] ; then
         URL="$1"
@@ -150,250 +127,156 @@ __update_gnu_config() {
     done
 }
 
-# wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-p <PACKAGE-NAME>] [-o <OUTPUT-PATH>] [-q] [--no-buffer]
-#
-# If -o <OUTPUT-PATH> option is unspecified, the result will be written to ./$(basename <URL>)
-#
-# If <OUTPUT-PATH> is -, then the result will be written to stdout.
-#
-# If <OUTPUT-PATH> is . .. or ends with slash(/), then it will be treated as a directory, otherwise, it will be treated as a filepath.
-#
-# If <OUTPUT-PATH> is treated as a directory, then it will be expanded to <OUTPUT-PATH>/$(basename <URL>)
-#
-# influential environment variable:
-# URLMAP
 wfetch() {
     unset FETCH_UTS
     unset FETCH_SHA
 
     unset FETCH_URL
-    unset FETCH_URI
+    unset FETCH_URL_HOST
+    unset FETCH_URL_FILENAME
 
-    unset FETCH_PATH
-
-    unset FETCH_OUTPUT_DIR
-    unset FETCH_OUTPUT_FILEPATH
+    unset FETCH_OUTPUT_FILETYPE
     unset FETCH_OUTPUT_FILENAME
+    unset FETCH_OUTPUT_FILEPATH
 
-    unset FETCH_BUFFER_FILEPATH
+    unset FETCH_BUFFER_FILENAME
 
     unset FETCH_SHA256_EXPECTED
 
-    unset FETCH_SILENT
+    ###########################################
 
-    unset NOT_BUFFER
+    [ -z "$1" ] && abort 1 'wfetch <URL> <SHA256SUM> , <URL> must be non-empty.'
+    [ -z "$2" ] && abort 1 'wfetch <URL> <SHA256SUM> , <SHA256SUM> must be non-empty.'
 
-    unset PKGNAME
+    FETCH_SHA256_EXPECTED="$2"
 
-    [ -z "$1" ] && abort 1 'wfetch <URL> [OPTION]... , <URL> must be non-empty.'
+    ###########################################
 
-    FETCH_URL="$1"
+    if [ -n "$URLMAP" ] ; then
+        FETCH_URL="$("$URLMAP" "$1")"
+    else
+        FETCH_URL="$1"
+    fi
 
-    shift
+    ###########################################
 
-    while [ -n "$1" ]
-    do
-        case $1 in
-            --uri=*)
-                FETCH_URI="${1#*=}"
-                ;;
-            --sha256=*)
-                FETCH_SHA256_EXPECTED="${1#*=}"
-                ;;
-            -o) shift
-                if [ -z "$1" ] ; then
-                    abort 1 'wfetch <URL> -o <PATH> , <PATH> must be non-empty.'
-                else
-                    FETCH_PATH="$1"
-                fi
-                ;;
-            -p) shift
-                if [ -z "$1" ] ; then
-                    abort 1 'wfetch <URL> -p <PKGNAME> , <PKGNAME> must be non-empty.'
-                else
-                    PKGNAME="$1"
-                fi
-                ;;
-            -q) FETCH_SILENT=1
-                ;;
-            --no-buffer)
-                NOT_BUFFER=1
-                ;;
-            *)  abort 1 "wfetch <URL> [--uri=<URL-MIRROR>] [--sha256=<SHA256>] [-o <PATH>] [-q] , unknown argument: $1"
-        esac
-        shift
-    done
+    FETCH_URL_FILENAME="${1##*/}"
 
-    case $FETCH_PATH in
-        -)
-            FETCH_BUFFER_FILEPATH='-'
+    case $FETCH_URL_FILENAME in
+        *.tar.gz)
+            FETCH_OUTPUT_FILETYPE='tgz'
             ;;
-        .|'')
-            FETCH_OUTPUT_DIR='.'
-            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+        *.tar.xz)
+            FETCH_OUTPUT_FILETYPE='txz'
             ;;
-        ..)
-            FETCH_OUTPUT_DIR='..'
-            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
+        *.tar.bz2)
+            FETCH_OUTPUT_FILETYPE='tbz2'
             ;;
-        */)
-            FETCH_OUTPUT_DIR="${FETCH_PATH%/}"
-            FETCH_OUTPUT_FILEPATH="$FETCH_OUTPUT_DIR/${FETCH_URL##*/}"
-            ;;
-        *)
-            FETCH_OUTPUT_DIR="$(dirname "$FETCH_PATH")"
-            FETCH_OUTPUT_FILEPATH="$FETCH_PATH"
     esac
 
-    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
-        if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
-            if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
-                if [ "$(sha256sum_of_file "$FETCH_OUTPUT_FILEPATH")" = "$FETCH_SHA256_EXPECTED" ] ; then
-                    return 0
-                fi
-            fi
-        fi
+    ###########################################
 
-        if [ "$NOT_BUFFER" = 1 ] ; then
-            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_FILEPATH"
-        else
-            FETCH_UTS="$(date +%s)"
+    FETCH_OUTPUT_FILENAME="$FETCH_SHA256_EXPECTED.$FETCH_OUTPUT_FILETYPE"
+    FETCH_OUTPUT_FILEPATH="$DOWNLOAD_DIR/$FETCH_OUTPUT_FILENAME"
 
-            FETCH_SHA="$(sha256sum_of_str "$FETCH_URL:$$:$FETCH_UTS")"
+    ###########################################
 
-            FETCH_BUFFER_FILEPATH="$FETCH_OUTPUT_DIR/$FETCH_SHA.tmp"
+    if [ -f "$FETCH_OUTPUT_FILEPATH" ] ; then
+        if [ "$(sha256sum_of_file "$FETCH_OUTPUT_FILEPATH")" = "$FETCH_SHA256_EXPECTED" ] ; then
+            return 0
         fi
     fi
 
-    if [                -n "$FETCH_OUTPUT_DIR" ] ; then
-        if [ !          -d "$FETCH_OUTPUT_DIR" ] ; then
-            run install -d "$FETCH_OUTPUT_DIR" || return 1
-        fi
-    fi
+    ###########################################
+
+    FETCH_UTS="$(date +%s)"
+
+    FETCH_SHA="$(sha256sum_of_str "$FETCH_URL:$$:$FETCH_UTS")"
+
+    FETCH_BUFFER_FILENAME="$FETCH_SHA.tmp"
+
+    ###########################################
 
     case $FETCH_TOOL in
         curl)
-            FETCH_ARGS='--fail --retry 20 --retry-delay 30 --location'
-
-            if [ "$FETCH_SILENT" = 1 ] ; then
-                FETCH_ARGS="$FETCH_ARGS --no-progress-meter"
-            fi
-
-            if [ -n "$PPKG_DNS_SERVERS" ] ; then
-                FETCH_ARGS="$FETCH_ARGS --dns-servers $PPKG_DNS_SERVERS"
-            fi
-
-            if [ -n "$SSL_CERT_FILE" ] ; then
-                FETCH_ARGS="$FETCH_ARGS --cacert $SSL_CERT_FILE"
-            fi
-
-            FETCH_ARGS="$FETCH_ARGS -o '$FETCH_BUFFER_FILEPATH'"
+            FETCH_ARGS="-o $FETCH_BUFFER_FILENAME --fail --retry 20 --retry-delay 30 --location"
             ;;
         wget)
-            FETCH_ARGS="--timeout=60 -O '$FETCH_BUFFER_FILEPATH'"
-            ;;
-        http)
-            FETCH_ARGS="--timeout=60 -o '$FETCH_BUFFER_FILEPATH'"
-            ;;
-        aria2c)
-            FETCH_ARGS="-d '$FETCH_OUTPUT_DIR' -o '$FETCH_OUTPUT_FILENAME'"
+            FETCH_ARGS="-O $FETCH_BUFFER_FILENAME --timeout=60"
             ;;
         axel)
-            FETCH_ARGS="-o '$FETCH_BUFFER_FILEPATH'"
+            FETCH_ARGS="-o $FETCH_BUFFER_FILENAME"
             ;;
-        *)  abort 1 "wfetch() unimplementation: $FETCH_TOOL"
+        aria2c)
+            FETCH_ARGS="-o $FETCH_BUFFER_FILENAME"
             ;;
     esac
 
-    ORIGIN_FETCH_URL="$FETCH_URL"
+    ###########################################
 
-    for i in 1 2 3 4 5 6 7 8
+    run install -d "$DOWNLOAD_DIR"
+    run cd         "$DOWNLOAD_DIR"
+
+    ###########################################
+
+    for i in 0 1 2 3 4
     do
         case $i in
-            1)
-                if [ -n "$URLMAP" ] ; then
-                    FETCH_URL="$("$URLMAP" "$FETCH_URL")" || return 1
-                fi
+            0)  ;;
+            1)  SKIP_STEP23=
 
-                if [ "$GITHUB_ACTIONS" = true ] ; then
-                    case $FETCH_URL in
-                        https://ftp.gnu.org/gnu/*)
-                            FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
-                    esac
-                fi
-                ;;
-            2)  if [ -z "$FETCH_URI" ] ; then
-                     continue
-                fi
+                FETCH_URL_HOST="$(printf '%s\n' "$FETCH_URL" | sed -E 's|^https?://([^/]+)/.*|\1|')"
 
-                if [ -n "$URLMAP" ] ; then
-                    FETCH_URL="$("$URLMAP" "$FETCH_URI")" || return 1
-                else
-                    FETCH_URL="$FETCH_URI"
-                fi
-                ;;
-            3)  case $ORIGIN_FETCH_URL in
-                    https://ftp.gnu.org/gnu/*)
-                        FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
-                        ;;
-                    *)  continue
-                esac
-                ;;
-            4)
-                FETCH_URX="${ORIGIN_FETCH_URL%%'?'*}"
-                FILENAME="${FETCH_URX##*/}"
-                FETCH_URL="https://fossies.org/linux/misc/$FILENAME"
-                ;;
-            5)  MACPORTS_PKGNAME=
-
-                if [ -z "$PKGNAME" ] ; then
+                if [ "$FETCH_URL_HOST" != 'ftp.gnu.org' ] ; then
                     continue
                 fi
 
-                MACPORTS_PKGNAME="${PKGNAME%@*}"
+                FETCH_URL="$(printf '%s\n' "$FETCH_URL" | sed 's|ftp\.gnu\.org|mirrors.kernel.org|')"
 
-                FETCH_URL="https://distfiles.macports.org/$MACPORTS_PKGNAME/$FILENAME"
+                SKIP_STEP23=1
                 ;;
-            6)  case $MACPORTS_PKGNAME in
-                    '') continue ;;
-                    lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PKGNAME#lib}/$FILENAME" ;;
-                    *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PKGNAME/$FILENAME"
+            2)
+                if [ "$SKIP_STEP23" = 1 ] ; then
+                    continue
+                fi
+
+                if [ "$FETCH_URL_HOST" = 'distfiles.macports.org' ] ; then
+                    SKIP_STEP23=1
+                    continue
+                fi
+
+                MACPORTS_PKGNAME="${FETCH_URL_FILENAME%-*}"
+                FETCH_URL="https://distfiles.macports.org/$MACPORTS_PKGNAME/$FETCH_URL_FILENAME"
+                ;;
+            3)
+                if [ "$SKIP_STEP23" = 1 ] ; then
+                    continue
+                fi
+
+                case $MACPORTS_PKGNAME in
+                    lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PKGNAME#lib}/$FETCH_URL_FILENAME" ;;
+                    *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PKGNAME/$FETCH_URL_FILENAME"
                 esac
                 ;;
-            7)  case $FILENAME in
-                    *-*)
-                        MACPORTS_PKGNAME="${FILENAME%%-*}"
-                        FETCH_URL="https://distfiles.macports.org/$MACPORTS_PKGNAME/$FILENAME"
-                        ;;
-                    *)  MACPORTS_PKGNAME=
-                        continue
-                esac
-                ;;
-            8)  case $MACPORTS_PKGNAME in
-                    '') FETCH_URL= ; continue ;;
-                    lib)FETCH_URL="https://distfiles.macports.org/${MACPORTS_PKGNAME#lib}/$FILENAME" ;;
-                    *)  FETCH_URL="https://distfiles.macports.org/lib$MACPORTS_PKGNAME/$FILENAME"
-                esac
+            4)  FETCH_URL="https://fossies.org/linux/misc/$FETCH_URL_FILENAME"
                 ;;
         esac
 
         run "$FETCH_TOOL $FETCH_ARGS '$FETCH_URL'" && break
     done
 
-    [ $? -eq 0 ] || return 1
+    ###########################################
 
-    if [ -n "$FETCH_OUTPUT_FILEPATH" ] ; then
-        if [ -n "$FETCH_SHA256_EXPECTED" ] ; then
-            FETCH_SHA256_ACTUAL="$(sha256sum_of_file "$FETCH_BUFFER_FILEPATH")"
+    if [ $? -eq 0 ] ; then
+        FETCH_SHA256_ACTUAL="$(sha256sum_of_file "$FETCH_BUFFER_FILENAME")"
 
-            if [ "$FETCH_SHA256_ACTUAL" != "$FETCH_SHA256_EXPECTED" ] ; then
-                abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256_EXPECTED\n    actual : $FETCH_SHA256_ACTUAL\n"
-            fi
+        if [ "$FETCH_SHA256_ACTUAL" != "$FETCH_SHA256_EXPECTED" ] ; then
+            abort 1 "sha256sum mismatch.\n    expect : $FETCH_SHA256_EXPECTED\n    actual : $FETCH_SHA256_ACTUAL\n"
         fi
 
-        if [ "$NOT_BUFFER" != 1 ] ; then
-            run mv "$FETCH_BUFFER_FILEPATH" "$FETCH_OUTPUT_FILEPATH"
-        fi
+        run mv "$FETCH_BUFFER_FILENAME" "$FETCH_OUTPUT_FILENAME"
+
+        run cd -
     fi
 }
 
@@ -696,20 +579,14 @@ EOF
 
     ###########################################
 
-    PACKAGE_SRC_FILETYPE="$(filetype_from_url "$PACKAGE_SRC_URL")"
-    PACKAGE_SRC_FILENAME="$PACKAGE_SRC_SHA$PACKAGE_SRC_FILETYPE"
-    PACKAGE_SRC_FILEPATH="$DOWNLOAD_DIR/$PACKAGE_SRC_FILENAME"
-
-    ###########################################
-
-    wfetch "$PACKAGE_SRC_URL" --sha256="$PACKAGE_SRC_SHA" -o "$PACKAGE_SRC_FILEPATH"
+    wfetch "$PACKAGE_SRC_URL" "$PACKAGE_SRC_SHA"
 
     PACKAGE_WORKING_DIR="$SESSION_DIR/native/$1"
 
     run install -d "$PACKAGE_WORKING_DIR"
     run cd         "$PACKAGE_WORKING_DIR"
 
-    run bsdtar xf "$PACKAGE_SRC_FILEPATH" --strip-components=1 --no-same-owner
+    run bsdtar xf "$FETCH_OUTPUT_FILEPATH" --strip-components=1 --no-same-owner
 
     ##############################
 
